@@ -1,0 +1,8 @@
+*.bak
+*.swo
+*.swp
+*~
+.DS_Store
+bin/*
+lib/*
+obj
