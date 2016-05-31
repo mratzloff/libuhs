@@ -2,7 +2,43 @@
 
 namespace UHS {
 
-Token::Token(const TokenType tokenType, int line, int column, int offset, std::string value)
+IdentType Token::identType(std::string ident) {
+	if (ident == "blank") {
+		return IdentBlank;
+	} else if (ident == "comment") {
+		return IdentComment;
+	} else if (ident == "credit") {
+		return IdentCredit;
+	} else if (ident == "gifa") {
+		return IdentGifa;
+	} else if (ident == "hint") {
+		return IdentHint;
+	} else if (ident == "hyperpng") {
+		return IdentHyperpng;
+	} else if (ident == "incentive") {
+		return IdentIncentive;
+	} else if (ident == "info") {
+		return IdentInfo;
+	} else if (ident == "link") {
+		return IdentLink;
+	} else if (ident == "nesthint") {
+		return IdentNesthint;
+	} else if (ident == "overlay") {
+		return IdentOverlay;
+	} else if (ident == "sound") {
+		return IdentSound;
+	} else if (ident == "subject") {
+		return IdentSubject;
+	} else if (ident == "text") {
+		return IdentText;
+	} else if (ident == "version") {
+		return IdentVersion;
+	} else {
+		return IdentUnknown;
+	}
+}
+
+Token::Token(const TokenType tokenType, int offset, int line, int column, std::string value)
 	: _tokenType(tokenType)
 	, _line(line)
 	, _column(column)
@@ -68,6 +104,8 @@ const std::string Token::typeString() const {
 		return "NestedElementSep";
 	case TokenNestedTextSep:
 		return "NestedTextSep";
+	case TokenParagraphSep:
+		return "ParagraphSep";
 	case TokenRegionX:
 		return "RegionX";
 	case TokenRegionY:

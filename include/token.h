@@ -18,15 +18,46 @@ enum TokenType {
 	TokenLength,
 	TokenNestedElementSep,
 	TokenNestedTextSep,
+	TokenParagraphSep,
 	TokenRegionX,
 	TokenRegionY,
 	TokenSignature,
 	TokenString,
 };
 
+enum IdentType {
+	IdentUnknown,
+	IdentBlank,
+	IdentComment,
+	IdentCredit,
+	IdentGifa,
+	IdentHint,
+	IdentHyperpng,
+	IdentIncentive,
+	IdentInfo,
+	IdentLink,
+	IdentNesthint,
+	IdentOverlay,
+	IdentSound,
+	IdentSubject,
+	IdentText,
+	IdentVersion,
+};
+
 class Token {
 public:
-	Token(const TokenType tokenType, int line, int column, int offset, std::string value);
+	static constexpr const char* Signature = "UHS";
+	static constexpr const char* CompatSep = "** END OF 88A FORMAT **";
+	static constexpr const char* CreditSep = "CREDITS:";
+	static constexpr const char* NestedElementSep = "=";
+	static constexpr const char* NestedTextSep = "-";
+	static constexpr const char* ParagraphSep = " "; // i.e., "text.\r\n \r\nText"
+	static const char DataSep = '\x1A';
+
+	static IdentType identType(std::string ident);
+	
+	Token(const TokenType tokenType, int offset, int line, int column = 0, std::string value = "");
+	virtual ~Token();
 	TokenType type() const;
 	int line() const;
 	int column() const;
@@ -35,8 +66,6 @@ public:
 	int intValue() const;
 	const std::string typeString() const;
 	const std::string toString() const;
-	
-	virtual ~Token();
 
 protected:
 	const TokenType _tokenType;

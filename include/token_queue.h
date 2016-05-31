@@ -10,11 +10,12 @@ namespace UHS {
 class TokenQueue {
 public:
 	TokenQueue();
-	void push(Token* t);
-	Token* front();
+	virtual ~TokenQueue();
+	void push(std::shared_ptr<Token> t);
+	std::shared_ptr<Token> front();
 
 protected:
-	std::queue<Token*> _queue;
+	std::queue<std::shared_ptr<Token>> _queue;
 	std::mutex _mutex;
 };
 
