@@ -23,6 +23,10 @@ clean:
 	find . -name "*.gc*" -exec rm {} \;
 	rm -rf `find . -name "*.dSYM" -print`
 
+.PHONY: valgrind
+valgrind: all
+	valgrind --verbose --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes $(command)
+
 obj/%.o: src/%.cc
 	$(CXX) $(CXXFLAGS) -Iinclude -c $< -o $@
 
