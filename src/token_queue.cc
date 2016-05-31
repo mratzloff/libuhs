@@ -4,6 +4,8 @@ namespace UHS {
 
 TokenQueue::TokenQueue() {}
 
+TokenQueue::~TokenQueue() {}
+
 void TokenQueue::push(std::shared_ptr<Token> t) {
 	_mutex.lock();
 	_queue.push(t);

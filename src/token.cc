@@ -39,12 +39,14 @@ IdentType Token::identType(std::string ident) {
 }
 
 Token::Token(const TokenType tokenType, int offset, int line, int column, std::string value)
-	: _tokenType(tokenType)
-	, _line(line)
-	, _column(column)
-	, _offset(offset)
-	, _value(std::move(value))
+	: _tokenType {tokenType}
+	, _line {line}
+	, _column {column}
+	, _offset {offset}
+	, _value {value}
 {}
+
+Token::~Token() {}
 
 TokenType Token::type() const {
 	return _tokenType;

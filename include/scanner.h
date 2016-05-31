@@ -35,10 +35,10 @@ protected:
 	std::string _buf;
 	
 	void asyncScan();
-	IdentType scanDescriptor(std::string s, int offset);
-	void scanDataAddress(std::string s, int offset);
-	void scanOverlayRegion(std::string s, int offset);
-	void scanOverlayAddress(std::string s, int offset);
+	IdentType scanDescriptor(std::string s, std::smatch m, int offset);
+	void scanDataAddress(std::string s, std::smatch m, int offset);
+	void scanOverlayRegion(std::string s, std::smatch m, int offset);
+	void scanOverlayAddress(std::string s, std::smatch m, int offset);
 	void eof();
 	char read();
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;

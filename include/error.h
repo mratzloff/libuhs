@@ -18,6 +18,7 @@ public:
 	Error();
 	Error(int code);
 	Error(int code, std::string message);
+	virtual ~Error();
 	int code() const;
 	void code(int code);
 	const std::string message() const;

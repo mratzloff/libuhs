@@ -1,6 +1,8 @@
 #ifndef UHS_UHS_H
 #define UHS_UHS_H
 
+#include "parser.h"
+
 namespace UHS {
 
 enum Version {
