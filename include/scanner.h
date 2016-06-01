@@ -44,6 +44,7 @@ protected:
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;
 	bool isNumber(std::string s) const;
 	const std::string ltrim(std::string s, char c) const;
+	const std::string rtrim(std::string s, char c) const;
 };
 
 }

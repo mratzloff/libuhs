@@ -90,7 +90,7 @@ void Scanner::asyncScan() {
 			std::cout << "Read this: " << text << '\n';
 
 			// UHS uses DOS-style line endings
-			text.erase(text.find_last_not_of('\r'));
+			text = this->rtrim(text, '\r');
 
 			std::cout << "Removed CR\n";
 
@@ -238,6 +238,15 @@ const std::string Scanner::ltrim(std::string s, char c) const {
 		return s;
 	} else {
 		return s.substr(pos);
+	}
+}
+
+const std::string Scanner::rtrim(std::string s, char c) const {
+	auto pos = s.find_last_not_of(c);
+	if (pos == std::string::npos) {
+		return s;
+	} else {
+		return s.erase(pos + 1);
 	}
 }
 
