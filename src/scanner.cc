@@ -1,4 +1,5 @@
 #include <future>
+#include <iostream>
 #include <memory>
 #include <sstream>
 #include "error.h"
@@ -28,101 +29,132 @@ std::shared_ptr<Error> Scanner::err() {
 }
 
 void Scanner::asyncScan() {
-	bool beforeCompatSep {true};
-	int expectedIndexLine {-1};
-	int prevTextLen {0};
-	int offset {0};
-	char c {'\0'};
+	try {
+		bool beforeCompatSep {true};
+		int expectedIndexLine {-1};
+		int prevTextLen {0};
+		int offset {0};
+		char c {'\0'};
 	
-	while (true) {
-		++_line;
-		_column = 0;
-		_offset += prevTextLen;
-		offset = _offset;
-
-		// Check for binary data
-		c = _in.peek();
-		if (!_in.good()) {
-			std::shared_ptr<Error> err;
-			if (_in.eof()) {
-				err = std::make_shared<Error>(ErrEOF);
-			} else {
-				err = std::make_shared<Error>(ErrRead);
-			}
-			_err = this->formatError(err);
-			this->eof();
-			return;
-		}
-		if (c == Token::DataSep) {
-			this->read(); // Skip binary separator token
-			int line = _line;
-			int column = _column;
+		while (true) {
+			++_line;
+			_column = 0;
+			_offset += prevTextLen;
 			offset = _offset;
+
+			// Check for binary data
+			std::cout << "Check for binary data\n";
+			c = _in.peek();
+			if (!_in.good()) {
+				std::cout << "No good\n";
+				ErrorCode code;
+				if (_in.eof()) {
+					code = ErrEOF;
+				} else {
+					code = ErrRead;
+				}
+				_err = this->formatError(std::make_shared<Error>(code));
+				this->eof();
+				return;
+			}
+			if (c == Token::DataSep) {
+				std::cout << "Matched DataSep\n";
+				this->read(); // Skip binary separator token
+				int line = _line;
+				int column = _column;
+				offset = _offset;
 			
-			while (true) {
-				c = this->read();
-				if (_err != nullptr) {
-					if (_err->code() == ErrEOF) {
-						_out->push(std::make_shared<Token>(TokenData, offset, line, column, _buf));
-						this->eof();
+				while (true) {
+					c = this->read();
+					if (_err != nullptr) {
+						if (_err->code() == ErrEOF) {
+							_out->push(std::make_shared<Token>(TokenData, offset, line, column, _buf));
+							this->eof();
+							std::cout << "Done\n";
+						}
+						return;
 					}
-					return;
+					_buf += c;
 				}
-				_buf += c;
 			}
-		}
-		
-		// Everything else is line-based
-		// Handle errors at the end, after any text that was returned
-		char raw[LineLen+1];
-		_in.getline(raw, LineLen);
-		std::string text {raw};
-		prevTextLen = text.length();
 
-		// UHS uses DOS-style line endings
-		text.erase(text.find_last_not_of('\r'));
+			std::cout << "Reading line by line\n";
 
-		// All numbers are indexes in 88a, and link elements contain an index
-		if (this->isNumber(text) && (beforeCompatSep || _line == expectedIndexLine)) {
-			_out->push(std::make_shared<Token>(
-				TokenIndex, _offset, _line, 0, this->ltrim(text, '0')));
-			expectedIndexLine = -1;
-			continue;
-		}
+			// Everything else is line-based
+			// Handle errors at the end, after any text that was returned
+			char raw[LineLen+1];
+			_in.getline(raw, LineLen);
+			std::string text {raw};
+			prevTextLen = text.length();
 
-		// Check for exact line matches
-		if (text == Token::CompatSep) {
-			beforeCompatSep = false;
-			_out->push(std::make_shared<Token>(TokenCompatSep, offset, _line));
-		} else if (text == Token::CreditSep) {
-			_out->push(std::make_shared<Token>(TokenCreditSep, offset, _line));
-		} else if (text == Token::NestedElementSep) {
-			_out->push(std::make_shared<Token>(TokenNestedElementSep, offset, _line));
-		} else if (text == Token::NestedTextSep) {
-			_out->push(std::make_shared<Token>(TokenNestedTextSep, offset, _line));
-		} else if (text == Token::ParagraphSep) {
-			_out->push(std::make_shared<Token>(TokenParagraphSep, offset, _line));
-		} else if (text == Token::Signature) {
-			_out->push(std::make_shared<Token>(TokenSignature, offset, _line));
-		} else {
-			// Check for line match patterns
-			std::smatch matches;
-			if (std::regex_match(text, matches, _descriptorRegex)) {
-				IdentType ident = this->scanDescriptor(text, matches, offset);
-				if (ident == IdentLink) {
-					expectedIndexLine = _line + 2;
-				}
-			} else if (std::regex_match(text, matches, _dataAddressRegex)) {
-				this->scanDataAddress(text, matches, offset);
-			} else if (std::regex_match(text, matches, _overlayRegionRegex)) {
-				this->scanOverlayRegion(text, matches, offset);
-			} else if (std::regex_match(text, matches, _overlayAddressRegex)) {
-				this->scanOverlayAddress(text, matches, offset);
+			std::cout << "Read this: " << text << '\n';
+
+			// UHS uses DOS-style line endings
+			text.erase(text.find_last_not_of('\r'));
+
+			std::cout << "Removed CR\n";
+
+			// All numbers are indexes in 88a, and link elements contain an index
+			if (this->isNumber(text) && (beforeCompatSep || _line == expectedIndexLine)) {
+				std::cout << "That's an index\n";
+				_out->push(std::make_shared<Token>(
+					TokenIndex, _offset, _line, 0, this->ltrim(text, '0')));
+				expectedIndexLine = -1;
+				continue;
+			}
+
+			std::cout << "Checking line text\n";
+
+			// Check for exact line matches
+			if (text == Token::CompatSep) {
+				std::cout << "Matched CompatSep\n";
+				beforeCompatSep = false;
+				_out->push(std::make_shared<Token>(TokenCompatSep, offset, _line));
+			} else if (text == Token::CreditSep) {
+				std::cout << "Matched CreditSep\n";
+				_out->push(std::make_shared<Token>(TokenCreditSep, offset, _line));
+			} else if (text == Token::NestedElementSep) {
+				std::cout << "Matched NestedElementSep\n";
+				_out->push(std::make_shared<Token>(TokenNestedElementSep, offset, _line));
+			} else if (text == Token::NestedTextSep) {
+				std::cout << "Matched NestedTextSep\n";
+				_out->push(std::make_shared<Token>(TokenNestedTextSep, offset, _line));
+			} else if (text == Token::ParagraphSep) {
+				std::cout << "Matched ParagraphSep\n";
+				_out->push(std::make_shared<Token>(TokenParagraphSep, offset, _line));
+			} else if (text == Token::Signature) {
+				std::cout << "Matched Signature\n";
+				_out->push(std::make_shared<Token>(TokenSignature, offset, _line));
 			} else {
-				_out->push(std::make_shared<Token>(TokenString, offset, _line, 0, text));
+				// Check for line match patterns
+				std::cout << "Check for line match patterns\n";
+				std::smatch matches;
+				if (std::regex_match(text, matches, _descriptorRegex)) {
+					std::cout << "Matched descriptor\n";
+					IdentType ident = this->scanDescriptor(text, matches, offset);
+					if (ident == IdentLink) {
+						expectedIndexLine = _line + 2;
+					}
+				} else if (std::regex_match(text, matches, _dataAddressRegex)) {
+					std::cout << "Matched data address\n";
+					this->scanDataAddress(text, matches, offset);
+				} else if (std::regex_match(text, matches, _overlayRegionRegex)) {
+					std::cout << "Matched overlay region\n";
+					this->scanOverlayRegion(text, matches, offset);
+				} else if (std::regex_match(text, matches, _overlayAddressRegex)) {
+					std::cout << "Matched overlay address\n";
+					this->scanOverlayAddress(text, matches, offset);
+				} else {
+					std::cout << "Matched string\n";
+					_out->push(std::make_shared<Token>(TokenString, offset, _line, 0, text));
+				}
 			}
 		}
+	} catch (const std::exception& e) {
+		_err = std::make_shared<Error>(ErrRead, e.what());
 	}
+
+	std::cout << "Done\n";
 }
 
 IdentType Scanner::scanDescriptor(std::string s, std::smatch m, int offset) {
@@ -170,13 +202,13 @@ void Scanner::eof() {
 char Scanner::read() {
 	char c = _in.get();
 	if (!_in.good()) {
-		std::shared_ptr<Error> err;
+		ErrorCode code;
 		if (_in.eof()) {
-			err = std::make_shared<Error>(ErrEOF);
+			code = ErrEOF;
 		} else {
-			err = std::make_shared<Error>(ErrRead);
+			code = ErrRead;
 		}
-		_err = this->formatError(err);
+		_err = this->formatError(std::make_shared<Error>(code));
 		return c;
 	}
 	++_column;
@@ -201,7 +233,12 @@ bool Scanner::isNumber(std::string s) const {
 }
 
 const std::string Scanner::ltrim(std::string s, char c) const {
-	return s.substr(s.find_first_not_of(c));
+	auto pos = s.find_first_not_of(c);
+	if (pos == std::string::npos) {
+		return s;
+	} else {
+		return s.substr(pos);
+	}
 }
 
 }

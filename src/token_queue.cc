@@ -7,13 +7,15 @@ TokenQueue::TokenQueue() {}
 TokenQueue::~TokenQueue() {}
 
 void TokenQueue::push(std::shared_ptr<Token> t) {
-	std::lock_guard<std::mutex> m {_mutex};
-	_queue.push(t);
+	// std::lock_guard<std::mutex> m {_mutex};
+	// _queue.push(t);
 }
 
 std::shared_ptr<Token> TokenQueue::front() {
-	std::lock_guard<std::mutex> m {_mutex};
-	std::shared_ptr<Token> t {_queue.front()};
+	// std::lock_guard<std::mutex> m {_mutex};
+	// std::shared_ptr<Token> t {_queue.front()};
+	// _queue.pop();
+	std::shared_ptr<Token> t;
 	return t;
 }
 
