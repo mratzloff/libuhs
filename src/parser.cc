@@ -16,9 +16,9 @@ void Parser::parse() {
 		return;
 	}
 
-	while (auto t = _scanner->next()) {
-		std::cout << t << '\n';
-	}
+	// while (auto t = _scanner->next()) {
+	// 	std::cout << t << '\n';
+	// }
 }
 
 }

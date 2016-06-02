@@ -13,6 +13,9 @@ void TokenQueue::push(std::shared_ptr<Token> t) {
 
 std::shared_ptr<Token> TokenQueue::front() {
 	// std::lock_guard<std::mutex> m {_mutex};
+	if (_queue.empty()) {
+		return nullptr;
+	}
 	std::shared_ptr<Token> t {_queue.front()};
 	_queue.pop();
 	return t;
