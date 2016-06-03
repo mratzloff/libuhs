@@ -16,7 +16,7 @@ public:
 
 protected:
 	std::queue<std::shared_ptr<Token>> _queue;
-	// std::mutex _mutex;
+	std::mutex _mutex;
 };
 
 }

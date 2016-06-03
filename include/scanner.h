@@ -27,7 +27,7 @@ protected:
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
 	std::istream& _in;
-	std::unique_ptr<TokenQueue> _out;
+	TokenQueue _out;
 	std::shared_ptr<Error> _err;
 	int _line;
 	int _column;
