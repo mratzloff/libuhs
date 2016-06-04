@@ -38,7 +38,9 @@ IdentType Token::identType(std::string ident) {
 	}
 }
 
-Token::Token(const TokenType tokenType, int offset, int line, int column, std::string value)
+Token::Token(const TokenType tokenType, std::size_t offset, int line,
+	std::size_t column, std::string value)
+
 	: _tokenType {tokenType}
 	, _line {line}
 	, _column {column}
@@ -56,11 +58,11 @@ int Token::line() const {
 	return _line;
 }
 
-int Token::column() const {
+std::size_t Token::column() const {
 	return _column;
 }
 
-int Token::offset() const {
+std::size_t Token::offset() const {
 	return _offset;
 }
 
@@ -77,6 +79,7 @@ int Token::intValue() const {
 			intVal = -1;
 		}
 	} catch (const std::invalid_argument& e) {
+		// Return value checked by callers
 		intVal = -1;
 	}
 	return intVal;

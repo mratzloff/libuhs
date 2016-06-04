@@ -15,6 +15,7 @@ public:
 	Scanner(std::istream& in);
 	virtual ~Scanner();
 	void scan();
+	bool hasNext();
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Error> err();
 
@@ -30,15 +31,14 @@ protected:
 	TokenQueue _out;
 	std::shared_ptr<Error> _err;
 	int _line;
-	int _column;
-	int _offset;
+	std::size_t _column;
+	std::size_t _offset;
 	std::string _buf;
-	
-	void asyncScan();
-	IdentType scanDescriptor(std::string s, std::smatch m, int offset);
-	void scanDataAddress(std::string s, std::smatch m, int offset);
-	void scanOverlayRegion(std::string s, std::smatch m, int offset);
-	void scanOverlayAddress(std::string s, std::smatch m, int offset);
+
+	IdentType scanDescriptor(std::string s, std::smatch m, std::size_t offset);
+	void scanDataAddress(std::string s, std::smatch m, std::size_t offset);
+	void scanOverlayRegion(std::string s, std::smatch m, std::size_t offset);
+	void scanOverlayAddress(std::string s, std::smatch m, std::size_t offset);
 	void eof();
 	char read();
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;

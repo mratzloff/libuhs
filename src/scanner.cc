@@ -12,27 +12,11 @@ Scanner::Scanner(std::istream& in) : _in {in} {}
 Scanner::~Scanner() {}
 
 void Scanner::scan() {
-	// auto future = std::async(std::launch::async, asyncScan());
-	this->asyncScan();
-}
-
-std::shared_ptr<Token> Scanner::next() {
-	return _out.front();
-}
-
-std::shared_ptr<Error> Scanner::err() {
-	if (_err->code() == ErrEOF) {
-		return nullptr;
-	}
-	return _err;
-}
-
-void Scanner::asyncScan() {
 	try {
 		bool beforeCompatSep {true};
 		int expectedIndexLine {-1};
-		int prevTextLen {0};
-		int offset {0};
+		std::size_t prevTextLen {0};
+		std::size_t offset {0};
 		char c {'\0'};
 	
 		while (true) {
@@ -42,7 +26,7 @@ void Scanner::asyncScan() {
 			offset = _offset;
 
 			// Check for binary data
-			c = _in.peek();
+			c = (char) _in.peek();
 			if (!_in.good()) {
 				ErrorCode code;
 				if (_in.eof()) {
@@ -52,21 +36,21 @@ void Scanner::asyncScan() {
 				}
 				_err = this->formatError(std::make_shared<Error>(code));
 				this->eof();
+				_out.close();
 				return;
-			}
-			if (c == Token::DataSep) {
+			} else if (c == Token::DataSep) {
 				this->read(); // Skip binary separator token
-				int line = _line;
-				int column = _column;
+				auto column = _column;
 				offset = _offset;
 			
 				while (true) {
 					c = this->read();
 					if (_err != nullptr) {
 						if (_err->code() == ErrEOF) {
-							_out.push(std::make_shared<Token>(TokenData, offset, line, column, _buf));
+							_out.send(std::make_shared<Token>(TokenData, offset, _line, column, _buf));
 							this->eof();
 						}
+						_out.close();
 						return;
 					}
 					_buf += c;
@@ -85,7 +69,7 @@ void Scanner::asyncScan() {
 
 			// All numbers are indexes in 88a, and link elements contain an index
 			if (this->isNumber(text) && (beforeCompatSep || _line == expectedIndexLine)) {
-				_out.push(std::make_shared<Token>(
+				_out.send(std::make_shared<Token>(
 					TokenIndex, _offset, _line, 0, this->ltrim(text, '0')));
 				expectedIndexLine = -1;
 				continue;
@@ -94,17 +78,17 @@ void Scanner::asyncScan() {
 			// Check for exact line matches
 			if (text == Token::CompatSep) {
 				beforeCompatSep = false;
-				_out.push(std::make_shared<Token>(TokenCompatSep, offset, _line));
+				_out.send(std::make_shared<Token>(TokenCompatSep, offset, _line));
 			} else if (text == Token::CreditSep) {
-				_out.push(std::make_shared<Token>(TokenCreditSep, offset, _line));
+				_out.send(std::make_shared<Token>(TokenCreditSep, offset, _line));
 			} else if (text == Token::NestedElementSep) {
-				_out.push(std::make_shared<Token>(TokenNestedElementSep, offset, _line));
+				_out.send(std::make_shared<Token>(TokenNestedElementSep, offset, _line));
 			} else if (text == Token::NestedTextSep) {
-				_out.push(std::make_shared<Token>(TokenNestedTextSep, offset, _line));
+				_out.send(std::make_shared<Token>(TokenNestedTextSep, offset, _line));
 			} else if (text == Token::ParagraphSep) {
-				_out.push(std::make_shared<Token>(TokenParagraphSep, offset, _line));
+				_out.send(std::make_shared<Token>(TokenParagraphSep, offset, _line));
 			} else if (text == Token::Signature) {
-				_out.push(std::make_shared<Token>(TokenSignature, offset, _line));
+				_out.send(std::make_shared<Token>(TokenSignature, offset, _line));
 			} else {
 				// Check for line match patterns
 				std::smatch matches;
@@ -120,59 +104,75 @@ void Scanner::asyncScan() {
 				} else if (std::regex_match(text, matches, _overlayAddressRegex)) {
 					this->scanOverlayAddress(text, matches, offset);
 				} else {
-					_out.push(std::make_shared<Token>(TokenString, offset, _line, 0, text));
+					_out.send(std::make_shared<Token>(TokenString, offset, _line, 0, text));
 				}
 			}
 		}
 	} catch (const std::exception& e) {
 		_err = std::make_shared<Error>(ErrRead, e.what());
 	}
+	_out.close();
 }
 
-IdentType Scanner::scanDescriptor(std::string s, std::smatch m, int offset) {
-	_out.push(std::make_shared<Token>(
+bool Scanner::hasNext() {
+	return _out.ok();
+}
+
+std::shared_ptr<Token> Scanner::next() {
+	return _out.receive();
+}
+
+std::shared_ptr<Error> Scanner::err() {
+	if (_err->code() == ErrEOF) {
+		return nullptr;
+	}
+	return _err;
+}
+
+IdentType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t offset) {
+	_out.send(std::make_shared<Token>(
 		TokenLength, offset, _line, 0, this->ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenIdent, offset, _line, -1, ident));
 	return Token::identType(ident);
 }
 
-void Scanner::scanDataAddress(std::string s, std::smatch m, int offset) {
-	_out.push(std::make_shared<Token>(
+void Scanner::scanDataAddress(std::string s, std::smatch m, std::size_t offset) {
+	_out.send(std::make_shared<Token>(
 		TokenDataOffset, offset, _line, -1, this->ltrim(m[3].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenDataLength, offset, _line, -1, this->ltrim(m[5].str(), '0')));
 }
 
-void Scanner::scanOverlayRegion(std::string s, std::smatch m, int offset) {
-	_out.push(std::make_shared<Token>(
+void Scanner::scanOverlayRegion(std::string s, std::smatch m, std::size_t offset) {
+	_out.send(std::make_shared<Token>(
 		TokenRegionX, offset, _line, -1, this->ltrim(m[1].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenRegionY, offset, _line, -1, this->ltrim(m[2].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenRegionX, offset, _line, -1, this->ltrim(m[3].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenRegionY, offset, _line, -1, this->ltrim(m[4].str(), '0')));
 }
 
-void Scanner::scanOverlayAddress(std::string s, std::smatch m, int offset) {
-	_out.push(std::make_shared<Token>(
+void Scanner::scanOverlayAddress(std::string s, std::smatch m, std::size_t offset) {
+	_out.send(std::make_shared<Token>(
 		TokenDataOffset, offset, _line, -1, this->ltrim(m[1].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenDataLength, offset, _line, -1, this->ltrim(m[2].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenRegionX, offset, _line, -1, this->ltrim(m[3].str(), '0')));
-	_out.push(std::make_shared<Token>(
+	_out.send(std::make_shared<Token>(
 		TokenRegionY, offset, _line, -1, this->ltrim(m[4].str(), '0')));
 }
 
 void Scanner::eof() {
-	_out.push(std::make_shared<Token>(TokenEOF, _offset, _line, _column));
+	_out.send(std::make_shared<Token>(TokenEOF, _offset, _line, _column));
 }
 
 char Scanner::read() {
-	char c = _in.get();
+	char c = (char) _in.get();
 	if (!_in.good()) {
 		ErrorCode code;
 		if (_in.eof()) {

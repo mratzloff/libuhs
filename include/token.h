@@ -56,12 +56,13 @@ public:
 
 	static IdentType identType(std::string ident);
 	
-	Token(const TokenType tokenType, int offset, int line, int column = 0, std::string value = "");
+	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
+		std::size_t column = 0, std::string value = "");
 	virtual ~Token();
 	TokenType type() const;
 	int line() const;
-	int column() const;
-	int offset() const;
+	std::size_t column() const;
+	std::size_t offset() const;
 	const std::string stringValue() const;
 	int intValue() const;
 	const std::string typeString() const;
@@ -70,8 +71,8 @@ public:
 protected:
 	const TokenType _tokenType;
 	int _line;
-	int _column;
-	int _offset;
+	std::size_t _column;
+	std::size_t _offset;
 	std::string _value;
 
 	const std::string formatToken() const;

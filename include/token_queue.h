@@ -11,12 +11,16 @@ class TokenQueue {
 public:
 	TokenQueue();
 	virtual ~TokenQueue();
-	void push(std::shared_ptr<Token> t);
-	std::shared_ptr<Token> front();
+	bool send(std::shared_ptr<Token> t);
+	std::shared_ptr<Token> receive();
+	bool empty();
+	bool ok();
+	void close();
 
 protected:
 	std::queue<std::shared_ptr<Token>> _queue;
 	std::mutex _mutex;
+	bool _open;
 };
 
 }
