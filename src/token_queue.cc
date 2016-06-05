@@ -1,7 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <thread>
-#include "token_queue.h"
+#include "uhs.h"
 
 namespace UHS {
 

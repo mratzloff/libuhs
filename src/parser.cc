@@ -1,14 +1,17 @@
 #include <iostream>
 #include <thread>
-#include "parser.h"
+#include "uhs.h"
 
 namespace UHS {
 
-Parser::Parser(std::istream& in) : _scanner {std::make_unique<Scanner>(in)} {}
+Parser::Parser(std::istream& in)
+	: _scanner {std::make_unique<Scanner>(in)}
+	, _document {std::make_shared<Document>()}
+{}
 
 Parser::~Parser() {}
 
-void Parser::parse() {
+std::shared_ptr<Document> Parser::parse() {
 	std::thread thread {[&] {
 		_scanner->scan();
 	}};
@@ -26,8 +29,9 @@ void Parser::parse() {
 	auto err = _scanner->err();
 	if (err != nullptr) {
 		std::cerr << err->message() << std::endl;
-		return;
 	}
+
+	return _document;
 }
 
 }

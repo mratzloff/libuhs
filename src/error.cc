@@ -1,32 +1,29 @@
-#include "error.h"
+#include "uhs.h"
 
 namespace UHS {
 
-Error::Error() : _code {ErrUnknown} {}
+Error::Error() : _type {ErrorUnknown} {}
 
-Error::Error(int code) : _code {code} {}
+Error::Error(ErrorType t) : _type {t} {}
 
-Error::Error(int code, std::string message)
-	: _code {code}
-	, _message {message}
-{}
+Error::Error(ErrorType t, std::string s) : _type {t}, _message {s} {}
 
 Error::~Error() {}
 
-int Error::code() const {
-	return _code;
+int Error::type() const {
+	return _type;
 }
 
-void Error::code(int code) {
-	_code = code;
+void Error::type(ErrorType t) {
+	_type = t;
 }
 
 const std::string Error::message() const {
 	return _message;
 }
 
-void Error::message(const std::string message) {
-	_message = message;
+void Error::message(const std::string s) {
+	_message = s;
 }
 
 }

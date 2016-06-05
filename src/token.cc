@@ -1,4 +1,4 @@
-#include "token.h"
+#include "uhs.h"
 
 namespace UHS {
 
@@ -41,7 +41,7 @@ IdentType Token::identType(std::string ident) {
 Token::Token(const TokenType tokenType, std::size_t offset, int line,
 	std::size_t column, std::string value)
 
-	: _tokenType {tokenType}
+	: _type {tokenType}
 	, _line {line}
 	, _column {column}
 	, _offset {offset}
@@ -51,7 +51,7 @@ Token::Token(const TokenType tokenType, std::size_t offset, int line,
 Token::~Token() {}
 
 TokenType Token::type() const {
-	return _tokenType;
+	return _type;
 }
 
 int Token::line() const {
@@ -86,7 +86,7 @@ int Token::intValue() const {
 }
 
 const std::string Token::typeString() const {
-	switch (_tokenType) {
+	switch (_type) {
 	case TokenCompatSep:
 		return "CompatSep";
 	case TokenCreditSep:
@@ -126,7 +126,7 @@ const std::string Token::toString() const {
 	std::string buf {"("};
 	buf += formatToken();
 
-	switch (_tokenType) {
+	switch (_type) {
 	case TokenData:
 		buf += formatByteValue();
 		break;

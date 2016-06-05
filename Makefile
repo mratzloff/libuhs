@@ -5,8 +5,7 @@ CXXFLAGS ?= $(FLAGS_DEFAULT)
 LDFLAGS ?= -Llib -luhs
 
 library = lib/libuhs.a
-# library-sources = $(wildcard src/*.cc)
-library-sources = src/error.cc src/parser.cc src/scanner.cc src/token_queue.cc src/token.cc
+library-sources = $(wildcard src/*.cc)
 library-objects = $(library-sources:src/%.cc=obj/%.o)
 
 command = bin/uhs

@@ -1,8 +1,4 @@
-#include <future>
-#include <memory>
 #include <sstream>
-#include "error.h"
-#include "scanner.h"
 #include "uhs.h"
 
 namespace UHS {
@@ -28,11 +24,11 @@ void Scanner::scan() {
 			// Check for binary data
 			c = (char) _in.peek();
 			if (!_in.good()) {
-				ErrorCode code;
+				ErrorType code;
 				if (_in.eof()) {
-					code = ErrEOF;
+					code = ErrorEOF;
 				} else {
-					code = ErrRead;
+					code = ErrorRead;
 				}
 				_err = this->formatError(std::make_shared<Error>(code));
 				this->eof();
@@ -46,7 +42,7 @@ void Scanner::scan() {
 				while (true) {
 					c = this->read();
 					if (_err != nullptr) {
-						if (_err->code() == ErrEOF) {
+						if (_err->type() == ErrorEOF) {
 							_out.send(std::make_shared<Token>(TokenData, offset, _line, column, _buf));
 							this->eof();
 						}
@@ -109,7 +105,7 @@ void Scanner::scan() {
 			}
 		}
 	} catch (const std::exception& e) {
-		_err = std::make_shared<Error>(ErrRead, e.what());
+		_err = std::make_shared<Error>(ErrorRead, e.what());
 	}
 	_out.close();
 }
@@ -123,7 +119,7 @@ std::shared_ptr<Token> Scanner::next() {
 }
 
 std::shared_ptr<Error> Scanner::err() {
-	if (_err->code() == ErrEOF) {
+	if (_err->type() == ErrorEOF) {
 		return nullptr;
 	}
 	return _err;
@@ -174,11 +170,11 @@ void Scanner::eof() {
 char Scanner::read() {
 	char c = (char) _in.get();
 	if (!_in.good()) {
-		ErrorCode code;
+		ErrorType code;
 		if (_in.eof()) {
-			code = ErrEOF;
+			code = ErrorEOF;
 		} else {
-			code = ErrRead;
+			code = ErrorRead;
 		}
 		_err = this->formatError(std::make_shared<Error>(code));
 		return c;
