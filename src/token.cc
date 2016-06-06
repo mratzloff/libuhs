@@ -2,6 +2,43 @@
 
 namespace UHS {
 
+const std::string Token::typeString(TokenType t) {
+	switch (t) {
+	case TokenCompatSep:
+		return "CompatSep";
+	case TokenCreditSep:
+		return "CreditSep";
+	case TokenData:
+		return "Data";
+	case TokenDataLength:
+		return "DataLength";
+	case TokenDataOffset:
+		return "DataOffset";
+	case TokenEOF:
+		return "EOF";
+	case TokenIdent:
+		return "Ident";
+	case TokenIndex:
+		return "Index";
+	case TokenLength:
+		return "Length";
+	case TokenNestedElementSep:
+		return "NestedElementSep";
+	case TokenNestedTextSep:
+		return "NestedTextSep";
+	case TokenParagraphSep:
+		return "ParagraphSep";
+	case TokenRegionX:
+		return "RegionX";
+	case TokenRegionY:
+		return "RegionY";
+	case TokenSignature:
+		return "Signature";
+	case TokenString:
+		return "String";
+	}
+}
+
 IdentType Token::identType(std::string ident) {
 	if (ident == "blank") {
 		return IdentBlank;
@@ -86,40 +123,7 @@ int Token::intValue() const {
 }
 
 const std::string Token::typeString() const {
-	switch (_type) {
-	case TokenCompatSep:
-		return "CompatSep";
-	case TokenCreditSep:
-		return "CreditSep";
-	case TokenData:
-		return "Data";
-	case TokenDataLength:
-		return "DataLength";
-	case TokenDataOffset:
-		return "DataOffset";
-	case TokenEOF:
-		return "EOF";
-	case TokenIdent:
-		return "Ident";
-	case TokenIndex:
-		return "Index";
-	case TokenLength:
-		return "Length";
-	case TokenNestedElementSep:
-		return "NestedElementSep";
-	case TokenNestedTextSep:
-		return "NestedTextSep";
-	case TokenParagraphSep:
-		return "ParagraphSep";
-	case TokenRegionX:
-		return "RegionX";
-	case TokenRegionY:
-		return "RegionY";
-	case TokenSignature:
-		return "Signature";
-	case TokenString:
-		return "String";
-	}
+	return Token::typeString(_type);
 }
 
 const std::string Token::toString() const {

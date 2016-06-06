@@ -13,6 +13,8 @@
 
 namespace UHS {
 
+constexpr const char* Version = "1.0.0-alpha";
+
 typedef uint8_t Format;
 
 enum FormatType {
@@ -72,7 +74,7 @@ enum TokenType {
 	TokenString,
 };
 
-enum Version {
+enum VersionType {
 	Version88a,
 	Version91a,
 	Version95a,
@@ -89,6 +91,7 @@ public:
 	void type(ErrorType t);
 	const std::string message() const;
 	void message(const std::string s);
+	void messagef(const char* format, ...);
 
 protected:
 	int _type;
@@ -105,6 +108,7 @@ public:
 	static constexpr const char* ParagraphSep = " "; // i.e., "text.\r\n \r\nText"
 	static const char DataSep = '\x1A';
 
+	static const std::string typeString(TokenType t);
 	static IdentType identType(std::string ident);
 	
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
@@ -154,10 +158,10 @@ class Scanner {
 public:
 	Scanner(std::istream& in);
 	virtual ~Scanner();
+	std::shared_ptr<Error> error();
 	void scan();
 	bool hasNext();
 	std::shared_ptr<Token> next();
-	std::shared_ptr<Error> err();
 
 protected:
 	static const int LineLen = 80;
@@ -167,9 +171,9 @@ protected:
 	const std::regex _overlayRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
+	std::shared_ptr<Error> _err;
 	std::istream& _in;
 	TokenQueue _out;
-	std::shared_ptr<Error> _err;
 	int _line;
 	std::size_t _column;
 	std::size_t _offset;
@@ -251,7 +255,7 @@ public:
 
 protected:
 	std::unique_ptr<Node> _root;
-	Version _version;
+	VersionType _version;
 	std::string _title;
 	std::unique_ptr<Metadata> _meta;
 	bool _validCRC;
@@ -261,18 +265,32 @@ class Parser {
 public:
 	Parser(std::istream& in);
 	virtual ~Parser();
+	std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
 
 protected:
-	// static int HeaderLen = 4;
-	// static int FormatTokenLen = 3;
-	// static constexpr const char* InlineStartToken = "#w+";
-	// static constexpr const char* InlineEndToken = "#w.";
-	// static constexpr const char* PreformattedStartToken = "#p-";
-	// static constexpr const char* PreformattedEndToken = "#p+";
+	static const int HeaderLen = 4;
+	static const int FormatTokenLen = 3;
+	static constexpr const char* InlineStartToken = "#w+";
+	static constexpr const char* InlineEndToken = "#w.";
+	static constexpr const char* PreformattedStartToken = "#p-";
+	static constexpr const char* PreformattedEndToken = "#p+";
 
+	std::shared_ptr<Error> _err;
+	VersionType _version;
+	bool _registered;
+	bool _debug;
 	std::unique_ptr<Scanner> _scanner;
 	std::shared_ptr<Document> _document;
+	std::shared_ptr<Token> _token;
+	std::string _key;
+	bool _isTitleSet;
+	bool _done;
+
+	bool parse88a();
+	bool parse96a();
+	std::shared_ptr<Token> next();
+	std::shared_ptr<Token> expect(TokenType expected);
 };
 
 }

@@ -26,4 +26,14 @@ void Error::message(const std::string s) {
 	_message = s;
 }
 
+void Error::messagef(const char* format, ...) {
+	char buf[256];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buf, 256, format, args);
+	perror(buf);
+	va_end(args);
+	_message = std::string(buf);
+}
+
 }

@@ -7,6 +7,13 @@ Scanner::Scanner(std::istream& in) : _in {in} {}
 
 Scanner::~Scanner() {}
 
+std::shared_ptr<Error> Scanner::error() {
+	if (_err->type() == ErrorEOF) {
+		return nullptr;
+	}
+	return _err;
+}
+
 void Scanner::scan() {
 	try {
 		bool beforeCompatSep {true};
@@ -116,13 +123,6 @@ bool Scanner::hasNext() {
 
 std::shared_ptr<Token> Scanner::next() {
 	return _out.receive();
-}
-
-std::shared_ptr<Error> Scanner::err() {
-	if (_err->type() == ErrorEOF) {
-		return nullptr;
-	}
-	return _err;
 }
 
 IdentType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t offset) {
