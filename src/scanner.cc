@@ -20,7 +20,6 @@ void Scanner::scan() {
 		int expectedIndexLine {-1};
 		std::size_t prevTextLen {0};
 		std::size_t offset {0};
-		char c {'\0'};
 	
 		while (true) {
 			++_line;
@@ -29,16 +28,11 @@ void Scanner::scan() {
 			offset = _offset;
 
 			// Check for binary data
-			c = (char) _in.peek();
-			if (!_in.good()) {
-				ErrorType code;
-				if (_in.eof()) {
-					code = ErrorEOF;
-				} else {
-					code = ErrorRead;
+			char c = this->peek();
+			if (_err != nullptr) {
+				if (_err->type() == ErrorEOF) {
+					this->eof();
 				}
-				_err = this->formatError(std::make_shared<Error>(code));
-				this->eof();
 				_out.close();
 				return;
 			} else if (c == Token::DataSep) {
@@ -167,16 +161,18 @@ void Scanner::eof() {
 	_out.send(std::make_shared<Token>(TokenEOF, _offset, _line, _column));
 }
 
+char Scanner::peek() {
+	char c = (char) _in.peek();
+	if (!_in.good()) {
+		this->handleReadError();
+	}
+	return c;
+}
+
 char Scanner::read() {
 	char c = (char) _in.get();
-	if (!_in.good()) {
-		ErrorType code;
-		if (_in.eof()) {
-			code = ErrorEOF;
-		} else {
-			code = ErrorRead;
-		}
-		_err = this->formatError(std::make_shared<Error>(code));
+	if (_in.good()) {
+		this->handleReadError();
 		return c;
 	}
 	++_column;
@@ -184,8 +180,19 @@ char Scanner::read() {
 	return c;
 }
 
+void Scanner::handleReadError() {
+	auto err = std::make_shared<Error>();
+	if (_in.eof()) {
+		err->type(ErrorEOF);
+	} else {
+		err->type(ErrorRead);
+		err->message("could not read 1 byte");
+	}
+	_err = this->formatError(err);
+}
+
 std::shared_ptr<Error> Scanner::formatError(std::shared_ptr<Error> err) const {
-	std::ostringstream out {"Error at line "};
+	std::ostringstream out {"error at line "};
 	out << _line << ", column " << _column << ": " << err->message();
 	err->message(out.str());
 	return err;

@@ -42,8 +42,38 @@ bool Parser::parse88a() {
 	std::shared_ptr<Token> t;
 
 	// Signature
-	
+	t = this->expect(TokenSignature);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
 
+	// Title
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	_document->title(t->stringValue());
+
+	// First hint index
+	t = this->expect(TokenIndex);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	int firstHintIndex = t->intValue();
+	if (firstHintIndex < 0) {
+		this->expectedInt(t);
+		return false;
+	}
+	firstHintIndex += HeaderLen;
 
 	// while (_scanner->hasNext()) {
 	// 	t = _scanner->next();
@@ -66,18 +96,29 @@ bool Parser::parse96a() {
 }
 
 std::shared_ptr<Token> Parser::next() {
-	_token = _scanner->next();
-	if (_debug && _token != nullptr) { // Should never be null
-		std::cerr << _token->toString() << std::endl;
+	auto t = _scanner->next();
+	auto err = _scanner->error();
+
+	if (err != nullptr || t == nullptr) {
+		if (err == nullptr) {
+			err = std::make_shared<Error>(ErrorRead, "received null token from scanner");
+		}
+		_err = err;
+		return t;
 	}
-	return _token;
+
+	if (_debug) {
+		std::cerr << t->toString() << std::endl;
+	}
+	return t;
 }
 
 std::shared_ptr<Token> Parser::expect(TokenType expected) {
 	auto t = this->next();
-	if (t == nullptr) { // Should never be null
+	if (_err != nullptr) {
 		return t;
 	}
+
 	if (t->type() == TokenEOF && expected != TokenEOF) {
 		_err = std::make_shared<Error>(ErrorEOF);
 	} else if (t->type() != expected) {
@@ -86,6 +127,21 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 			Token::typeString(expected).data(), t->typeString().data());
 	}
 	return t;
+}
+
+void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
+	_err = std::make_shared<Error>(ErrorValue);
+	_err->messagef("expected %s, found '%s'",
+		expected.data(), t->stringValue().data());
+}
+
+void Parser::expectedInt(std::shared_ptr<Token> t) {
+	this->expected(t, "valid integer");
+}
+
+void Parser::unexpected(std::shared_ptr<Token> t) {
+	_err = std::make_shared<Error>(ErrorToken);
+	_err->messagef("unexpected %s", t->typeString().data());
 }
 
 }

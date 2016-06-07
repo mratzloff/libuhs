@@ -184,7 +184,9 @@ protected:
 	void scanOverlayRegion(std::string s, std::smatch m, std::size_t offset);
 	void scanOverlayAddress(std::string s, std::smatch m, std::size_t offset);
 	void eof();
+	char peek();
 	char read();
+	void handleReadError();
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;
 	bool isNumber(std::string s) const;
 	const std::string ltrim(std::string s, char c) const;
@@ -251,13 +253,20 @@ public:
 	Document();
 	virtual ~Document();
 	void appendChild(std::shared_ptr<Node> n);
-	std::string toString();
+	std::string toString() const;
+	void version(VersionType v);
+	VersionType version() const;
+	void title(std::string s);
+	std::string title() const;
+	const std::shared_ptr<Metadata> meta() const;
+	void validCRC(bool valid);
+	bool validCRC() const;
 
 protected:
 	std::unique_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
-	std::unique_ptr<Metadata> _meta;
+	std::shared_ptr<Metadata> _meta;
 	bool _validCRC;
 };
 
@@ -282,7 +291,6 @@ protected:
 	bool _debug;
 	std::unique_ptr<Scanner> _scanner;
 	std::shared_ptr<Document> _document;
-	std::shared_ptr<Token> _token;
 	std::string _key;
 	bool _isTitleSet;
 	bool _done;
@@ -291,6 +299,9 @@ protected:
 	bool parse96a();
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
+	void expected(std::shared_ptr<Token> t, std::string expected);
+	void expectedInt(std::shared_ptr<Token> t);
+	void unexpected(std::shared_ptr<Token> t);
 };
 
 }
