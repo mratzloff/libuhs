@@ -171,8 +171,8 @@ protected:
 	const std::regex _overlayRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
-	std::shared_ptr<Error> _err;
 	std::istream& _in;
+	std::shared_ptr<Error> _err;
 	TokenQueue _out;
 	int _line;
 	std::size_t _column;
@@ -270,9 +270,15 @@ protected:
 	bool _validCRC;
 };
 
+struct ParserOptions {
+	VersionType version {Version96a};
+	bool registered {true};
+	bool debug {false};
+};
+
 class Parser {
 public:
-	Parser(std::istream& in);
+	Parser(std::istream& in, const ParserOptions& opt);
 	virtual ~Parser();
 	std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
@@ -285,10 +291,10 @@ protected:
 	static constexpr const char* PreformattedStartToken = "#p-";
 	static constexpr const char* PreformattedEndToken = "#p+";
 
-	std::shared_ptr<Error> _err;
 	VersionType _version;
 	bool _registered;
 	bool _debug;
+	std::shared_ptr<Error> _err;
 	std::unique_ptr<Scanner> _scanner;
 	std::shared_ptr<Document> _document;
 	std::string _key;

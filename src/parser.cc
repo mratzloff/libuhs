@@ -4,8 +4,11 @@
 
 namespace UHS {
 
-Parser::Parser(std::istream& in)
-	: _scanner {std::make_unique<Scanner>(in)}
+Parser::Parser(std::istream& in, const ParserOptions& opt)
+	: _version {opt.version}
+	, _registered {opt.registered}
+	, _debug {opt.debug}
+	, _scanner {std::make_unique<Scanner>(in)}
 	, _document {std::make_shared<Document>()}
 {}
 
@@ -97,16 +100,11 @@ bool Parser::parse96a() {
 
 std::shared_ptr<Token> Parser::next() {
 	auto t = _scanner->next();
-	auto err = _scanner->error();
 
-	if (err != nullptr || t == nullptr) {
-		if (err == nullptr) {
-			err = std::make_shared<Error>(ErrorRead, "received null token from scanner");
-		}
-		_err = err;
+	if (t == nullptr) {
+		_err = std::make_shared<Error>(ErrorRead, "received null token from scanner");
 		return t;
 	}
-
 	if (_debug) {
 		std::cerr << t->toString() << std::endl;
 	}

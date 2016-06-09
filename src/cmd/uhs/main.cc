@@ -77,7 +77,9 @@ int main(int argc, const char* argv[]) {
 	}
 
 	std::ifstream in {file, std::ifstream::in};
-	UHS::Parser p {in};
+	UHS::ParserOptions opt;
+	opt.debug = true;
+	UHS::Parser p {in, opt};
 	auto document = p.parse();
 
 	return OK;
