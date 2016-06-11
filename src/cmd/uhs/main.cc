@@ -28,7 +28,7 @@ int main(int argc, const char* argv[]) {
 	std::string dir;
 	bool version88a = false;
 
-	for (int i = 1; i < argc; ++i) {
+	for (int i {1}; i < argc; ++i) {
 		if (argv[i][0] == '-') { // Parse options
 			switch (argv[i][1]) {
 			case 'd':
@@ -81,6 +81,11 @@ int main(int argc, const char* argv[]) {
 	opt.debug = true;
 	UHS::Parser p {in, opt};
 	auto document = p.parse();
+
+	auto err = p.error();
+	if (err != nullptr) {
+		std::cerr << err->message() << std::endl;
+	}
 
 	return OK;
 }

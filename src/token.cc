@@ -166,7 +166,7 @@ const std::string Token::toString() const {
 	return buf;
 }
 
-std::ostream& operator<<(std::ostream &out, const Token &t) {
+std::ostream& operator<<(std::ostream& out, const Token& t) {
 	return out << t.toString();
 }
 

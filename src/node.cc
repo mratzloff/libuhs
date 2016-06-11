@@ -2,20 +2,12 @@
 
 namespace UHS {
 
-Node::Node(NodeType t) : _type(t) {}
+Node::Node(NodeType t) : _type {t} {}
 
 Node::~Node() {}
 
 NodeType Node::type() const {
 	return _type;
-}
-
-std::shared_ptr<Document> Node::document() const {
-	return _document;
-}
-
-void Node::document(std::shared_ptr<Document> d) {
-	_document = d;
 }
 
 void Node::appendChild(std::shared_ptr<Node> n) {
@@ -44,14 +36,6 @@ std::shared_ptr<Node> Node::lastChild() const {
 	return _lastChild;
 }
 
-int Node::depth() const {
-	return _depth;
-}
-
-void Node::depth(int d) {
-	_depth = d;
-}
-
 ContainerNode::ContainerNode() : Node(NodeContainer) {}
 
 ContainerNode::~ContainerNode() {}
@@ -61,7 +45,15 @@ TextNode::TextNode() : Node(NodeText) {}
 TextNode::~TextNode() {}
 
 const std::string TextNode::toString() const {
-	return _data;
+	return _val;
+}
+
+const std::string TextNode::value() {
+	return _val;
+}
+
+void TextNode::value(std::string v) {
+	_val = v;
 }
 
 void TextNode::addFormat(Format f) {

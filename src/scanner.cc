@@ -8,6 +8,9 @@ Scanner::Scanner(std::istream& in) : _in {in} {}
 Scanner::~Scanner() {}
 
 std::shared_ptr<Error> Scanner::error() {
+	if (_err == nullptr) {
+		return nullptr;
+	}
 	if (_err->type() == ErrorEOF) {
 		return nullptr;
 	}

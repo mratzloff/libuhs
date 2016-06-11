@@ -1,6 +1,8 @@
 #ifndef UHS_H
 #define UHS_H
 
+#define UHS_VERSION "1.0.0-alpha"
+
 #include <ctime>
 #include <istream>
 #include <map>
@@ -13,13 +15,30 @@
 
 namespace UHS {
 
-constexpr const char* Version = "1.0.0-alpha";
+enum ContentType {
+	ContentText,
+	ContentGIF,
+	ContentPNG,
+	ContentWAV,
+};
 
-typedef uint8_t Format;
-
-enum FormatType {
-	FormatWhitespace,
-	FormatPreformatted,
+enum ElementType {
+	ElementUnknown,
+	ElementBlank,
+	ElementComment,
+	ElementCredit,
+	ElementGifa,
+	ElementHint,
+	ElementHyperpng,
+	ElementIncentive,
+	ElementInfo,
+	ElementLink,
+	ElementNesthint,
+	ElementOverlay,
+	ElementSound,
+	ElementSubject,
+	ElementText,
+	ElementVersion,
 };
 
 enum ErrorType {
@@ -28,6 +47,11 @@ enum ErrorType {
 	ErrorRead,
 	ErrorValue,
 	ErrorToken,
+};
+
+enum FormatType {
+	FormatWhitespace,
+	FormatPreformatted,
 };
 
 enum IdentType {
@@ -80,6 +104,11 @@ enum VersionType {
 	Version95a,
 	Version96a,
 };
+
+static const char AsciiStart = 0x20;
+static const char AsciiEnd = 0x7F;
+static constexpr const char* KeySeed = "key";
+static constexpr const char* Version = UHS_VERSION;
 
 class Error {
 public:
@@ -193,31 +222,23 @@ protected:
 	const std::string rtrim(std::string s, char c) const;
 };
 
-class Document;
-
 class Node {
 public:
 	Node(NodeType t);
 	virtual ~Node();
 	NodeType type() const;
-	std::shared_ptr<Document> document() const;
-	void document(std::shared_ptr<Document> d);
 	void appendChild(std::shared_ptr<Node> n);
 	std::shared_ptr<Node> parent() const;
 	std::shared_ptr<Node> nextSibling() const;
 	std::shared_ptr<Node> firstChild() const;
 	std::shared_ptr<Node> lastChild() const;
-	int depth() const;
-	void depth(int d);
 
 protected:
 	NodeType _type;
-	std::shared_ptr<Document> _document;
 	std::shared_ptr<Node> _parent;
 	std::shared_ptr<Node> _nextSibling;
 	std::shared_ptr<Node> _firstChild;
 	std::shared_ptr<Node> _lastChild;
-	int _depth;
 };
 
 class ContainerNode : public Node {
@@ -226,18 +247,22 @@ public:
 	virtual ~ContainerNode();
 };
 
+typedef uint8_t Format;
+
 class TextNode : public Node {
 public:
 	TextNode();
 	virtual ~TextNode();
 	const std::string toString() const;
+	const std::string value();
+	void value(std::string v);
 	void addFormat(Format f);
 	void removeFormat(Format f);
 	bool hasFormat(Format f) const;
 	Format format() const;
 
 protected:
-	std::string _data;
+	std::string _val;
 	Format _fmt;
 };
 
@@ -245,7 +270,7 @@ struct Metadata {
 	std::size_t length;
 	time_t time;
 	std::string notice;
-	std::map<std::string,std::string> info;
+	std::map<std::string, std::string> info;
 };
 
 class Document {
@@ -254,6 +279,7 @@ public:
 	virtual ~Document();
 	void appendChild(std::shared_ptr<Node> n);
 	std::string toString() const;
+	const std::shared_ptr<Node> root();
 	void version(VersionType v);
 	VersionType version() const;
 	void title(std::string s);
@@ -263,11 +289,38 @@ public:
 	bool validCRC() const;
 
 protected:
-	std::unique_ptr<Node> _root;
+	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
 	std::shared_ptr<Metadata> _meta;
 	bool _validCRC;
+};
+
+class Element : public Node {
+public:
+	enum Visibility {
+		VisibleToRegistered,
+		VisibleToUnregistered,
+	};
+	static const std::string contentTypeString(ContentType t);
+
+	Element(ElementType t, int index, int length = 0);
+	virtual ~Element();
+	int index();
+	void index(int i);
+	int length();
+	void length(int l);
+	ContentType contentType();
+	void contentType(ContentType t);
+	const std::string value();
+	void value(std::string v);
+
+protected:
+	ElementType _type;
+	int _index;
+	int _length;
+	ContentType _contentType;
+	std::string _val;
 };
 
 struct ParserOptions {
@@ -275,6 +328,16 @@ struct ParserOptions {
 	bool registered {true};
 	bool debug {false};
 };
+
+typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
+
+struct NodeRange {
+	std::shared_ptr<Node> node;
+	int min;
+	int max;
+};
+
+typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
 
 class Parser {
 public:
@@ -302,12 +365,18 @@ protected:
 	bool _done;
 
 	bool parse88a();
+	bool parse88aSubjects(NodeMap& parents, int firstHintIndex);
+	bool parse88aHints(NodeMap& parents, int lastHintIndex);
+	bool parse88aCredits(int index);
 	bool parse96a();
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
 	void expected(std::shared_ptr<Token> t, std::string expected);
 	void expectedInt(std::shared_ptr<Token> t);
 	void unexpected(std::shared_ptr<Token> t);
+	std::string decode88a(std::string encoded);
+	bool isPrintable(char c);
+	bool isPunctuation(char c);
 };
 
 }

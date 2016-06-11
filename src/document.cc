@@ -3,7 +3,7 @@
 namespace UHS {
 
 Document::Document()
-	: _root(std::make_unique<Node>(NodeContainer))
+	: _root(std::make_shared<Node>(NodeContainer))
 	, _version(Version88a)
 	, _meta(std::make_shared<Metadata>())
 	, _validCRC(false)
@@ -17,6 +17,10 @@ void Document::appendChild(std::shared_ptr<Node> n) {
 
 std::string Document::toString() const {
 	return "";
+}
+
+const std::shared_ptr<Node> Document::root() {
+	return _root;
 }
 
 void Document::version(VersionType v) {
