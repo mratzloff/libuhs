@@ -15,6 +15,42 @@ const std::string contentTypeString(ContentType t) {
 	}
 }
 
+ElementType Element::elementType(std::string element) {
+	if (element == "blank") {
+		return ElementBlank;
+	} else if (element == "comment") {
+		return ElementComment;
+	} else if (element == "credit") {
+		return ElementCredit;
+	} else if (element == "gifa") {
+		return ElementGifa;
+	} else if (element == "hint") {
+		return ElementHint;
+	} else if (element == "hyperpng") {
+		return ElementHyperpng;
+	} else if (element == "incentive") {
+		return ElementIncentive;
+	} else if (element == "info") {
+		return ElementInfo;
+	} else if (element == "link") {
+		return ElementLink;
+	} else if (element == "nesthint") {
+		return ElementNesthint;
+	} else if (element == "overlay") {
+		return ElementOverlay;
+	} else if (element == "sound") {
+		return ElementSound;
+	} else if (element == "subject") {
+		return ElementSubject;
+	} else if (element == "text") {
+		return ElementText;
+	} else if (element == "version") {
+		return ElementVersion;
+	} else {
+		return ElementUnknown;
+	}
+}
+
 Element::Element(ElementType t, int index, int length)
 	: Node(NodeElement)
 	, _type {t}

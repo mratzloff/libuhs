@@ -36,4 +36,14 @@ void Error::messagef(const char* format, ...) {
 	_message = std::string(buf);
 }
 
+void Error::finalize() {
+	_message = "Error: " + _message;
+}
+
+void Error::finalize(int line, int column) {
+	std::ostringstream out;
+	out << "Error at line " << line << ", column " << column << ": " << _message;
+	_message = out.str();
+}
+
 }

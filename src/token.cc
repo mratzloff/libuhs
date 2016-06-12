@@ -39,42 +39,6 @@ const std::string Token::typeString(TokenType t) {
 	}
 }
 
-IdentType Token::identType(std::string ident) {
-	if (ident == "blank") {
-		return IdentBlank;
-	} else if (ident == "comment") {
-		return IdentComment;
-	} else if (ident == "credit") {
-		return IdentCredit;
-	} else if (ident == "gifa") {
-		return IdentGifa;
-	} else if (ident == "hint") {
-		return IdentHint;
-	} else if (ident == "hyperpng") {
-		return IdentHyperpng;
-	} else if (ident == "incentive") {
-		return IdentIncentive;
-	} else if (ident == "info") {
-		return IdentInfo;
-	} else if (ident == "link") {
-		return IdentLink;
-	} else if (ident == "nesthint") {
-		return IdentNesthint;
-	} else if (ident == "overlay") {
-		return IdentOverlay;
-	} else if (ident == "sound") {
-		return IdentSound;
-	} else if (ident == "subject") {
-		return IdentSubject;
-	} else if (ident == "text") {
-		return IdentText;
-	} else if (ident == "version") {
-		return IdentVersion;
-	} else {
-		return IdentUnknown;
-	}
-}
-
 Token::Token(const TokenType tokenType, std::size_t offset, int line,
 	std::size_t column, std::string value)
 

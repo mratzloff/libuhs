@@ -11,6 +11,7 @@
 #include <ostream>
 #include <queue>
 #include <regex>
+#include <sstream>
 #include <string>
 
 namespace UHS {
@@ -54,25 +55,6 @@ enum FormatType {
 	FormatPreformatted,
 };
 
-enum IdentType {
-	IdentUnknown,
-	IdentBlank,
-	IdentComment,
-	IdentCredit,
-	IdentGifa,
-	IdentHint,
-	IdentHyperpng,
-	IdentIncentive,
-	IdentInfo,
-	IdentLink,
-	IdentNesthint,
-	IdentOverlay,
-	IdentSound,
-	IdentSubject,
-	IdentText,
-	IdentVersion,
-};
-
 enum NodeType {
 	NodeElement,
 	NodeContainer,
@@ -105,9 +87,6 @@ enum VersionType {
 	Version96a,
 };
 
-static const char AsciiStart = 0x20;
-static const char AsciiEnd = 0x7F;
-static constexpr const char* KeySeed = "key";
 static constexpr const char* Version = UHS_VERSION;
 
 class Error {
@@ -121,6 +100,8 @@ public:
 	const std::string message() const;
 	void message(const std::string s);
 	void messagef(const char* format, ...);
+	void finalize();
+	void finalize(int line, int column);
 
 protected:
 	int _type;
@@ -138,7 +119,6 @@ public:
 	static const char DataSep = '\x1A';
 
 	static const std::string typeString(TokenType t);
-	static IdentType identType(std::string ident);
 	
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
 		std::size_t column = 0, std::string value = "");
@@ -208,7 +188,7 @@ protected:
 	std::size_t _offset;
 	std::string _buf;
 
-	IdentType scanDescriptor(std::string s, std::smatch m, std::size_t offset);
+	ElementType scanDescriptor(std::string s, std::smatch m, std::size_t offset);
 	void scanDataAddress(std::string s, std::smatch m, std::size_t offset);
 	void scanOverlayRegion(std::string s, std::smatch m, std::size_t offset);
 	void scanOverlayAddress(std::string s, std::smatch m, std::size_t offset);
@@ -266,6 +246,35 @@ protected:
 	Format _fmt;
 };
 
+class Element : public Node {
+public:
+	enum Visibility {
+		VisibleToRegistered,
+		VisibleToUnregistered,
+	};
+
+	static const std::string contentTypeString(ContentType t);
+	static ElementType elementType(std::string element);
+
+	Element(ElementType t, int index, int length = 0);
+	virtual ~Element();
+	int index();
+	void index(int i);
+	int length();
+	void length(int l);
+	ContentType contentType();
+	void contentType(ContentType t);
+	const std::string value();
+	void value(std::string v);
+
+protected:
+	ElementType _type;
+	int _index;
+	int _length;
+	ContentType _contentType;
+	std::string _val;
+};
+
 struct Metadata {
 	std::size_t length;
 	time_t time;
@@ -296,31 +305,22 @@ protected:
 	bool _validCRC;
 };
 
-class Element : public Node {
+class Codec {
 public:
-	enum Visibility {
-		VisibleToRegistered,
-		VisibleToUnregistered,
-	};
-	static const std::string contentTypeString(ContentType t);
-
-	Element(ElementType t, int index, int length = 0);
-	virtual ~Element();
-	int index();
-	void index(int i);
-	int length();
-	void length(int l);
-	ContentType contentType();
-	void contentType(ContentType t);
-	const std::string value();
-	void value(std::string v);
+	Codec();
+	virtual ~Codec();
+	const std::string decode88a(std::string encoded);
+	// const std::string decode96a(std::string encoded, bool isTextNode);
 
 protected:
-	ElementType _type;
-	int _index;
-	int _length;
-	ContentType _contentType;
-	std::string _val;
+	static const char AsciiStart = 0x20;
+	static const char AsciiEnd = 0x7F;
+	static constexpr const char* KeySeed = "key";
+
+	std::string _key;
+	std::size_t _keyLen;
+
+	bool isPrintable(char c);
 };
 
 struct ParserOptions {
@@ -335,6 +335,9 @@ struct NodeRange {
 	std::shared_ptr<Node> node;
 	int min;
 	int max;
+
+	NodeRange(std::shared_ptr<Node> n, int min, int max);
+	virtual ~NodeRange();
 };
 
 typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
@@ -359,8 +362,8 @@ protected:
 	bool _debug;
 	std::shared_ptr<Error> _err;
 	std::unique_ptr<Scanner> _scanner;
+	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
-	std::string _key;
 	bool _isTitleSet;
 	bool _done;
 
@@ -369,13 +372,13 @@ protected:
 	bool parse88aHints(NodeMap& parents, int lastHintIndex);
 	bool parse88aCredits(int index);
 	bool parse96a();
+	bool parseSubject(std::shared_ptr<Element> e);
+	int parseElement(NodeRangeList& parents, std::shared_ptr<Token> t);
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
 	void expected(std::shared_ptr<Token> t, std::string expected);
 	void expectedInt(std::shared_ptr<Token> t);
 	void unexpected(std::shared_ptr<Token> t);
-	std::string decode88a(std::string encoded);
-	bool isPrintable(char c);
 	bool isPunctuation(char c);
 };
 

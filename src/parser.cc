@@ -1,15 +1,23 @@
+#include <climits>
 #include <iostream>
 #include <thread>
 #include "uhs.h"
 
 namespace UHS {
 
+NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max) : node(n), min(min), max(max) {}
+
+NodeRange::~NodeRange() {}
+
 Parser::Parser(std::istream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _registered {opt.registered}
 	, _debug {opt.debug}
 	, _scanner {std::make_unique<Scanner>(in)}
+	, _codec {std::make_unique<Codec>()}
 	, _document {std::make_shared<Document>()}
+	, _isTitleSet {false}
+	, _done {false}
 {}
 
 Parser::~Parser() {}
@@ -64,6 +72,9 @@ bool Parser::parse88a() {
 		return false;
 	}
 	_document->title(t->stringValue());
+	if (_debug) {
+		std::cerr << "=> \"" << _document->title() << "\"\n";
+	}
 
 	// First hint index
 	t = this->expect(TokenIndex);
@@ -186,12 +197,13 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 		}
 		if (parent == nullptr) {
 			_err = std::make_shared<Error>(ErrorValue, "could not find parent node");
+			_err->finalize(t->line(), t->column());
 			return false;
 		}
 
 		std::shared_ptr<Element> e = std::make_shared<Element>(ElementSubject, index);
 
-		std::string title {this->decode88a(encodedTitle)};
+		std::string title {_codec->decode88a(encodedTitle)};
 		if (parent != _document->root()) {
 			char finalChar = title[title.length()-1];
 			if (!this->isPunctuation(finalChar)) {
@@ -238,12 +250,13 @@ bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
 		}
 		if (parent == nullptr) {
 			_err = std::make_shared<Error>(ErrorValue, "could not find parent node");
+			_err->finalize(t->line(), t->column());
 			return false;
 		}
 
 		std::shared_ptr<Element> e = std::make_shared<Element>(ElementHint, index);
 
-		std::string title {this->decode88a(encodedTitle)};
+		std::string title {_codec->decode88a(encodedTitle)};
 		e->value(title);
 		if (_debug) {
 			std::cerr << "=> \"" << title << "\"\n";
@@ -260,7 +273,7 @@ bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
 
 bool Parser::parse88aCredits(int index) {
 	std::shared_ptr<Token> t;
-	std::shared_ptr<Element> e = std::make_shared<Element>(ElementCredit, index);
+	auto e = std::make_shared<Element>(ElementCredit, index);
 	_document->appendChild(e);
 
 	// Add body
@@ -280,9 +293,8 @@ bool Parser::parse88aCredits(int index) {
 			_done = true;
 			return true;
 		case TokenString:
-			s = n->value();
 			if (continuation) {
-				s += ' ';
+				s = n->value() + ' ';
 			}
 			s += t->stringValue();
 			n->value(s);
@@ -299,7 +311,127 @@ bool Parser::parse88aCredits(int index) {
 }
 
 bool Parser::parse96a() {
+	std::shared_ptr<Token> t;
+	NodeRangeList parents;
+	parents.push_back(std::make_shared<NodeRange>(_document->root(), 0, INT_MAX));
+	int len = 0;
+
+	while (true) {
+		t = this->next();
+		if (_err != nullptr) {
+			return false;
+		}
+
+		switch (t->type()) {
+		case TokenEOF:
+			_done = true;
+			return true;
+		case TokenLength:
+			len = this->parseElement(parents, t);
+			if (len < 0) {
+				return false;
+			}
+			break;
+		case TokenData:
+			// todo
+			break;
+		default:
+			// todo: Once all elements are handled,
+			// return this->unexpected(t);
+			break;
+		}
+	}
 	return true;
+}
+
+bool Parser::parseSubject(std::shared_ptr<Element> e) {
+	std::shared_ptr<Token> t;
+
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	e->value(t->stringValue());
+	if (_debug) {
+		std::cerr << "=> \"" << e->value() << "\"\n";
+	}
+
+	return true;
+}
+
+int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
+	// Length
+	int len = t->intValue();
+	if (len < 0) {
+		this->expectedInt(t);
+		return -1;
+	}
+
+	// Ident
+	t = this->expect(TokenIdent);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return -1;
+	}
+	std::string ident {t->stringValue()};
+	int index {t->line()};
+
+	// Create element
+	auto elementType = Element::elementType(ident);
+	if (elementType == ElementUnknown) {
+		_err = std::make_shared<Error>(ErrorValue, "unknown element type: " + ident);
+		_err->finalize(t->line(), t->column());
+		return -1;
+	}
+	auto e = std::make_shared<Element>(elementType, index, len);
+	int min = index;
+	int max = index + len;
+
+	// Link element to parent
+	std::shared_ptr<Node> parent;
+	for (auto p : parents) {
+		if (min > p->min) {
+			if (max <= p->max) {
+				parent = p->node;
+			}
+		} else {
+			break;
+		}
+	}
+	if (parent == nullptr) {
+		_err = std::make_shared<Error>(ErrorValue, "orphaned element");
+		_err->finalize(t->line(), t->column());
+		return -1;
+	}
+	parent->appendChild(e);
+	parents.push_back(std::make_shared<NodeRange>(e, min, max));
+
+	bool ok = false;
+
+	// Process content
+	switch (elementType) {
+	case ElementBlank:
+		// No further processing required
+		break;
+	case ElementSubject:
+		ok = this->parseSubject(e);
+		if (!ok) {
+			return -1;
+		}
+		if (!_isTitleSet) {
+			_document->title(e->value());
+			// todo: Once 96a decoding methods are implemented
+			// _codec->key(_document->title());
+			_isTitleSet = true;
+		}
+	}
+
+	return len;
 }
 
 std::shared_ptr<Token> Parser::next() {
@@ -312,6 +444,7 @@ std::shared_ptr<Token> Parser::next() {
 	}
 	if (t == nullptr) {
 		_err = std::make_shared<Error>(ErrorRead, "received null token from scanner");
+		_err->finalize();
 		return t;
 	}
 	if (_debug) {
@@ -328,10 +461,12 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 
 	if (t->type() == TokenEOF && expected != TokenEOF) {
 		_err = std::make_shared<Error>(ErrorEOF);
+		_err->finalize(t->line(), t->column());
 	} else if (t->type() != expected) {
 		_err = std::make_shared<Error>(ErrorToken);
 		_err->messagef("expected %s, found %s",
 			Token::typeString(expected).data(), t->typeString().data());
+		_err->finalize(t->line(), t->column());
 	}
 	return t;
 }
@@ -340,6 +475,7 @@ void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'",
 		expected.data(), t->stringValue().data());
+	_err->finalize(t->line(), t->column());
 }
 
 void Parser::expectedInt(std::shared_ptr<Token> t) {
@@ -349,29 +485,7 @@ void Parser::expectedInt(std::shared_ptr<Token> t) {
 void Parser::unexpected(std::shared_ptr<Token> t) {
 	_err = std::make_shared<Error>(ErrorToken);
 	_err->messagef("unexpected %s", t->typeString().data());
-}
-
-std::string Parser::decode88a(std::string encoded) {
-	std::string& decoded = encoded;
-
-	std::size_t len {encoded.length()};
-	for (std::size_t i = 0; i < len; ++i) {
-		char c {encoded[i]};
-		if (this->isPrintable(c)) {
-			int offset = AsciiEnd;
-			if (c < 80) {
-				offset = AsciiStart;
-			}
-			decoded[i] = (char) ((int) c) * 2 - offset;
-		} else {
-			decoded[i] = '?';
-		}
-	}
-	return decoded;
-}
-
-bool Parser::isPrintable(char c) {
-	return c >= AsciiStart && c <= AsciiEnd;
+	_err->finalize(t->line(), t->column());
 }
 
 bool Parser::isPunctuation(char c) {
