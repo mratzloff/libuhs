@@ -372,6 +372,7 @@ protected:
 	bool parse88aHints(NodeMap& parents, int lastHintIndex);
 	bool parse88aCredits(int index);
 	bool parse96a();
+	bool parseHint(std::shared_ptr<Element> e);
 	bool parseSubject(std::shared_ptr<Element> e);
 	int parseElement(NodeRangeList& parents, std::shared_ptr<Token> t);
 	std::shared_ptr<Token> next();

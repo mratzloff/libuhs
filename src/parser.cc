@@ -277,7 +277,7 @@ bool Parser::parse88aCredits(int index) {
 	_document->appendChild(e);
 
 	// Add body
-	std::shared_ptr<TextNode> n;
+	auto n = std::make_shared<TextNode>();
 	std::string s;
 	bool continuation = false;
 
@@ -344,6 +344,73 @@ bool Parser::parse96a() {
 	return true;
 }
 
+bool Parser::parseHint(std::shared_ptr<Element> e) {
+	std::shared_ptr<Token> t;
+
+	// Add title
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	e->value(t->stringValue());
+	if (_debug) {
+		std::cerr << "=> \"" << e->value() << "\"\n";
+	}
+
+	// Add body
+	int len = e->length();
+	auto n = std::make_shared<TextNode>();
+	std::string s;
+	bool continuation = false;
+
+	for (int i = 3; i <= len; ++i) {
+		t = this->next();
+		if (_err != nullptr) {
+			return false;
+		}
+
+		switch (t->type()) {
+		case TokenString:
+			if (continuation) {
+				s = n->value() + ' ';
+			}
+			s += _codec->decode88a(t->stringValue());
+			n->value(s);
+			continuation = true;
+			break;
+		case TokenNestedTextSep:
+			if (i == len) {
+				this->expected(t, "string");
+				return false;
+			}
+			e->appendChild(n);
+			if (_debug) {
+				std::cerr << "=> \"" << n->value() << "\"\n";
+			}
+			n = std::make_shared<TextNode>();
+			s.clear();
+			continuation = false;
+			break;
+		case TokenParagraphSep:
+			n->value(n->value() + "\n\n");
+			continuation = false;
+			break;
+		default:
+			this->unexpected(t);
+			return false;
+		}
+	}
+	e->appendChild(n);
+	if (_debug) {
+		std::cerr << "=> \"" << n->value() << "\"\n";
+	}
+
+	return true;
+}
+
 bool Parser::parseSubject(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 
@@ -383,10 +450,8 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 
 	// Create element
 	auto elementType = Element::elementType(ident);
-	if (elementType == ElementUnknown) {
-		_err = std::make_shared<Error>(ErrorValue, "unknown element type: " + ident);
-		_err->finalize(t->line(), t->column());
-		return -1;
+	if (elementType == ElementUnknown) { // Ignore it and move on
+		return len;
 	}
 	auto e = std::make_shared<Element>(elementType, index, len);
 	int min = index;
@@ -418,6 +483,12 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 	case ElementBlank:
 		// No further processing required
 		break;
+	case ElementHint:
+		ok = this->parseHint(e);
+		if (!ok) {
+			return -1;
+		}
+		break;
 	case ElementSubject:
 		ok = this->parseSubject(e);
 		if (!ok) {
@@ -429,6 +500,7 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 			// _codec->key(_document->title());
 			_isTitleSet = true;
 		}
+		break;
 	}
 
 	return len;
