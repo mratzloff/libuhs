@@ -103,21 +103,15 @@ public:
 	void finalize();
 	void finalize(int line, int column);
 
-protected:
+private:
 	int _type;
 	std::string _message;
 };
 
+class Scanner;
+
 class Token {
 public:
-	static constexpr const char* Signature = "UHS";
-	static constexpr const char* CompatSep = "** END OF 88A FORMAT **";
-	static constexpr const char* CreditSep = "CREDITS:";
-	static constexpr const char* NestedElementSep = "=";
-	static constexpr const char* NestedTextSep = "-";
-	static constexpr const char* ParagraphSep = " "; // i.e., "text.\r\n \r\nText"
-	static const char DataSep = '\x1A';
-
 	static const std::string typeString(TokenType t);
 	
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
@@ -132,7 +126,17 @@ public:
 	const std::string typeString() const;
 	const std::string toString() const;
 
-protected:
+private:
+	friend class Scanner;
+
+	static constexpr const char* Signature = "UHS";
+	static constexpr const char* CompatSep = "** END OF 88A FORMAT **";
+	static constexpr const char* CreditSep = "CREDITS:";
+	static constexpr const char* NestedElementSep = "=";
+	static constexpr const char* NestedTextSep = "-";
+	static constexpr const char* ParagraphSep = " "; // i.e., "text.\r\n \r\nText"
+	static const char DataSep = '\x1A';
+
 	const TokenType _type;
 	int _line;
 	std::size_t _column;
@@ -147,22 +151,6 @@ protected:
 
 std::ostream& operator<<(std::ostream &out, const Token &t);
 
-class TokenQueue {
-public:
-	TokenQueue();
-	virtual ~TokenQueue();
-	bool send(std::shared_ptr<Token> t);
-	std::shared_ptr<Token> receive();
-	bool empty();
-	bool ok();
-	void close();
-
-protected:
-	std::queue<std::shared_ptr<Token>> _queue;
-	std::mutex _mutex;
-	bool _open;
-};
-
 class Scanner {
 public:
 	Scanner(std::istream& in);
@@ -172,7 +160,23 @@ public:
 	bool hasNext();
 	std::shared_ptr<Token> next();
 
-protected:
+private:
+	class TokenQueue {
+	public:
+		TokenQueue();
+		virtual ~TokenQueue();
+		bool send(std::shared_ptr<Token> t);
+		std::shared_ptr<Token> receive();
+		bool empty();
+		bool ok();
+		void close();
+
+	private:
+		std::queue<std::shared_ptr<Token>> _queue;
+		std::mutex _mutex;
+		bool _open;
+	};
+
 	static const int LineLen = 80;
 
 	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
@@ -213,7 +217,7 @@ public:
 	std::shared_ptr<Node> firstChild() const;
 	std::shared_ptr<Node> lastChild() const;
 
-protected:
+private:
 	NodeType _type;
 	std::shared_ptr<Node> _parent;
 	std::shared_ptr<Node> _nextSibling;
@@ -241,7 +245,7 @@ public:
 	bool hasFormat(Format f) const;
 	Format format() const;
 
-protected:
+private:
 	std::string _val;
 	Format _fmt;
 };
@@ -267,7 +271,7 @@ public:
 	const std::string value();
 	void value(std::string v);
 
-protected:
+private:
 	ElementType _type;
 	int _index;
 	int _length;
@@ -297,7 +301,7 @@ public:
 	void validCRC(bool valid);
 	bool validCRC() const;
 
-protected:
+private:
 	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
@@ -312,7 +316,7 @@ public:
 	const std::string decode88a(std::string encoded);
 	// const std::string decode96a(std::string encoded, bool isTextNode);
 
-protected:
+private:
 	static const char AsciiStart = 0x20;
 	static const char AsciiEnd = 0x7F;
 	static constexpr const char* KeySeed = "key";
@@ -329,19 +333,6 @@ struct ParserOptions {
 	bool debug {false};
 };
 
-typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
-
-struct NodeRange {
-	std::shared_ptr<Node> node;
-	int min;
-	int max;
-
-	NodeRange(std::shared_ptr<Node> n, int min, int max);
-	virtual ~NodeRange();
-};
-
-typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
-
 class Parser {
 public:
 	Parser(std::istream& in, const ParserOptions& opt);
@@ -349,7 +340,20 @@ public:
 	std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
 
-protected:
+private:
+	typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
+
+	struct NodeRange {
+		std::shared_ptr<Node> node;
+		int min;
+		int max;
+
+		NodeRange(std::shared_ptr<Node> n, int min, int max);
+		virtual ~NodeRange();
+	};
+
+	typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
+
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
 	static constexpr const char* InlineStartToken = "#w+";

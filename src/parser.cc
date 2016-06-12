@@ -5,10 +5,6 @@
 
 namespace UHS {
 
-NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max) : node(n), min(min), max(max) {}
-
-NodeRange::~NodeRange() {}
-
 Parser::Parser(std::istream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _registered {opt.registered}
@@ -626,5 +622,10 @@ void Parser::unexpected(std::shared_ptr<Token> t) {
 bool Parser::isPunctuation(char c) {
 	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
 }
+
+Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
+	: node(n), min(min), max(max) {}
+
+Parser::NodeRange::~NodeRange() {}
 
 }
