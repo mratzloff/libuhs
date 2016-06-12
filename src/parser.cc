@@ -344,6 +344,60 @@ bool Parser::parse96a() {
 	return true;
 }
 
+bool Parser::parseComment(std::shared_ptr<Element> e) {
+	std::shared_ptr<Token> t;
+
+	// Add title
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	e->value(t->stringValue());
+	if (_debug) {
+		std::cerr << "=> \"" << e->value() << "\"\n";
+	}
+
+	// Add body
+	int len = e->length();
+	auto n = std::make_shared<TextNode>();
+	std::string s;
+	bool continuation = false;
+
+	for (int i = 3; i <= len; ++i) {
+		t = this->next();
+		if (_err != nullptr) {
+			return false;
+		}
+
+		switch (t->type()) {
+		case TokenString:
+			if (continuation) {
+				s += ' ';
+			}
+			s += t->stringValue();
+			continuation = true;
+			break;
+		case TokenParagraphSep:
+			s += "\n\n";
+			continuation = false;
+			break;
+		default:
+			this->unexpected(t);
+			return false;
+		}
+	}
+	n->value(s);
+	e->appendChild(n);
+	if (_debug) {
+		std::cerr << "=> \"" << n->value() << "\"\n";
+	}
+
+	return true;
+}
+
 bool Parser::parseHint(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 
@@ -375,10 +429,9 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 		switch (t->type()) {
 		case TokenString:
 			if (continuation) {
-				s = n->value() + ' ';
+				s += ' ';
 			}
 			s += _codec->decode88a(t->stringValue());
-			n->value(s);
 			continuation = true;
 			break;
 		case TokenNestedTextSep:
@@ -386,6 +439,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 				this->expected(t, "string");
 				return false;
 			}
+			n->value(s);
 			e->appendChild(n);
 			if (_debug) {
 				std::cerr << "=> \"" << n->value() << "\"\n";
@@ -395,7 +449,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 			continuation = false;
 			break;
 		case TokenParagraphSep:
-			n->value(n->value() + "\n\n");
+			s += "\n\n";
 			continuation = false;
 			break;
 		default:
@@ -403,6 +457,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 			return false;
 		}
 	}
+	n->value(s);
 	e->appendChild(n);
 	if (_debug) {
 		std::cerr << "=> \"" << n->value() << "\"\n";
@@ -482,6 +537,14 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 	switch (elementType) {
 	case ElementBlank:
 		// No further processing required
+		break;
+	case ElementCredit:
+		// Fall through
+	case ElementComment:
+		ok = this->parseComment(e);
+		if (!ok) {
+			return -1;
+		}
 		break;
 	case ElementHint:
 		ok = this->parseHint(e);
