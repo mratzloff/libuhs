@@ -67,23 +67,8 @@ std::size_t Token::offset() const {
 	return _offset;
 }
 
-const std::string Token::stringValue() const {
+const std::string& Token::value() const {
 	return _value;
-}
-
-int Token::intValue() const {
-	int intVal;
-	std::string::size_type idx;
-	try {
-		intVal = std::stoi(_value, &idx);
-		if (idx != _value.length()) {
-			intVal = -1;
-		}
-	} catch (const std::invalid_argument& e) {
-		// Return value checked by callers
-		intVal = -1;
-	}
-	return intVal;
 }
 
 const std::string Token::typeString() const {
@@ -98,78 +83,69 @@ const std::string Token::toString() const {
 	case TokenData:
 		buf += formatByteValue();
 		break;
-	case TokenDataLength:
-		buf += formatIntValue();
-		break;
-	case TokenDataOffset:
-		buf += formatIntValue();
-		break;
 	case TokenIdent:
-		buf += formatStringValue();
-		break;
-	case TokenIndex:
-		buf += formatIntValue();
-		break;
-	case TokenLength:
-		buf += formatIntValue();
-		break;
-	case TokenRegionX:
-		buf += formatIntValue();
-		break;
-	case TokenRegionY:
-		buf += formatIntValue();
-		break;
+		// Fall through
 	case TokenString:
 		buf += formatStringValue();
+		break;
+	case TokenDataLength:
+		// Fall through
+	case TokenDataOffset:
+		// Fall through
+	case TokenIndex:
+		// Fall through
+	case TokenLength:
+		// Fall through
+	case TokenRegionX:
+		// Fall through
+	case TokenRegionY:
+		buf += formatIntValue();
 		break;
 	default:
 		break; // No special processing needed
 	}
-	buf += ")";
+	buf += ')';
 
 	return buf;
 }
 
 std::ostream& operator<<(std::ostream& out, const Token& t) {
-	return out << t.toString();
+	out << t.toString();
+	return out;
 }
 
 const std::string Token::formatToken() const {
 	std::string buf {typeString()};
-	buf += " ";
+	buf += ' ';
 	buf += std::to_string(_line);
-	buf += ":";
+	buf += ':';
 	buf += std::to_string(_column);
-	buf += ":";
+	buf += ':';
 	buf += std::to_string(_offset);
 	return buf;
 }
 
 const std::string Token::formatIntValue() const {
 	std::string buf {" ["};
-	int intVal {this->intValue()};
+	buf += _value;
+	int intVal {Strings::toInt(_value)};
 	if (intVal == -1) {
-		buf += "?";
-	} else {
-		buf += _value;
+		buf += '?';
 	}
-	buf += "]";
+	buf += ']';
 	return buf;
 }
 
 const std::string Token::formatStringValue() const {
 	std::string buf {" ["};
 	buf += _value;
-	buf += "]";
+	buf += ']';
 	return buf;
 }
 
 // todo: Fix this later
 const std::string Token::formatByteValue() const {
-	std::string buf {" ["};
-	buf += _value;
-	buf += "]";
-	return buf;
+	return this->formatStringValue();
 }
 
 }

@@ -66,12 +66,12 @@ void Scanner::scan() {
 		prevTextLen = text.length();
 
 		// UHS uses DOS-style line endings
-		text = this->rtrim(text, '\r');
+		text = Strings::rtrim(text, '\r');
 
 		// All numbers are indexes in 88a, and link elements contain an index
-		if (this->isNumber(text) && (beforeCompatSep || _line == expectedIndexLine)) {
+		if (Strings::isInt(text) && (beforeCompatSep || _line == expectedIndexLine)) {
 			_out.send(std::make_shared<Token>(
-				TokenIndex, _offset, _line, 0, this->ltrim(text, '0')));
+				TokenIndex, _offset, _line, 0, Strings::ltrim(text, '0')));
 			expectedIndexLine = -1;
 			continue;
 		}
@@ -122,7 +122,7 @@ std::shared_ptr<Token> Scanner::next() {
 
 ElementType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenLength, offset, _line, 0, this->ltrim(m[1].str(), '0')));
+		TokenLength, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
 	_out.send(std::make_shared<Token>(
 		TokenIdent, offset, _line, -1, ident));
@@ -131,31 +131,31 @@ ElementType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t of
 
 void Scanner::scanDataAddress(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, -1, this->ltrim(m[3].str(), '0')));
+		TokenDataOffset, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, -1, this->ltrim(m[5].str(), '0')));
+		TokenDataLength, offset, _line, -1, Strings::ltrim(m[5].str(), '0')));
 }
 
 void Scanner::scanOverlayRegion(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, this->ltrim(m[1].str(), '0')));
+		TokenRegionX, offset, _line, -1, Strings::ltrim(m[1].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, this->ltrim(m[2].str(), '0')));
+		TokenRegionY, offset, _line, -1, Strings::ltrim(m[2].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, this->ltrim(m[3].str(), '0')));
+		TokenRegionX, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, this->ltrim(m[4].str(), '0')));
+		TokenRegionY, offset, _line, -1, Strings::ltrim(m[4].str(), '0')));
 }
 
 void Scanner::scanOverlayAddress(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, -1, this->ltrim(m[1].str(), '0')));
+		TokenDataOffset, offset, _line, -1, Strings::ltrim(m[1].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, -1, this->ltrim(m[2].str(), '0')));
+		TokenDataLength, offset, _line, -1, Strings::ltrim(m[2].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, this->ltrim(m[3].str(), '0')));
+		TokenRegionX, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, this->ltrim(m[4].str(), '0')));
+		TokenRegionY, offset, _line, -1, Strings::ltrim(m[4].str(), '0')));
 }
 
 void Scanner::eof() {
@@ -189,33 +189,6 @@ void Scanner::handleReadError() {
 	} else {
 		_err = std::make_shared<Error>(ErrorRead, "could not read 1 byte");
 		_err->finalize(_line, _column);
-	}
-}
-
-bool Scanner::isNumber(std::string s) const {
-	for (char c : s) {
-		if (c < '0' || '9' < c) {
-			return false;
-		}
-	}
-	return true;
-}
-
-const std::string Scanner::ltrim(std::string s, char c) const {
-	auto pos = s.find_first_not_of(c);
-	if (pos == std::string::npos) {
-		return s;
-	} else {
-		return s.substr(pos);
-	}
-}
-
-const std::string Scanner::rtrim(std::string s, char c) const {
-	auto pos = s.find_last_not_of(c);
-	if (pos == std::string::npos) {
-		return s;
-	} else {
-		return s.erase(pos + 1);
 	}
 }
 

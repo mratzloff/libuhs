@@ -67,7 +67,7 @@ bool Parser::parse88a() {
 		}
 		return false;
 	}
-	_document->title(t->stringValue());
+	_document->title(t->value());
 	if (_debug) {
 		std::cerr << "=> \"" << _document->title() << "\"\n";
 	}
@@ -80,7 +80,7 @@ bool Parser::parse88a() {
 		}
 		return false;
 	}
-	int firstHintIndex = t->intValue();
+	int firstHintIndex = Strings::toInt(t->value());
 	if (firstHintIndex < 0) {
 		this->expectedInt(t);
 		return false;
@@ -95,7 +95,7 @@ bool Parser::parse88a() {
 		}
 		return false;
 	}
-	int lastHintIndex = t->intValue();
+	int lastHintIndex = Strings::toInt(t->value());
 	if (lastHintIndex < 0) {
 		this->expectedInt(t);
 		return false;
@@ -167,7 +167,7 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 			}
 			return false;
 		}
-		std::string encodedTitle {t->stringValue()};
+		std::string encodedTitle {t->value()};
 		int index {t->line()};
 
 		t = this->expect(TokenIndex);
@@ -177,7 +177,7 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 			}
 			return false;
 		}
-		int firstChildIndex = t->intValue();
+		int firstChildIndex = Strings::toInt(t->value());
 		if (firstChildIndex < 0) {
 			this->expectedInt(t);
 			return false;
@@ -234,7 +234,7 @@ bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
 			}
 			return false;
 		}
-		std::string encodedTitle {t->stringValue()};
+		std::string encodedTitle {t->value()};
 		int index {t->line()};
 
 		std::shared_ptr<Node> parent;
@@ -285,18 +285,19 @@ bool Parser::parse88aCredits(int index) {
 
 		switch (t->type()) {
 		case TokenEOF:
+			n->value(s);
 			e->appendChild(n);
 			_done = true;
 			return true;
 		case TokenString:
 			if (continuation) {
-				s = n->value() + ' ';
+				s += ' ';
 			}
-			s += t->stringValue();
-			n->value(s);
+			s += t->value();
 			continuation = true;
 			break;
 		case TokenCompatSep:
+			n->value(s);
 			e->appendChild(n);
 			return true;
 		default:
@@ -351,7 +352,7 @@ bool Parser::parseComment(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->stringValue());
+	e->value(t->value());
 	if (_debug) {
 		std::cerr << "=> \"" << e->value() << "\"\n";
 	}
@@ -373,7 +374,7 @@ bool Parser::parseComment(std::shared_ptr<Element> e) {
 			if (continuation) {
 				s += ' ';
 			}
-			s += t->stringValue();
+			s += t->value();
 			continuation = true;
 			break;
 		case TokenParagraphSep:
@@ -405,7 +406,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->stringValue());
+	e->value(t->value());
 	if (_debug) {
 		std::cerr << "=> \"" << e->value() << "\"\n";
 	}
@@ -427,7 +428,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 			if (continuation) {
 				s += ' ';
 			}
-			s += _codec->decode88a(t->stringValue());
+			s += _codec->decode88a(t->value());
 			continuation = true;
 			break;
 		case TokenNestedTextSep:
@@ -472,7 +473,7 @@ bool Parser::parseSubject(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->stringValue());
+	e->value(t->value());
 	if (_debug) {
 		std::cerr << "=> \"" << e->value() << "\"\n";
 	}
@@ -482,7 +483,7 @@ bool Parser::parseSubject(std::shared_ptr<Element> e) {
 
 int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 	// Length
-	int len = t->intValue();
+	int len = Strings::toInt(t->value());
 	if (len < 0) {
 		this->expectedInt(t);
 		return -1;
@@ -496,7 +497,7 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 		}
 		return -1;
 	}
-	std::string ident {t->stringValue()};
+	std::string ident {t->value()};
 	int index {t->line()};
 
 	// Create element
@@ -605,7 +606,7 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'",
-		expected.data(), t->stringValue().data());
+		expected.data(), t->value().data());
 	_err->finalize(t->line(), t->column());
 }
 

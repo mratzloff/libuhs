@@ -89,6 +89,15 @@ enum VersionType {
 
 static constexpr const char* Version = UHS_VERSION;
 
+namespace Strings {
+
+bool isInt(const std::string& s);
+int toInt(const std::string& s);
+std::string ltrim(const std::string& s, char c);
+std::string rtrim(const std::string& s, char c);
+
+}
+
 class Error {
 public:
 	Error();
@@ -121,10 +130,10 @@ public:
 	int line() const;
 	std::size_t column() const;
 	std::size_t offset() const;
-	const std::string stringValue() const;
-	int intValue() const;
+	const std::string& value() const;
 	const std::string typeString() const;
 	const std::string toString() const;
+	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 
 private:
 	friend class Scanner;
@@ -148,8 +157,6 @@ private:
 	const std::string formatStringValue() const;
 	const std::string formatByteValue() const;
 };
-
-std::ostream& operator<<(std::ostream &out, const Token &t);
 
 class Scanner {
 public:
@@ -201,9 +208,6 @@ private:
 	char read();
 	void handleReadError();
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;
-	bool isNumber(std::string s) const;
-	const std::string ltrim(std::string s, char c) const;
-	const std::string rtrim(std::string s, char c) const;
 };
 
 class Node {
