@@ -2,52 +2,76 @@
 
 namespace UHS {
 
-const std::string contentTypeString(ContentType t) {
-	switch (t) {
-	case ContentText:
-		return "text/plain";
-	case ContentGIF:
-		return "image/gif";
-	case ContentPNG:
-		return "image/png";
-	case ContentWAV:
-		return "audio/x-wav";
-	}
-}
-
-ElementType Element::elementType(std::string element) {
-	if (element == "blank") {
+ElementType Element::elementType(const std::string& typeString) {
+	if (typeString == "blank") {
 		return ElementBlank;
-	} else if (element == "comment") {
+	} else if (typeString == "comment") {
 		return ElementComment;
-	} else if (element == "credit") {
+	} else if (typeString == "credit") {
 		return ElementCredit;
-	} else if (element == "gifa") {
+	} else if (typeString == "gifa") {
 		return ElementGifa;
-	} else if (element == "hint") {
+	} else if (typeString == "hint") {
 		return ElementHint;
-	} else if (element == "hyperpng") {
+	} else if (typeString == "hyperpng") {
 		return ElementHyperpng;
-	} else if (element == "incentive") {
+	} else if (typeString == "incentive") {
 		return ElementIncentive;
-	} else if (element == "info") {
+	} else if (typeString == "info") {
 		return ElementInfo;
-	} else if (element == "link") {
+	} else if (typeString == "link") {
 		return ElementLink;
-	} else if (element == "nesthint") {
+	} else if (typeString == "nesthint") {
 		return ElementNesthint;
-	} else if (element == "overlay") {
+	} else if (typeString == "overlay") {
 		return ElementOverlay;
-	} else if (element == "sound") {
+	} else if (typeString == "sound") {
 		return ElementSound;
-	} else if (element == "subject") {
+	} else if (typeString == "subject") {
 		return ElementSubject;
-	} else if (element == "text") {
+	} else if (typeString == "text") {
 		return ElementText;
-	} else if (element == "version") {
+	} else if (typeString == "version") {
 		return ElementVersion;
 	} else {
 		return ElementUnknown;
+	}
+}
+
+const std::string Element::typeString(ElementType t) {
+	switch (t) {
+	case ElementBlank:
+		return "blank";
+	case ElementComment:
+		return "comment";
+	case ElementCredit:
+		return "credit";
+	case ElementGifa:
+		return "gifa";
+	case ElementHint:
+		return "hint";
+	case ElementHyperpng:
+		return "hyperpng";
+	case ElementIncentive:
+		return "incentive";
+	case ElementInfo:
+		return "info";
+	case ElementLink:
+		return "link";
+	case ElementNesthint:
+		return "nesthint";
+	case ElementOverlay:
+		return "overlay";
+	case ElementSound:
+		return "sound";
+	case ElementSubject:
+		return "subject";
+	case ElementText:
+		return "text";
+	case ElementVersion:
+		return "version";
+	default:
+		return "unknown";
 	}
 }
 
@@ -56,7 +80,6 @@ Element::Element(ElementType t, int index, int length)
 	, _type {t}
 	, _index {index}
 	, _length {length}
-	, _contentType {ContentText}
 {}
 
 Element::~Element() {}
@@ -69,20 +92,20 @@ int Element::length() {
 	return _length;
 }
 
-ContentType Element::contentType() {
-	return _contentType;
+const std::string& Element::attr(const std::string& key) const {
+	return _attrs.at(key);
 }
 
-void Element::contentType(ContentType t) {
-	_contentType = t;
+void Element::attr(const std::string& key, const std::string value) {
+	_attrs[key] = value;
 }
 
-const std::string Element::value() {
-	return _val;
+const std::string& Element::value() const {
+	return _value;
 }
 
-void Element::value(std::string v) {
-	_val = v;
+void Element::value(const std::string v) {
+	_value = v;
 }
 
 }

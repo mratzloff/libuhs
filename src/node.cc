@@ -44,16 +44,16 @@ TextNode::TextNode() : Node(NodeText) {}
 
 TextNode::~TextNode() {}
 
-const std::string TextNode::toString() const {
-	return _val;
+const std::string& TextNode::toString() const {
+	return _value;
 }
 
-const std::string TextNode::value() {
-	return _val;
+const std::string& TextNode::value() const {
+	return _value;
 }
 
-void TextNode::value(std::string v) {
-	_val = v;
+void TextNode::value(const std::string v) {
+	_value = v;
 }
 
 void TextNode::addFormat(Format f) {

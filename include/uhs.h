@@ -16,13 +16,6 @@
 
 namespace UHS {
 
-enum ContentType {
-	ContentText,
-	ContentGIF,
-	ContentPNG,
-	ContentWAV,
-};
-
 enum ElementType {
 	ElementUnknown,
 	ElementBlank,
@@ -241,16 +234,16 @@ class TextNode : public Node {
 public:
 	TextNode();
 	virtual ~TextNode();
-	const std::string toString() const;
-	const std::string value();
-	void value(std::string v);
+	const std::string& toString() const;
+	const std::string& value() const;
+	void value(const std::string v);
 	void addFormat(Format f);
 	void removeFormat(Format f);
 	bool hasFormat(Format f) const;
 	Format format() const;
 
 private:
-	std::string _val;
+	std::string _value;
 	Format _fmt;
 };
 
@@ -261,8 +254,8 @@ public:
 		VisibleToUnregistered,
 	};
 
-	static const std::string contentTypeString(ContentType t);
-	static ElementType elementType(std::string element);
+	static ElementType elementType(const std::string& typeString);
+	static const std::string typeString(ElementType t);
 
 	Element(ElementType t, int index, int length = 0);
 	virtual ~Element();
@@ -270,17 +263,17 @@ public:
 	void index(int i);
 	int length();
 	void length(int l);
-	ContentType contentType();
-	void contentType(ContentType t);
-	const std::string value();
-	void value(std::string v);
+	const std::string& attr(const std::string& key) const;
+	void attr(const std::string& key, const std::string value);
+	const std::string& value() const;
+	void value(const std::string v);
 
 private:
 	ElementType _type;
 	int _index;
 	int _length;
-	ContentType _contentType;
-	std::string _val;
+	std::map<std::string, std::string> _attrs;
+	std::string _value;
 };
 
 struct Metadata {
@@ -376,9 +369,9 @@ private:
 	bool _done;
 
 	bool parse88a();
-	bool parse88aSubjects(NodeMap& parents, int firstHintIndex);
-	bool parse88aHints(NodeMap& parents, int lastHintIndex);
-	bool parse88aCredits(int index);
+	bool parse88aElements(NodeMap& parents, int firstHintIndex);
+	bool parse88aTextNodes(NodeMap& parents, int lastHintIndex);
+	bool parse88aCredit(int index);
 	bool parse96a();
 	bool parseComment(std::shared_ptr<Element> e);
 	bool parseHint(std::shared_ptr<Element> e);

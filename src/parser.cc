@@ -104,7 +104,7 @@ bool Parser::parse88a() {
 
 	// Subjects
 	NodeMap parents {{0, _document->root()}};
-	bool ok = this->parse88aSubjects(parents, firstHintIndex);
+	bool ok = this->parse88aElements(parents, firstHintIndex);
 	if (!ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
@@ -113,7 +113,7 @@ bool Parser::parse88a() {
 	}
 
 	// Hints
-	ok = this->parse88aHints(parents, lastHintIndex);
+	ok = this->parse88aTextNodes(parents, lastHintIndex);
 	if (!ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
@@ -133,12 +133,13 @@ bool Parser::parse88a() {
 			_done = true;
 			return true;
 		case TokenCreditSep:
-			ok = this->parse88aCredits(t->line());
-			if (!ok || _done) {
-				if (_err->type() == ErrorEOF) {
-					this->unexpected(t);
-				}
+			ok = this->parse88aCredit(t->line());
+			if (!ok) {
+				this->unexpected(t);
 				return false;
+			}
+			if (_done) {
+				return true;
 			}
 			// Fall through
 		case TokenCompatSep:
@@ -156,8 +157,9 @@ bool Parser::parse88a() {
 	}
 }
 
-bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
+bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 	std::shared_ptr<Token> t;
+	ElementType elementType {ElementSubject};
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -184,6 +186,10 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 		}
 		firstChildIndex += HeaderLen;
 
+		if (firstChildIndex == firstHintIndex) {
+			elementType = ElementHint;
+		}
+
 		std::shared_ptr<Node> parent;
 		for (int i {index}; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
@@ -197,7 +203,7 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 			return false;
 		}
 
-		std::shared_ptr<Element> e = std::make_shared<Element>(ElementSubject, index);
+		std::shared_ptr<Element> e = std::make_shared<Element>(elementType, index);
 
 		std::string title {_codec->decode88a(encodedTitle)};
 		if (parent != _document->root()) {
@@ -208,7 +214,7 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 		}
 		e->value(title);
 		if (_debug) {
-			std::cerr << "=> \"" << title << "\"\n";
+			std::cerr << "<" << Element::typeString(elementType) << " [" << title << "]>\n";
 		}
 
 		parent->appendChild(e);
@@ -223,7 +229,7 @@ bool Parser::parse88aSubjects(NodeMap& parents, int firstHintIndex) {
 	return true;
 }
 
-bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
+bool Parser::parse88aTextNodes(NodeMap& parents, int lastHintIndex) {
 	std::shared_ptr<Token> t;
 
 	while (true) {
@@ -250,15 +256,13 @@ bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
 			return false;
 		}
 
-		std::shared_ptr<Element> e = std::make_shared<Element>(ElementHint, index);
-
+		auto n = std::make_shared<TextNode>();
 		std::string title {_codec->decode88a(encodedTitle)};
-		e->value(title);
+		n->value(title);
 		if (_debug) {
-			std::cerr << "=> \"" << title << "\"\n";
+			std::cerr << "\"" << title << "\"\n";
 		}
-
-		parent->appendChild(e);
+		parent->appendChild(n);
 
 		if (index == lastHintIndex) {
 			break; // Done parsing hints
@@ -267,7 +271,7 @@ bool Parser::parse88aHints(NodeMap& parents, int lastHintIndex) {
 	return true;
 }
 
-bool Parser::parse88aCredits(int index) {
+bool Parser::parse88aCredit(int index) {
 	std::shared_ptr<Token> t;
 	auto e = std::make_shared<Element>(ElementCredit, index);
 	_document->appendChild(e);
@@ -352,9 +356,10 @@ bool Parser::parseComment(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->value());
+	std::string title {t->value()};
+	e->attr("title", title);
 	if (_debug) {
-		std::cerr << "=> \"" << e->value() << "\"\n";
+		std::cerr << "=> \"" << title << "\"\n";
 	}
 
 	// Add body
@@ -406,7 +411,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->value());
+	e->attr("title", t->value());
 	if (_debug) {
 		std::cerr << "=> \"" << e->value() << "\"\n";
 	}

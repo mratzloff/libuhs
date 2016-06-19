@@ -68,6 +68,11 @@ void Scanner::scan() {
 		// UHS uses DOS-style line endings
 		text = Strings::rtrim(text, '\r');
 
+		// Empty lines may be safely ignored
+		if (text.length() == 0) {
+			continue;
+		}
+
 		// All numbers are indexes in 88a, and link elements contain an index
 		if (Strings::isInt(text) && (beforeCompatSep || _line == expectedIndexLine)) {
 			_out.send(std::make_shared<Token>(

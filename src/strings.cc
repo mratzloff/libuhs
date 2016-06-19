@@ -5,6 +5,9 @@ namespace UHS {
 namespace Strings {
 
 bool isInt(const std::string& s) {
+	if (s.length() == 0) {
+		return false;
+	}
 	for (char c : s) {
 		if (c < '0' || '9' < c) {
 			return false;
