@@ -77,12 +77,20 @@ const std::string Element::typeString(ElementType t) {
 
 Element::Element(ElementType t, int index, int length)
 	: Node(NodeElement)
-	, _type {t}
+	, _elementType {t}
 	, _index {index}
 	, _length {length}
 {}
 
 Element::~Element() {}
+
+ElementType Element::elementType() const {
+	return _elementType;
+}
+
+const std::string Element::elementTypeString() const {
+	return Element::typeString(_elementType);
+}
 
 int Element::index() {
 	return _index;
@@ -90,6 +98,10 @@ int Element::index() {
 
 int Element::length() {
 	return _length;
+}
+
+const std::map<std::string, std::string>& Element::attrs() const {
+	return _attrs;
 }
 
 const std::string& Element::attr(const std::string& key) const {

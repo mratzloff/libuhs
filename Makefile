@@ -4,6 +4,10 @@ FLAGS_DEFAULT = $(FLAGS_CLANG) $(FLAGS_CLANG_DEBUG)
 CXXFLAGS ?= $(FLAGS_DEFAULT)
 LDFLAGS ?= -Llib -luhs
 
+jsoncpp = obj/jsoncpp.o
+jsoncpp-sources = contrib/jsoncpp/jsoncpp.cpp
+jsoncpp-objects = obj/jsoncpp.o
+
 library = lib/libuhs.a
 library-sources = $(wildcard src/*.cc)
 library-objects = $(library-sources:src/%.cc=obj/%.o)
@@ -13,7 +17,7 @@ command-sources = $(wildcard src/cmd/uhs/*.cc)
 command-objects = $(command-sources:src/%.cc=obj/%.o)
 
 .PHONY: all
-all: obj $(library) $(command)
+all: obj $(jsoncpp) $(library) $(command)
 
 .PHONY: clean
 clean:
@@ -26,13 +30,16 @@ clean:
 valgrind: all
 	valgrind --verbose --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes $(command)
 
-obj/%.o: src/%.cc
-	$(CXX) $(CXXFLAGS) -Iinclude -c $< -o $@
+$(jsoncpp): $(jsoncpp-sources)
+	$(CXX) $(CXXFLAGS) -Icontrib/jsoncpp/json -c $< -o $@
 
-$(library): $(library-objects)
+obj/%.o: src/%.cc
+	$(CXX) $(CXXFLAGS) -Icontrib/jsoncpp/json -Iinclude -c $< -o $@
+
+$(library): $(jsoncpp-objects) $(library-objects)
 	ar rcs $@ $(library-objects)
 
-$(command): $(command-objects)
+$(command): $(jsoncpp-objects) $(command-objects)
 	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@ $(LDFLAGS)
 
 obj:

@@ -85,7 +85,11 @@ int main(int argc, const char* argv[]) {
 	auto err = p.error();
 	if (err != nullptr) {
 		std::cerr << err->message() << std::endl;
+		return Err;
 	}
+
+	UHS::JSONWriter w {std::cout};
+	w.write(document);
 
 	return OK;
 }

@@ -2,6 +2,7 @@
 #define UHS_H
 
 #define UHS_VERSION "1.0.0-alpha"
+#define UHS_MAX_DEPTH 16
 
 #include <ctime>
 #include <istream>
@@ -207,15 +208,19 @@ class Node {
 public:
 	Node(NodeType t);
 	virtual ~Node();
-	NodeType type() const;
+	NodeType nodeType() const;
 	void appendChild(std::shared_ptr<Node> n);
+	std::vector<std::shared_ptr<Node>> children() const;
 	std::shared_ptr<Node> parent() const;
+	bool hasNextSibling() const;
 	std::shared_ptr<Node> nextSibling() const;
+	bool hasFirstChild() const;
 	std::shared_ptr<Node> firstChild() const;
+	bool hasLastChild() const;
 	std::shared_ptr<Node> lastChild() const;
 
 private:
-	NodeType _type;
+	NodeType _nodeType;
 	std::shared_ptr<Node> _parent;
 	std::shared_ptr<Node> _nextSibling;
 	std::shared_ptr<Node> _firstChild;
@@ -259,17 +264,20 @@ public:
 
 	Element(ElementType t, int index, int length = 0);
 	virtual ~Element();
+	ElementType elementType() const;
+	const std::string elementTypeString() const;
 	int index();
 	void index(int i);
 	int length();
 	void length(int l);
+	const std::map<std::string, std::string>& attrs() const;
 	const std::string& attr(const std::string& key) const;
 	void attr(const std::string& key, const std::string value);
 	const std::string& value() const;
 	void value(const std::string v);
 
 private:
-	ElementType _type;
+	ElementType _elementType;
 	int _index;
 	int _length;
 	std::map<std::string, std::string> _attrs;
@@ -383,6 +391,25 @@ private:
 	void expectedInt(std::shared_ptr<Token> t);
 	void unexpected(std::shared_ptr<Token> t);
 	bool isPunctuation(char c);
+};
+
+class Writer {
+public:
+	Writer(std::ostream& out);
+	virtual ~Writer();
+	std::shared_ptr<Error> error();
+	virtual bool write(std::shared_ptr<Document>) const;
+
+protected:
+	std::ostream& _out;
+	std::shared_ptr<Error> _err;
+};
+
+class JSONWriter : public Writer {
+public:
+	JSONWriter(std::ostream& out);
+	virtual ~JSONWriter();
+	bool write(std::shared_ptr<Document>) const override;
 };
 
 }

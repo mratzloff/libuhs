@@ -68,9 +68,6 @@ bool Parser::parse88a() {
 		return false;
 	}
 	_document->title(t->value());
-	if (_debug) {
-		std::cerr << "=> \"" << _document->title() << "\"\n";
-	}
 
 	// First hint index
 	t = this->expect(TokenIndex);
@@ -160,6 +157,7 @@ bool Parser::parse88a() {
 bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 	std::shared_ptr<Token> t;
 	ElementType elementType {ElementSubject};
+	std::shared_ptr<Element> p;
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -197,6 +195,7 @@ bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 				break;
 			}
 		}
+
 		if (parent == nullptr) {
 			_err = std::make_shared<Error>(ErrorValue, "could not find parent node");
 			_err->finalize(t->line(), t->column());
@@ -213,9 +212,6 @@ bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 			}
 		}
 		e->value(title);
-		if (_debug) {
-			std::cerr << "<" << Element::typeString(elementType) << " [" << title << "]>\n";
-		}
 
 		parent->appendChild(e);
 
@@ -231,6 +227,9 @@ bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 
 bool Parser::parse88aTextNodes(NodeMap& parents, int lastHintIndex) {
 	std::shared_ptr<Token> t;
+	std::shared_ptr<Element> p;
+	std::shared_ptr<TextNode> c;
+	std::vector<std::shared_ptr<Node>> children;
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -259,9 +258,6 @@ bool Parser::parse88aTextNodes(NodeMap& parents, int lastHintIndex) {
 		auto n = std::make_shared<TextNode>();
 		std::string title {_codec->decode88a(encodedTitle)};
 		n->value(title);
-		if (_debug) {
-			std::cerr << "\"" << title << "\"\n";
-		}
 		parent->appendChild(n);
 
 		if (index == lastHintIndex) {
@@ -274,6 +270,7 @@ bool Parser::parse88aTextNodes(NodeMap& parents, int lastHintIndex) {
 bool Parser::parse88aCredit(int index) {
 	std::shared_ptr<Token> t;
 	auto e = std::make_shared<Element>(ElementCredit, index);
+	e->value("Credits");
 	_document->appendChild(e);
 
 	// Add body
@@ -358,13 +355,9 @@ bool Parser::parseComment(std::shared_ptr<Element> e) {
 	}
 	std::string title {t->value()};
 	e->attr("title", title);
-	if (_debug) {
-		std::cerr << "=> \"" << title << "\"\n";
-	}
 
 	// Add body
 	int len = e->length();
-	auto n = std::make_shared<TextNode>();
 	std::string s;
 	bool continuation = false;
 
@@ -391,11 +384,7 @@ bool Parser::parseComment(std::shared_ptr<Element> e) {
 			return false;
 		}
 	}
-	n->value(s);
-	e->appendChild(n);
-	if (_debug) {
-		std::cerr << "=> \"" << n->value() << "\"\n";
-	}
+	e->value(s);
 
 	return true;
 }
@@ -411,10 +400,7 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->attr("title", t->value());
-	if (_debug) {
-		std::cerr << "=> \"" << e->value() << "\"\n";
-	}
+	e->value(t->value());
 
 	// Add body
 	int len = e->length();
@@ -443,9 +429,6 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 			}
 			n->value(s);
 			e->appendChild(n);
-			if (_debug) {
-				std::cerr << "=> \"" << n->value() << "\"\n";
-			}
 			n = std::make_shared<TextNode>();
 			s.clear();
 			continuation = false;
@@ -461,9 +444,6 @@ bool Parser::parseHint(std::shared_ptr<Element> e) {
 	}
 	n->value(s);
 	e->appendChild(n);
-	if (_debug) {
-		std::cerr << "=> \"" << n->value() << "\"\n";
-	}
 
 	return true;
 }
@@ -479,9 +459,6 @@ bool Parser::parseSubject(std::shared_ptr<Element> e) {
 		return false;
 	}
 	e->value(t->value());
-	if (_debug) {
-		std::cerr << "=> \"" << e->value() << "\"\n";
-	}
 
 	return true;
 }
@@ -537,6 +514,9 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 
 	// Process content
 	switch (elementType) {
+	case ElementUnknown:
+		// Not yet handled
+		break;
 	case ElementBlank:
 		// No further processing required
 		break;
@@ -548,11 +528,35 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 			return -1;
 		}
 		break;
+	case ElementGifa:
+		// Not yet handled
+		break;
 	case ElementHint:
 		ok = this->parseHint(e);
 		if (!ok) {
 			return -1;
 		}
+		break;
+	case ElementHyperpng:
+		// Not yet handled
+		break;
+	case ElementIncentive:
+		// Not yet handled
+		break;
+	case ElementInfo:
+		// Not yet handled
+		break;
+	case ElementLink:
+		// Not yet handled
+		break;
+	case ElementNesthint:
+		// Not yet handled
+		break;
+	case ElementOverlay:
+		// Not yet handled
+		break;
+	case ElementSound:
+		// Not yet handled
 		break;
 	case ElementSubject:
 		ok = this->parseSubject(e);
@@ -565,6 +569,12 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 			// _codec->key(_document->title());
 			_isTitleSet = true;
 		}
+		break;
+	case ElementText:
+		// Not yet handled
+		break;
+	case ElementVersion:
+		// Not yet handled
 		break;
 	}
 

@@ -2,12 +2,12 @@
 
 namespace UHS {
 
-Node::Node(NodeType t) : _type {t} {}
+Node::Node(NodeType t) : _nodeType {t} {}
 
 Node::~Node() {}
 
-NodeType Node::type() const {
-	return _type;
+NodeType Node::nodeType() const {
+	return _nodeType;
 }
 
 void Node::appendChild(std::shared_ptr<Node> n) {
@@ -18,18 +18,43 @@ void Node::appendChild(std::shared_ptr<Node> n) {
 		_lastChild->_nextSibling = n;
 		_lastChild = n;
 	}
+	std::shared_ptr<Node> p {this};
+	n->_parent = p;
+}
+
+std::vector<std::shared_ptr<Node>> Node::children() const {
+	std::vector<std::shared_ptr<Node>> v;
+	std::shared_ptr<Node> n {_firstChild};
+
+	while (n != nullptr) {
+		v.push_back(n);
+		n = n->nextSibling();
+	}
+	return v;
 }
 
 std::shared_ptr<Node> Node::parent() const {
 	return _parent;
 }
 
+bool Node::hasNextSibling() const {
+	return _nextSibling != nullptr;
+}
+
 std::shared_ptr<Node> Node::nextSibling() const {
 	return _nextSibling;
 }
 
+bool Node::hasFirstChild() const {
+	return _firstChild != nullptr;
+}
+
 std::shared_ptr<Node> Node::firstChild() const {
 	return _firstChild;
+}
+
+bool Node::hasLastChild() const {
+	return _lastChild != nullptr;
 }
 
 std::shared_ptr<Node> Node::lastChild() const {
