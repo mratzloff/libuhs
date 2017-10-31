@@ -53,8 +53,8 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 			case NodeElement:
 				e = std::static_pointer_cast<Element>(n);
 				attrs = e->attrs();
-				for (const auto& attr : attrs) {
-					map[attr.first] = attr.second;
+				for (const auto& [k, v] : attrs) {
+					map[k] = v;
 				}
 				object["attributes"] = map;
 				object["value"] = e->value();

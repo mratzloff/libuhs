@@ -99,16 +99,16 @@ void Scanner::scan() {
 			// Check for line match patterns
 			std::smatch matches;
 			if (std::regex_match(text, matches, _descriptorRegex)) {
-				ElementType elementType = this->scanDescriptor(text, matches, offset);
+				ElementType elementType = this->scanDescriptor(matches, offset);
 				if (elementType == ElementLink) {
 					expectedIndexLine = _line + 2;
 				}
 			} else if (std::regex_match(text, matches, _dataAddressRegex)) {
-				this->scanDataAddress(text, matches, offset);
+				this->scanDataAddress(matches, offset);
 			} else if (std::regex_match(text, matches, _overlayRegionRegex)) {
-				this->scanOverlayRegion(text, matches, offset);
+				this->scanOverlayRegion(matches, offset);
 			} else if (std::regex_match(text, matches, _overlayAddressRegex)) {
-				this->scanOverlayAddress(text, matches, offset);
+				this->scanOverlayAddress(matches, offset);
 			} else {
 				_out.send(std::make_shared<Token>(TokenString, offset, _line, 0, text));
 			}
@@ -125,7 +125,7 @@ std::shared_ptr<Token> Scanner::next() {
 	return _out.receive();
 }
 
-ElementType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t offset) {
+ElementType Scanner::scanDescriptor(std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
 		TokenLength, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
@@ -134,33 +134,40 @@ ElementType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t of
 	return Element::elementType(ident);
 }
 
-void Scanner::scanDataAddress(std::string s, std::smatch m, std::size_t offset) {
-	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, 0, Strings::ltrim(m[3].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, m.position(5), Strings::ltrim(m[5].str(), '0')));
+void Scanner::scanData(std::smatch m, std::size_t offset, std::map<int, TokenType> tokens) {
+	for (const auto& [pos, token] : tokens) {
+		_out.send(std::make_shared<Token>(
+			token, offset, _line, m.position(pos), Strings::ltrim(m[pos].str(), '0')));
+	}
 }
 
-void Scanner::scanOverlayRegion(std::string s, std::smatch m, std::size_t offset) {
-	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, m.position(2), Strings::ltrim(m[2].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, m.position(3), Strings::ltrim(m[3].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, m.position(4), Strings::ltrim(m[4].str(), '0')));
+void Scanner::scanDataAddress(std::smatch m, std::size_t offset) {
+	std::map<int, TokenType> tokens {
+		{1, TokenDataType},
+		{2, TokenDataOffset},
+		{3, TokenDataLength},
+	};
+	scanData(m, offset, tokens);
 }
 
-void Scanner::scanOverlayAddress(std::string s, std::smatch m, std::size_t offset) {
-	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, m.position(2), Strings::ltrim(m[2].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, m.position(3), Strings::ltrim(m[3].str(), '0')));
-	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, m.position(4), Strings::ltrim(m[4].str(), '0')));
+void Scanner::scanOverlayRegion(std::smatch m, std::size_t offset) {
+	std::map<int, TokenType> tokens {
+		{1, TokenRegionX},
+		{2, TokenRegionY},
+		{3, TokenRegionX},
+		{4, TokenRegionY},
+	};
+	scanData(m, offset, tokens);
+}
+
+void Scanner::scanOverlayAddress(std::smatch m, std::size_t offset) {
+	std::map<int, TokenType> tokens {
+		{1, TokenDataOffset},
+		{2, TokenDataLength},
+		{3, TokenRegionX},
+		{4, TokenRegionY},
+	};
+	scanData(m, offset, tokens);
 }
 
 void Scanner::eof() {

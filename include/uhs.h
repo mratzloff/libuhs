@@ -61,6 +61,10 @@ enum TokenType {
 	TokenData,
 	TokenDataLength,
 	TokenDataOffset,
+	TokenDataType, // 0: Binary or non-formatted text
+	               // 1: Preformatted text
+	               // 2: Non-formatted text
+	               // 3: Preformatted text
 	TokenEOF,
 	TokenIdent,
 	TokenIndex,
@@ -181,7 +185,7 @@ private:
 	static const int LineLen = 80;
 
 	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
-	const std::regex _dataAddressRegex {"^0{6}(?: [0-9])? ([0-9]{6,}) ([0-9]{6,})$"};
+	const std::regex _dataAddressRegex {"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
 	const std::regex _overlayRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
@@ -193,10 +197,11 @@ private:
 	std::size_t _offset;
 	std::string _buf;
 
-	ElementType scanDescriptor(std::string s, std::smatch m, std::size_t offset);
-	void scanDataAddress(std::string s, std::smatch m, std::size_t offset);
-	void scanOverlayRegion(std::string s, std::smatch m, std::size_t offset);
-	void scanOverlayAddress(std::string s, std::smatch m, std::size_t offset);
+	ElementType scanDescriptor(std::smatch m, std::size_t offset);
+	void scanData(std::smatch m, std::size_t offset, std::map<int, TokenType> tokens);
+	void scanDataAddress(std::smatch m, std::size_t offset);
+	void scanOverlayRegion(std::smatch m, std::size_t offset);
+	void scanOverlayAddress(std::smatch m, std::size_t offset);
 	void eof();
 	char peek();
 	char read();

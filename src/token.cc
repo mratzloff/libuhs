@@ -14,6 +14,8 @@ const std::string Token::typeString(TokenType t) {
 		return "DataLength";
 	case TokenDataOffset:
 		return "DataOffset";
+	case TokenDataType:
+		return "DataType";
 	case TokenEOF:
 		return "EOF";
 	case TokenIdent:
@@ -91,6 +93,8 @@ const std::string Token::toString() const {
 	case TokenDataLength:
 		// Fall through
 	case TokenDataOffset:
+		// Fall through
+	case TokenDataType:
 		// Fall through
 	case TokenIndex:
 		// Fall through
