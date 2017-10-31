@@ -33,10 +33,12 @@ std::shared_ptr<Document> Parser::parse() {
 		return _document;
 	}
 
-	ok = this->parse96a();
-	if (!ok) {
-		thread.join();
-		return _document;
+	if (_version != Version88a) {
+		ok = this->parse96a();
+		if (!ok) {
+			thread.join();
+			return _document;
+		}
 	}
 
 	// _crc.finalize();
@@ -140,13 +142,14 @@ bool Parser::parse88a() {
 			}
 			// Fall through
 		case TokenCompatSep:
-			if (_version != Version88a) {
+			if (_version == Version88a) {
+				_done = true;
+			} else {
 				// Throw away what we've done so far
 				_document = std::make_shared<Document>();
 				_document->version(Version96a);
-				return true;
 			}
-			break;
+			return true;
 		default:
 			this->unexpected(t);
 			return true;

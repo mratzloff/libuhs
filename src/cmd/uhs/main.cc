@@ -26,7 +26,7 @@ void printHelp() {
 int main(int argc, const char* argv[]) {
 	std::string file;
 	std::string dir;
-	bool version88a = false;
+	UHS::ParserOptions opt;
 
 	for (int i {1}; i < argc; ++i) {
 		if (argv[i][0] == '-') { // Parse options
@@ -47,15 +47,19 @@ int main(int argc, const char* argv[]) {
 				return OK;
 			case '-':
 				if (std::strncmp("--88a", argv[i], 5) == 0) {
-					version88a = true;
+					opt.version = UHS::Version88a;
 					break;
 				}
-				if (std::strncmp("--version", argv[i], 9) == 0) {
-					printVersion();
-					return OK;
+				if (std::strncmp("--debug", argv[i], 7) == 0) {
+					opt.debug = true;
+					break;
 				}
 				if (std::strncmp("--help", argv[i], 6) == 0) {
 					printHelp();
+					return OK;
+				}
+				if (std::strncmp("--version", argv[i], 9) == 0) {
+					printVersion();
 					return OK;
 				}
 			default:
@@ -77,8 +81,6 @@ int main(int argc, const char* argv[]) {
 	}
 
 	std::ifstream in {file, std::ifstream::in};
-	UHS::ParserOptions opt;
-	opt.debug = true;
 	UHS::Parser p {in, opt};
 	auto document = p.parse();
 
