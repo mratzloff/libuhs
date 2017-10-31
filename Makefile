@@ -1,4 +1,4 @@
-FLAGS_CLANG = -O0 -stdlib=libc++ -std=c++1y -Wall -Wextra
+FLAGS_CLANG = -O0 -stdlib=libc++ -std=c++1z -Wall -Wextra
 FLAGS_CLANG_DEBUG = -g -fstandalone-debug
 FLAGS_DEFAULT = $(FLAGS_CLANG) $(FLAGS_CLANG_DEBUG)
 CXXFLAGS ?= $(FLAGS_DEFAULT)
