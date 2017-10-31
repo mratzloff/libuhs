@@ -137,7 +137,7 @@ private:
 	static constexpr const char* CreditSep = "CREDITS:";
 	static constexpr const char* NestedElementSep = "=";
 	static constexpr const char* NestedTextSep = "-";
-	static constexpr const char* ParagraphSep = " "; // i.e., "text.\r\n \r\nText"
+	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
 	static const char DataSep = '\x1A';
 
 	const TokenType _type;
@@ -204,7 +204,7 @@ private:
 	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;
 };
 
-class Node {
+class Node : public std::enable_shared_from_this<Node> {
 public:
 	Node(NodeType t);
 	virtual ~Node();

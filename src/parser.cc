@@ -202,7 +202,7 @@ bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 			return false;
 		}
 
-		std::shared_ptr<Element> e = std::make_shared<Element>(elementType, index);
+		auto e = std::make_shared<Element>(elementType, index);
 
 		std::string title {_codec->decode88a(encodedTitle)};
 		if (parent != _document->root()) {
