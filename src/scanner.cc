@@ -130,37 +130,37 @@ ElementType Scanner::scanDescriptor(std::string s, std::smatch m, std::size_t of
 		TokenLength, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
 	_out.send(std::make_shared<Token>(
-		TokenIdent, offset, _line, -1, ident));
+		TokenIdent, offset, _line, 0, ident));
 	return Element::elementType(ident);
 }
 
 void Scanner::scanDataAddress(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
+		TokenDataOffset, offset, _line, 0, Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, -1, Strings::ltrim(m[5].str(), '0')));
+		TokenDataLength, offset, _line, m.position(5), Strings::ltrim(m[5].str(), '0')));
 }
 
 void Scanner::scanOverlayRegion(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, Strings::ltrim(m[1].str(), '0')));
+		TokenRegionX, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, Strings::ltrim(m[2].str(), '0')));
+		TokenRegionY, offset, _line, m.position(2), Strings::ltrim(m[2].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
+		TokenRegionX, offset, _line, m.position(3), Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, Strings::ltrim(m[4].str(), '0')));
+		TokenRegionY, offset, _line, m.position(4), Strings::ltrim(m[4].str(), '0')));
 }
 
 void Scanner::scanOverlayAddress(std::string s, std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
-		TokenDataOffset, offset, _line, -1, Strings::ltrim(m[1].str(), '0')));
+		TokenDataOffset, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenDataLength, offset, _line, -1, Strings::ltrim(m[2].str(), '0')));
+		TokenDataLength, offset, _line, m.position(2), Strings::ltrim(m[2].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionX, offset, _line, -1, Strings::ltrim(m[3].str(), '0')));
+		TokenRegionX, offset, _line, m.position(3), Strings::ltrim(m[3].str(), '0')));
 	_out.send(std::make_shared<Token>(
-		TokenRegionY, offset, _line, -1, Strings::ltrim(m[4].str(), '0')));
+		TokenRegionY, offset, _line, m.position(4), Strings::ltrim(m[4].str(), '0')));
 }
 
 void Scanner::eof() {
