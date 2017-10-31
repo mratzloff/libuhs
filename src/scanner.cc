@@ -129,44 +129,29 @@ ElementType Scanner::scanDescriptor(std::smatch m, std::size_t offset) {
 	_out.send(std::make_shared<Token>(
 		TokenLength, offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
-	_out.send(std::make_shared<Token>(
-		TokenIdent, offset, _line, 0, ident));
+	_out.send(std::make_shared<Token>(TokenIdent, offset, _line, 0, ident));
 	return Element::elementType(ident);
 }
 
-void Scanner::scanData(std::smatch m, std::size_t offset, std::map<int, TokenType> tokens) {
-	for (const auto& [pos, token] : tokens) {
+void Scanner::scanData(std::smatch m, std::size_t offset, std::vector<TokenType> tokens) {
+	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		_out.send(std::make_shared<Token>(
-			token, offset, _line, m.position(pos), Strings::ltrim(m[pos].str(), '0')));
+			tokens[i], offset, _line, m.position(i+1), Strings::ltrim(m[i+1].str(), '0')));
 	}
 }
 
 void Scanner::scanDataAddress(std::smatch m, std::size_t offset) {
-	std::map<int, TokenType> tokens {
-		{1, TokenDataType},
-		{2, TokenDataOffset},
-		{3, TokenDataLength},
-	};
+	std::vector<TokenType> tokens {TokenDataType, TokenDataOffset, TokenDataLength};
 	scanData(m, offset, tokens);
 }
 
 void Scanner::scanOverlayRegion(std::smatch m, std::size_t offset) {
-	std::map<int, TokenType> tokens {
-		{1, TokenRegionX},
-		{2, TokenRegionY},
-		{3, TokenRegionX},
-		{4, TokenRegionY},
-	};
+	std::vector<TokenType> tokens {TokenRegionX, TokenRegionY, TokenRegionX, TokenRegionY};
 	scanData(m, offset, tokens);
 }
 
 void Scanner::scanOverlayAddress(std::smatch m, std::size_t offset) {
-	std::map<int, TokenType> tokens {
-		{1, TokenDataOffset},
-		{2, TokenDataLength},
-		{3, TokenRegionX},
-		{4, TokenRegionY},
-	};
+	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenRegionX, TokenRegionY};
 	scanData(m, offset, tokens);
 }
 

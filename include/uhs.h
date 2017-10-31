@@ -198,7 +198,7 @@ private:
 	std::string _buf;
 
 	ElementType scanDescriptor(std::smatch m, std::size_t offset);
-	void scanData(std::smatch m, std::size_t offset, std::map<int, TokenType> tokens);
+	void scanData(std::smatch m, std::size_t offset, std::vector<TokenType> tokens);
 	void scanDataAddress(std::smatch m, std::size_t offset);
 	void scanOverlayRegion(std::smatch m, std::size_t offset);
 	void scanOverlayAddress(std::smatch m, std::size_t offset);
