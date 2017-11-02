@@ -38,6 +38,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 	n = d->root();
 	parents[depth] = &root;
 	root["title"] = d->title();
+	root["version"] = d->versionString();
 	j = &root;
 
 	while (n != nullptr) {
@@ -54,7 +55,13 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 				e = std::static_pointer_cast<Element>(n);
 				attrs = e->attrs();
 				for (const auto& [k, v] : attrs) {
-					map[k] = v;
+					if (v == "true") {
+						map[k] = true;
+					} else if (v == "false") {
+						map[k] = false;
+					} else {
+						map[k] = v;
+					}
 				}
 				object["attributes"] = map;
 				object["value"] = e->value();

@@ -31,6 +31,15 @@ VersionType Document::version() const {
 	return _version;
 }
 
+const std::string Document::versionString() const {
+	switch (_version) {
+	case Version88a: return "88a";
+	case Version91a: return "91a";
+	case Version95a: return "95a";
+	default:         return "96a";
+	}
+}
+
 void Document::title(std::string s) {
 	_title = s;
 }

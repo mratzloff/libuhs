@@ -678,8 +678,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	std::string title {t->value()};
-	e->attr("title", title);
+	e->attr("title", t->value());
 
 	// Format
 	t = this->expect(TokenDataType);
@@ -746,7 +745,26 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
+	std::shared_ptr<Token> t;
+	VersionType v {Version96a};
+
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	auto versionString = t->value();
+	e->value(versionString);
+
+	if (versionString == "91a") {
+		v = Version91a;
+	} else if (versionString == "95a") {
+		v = Version95a;
+	}
+	_document->version(v);
+
 	return true;
 }
 

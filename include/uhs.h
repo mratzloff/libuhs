@@ -308,6 +308,7 @@ public:
 	const std::shared_ptr<Node> root();
 	void version(VersionType v);
 	VersionType version() const;
+	const std::string versionString() const;
 	void title(std::string s);
 	std::string title() const;
 	const std::shared_ptr<Metadata> meta() const;
