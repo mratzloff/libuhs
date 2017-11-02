@@ -483,10 +483,9 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 		if (!ok) {
 			return -1;
 		}
-		if (!_isTitleSet) {
+		if (! _isTitleSet) {
 			_document->title(e->value());
-			// todo: Once 96a decoding methods are implemented
-			// _codec->key(_document->title());
+			_key = _codec->createKey(_document->title());
 			_isTitleSet = true;
 		}
 		break;
@@ -664,13 +663,6 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 		return false;
 	}
 	e->value(t->value());
-
-	// TODO: Move this into parse() using closure
-	if (! _document->hasTitle()) {
-		// Set title and create decoding key
-		_document->title(t->value());
-		_key = _codec->createKey(_document->title());
-	}
 
 	return true;
 }

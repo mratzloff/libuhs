@@ -310,7 +310,6 @@ public:
 	VersionType version() const;
 	void title(std::string s);
 	std::string title() const;
-	bool hasTitle() const;
 	const std::shared_ptr<Metadata> meta() const;
 	void validCRC(bool valid);
 	bool validCRC() const;
