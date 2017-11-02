@@ -39,6 +39,10 @@ std::string Document::title() const {
 	return _title;
 }
 
+bool Document::hasTitle() const {
+	return ! _title.empty();
+}
+
 const std::shared_ptr<Metadata> Document::meta() const {
 	return _meta;
 }

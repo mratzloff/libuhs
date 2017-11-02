@@ -18,7 +18,7 @@ void Node::appendChild(std::shared_ptr<Node> n) {
 		_lastChild->_nextSibling = n;
 		_lastChild = n;
 	}
-	n->_parent = shared_from_this();
+	n->_parent = this->shared_from_this();
 }
 
 std::vector<std::shared_ptr<Node>> Node::children() const {

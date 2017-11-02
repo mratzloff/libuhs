@@ -44,9 +44,11 @@ enum ErrorType {
 	ErrorToken,
 };
 
-enum FormatType {
-	FormatWhitespace,
-	FormatPreformatted,
+enum TextFormatType {
+	TextFormatNone,            // Also used for binary data
+	TextFormatPreformatted,
+	TextFormatNoneAlt,         // These two values seem to have the same effect
+	TextFormatPreformattedAlt, // when rendered, but all four are used
 };
 
 enum NodeType {
@@ -61,10 +63,7 @@ enum TokenType {
 	TokenData,
 	TokenDataLength,
 	TokenDataOffset,
-	TokenDataType, // 0: Binary or non-formatted text
-	               // 1: Preformatted text
-	               // 2: Non-formatted text
-	               // 3: Preformatted text
+	TokenDataType,
 	TokenEOF,
 	TokenIdent,
 	TokenIndex,
@@ -85,6 +84,7 @@ enum VersionType {
 	Version96a,
 };
 
+static constexpr const char* EOL = "\r\n";
 static constexpr const char* Version = UHS_VERSION;
 
 namespace Strings {
@@ -93,6 +93,8 @@ bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
+std::vector<std::string> split(const std::string& s, const std::string sep);
+std::string join(const std::vector<std::string>& s, const std::string sep);
 
 }
 
@@ -119,6 +121,8 @@ class Scanner;
 
 class Token {
 public:
+	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
+
 	static const std::string typeString(TokenType t);
 	
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
@@ -141,7 +145,6 @@ private:
 	static constexpr const char* CreditSep = "CREDITS:";
 	static constexpr const char* NestedElementSep = "=";
 	static constexpr const char* NestedTextSep = "-";
-	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
 	static const char DataSep = '\x1A';
 
 	const TokenType _type;
@@ -307,6 +310,7 @@ public:
 	VersionType version() const;
 	void title(std::string s);
 	std::string title() const;
+	bool hasTitle() const;
 	const std::shared_ptr<Metadata> meta() const;
 	void validCRC(bool valid);
 	bool validCRC() const;
@@ -323,18 +327,18 @@ class Codec {
 public:
 	Codec();
 	virtual ~Codec();
-	const std::string decode88a(std::string encoded);
-	// const std::string decode96a(std::string encoded, bool isTextNode);
+	const std::string decode88a(std::string encoded) const;
+	const std::string decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey = false) const;
+	const std::string createKey(std::string secret) const;
 
 private:
 	static const char AsciiStart = 0x20;
 	static const char AsciiEnd = 0x7F;
 	static constexpr const char* KeySeed = "key";
 
-	std::string _key;
-	std::size_t _keyLen;
-
-	bool isPrintable(char c);
+	int keystream(std::string key, std::size_t keyLen, std::size_t index, bool isText) const;
+	bool isPrintable(int c) const;
+	char toPrintable(int c) const;
 };
 
 struct ParserOptions {
@@ -364,6 +368,17 @@ private:
 
 	typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
 
+	typedef std::function<void(std::string)> DataCallback;
+
+	struct DataHandler {
+		std::size_t offset;
+		std::size_t length;
+		DataCallback func;
+
+		DataHandler(std::size_t offset, std::size_t length, DataCallback func);
+		virtual ~DataHandler();
+	};
+
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
 	static constexpr const char* InlineStartToken = "#w+";
@@ -378,18 +393,32 @@ private:
 	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
+	std::vector<DataHandler> _dataHandlers;
+	std::string _key;
 	bool _isTitleSet;
 	bool _done;
 
 	bool parse88a();
 	bool parse88aElements(NodeMap& parents, int firstHintIndex);
 	bool parse88aTextNodes(NodeMap& parents, int lastHintIndex);
-	bool parse88aCredit(int index);
+	bool parse88aCreditElement(int index);
 	bool parse96a();
-	bool parseComment(std::shared_ptr<Element> e);
-	bool parseHint(std::shared_ptr<Element> e);
-	bool parseSubject(std::shared_ptr<Element> e);
+	void parseData(std::shared_ptr<Token> t);
 	int parseElement(NodeRangeList& parents, std::shared_ptr<Token> t);
+	bool parseCommentElement(std::shared_ptr<Element> e);
+	bool parseGifaElement(std::shared_ptr<Element> e);
+	bool parseHintElement(std::shared_ptr<Element> e);
+	bool parseHyperpngElement(std::shared_ptr<Element> e);
+	bool parseInfoElement(std::shared_ptr<Element> e);
+	bool parseIncentiveElement(std::shared_ptr<Element> e);
+	bool parseLinkElement(std::shared_ptr<Element> e);
+	bool parseNesthintElement(std::shared_ptr<Element> e);
+	bool parseOverlayElement(std::shared_ptr<Element> e);
+	bool parseSoundElement(std::shared_ptr<Element> e);
+	bool parseSubjectElement(std::shared_ptr<Element> e);
+	bool parseTextElement(std::shared_ptr<Element> e);
+	bool parseVersionElement(std::shared_ptr<Element> e);
+	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
 	void expected(std::shared_ptr<Token> t, std::string expected);

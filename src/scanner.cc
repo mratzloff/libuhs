@@ -61,12 +61,14 @@ void Scanner::scan() {
 		// Everything else is line-based
 		// Handle errors at the end, after any text that was returned
 		char raw[LineLen+1];
-		_in.getline(raw, LineLen);
+		_in.getline(raw, LineLen, '\n');
 		std::string text {raw};
-		prevTextLen = text.length();
 
 		// UHS uses DOS-style line endings
 		text = Strings::rtrim(text, '\r');
+
+		// Number of bytes processed (for our offset)
+		prevTextLen = text.length() + strlen(EOL);
 
 		// Empty lines may be safely ignored
 		if (text.length() == 0) {
