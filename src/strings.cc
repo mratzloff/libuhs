@@ -47,18 +47,23 @@ std::string rtrim(const std::string& s, char c) {
 	return s;
 }
 
-std::vector<std::string> split(const std::string& s, const std::string sep) {
+std::vector<std::string> split(const std::string& s, const std::string sep, int n) {
 	std::vector<std::string> items;
 	std::size_t from {0};
 	std::size_t to;
 
+	int i = 0;
 	while (true) {
+		if (n > 0 && i >= n) {
+			break;
+		}
 		to = s.find(sep, from);
+		items.push_back(s.substr(from, to - from));
 		if (to == std::string::npos) {
 			break;
 		}
-		items.push_back(s.substr(from, to - from));
 		from = to + sep.length();
+		++i;
 	}
 	return items;
 }

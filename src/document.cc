@@ -5,7 +5,7 @@ namespace UHS {
 Document::Document()
 	: _root(std::make_shared<Node>(NodeContainer))
 	, _version(Version88a)
-	, _meta(std::make_shared<Metadata>())
+	, _meta(std::make_shared<std::map<std::string, std::string>>())
 	, _validCRC(false)
 {};
 
@@ -48,8 +48,41 @@ std::string Document::title() const {
 	return _title;
 }
 
-const std::shared_ptr<Metadata> Document::meta() const {
+void Document::length(const std::size_t len) {
+	_length = len;
+}
+
+std::size_t Document::length() const {
+	return _length;
+}
+
+void Document::timestamp(const std::tm time) {
+	_timestamp = time;
+}
+
+std::tm Document::timestamp() const {
+	return _timestamp;
+}
+
+const std::string Document::timestampString() const {
+	char buf[20];
+	auto len = std::strftime(buf, 20, "%Y-%m-%dT%H:%M:%S", &_timestamp);
+	if (len == 0) {
+		return "";
+	}
+	return buf;
+}
+
+void Document::meta(std::string key, std::string value) {
+	(*_meta)[key] = value;
+}
+
+const std::shared_ptr<std::map<std::string, std::string>> Document::meta() const {
 	return _meta;
+}
+
+const std::string Document::meta(std::string key) const {
+	return (*_meta)[key];
 }
 
 void Document::validCRC(bool valid) {

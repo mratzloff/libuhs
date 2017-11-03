@@ -37,9 +37,16 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 
 	n = d->root();
 	parents[depth] = &root;
+	j = &root;
+
 	root["title"] = d->title();
 	root["version"] = d->versionString();
-	j = &root;
+	root["length"] = int(d->length());
+	root["timestamp"] = d->timestampString();
+
+	for (const auto& [k, v] : *d->meta()) {
+		root[k] = v;
+	}
 
 	while (n != nullptr) {
 		// Assemble JSON object

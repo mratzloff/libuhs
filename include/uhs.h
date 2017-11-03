@@ -93,7 +93,7 @@ bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
-std::vector<std::string> split(const std::string& s, const std::string sep);
+std::vector<std::string> split(const std::string& s, const std::string sep, int n = 0);
 std::string join(const std::vector<std::string>& s, const std::string sep);
 
 }
@@ -292,13 +292,6 @@ private:
 	std::string _value;
 };
 
-struct Metadata {
-	std::size_t length;
-	time_t time;
-	std::string notice;
-	std::map<std::string, std::string> info;
-};
-
 class Document {
 public:
 	Document();
@@ -311,7 +304,14 @@ public:
 	const std::string versionString() const;
 	void title(std::string s);
 	std::string title() const;
-	const std::shared_ptr<Metadata> meta() const;
+	void length(const std::size_t len);
+	std::size_t length() const;
+	void timestamp(const std::tm time);
+	std::tm timestamp() const;
+	const std::string timestampString() const;
+	void meta(std::string key, std::string value);
+	const std::shared_ptr<std::map<std::string, std::string>> meta() const;
+	const std::string meta(std::string key) const;
 	void validCRC(bool valid);
 	bool validCRC() const;
 
@@ -319,7 +319,9 @@ private:
 	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
-	std::shared_ptr<Metadata> _meta;
+	std::size_t _length;
+	std::tm _timestamp;
+	std::shared_ptr<std::map<std::string, std::string>> _meta;
 	bool _validCRC;
 };
 
@@ -381,6 +383,8 @@ private:
 
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
+	static constexpr const char* CompilerInfoToken = ">";
+	static constexpr const char* InfoKeyValueSep = "=";
 	static constexpr const char* InlineStartToken = "#w+";
 	static constexpr const char* InlineEndToken = "#w.";
 	static constexpr const char* PreformattedStartToken = "#p-";
@@ -425,6 +429,8 @@ private:
 	void expectedInt(std::shared_ptr<Token> t);
 	void unexpected(std::shared_ptr<Token> t);
 	bool isPunctuation(char c);
+	bool parseDate(const std::string& s, std::tm& tm) const;
+	bool parseTime(const std::string& s, std::tm& tm) const;
 };
 
 class Writer {

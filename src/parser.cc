@@ -628,7 +628,78 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
+	std::shared_ptr<Token> t;
+	std::string s;
+	std::string key;
+	std::string val;
+	std::string date;
+	std::tm tm;
+
+	t = this->expect(TokenNestedTextSep);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+
+	int len = e->length();
+
+	for (int i = 2; i < len; ++i) {
+		t = this->expect(TokenString);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		s = t->value();
+
+		if (s.substr(0, 1) == CompilerInfoToken) {
+			key = "compiler-note";
+			val = s.substr(1);
+		} else {
+			auto parts = Strings::split(s, InfoKeyValueSep, 2);
+			if (parts.size() != 2) {
+				this->expected(t, InfoKeyValueSep);
+			}
+			key = parts[0];
+			val = parts[1];
+		}
+
+		if (key == "length") {
+			int fileLen = Strings::toInt(val);
+			if (fileLen < 0) {
+				this->expectedInt(t);
+				return false;
+			}
+			_document->length(fileLen);
+		} else if (key == "date") {
+			bool ok = this->parseDate(val, tm);
+			if (! ok) {
+				this->expected(t, "valid date");
+			}
+		} else if (key == "time") {
+			bool ok = this->parseTime(val, tm);
+			if (! ok) {
+				this->expected(t, "valid time");
+			}
+			auto time = mktime(&tm);
+			if (time == -1) {
+				this->expected(t, "valid timestamp");
+				return false;
+			}
+			_document->timestamp(tm);
+		} else {
+			auto v = _document->meta(key);
+			if (! v.empty()) {
+				v += " ";
+			}
+			v += val;
+			_document->meta(key, v);
+		}
+	}
+
 	return true;
 }
 
@@ -828,6 +899,85 @@ void Parser::unexpected(std::shared_ptr<Token> t) {
 
 bool Parser::isPunctuation(char c) {
 	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
+}
+
+// Format: DD-Mon-YY
+bool Parser::parseDate(const std::string& s, std::tm& tm) const {
+	auto parts = Strings::split(s, "-", 3);
+
+	int year = Strings::toInt(parts[2]);
+	if (year < 0) {
+		return false;
+	}
+	if (year < 95) { // Info nodes were introduced in 1995
+		year += 100;
+	}
+
+	int month;
+	if (parts[1] == "Jan") {
+		month = 0;
+	} else if (parts[1] == "Feb") {
+		month = 1;
+	} else if (parts[1] == "Mar") {
+		month = 2;
+	} else if (parts[1] == "Apr") {
+		month = 3;
+	} else if (parts[1] == "May") {
+		month = 4;
+	} else if (parts[1] == "Jun") {
+		month = 5;
+	} else if (parts[1] == "Jul") {
+		month = 6;
+	} else if (parts[1] == "Aug") {
+		month = 7;
+	} else if (parts[1] == "Sep") {
+		month = 8;
+	} else if (parts[1] == "Oct") {
+		month = 9;
+	} else if (parts[1] == "Nov") {
+		month = 10;
+	} else if (parts[1] == "Dec") {
+		month = 11;
+	} else {
+		return false;
+	}
+
+	int day = Strings::toInt(parts[0]);
+	if (day < 1 || day > 31) {
+		return false;
+	}
+
+	tm.tm_year = year;
+	tm.tm_mon = month;
+	tm.tm_mday = day;
+
+	return true;
+}
+
+// Format: HH:MM:SS
+bool Parser::parseTime(const std::string& s, std::tm& tm) const {
+	auto parts = Strings::split(s, ":", 3);
+	
+	int hour = Strings::toInt(parts[0]);
+	if (hour < 0 || hour > 23) {
+		return false;
+	}
+
+	int min = Strings::toInt(parts[1]);
+	if (min < 0 || min > 59) {
+		return false;
+	}
+
+	int sec = Strings::toInt(parts[2]);
+	if (sec < 0 || sec > 59) {
+		return false;
+	}
+
+	tm.tm_hour = hour;
+	tm.tm_min = min;
+	tm.tm_sec = sec;
+
+	return true;
 }
 
 Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
