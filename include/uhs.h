@@ -383,7 +383,7 @@ private:
 
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
-	static constexpr const char* CompilerInfoToken = ">";
+	static constexpr const char* NoticeToken = ">";
 	static constexpr const char* InfoKeyValueSep = "=";
 	static constexpr const char* InlineStartToken = "#w+";
 	static constexpr const char* InlineEndToken = "#w.";

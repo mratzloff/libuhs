@@ -655,8 +655,8 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		}
 		s = t->value();
 
-		if (s.substr(0, 1) == CompilerInfoToken) {
-			key = "compiler-note";
+		if (s.substr(0, 1) == NoticeToken) {
+			key = "notice";
 			val = s.substr(1);
 		} else {
 			auto parts = Strings::split(s, InfoKeyValueSep, 2);
