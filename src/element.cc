@@ -80,6 +80,7 @@ Element::Element(ElementType t, int index, int length)
 	, _elementType {t}
 	, _index {index}
 	, _length {length}
+	, _visibility {VisibilityAll}
 {}
 
 Element::~Element() {}
@@ -98,6 +99,20 @@ int Element::index() {
 
 int Element::length() {
 	return _length;
+}
+
+bool Element::visible(bool registered) const {
+	return (_visibility == VisibilityAll
+		|| (! registered && _visibility == VisibilityUnregistered)
+		|| (registered && _visibility == VisibilityRegistered));
+}
+
+VisibilityType Element::visibility() const {
+	return _visibility;
+}
+
+void Element::visibility(VisibilityType v) {
+	_visibility = v;
 }
 
 const std::map<std::string, std::string>& Element::attrs() const {

@@ -18,6 +18,8 @@ void printHelp() {
 		<< "Usage: uhs [options] <file>\n"
 		<< "-d <dir>\tDirectory to write embedded files to\n"
 		<< "    --88a\tRead in 88a mode\n"
+		<< "    --unregistered\tRead in unregistered mode\n"
+		<< "    --debug\tPrint debugging statements\n"
 		<< "-v, --version\tPrint the version\n"
 		<< "-h, --help\tPrint this help statement"
 		<< std::endl;
@@ -26,7 +28,8 @@ void printHelp() {
 int main(int argc, const char* argv[]) {
 	std::string file;
 	std::string dir;
-	UHS::ParserOptions opt;
+	UHS::ParserOptions parserOpt;
+	UHS::WriterOptions writerOpt;
 
 	for (int i {1}; i < argc; ++i) {
 		if (argv[i][0] == '-') { // Parse options
@@ -47,11 +50,15 @@ int main(int argc, const char* argv[]) {
 				return OK;
 			case '-':
 				if (std::strncmp("--88a", argv[i], 5) == 0) {
-					opt.version = UHS::Version88a;
+					parserOpt.version = UHS::Version88a;
+					break;
+				}
+				if (std::strncmp("--unregistered", argv[i], 14) == 0) {
+					writerOpt.registered = false;
 					break;
 				}
 				if (std::strncmp("--debug", argv[i], 7) == 0) {
-					opt.debug = true;
+					parserOpt.debug = true;
 					break;
 				}
 				if (std::strncmp("--help", argv[i], 6) == 0) {
@@ -81,7 +88,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	std::ifstream in {file, std::ifstream::in};
-	UHS::Parser p {in, opt};
+	UHS::Parser p {in, parserOpt};
 	auto document = p.parse();
 
 	auto err = p.error();
@@ -90,7 +97,7 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	UHS::JSONWriter w {std::cout};
+	UHS::JSONWriter w {std::cout, writerOpt};
 	w.write(document);
 
 	return OK;

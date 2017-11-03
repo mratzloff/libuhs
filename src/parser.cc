@@ -7,7 +7,6 @@ namespace UHS {
 
 Parser::Parser(std::istream& in, const ParserOptions& opt)
 	: _version {opt.version}
-	, _registered {opt.registered}
 	, _debug {opt.debug}
 	, _scanner {std::make_unique<Scanner>(in)}
 	, _codec {std::make_unique<Codec>()}
@@ -48,6 +47,16 @@ std::shared_ptr<Document> Parser::parse() {
 
 	return _document;
 }
+
+Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
+	: node(n), min(min), max(max) {}
+
+Parser::NodeRange::~NodeRange() {}
+
+Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
+	: offset(offset), length(length), func(func) {}
+
+Parser::DataHandler::~DataHandler() {}
 
 //================================= UHS 88a =================================//
 
@@ -147,6 +156,9 @@ bool Parser::parse88a() {
 			if (_version == Version88a) {
 				_done = true;
 			} else {
+				// 96a element indexes don't include compatibility header
+				_indexOffset = t->line();
+
 				// Throw away what we've done so far
 				_document = std::make_shared<Document>();
 				_document->version(Version96a);
@@ -376,7 +388,7 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 		return -1;
 	}
 	std::string ident {t->value()};
-	int index {t->line()};
+	int index {t->line() - _indexOffset};
 
 	// Create element
 	auto elementType = Element::elementType(ident);
@@ -384,11 +396,15 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 		return len;
 	}
 	auto e = std::make_shared<Element>(elementType, index, len);
-	int min = index;
-	int max = index + len;
+
+	// Store a reference for Link and Incentive elements
+	_elementMap[index] = e;
 
 	// Link element to parent
 	std::shared_ptr<Node> parent;
+	int min = index;
+	int max = index + len;
+
 	for (auto p : parents) {
 		if (min > p->min) {
 			if (max <= p->max) {
@@ -623,7 +639,79 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
+	std::shared_ptr<Token> t;
+	std::string s;
+
+	e->visibility(VisibilityNone);
+
+	// Ignore nested text separator
+	t = this->expect(TokenNestedTextSep);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+
+	// Read and decode visibility instructions
+	int len = e->length();
+	bool continuation = false;
+
+	for (int i = 2; i < len; ++i) {
+		t = this->expect(TokenString);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		if (continuation) {
+			s += " ";
+		}
+		s += _codec->decode96a(t->value(), _key, false);
+		continuation = true;
+	}
+	e->value(s);
+
+	// Process instructions
+	auto markers = Strings::split(s, " ");
+	std::size_t markerLen;
+
+	for (const auto& marker : markers) {
+		markerLen = marker.length();
+
+		// Split index-instruction pair
+		if (markerLen < 2) {
+			this->expectedString(t, "incentive index-instruction pair", marker);
+		}
+		auto indexString = marker.substr(0, markerLen-1);
+		auto instruction = marker.substr(markerLen-1, 1);
+
+		int index = Strings::toInt(indexString);
+		if (index < 0) {
+			this->expectedString(t, "valid incentive index integer", indexString);
+			return false;
+		}
+
+		// Look up referenced element
+		std::shared_ptr<Element> ref;
+		try {
+			ref = _elementMap.at(index);
+		} catch (const std::out_of_range& ex) {
+			this->indexNotFound(t, index);
+			return false;
+		}
+
+		// Set visibility
+		if (instruction == "A") {
+			ref->visibility(VisibilityRegistered);
+		} else if (instruction == "Z") {
+			ref->visibility(VisibilityUnregistered);
+		} else {
+			this->expectedString(t, "valid incentive instruction", instruction);
+		}
+	}
+
 	return true;
 }
 
@@ -635,6 +723,9 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 	std::string date;
 	std::tm tm;
 
+	e->visibility(VisibilityNone);
+
+	// Ignore nested text separator
 	t = this->expect(TokenNestedTextSep);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
@@ -643,8 +734,8 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		return false;
 	}
 
+	// Key-value pairs followed by a notice
 	int len = e->length();
-
 	for (int i = 2; i < len; ++i) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
@@ -808,7 +899,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 				*line = "";
 			}
 		}
-		auto value = Strings::join(lines, "\n");
+		auto value = Strings::rtrim(Strings::join(lines, "\n"), '\n');
 		e->value(value);
 	});
 
@@ -819,6 +910,8 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 	VersionType v {Version96a};
 
+	e->visibility(VisibilityNone);
+
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
@@ -827,7 +920,6 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 		return false;
 	}
 	auto versionString = t->value();
-	e->value(versionString);
 
 	if (versionString == "91a") {
 		v = Version91a;
@@ -858,10 +950,6 @@ std::shared_ptr<Token> Parser::next() {
 	return t;
 }
 
-void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
-	_dataHandlers.push_back(DataHandler(offset, length, func));
-}
-
 std::shared_ptr<Token> Parser::expect(TokenType expected) {
 	auto t = this->next();
 	if (_err != nullptr) {
@@ -880,25 +968,8 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 	return t;
 }
 
-void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
-	_err = std::make_shared<Error>(ErrorValue);
-	_err->messagef("expected %s, found '%s'",
-		expected.data(), t->value().data());
-	_err->finalize(t->line(), t->column());
-}
-
-void Parser::expectedInt(std::shared_ptr<Token> t) {
-	this->expected(t, "valid integer");
-}
-
-void Parser::unexpected(std::shared_ptr<Token> t) {
-	_err = std::make_shared<Error>(ErrorToken);
-	_err->messagef("unexpected %s", t->typeString().data());
-	_err->finalize(t->line(), t->column());
-}
-
-bool Parser::isPunctuation(char c) {
-	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
+void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
+	_dataHandlers.push_back(DataHandler(offset, length, func));
 }
 
 // Format: DD-Mon-YY
@@ -980,14 +1051,34 @@ bool Parser::parseTime(const std::string& s, std::tm& tm) const {
 	return true;
 }
 
-Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
-	: node(n), min(min), max(max) {}
+bool Parser::isPunctuation(char c) {
+	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
+}
 
-Parser::NodeRange::~NodeRange() {}
+void Parser::indexNotFound(std::shared_ptr<Token> t, int index) {
+	_err = std::make_shared<Error>(ErrorValue);
+	_err->messagef("index not found: %d", index);
+	_err->finalize(t->line(), t->column());
+}
 
-Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
-	: offset(offset), length(length), func(func) {}
+void Parser::expectedString(std::shared_ptr<Token> t, std::string expected, std::string found) {
+	_err = std::make_shared<Error>(ErrorValue);
+	_err->messagef("expected %s, found '%s'", expected.data(), found.data());
+	_err->finalize(t->line(), t->column());
+}
 
-Parser::DataHandler::~DataHandler() {}
+void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
+	this->expectedString(t, expected, t->value());
+}
+
+void Parser::expectedInt(std::shared_ptr<Token> t) {
+	this->expected(t, "valid integer");
+}
+
+void Parser::unexpected(std::shared_ptr<Token> t) {
+	_err = std::make_shared<Error>(ErrorToken);
+	_err->messagef("unexpected %s", t->typeString().data());
+	_err->finalize(t->line(), t->column());
+}
 
 }

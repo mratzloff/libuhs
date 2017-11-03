@@ -84,6 +84,13 @@ enum VersionType {
 	Version96a,
 };
 
+enum VisibilityType {
+	VisibilityAll,          // Visible to every user
+	VisibilityUnregistered, // Visible only to unregistered users
+	VisibilityRegistered,   // Visible only to registered users
+	VisibilityNone,         // Visible to no one
+};
+
 static constexpr const char* EOL = "\r\n";
 static constexpr const char* Version = UHS_VERSION;
 
@@ -262,11 +269,6 @@ private:
 
 class Element : public Node {
 public:
-	enum Visibility {
-		VisibleToRegistered,
-		VisibleToUnregistered,
-	};
-
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
@@ -278,6 +280,9 @@ public:
 	void index(int i);
 	int length();
 	void length(int l);
+	bool visible(bool registered) const;
+	VisibilityType visibility() const;
+	void visibility(VisibilityType v);
 	const std::map<std::string, std::string>& attrs() const;
 	const std::string& attr(const std::string& key) const;
 	void attr(const std::string& key, const std::string value);
@@ -288,6 +293,7 @@ private:
 	ElementType _elementType;
 	int _index;
 	int _length;
+	VisibilityType _visibility;
 	std::map<std::string, std::string> _attrs;
 	std::string _value;
 };
@@ -345,7 +351,6 @@ private:
 
 struct ParserOptions {
 	VersionType version {Version96a};
-	bool registered {true};
 	bool debug {false};
 };
 
@@ -358,6 +363,7 @@ public:
 
 private:
 	typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
+	typedef std::map<const int, std::shared_ptr<Element>> ElementMap;
 
 	struct NodeRange {
 		std::shared_ptr<Node> node;
@@ -391,14 +397,15 @@ private:
 	static constexpr const char* PreformattedEndToken = "#p+";
 
 	VersionType _version;
-	bool _registered;
 	bool _debug;
 	std::shared_ptr<Error> _err;
 	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
 	std::vector<DataHandler> _dataHandlers;
+	ElementMap _elementMap;
 	std::string _key;
+	int _indexOffset;
 	bool _isTitleSet;
 	bool _done;
 
@@ -422,20 +429,30 @@ private:
 	bool parseSubjectElement(std::shared_ptr<Element> e);
 	bool parseTextElement(std::shared_ptr<Element> e);
 	bool parseVersionElement(std::shared_ptr<Element> e);
-	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
+
+	// Parse helpers
+	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
+	bool parseDate(const std::string& s, std::tm& tm) const;
+	bool parseTime(const std::string& s, std::tm& tm) const;
+	bool isPunctuation(char c);
+
+	// Error helpers
+	void indexNotFound(std::shared_ptr<Token> t, int index);
+	void expectedString(std::shared_ptr<Token> t, std::string expected, std::string found);
 	void expected(std::shared_ptr<Token> t, std::string expected);
 	void expectedInt(std::shared_ptr<Token> t);
 	void unexpected(std::shared_ptr<Token> t);
-	bool isPunctuation(char c);
-	bool parseDate(const std::string& s, std::tm& tm) const;
-	bool parseTime(const std::string& s, std::tm& tm) const;
+};
+
+struct WriterOptions {
+	bool registered {true};
 };
 
 class Writer {
 public:
-	Writer(std::ostream& out);
+	Writer(std::ostream& out, const WriterOptions& opt);
 	virtual ~Writer();
 	std::shared_ptr<Error> error();
 	virtual bool write(std::shared_ptr<Document>) const;
@@ -443,11 +460,12 @@ public:
 protected:
 	std::ostream& _out;
 	std::shared_ptr<Error> _err;
+	bool _registered;
 };
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(std::ostream& out);
+	JSONWriter(std::ostream& out, const WriterOptions& opt);
 	virtual ~JSONWriter();
 	bool write(std::shared_ptr<Document>) const override;
 };

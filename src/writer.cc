@@ -4,7 +4,10 @@
 
 namespace UHS {
 
-Writer::Writer(std::ostream& out) : _out {out} {}
+Writer::Writer(std::ostream& out, const WriterOptions& opt)
+	: _out {out}
+	, _registered {opt.registered}
+{}
 
 Writer::~Writer() {}
 
@@ -16,7 +19,8 @@ bool Writer::write(std::shared_ptr<Document>) const {
 	return false;
 }
 
-JSONWriter::JSONWriter(std::ostream& out) : Writer(out) {}
+JSONWriter::JSONWriter(std::ostream& out, const WriterOptions& opt)
+	: Writer(out, opt) {}
 
 JSONWriter::~JSONWriter() {}
 
@@ -41,8 +45,11 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 
 	root["title"] = d->title();
 	root["version"] = d->versionString();
-	root["length"] = int(d->length());
-	root["timestamp"] = d->timestampString();
+
+	if (d->version() > Version88a) {
+		root["length"] = int(d->length());
+		root["timestamp"] = d->timestampString();
+	}
 
 	for (const auto& [k, v] : *d->meta()) {
 		root[k] = v;
@@ -60,6 +67,12 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 				break;
 			case NodeElement:
 				e = std::static_pointer_cast<Element>(n);
+
+				if (! e->visible(_registered)) {
+					break;
+				}
+				object["value"] = e->value();
+
 				attrs = e->attrs();
 				for (const auto& [k, v] : attrs) {
 					if (v == "true") {
@@ -70,9 +83,11 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 						map[k] = v;
 					}
 				}
+
+				map["type"] = Element::typeString(e->elementType());
 				object["attributes"] = map;
-				object["value"] = e->value();
 				(*j)["children"].append(object);
+
 				break;
 			case NodeContainer:
 				// Ignore
