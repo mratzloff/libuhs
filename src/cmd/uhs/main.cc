@@ -41,6 +41,7 @@ int main(int argc, const char* argv[]) {
 					return Err;
 				}
 				dir = argv[i];
+				// TODO: Expand this path
 				break;
 			case 'v':
 				printVersion();

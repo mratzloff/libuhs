@@ -46,7 +46,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 	root["title"] = d->title();
 	root["version"] = d->versionString();
 
-	if (d->version() > Version88a) {
+	if (d->version() > Version91a) {
 		root["length"] = int(d->length());
 		root["timestamp"] = d->timestampString();
 	}
@@ -71,7 +71,12 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 				if (! e->visible(_registered)) {
 					break;
 				}
-				object["value"] = e->value();
+
+				if (false) { // TODO: If binary, write to output directory.
+					object["value"] = "/path/to/file";
+				} else {
+					object["value"] = e->value();
+				}
 
 				attrs = e->attrs();
 				for (const auto& [k, v] : attrs) {

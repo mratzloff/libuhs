@@ -137,8 +137,10 @@ ElementType Scanner::scanDescriptor(std::smatch m, std::size_t offset) {
 
 void Scanner::scanData(std::smatch m, std::size_t offset, std::vector<TokenType> tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
-		_out.send(std::make_shared<Token>(
-			tokens[i], offset, _line, m.position(i+1), Strings::ltrim(m[i+1].str(), '0')));
+		if (m[i+1].length() > 0) {
+			_out.send(std::make_shared<Token>(
+				tokens[i], offset, _line, m.position(i+1), Strings::ltrim(m[i+1].str(), '0')));
+		}
 	}
 }
 
