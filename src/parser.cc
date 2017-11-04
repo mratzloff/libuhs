@@ -17,6 +17,39 @@ Parser::Parser(std::istream& in, const ParserOptions& opt)
 
 Parser::~Parser() {}
 
+Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
+	: node(n), min(min), max(max) {}
+
+Parser::NodeRange::~NodeRange() {}
+
+Parser::NodeRangeList::NodeRangeList() : data({}) {}
+
+Parser::NodeRangeList::~NodeRangeList() {}
+
+std::shared_ptr<Node> Parser::NodeRangeList::find(int min, int max) {
+	std::shared_ptr<Node> n;
+
+	for (auto nr : data) {
+		if (min > nr->min) {
+			if (max <= nr->max) {
+				n = nr->node;
+			}
+		} else {
+			break;
+		}
+	}
+	return n;
+}
+
+void Parser::NodeRangeList::add(std::shared_ptr<Node> n, int min, int max) {
+	data.push_back(std::make_shared<NodeRange>(n, min, max));
+}
+
+Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
+	: offset(offset), length(length), func(func) {}
+
+Parser::DataHandler::~DataHandler() {}
+
 std::shared_ptr<Error> Parser::error() {
 	return _err;
 }
@@ -47,16 +80,6 @@ std::shared_ptr<Document> Parser::parse() {
 
 	return _document;
 }
-
-Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
-	: node(n), min(min), max(max) {}
-
-Parser::NodeRange::~NodeRange() {}
-
-Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
-	: offset(offset), length(length), func(func) {}
-
-Parser::DataHandler::~DataHandler() {}
 
 //================================= UHS 88a =================================//
 
@@ -114,7 +137,7 @@ bool Parser::parse88a() {
 
 	// Subjects
 	NodeMap parents {{0, _document->root()}};
-	bool ok = this->parse88aElements(parents, firstHintIndex);
+	bool ok = this->parse88aElements(firstHintIndex, parents);
 	if (!ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
@@ -123,7 +146,7 @@ bool Parser::parse88a() {
 	}
 
 	// Hints
-	ok = this->parse88aTextNodes(parents, lastHintIndex);
+	ok = this->parse88aTextNodes(lastHintIndex, parents);
 	if (!ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
@@ -171,7 +194,7 @@ bool Parser::parse88a() {
 	}
 }
 
-bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
+bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 	std::shared_ptr<Token> t;
 	ElementType elementType {ElementSubject};
 	std::shared_ptr<Element> p;
@@ -242,7 +265,7 @@ bool Parser::parse88aElements(NodeMap& parents, int firstHintIndex) {
 	return true;
 }
 
-bool Parser::parse88aTextNodes(NodeMap& parents, int lastHintIndex) {
+bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 	std::shared_ptr<Token> t;
 	std::shared_ptr<Element> p;
 	std::shared_ptr<TextNode> c;
@@ -329,9 +352,10 @@ bool Parser::parse88aCreditElement(int index) {
 
 bool Parser::parse96a() {
 	std::shared_ptr<Token> t;
-	NodeRangeList parents;
-	parents.push_back(std::make_shared<NodeRange>(_document->root(), 0, INT_MAX));
-	int len = 0;
+	std::shared_ptr<Element> e;
+	bool ok = false;
+
+	_parents.add(_document->root(), 0, INT_MAX);
 
 	// Parse elements
 	while (true) {
@@ -345,8 +369,12 @@ bool Parser::parse96a() {
 			_done = true;
 			return true;
 		case TokenLength:
-			len = this->parseElement(parents, t);
-			if (len < 0) {
+			e = this->parseElement(t);
+			if (e == nullptr) {
+				return false;
+			}
+			ok = this->findAndLinkParent(e, t);
+			if (! ok) {
 				return false;
 			}
 			break;
@@ -362,12 +390,12 @@ bool Parser::parse96a() {
 	return true;
 }
 
-int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
+std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 	// Length
 	int len = Strings::toInt(t->value());
 	if (len < 0) {
 		this->expectedInt(t);
-		return -1;
+		return nullptr;
 	}
 
 	// Ident
@@ -376,154 +404,65 @@ int Parser::parseElement(NodeRangeList& parents, std::shared_ptr<Token> t) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
 		}
-		return -1;
+		return nullptr;
 	}
 	std::string ident {t->value()};
 	int index {t->line() - _indexOffset};
 
 	// Create element
 	auto elementType = Element::elementType(ident);
-	if (elementType == ElementUnknown) { // Ignore it and move on
-		return len;
-	}
 	auto e = std::make_shared<Element>(elementType, index, len);
 
 	// Store a reference for Link and Incentive elements
 	_elementMap[index] = e;
 
-	// Link element to parent
-	std::shared_ptr<Node> parent;
-	int min = index;
-	int max = index + len;
+	bool ok = true;
 
-	for (auto p : parents) {
-		if (min > p->min) {
-			if (max <= p->max) {
-				parent = p->node;
-			}
-		} else {
-			break;
-		}
+	switch (elementType) {
+	case ElementUnknown:   /* No further processing required */ break;
+	case ElementBlank:     /* No further processing required */ break;
+	case ElementComment:   ok = this->parseCommentElement(e);   break;
+	case ElementCredit:    ok = this->parseCommentElement(e);   break;
+	case ElementGifa:      ok = this->parseDataElement(e);      break;
+	case ElementHint:      ok = this->parseHintElement(e);      break;
+	case ElementHyperpng:  ok = this->parseHyperpngElement(e);  break;
+	case ElementIncentive: ok = this->parseIncentiveElement(e); break;
+	case ElementInfo:      ok = this->parseInfoElement(e);      break;
+	case ElementLink:      ok = this->parseLinkElement(e);      break;
+	case ElementNesthint:  ok = this->parseNesthintElement(e);  break;
+	case ElementOverlay:   ok = this->parseOverlayElement(e);   break;
+	case ElementSound:     ok = this->parseDataElement(e);      break;
+	case ElementSubject:   ok = this->parseSubjectElement(e);   break;
+	case ElementText:      ok = this->parseTextElement(e);      break;
+	case ElementVersion:   ok = this->parseVersionElement(e);   break;
 	}
+
+	if (! ok) {
+		return nullptr;
+	}
+	if (elementType == ElementSubject && ! _isTitleSet) {
+		_document->title(e->value());
+		_key = _codec->createKey(_document->title());
+		_isTitleSet = true;
+	}
+
+	return e;
+}
+
+bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t) {
+	int min = e->index();
+	int max = min + e->length();
+	auto parent = _parents.find(min, max);
+
 	if (parent == nullptr) {
 		_err = std::make_shared<Error>(ErrorValue, "orphaned element");
 		_err->finalize(t->line(), t->column());
-		return -1;
+		return false;
 	}
 	parent->appendChild(e);
-	parents.push_back(std::make_shared<NodeRange>(e, min, max));
+	_parents.add(e, min, max);
 
-	bool ok = false;
-
-	// Process content
-	switch (elementType) {
-	case ElementUnknown:
-		// Not yet handled
-		break;
-	case ElementBlank:
-		// No further processing required
-		break;
-	case ElementComment:
-		ok = this->parseCommentElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementCredit:
-		ok = this->parseCommentElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementGifa:
-		ok = this->parseDataElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementHint:
-		ok = this->parseHintElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementHyperpng:
-		ok = this->parseDataElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementIncentive:
-		ok = this->parseIncentiveElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementInfo:
-		ok = this->parseInfoElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementLink:
-		ok = this->parseLinkElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementNesthint:
-		ok = this->parseNesthintElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementOverlay:
-		ok = this->parseOverlayElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementSound:
-		ok = this->parseDataElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementSubject:
-		ok = this->parseSubjectElement(e);
-		if (!ok) {
-			return -1;
-		}
-		if (! _isTitleSet) {
-			_document->title(e->value());
-			_key = _codec->createKey(_document->title());
-			_isTitleSet = true;
-		}
-		break;
-	case ElementText:
-		ok = this->parseTextElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	case ElementVersion:
-		ok = this->parseVersionElement(e);
-		if (!ok) {
-			return -1;
-		}
-		break;
-	}
-
-	return len;
-}
-
-void Parser::parseData(std::shared_ptr<Token> t) {
-	std::size_t offset;
-
-	for (const auto& handler : _dataHandlers) {
-		offset = handler.offset - t->offset();
-		handler.func(t->value().substr(offset, handler.length));
-	}
+	return true;
 }
 
 bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
@@ -695,6 +634,28 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 	n->value(s);
 	e->appendChild(n);
 
+	return true;
+}
+
+bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
+	bool ok = this->parseDataElement(e);
+	if (! ok) {
+		return false;
+	}
+
+	// // Parse overlay and link elements
+	// int len = e->length();
+
+	// for (int i = 4; i < len; ++i) {
+	// 	t = this->expect(TokenLength);
+	// 	if (_err != nullptr) {
+	// 		if (_err->type() == ErrorEOF) {
+	// 			this->unexpected(t);
+	// 		}
+	// 		return false;
+	// 	}
+	// 	e = this->parseElement(t);
+	// }
 	return true;
 }
 
@@ -1017,6 +978,15 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
 	_dataHandlers.push_back(DataHandler(offset, length, func));
+}
+
+void Parser::parseData(std::shared_ptr<Token> t) {
+	std::size_t offset;
+
+	for (const auto& handler : _dataHandlers) {
+		offset = handler.offset - t->offset();
+		handler.func(t->value().substr(offset, handler.length));
+	}
 }
 
 // Format: DD-Mon-YY

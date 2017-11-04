@@ -364,6 +364,7 @@ public:
 private:
 	typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
 	typedef std::map<const int, std::shared_ptr<Element>> ElementMap;
+	typedef std::function<void(std::string)> DataCallback;
 
 	struct NodeRange {
 		std::shared_ptr<Node> node;
@@ -374,9 +375,14 @@ private:
 		virtual ~NodeRange();
 	};
 
-	typedef std::vector<std::shared_ptr<NodeRange>> NodeRangeList;
+	struct NodeRangeList {
+		std::vector<std::shared_ptr<NodeRange>> data;
 
-	typedef std::function<void(std::string)> DataCallback;
+		NodeRangeList();
+		virtual ~NodeRangeList();
+		std::shared_ptr<Node> find(int min, int max);
+		void add(std::shared_ptr<Node> n, int min, int max);
+	};
 
 	struct DataHandler {
 		std::size_t offset;
@@ -402,6 +408,7 @@ private:
 	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
+	NodeRangeList _parents;
 	std::vector<DataHandler> _dataHandlers;
 	ElementMap _elementMap;
 	std::string _key;
@@ -409,16 +416,22 @@ private:
 	bool _isTitleSet;
 	bool _done;
 
+	// 88a
 	bool parse88a();
-	bool parse88aElements(NodeMap& parents, int firstHintIndex);
-	bool parse88aTextNodes(NodeMap& parents, int lastHintIndex);
+	bool parse88aElements(int firstHintIndex, NodeMap& parents);
+	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
 	bool parse88aCreditElement(int index);
+
+	// 96a
 	bool parse96a();
-	int parseElement(NodeRangeList& parents, std::shared_ptr<Token> t);
-	void parseData(std::shared_ptr<Token> t);
+	std::shared_ptr<Element> parseElement(std::shared_ptr<Token> t);
+	bool findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t);
+
+	// Functions by element type
 	bool parseCommentElement(std::shared_ptr<Element> e);
 	bool parseDataElement(std::shared_ptr<Element> e);
 	bool parseHintElement(std::shared_ptr<Element> e);
+	bool parseHyperpngElement(std::shared_ptr<Element> e);
 	bool parseInfoElement(std::shared_ptr<Element> e);
 	bool parseIncentiveElement(std::shared_ptr<Element> e);
 	bool parseLinkElement(std::shared_ptr<Element> e);
@@ -427,11 +440,12 @@ private:
 	bool parseSubjectElement(std::shared_ptr<Element> e);
 	bool parseTextElement(std::shared_ptr<Element> e);
 	bool parseVersionElement(std::shared_ptr<Element> e);
-	std::shared_ptr<Token> next();
-	std::shared_ptr<Token> expect(TokenType expected);
 
 	// Parse helpers
+	std::shared_ptr<Token> next();
+	std::shared_ptr<Token> expect(TokenType expected);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
+	void parseData(std::shared_ptr<Token> t);
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
 	bool isPunctuation(char c);
