@@ -1,6 +1,7 @@
 FLAGS_CLANG = -O0 -stdlib=libc++ -std=c++1z -Wall -Wextra
 FLAGS_CLANG_DEBUG = -g -fstandalone-debug
 FLAGS_DEFAULT = $(FLAGS_CLANG) $(FLAGS_CLANG_DEBUG)
+FLAGS_CONTRIB = -O0 -stdlib=libc++ -std=c++1z
 CXXFLAGS ?= $(FLAGS_DEFAULT)
 LDFLAGS ?= -Llib -luhs
 
@@ -31,7 +32,7 @@ valgrind: all
 	valgrind --verbose --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes $(command)
 
 $(jsoncpp): $(jsoncpp-sources)
-	$(CXX) $(CXXFLAGS) -Icontrib/jsoncpp/json -c $< -o $@
+	$(CXX) $(FLAGS_CONTRIB) -Icontrib/jsoncpp/json -c $< -o $@
 
 obj/%.o: src/%.cc
 	$(CXX) $(CXXFLAGS) -Icontrib/jsoncpp/json -Iinclude -c $< -o $@

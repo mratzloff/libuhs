@@ -135,4 +135,12 @@ void Element::value(const std::string v) {
 	_value = v;
 }
 
+const std::weak_ptr<Element> Element::ref() const {
+	return _ref;
+}
+
+void Element::ref(const std::weak_ptr<Element> ref) {
+	_ref = ref;
+}
+
 }

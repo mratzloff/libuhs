@@ -125,7 +125,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 		}
 	}
 
-	std::cout << root << std::endl;
+	_out << root;
 
 	return true;
 }

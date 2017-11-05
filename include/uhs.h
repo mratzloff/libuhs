@@ -59,6 +59,8 @@ enum NodeType {
 
 enum TokenType {
 	TokenCompatSep,
+	TokenCoordX,
+	TokenCoordY,
 	TokenCreditSep,
 	TokenData,
 	TokenDataLength,
@@ -71,8 +73,6 @@ enum TokenType {
 	TokenNestedElementSep,
 	TokenNestedTextSep,
 	TokenParagraphSep,
-	TokenRegionX,
-	TokenRegionY,
 	TokenSignature,
 	TokenString,
 };
@@ -196,7 +196,7 @@ private:
 
 	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
 	const std::regex _dataAddressRegex {"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
-	const std::regex _overlayRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
+	const std::regex _hyperpngRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
 	std::istream& _in;
@@ -210,7 +210,7 @@ private:
 	ElementType scanDescriptor(std::smatch m, std::size_t offset);
 	void scanData(std::smatch m, std::size_t offset, std::vector<TokenType> tokens);
 	void scanDataAddress(std::smatch m, std::size_t offset);
-	void scanOverlayRegion(std::smatch m, std::size_t offset);
+	void scanHyperpngRegion(std::smatch m, std::size_t offset);
 	void scanOverlayAddress(std::smatch m, std::size_t offset);
 	void eof();
 	char peek();
@@ -288,6 +288,8 @@ public:
 	void attr(const std::string& key, const std::string value);
 	const std::string& value() const;
 	void value(const std::string v);
+	const std::weak_ptr<Element> ref() const;
+	void ref(const std::weak_ptr<Element> ref);
 
 private:
 	ElementType _elementType;
@@ -296,6 +298,7 @@ private:
 	VisibilityType _visibility;
 	std::map<std::string, std::string> _attrs;
 	std::string _value;
+	std::weak_ptr<Element> _ref;
 };
 
 class Document {
@@ -384,6 +387,15 @@ private:
 		void add(std::shared_ptr<Node> n, int min, int max);
 	};
 
+	struct LinkData {
+		const std::shared_ptr<Token> fromToken;
+		const std::shared_ptr<Element> fromElement;
+		int toIndex;
+
+		LinkData(const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
+		virtual ~LinkData();
+	};
+
 	struct DataHandler {
 		std::size_t offset;
 		std::size_t length;
@@ -409,8 +421,9 @@ private:
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
-	std::vector<DataHandler> _dataHandlers;
 	ElementMap _elementMap;
+	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks;
+	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
 	int _indexOffset;
 	bool _isTitleSet;
@@ -425,9 +438,6 @@ private:
 	// 96a
 	bool parse96a();
 	std::shared_ptr<Element> parseElement(std::shared_ptr<Token> t);
-	bool findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t);
-
-	// Functions by element type
 	bool parseCommentElement(std::shared_ptr<Element> e);
 	bool parseDataElement(std::shared_ptr<Element> e);
 	bool parseHintElement(std::shared_ptr<Element> e);
@@ -444,11 +454,16 @@ private:
 	// Parse helpers
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Token> expect(TokenType expected);
+	bool findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t);
+	bool linkOrDefer(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	bool link(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::shared_ptr<Token> t);
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
 	bool isPunctuation(char c);
+	int offsetIndex(int index);
 
 	// Error helpers
 	void indexNotFound(std::shared_ptr<Token> t, int index);

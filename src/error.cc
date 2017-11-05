@@ -31,18 +31,17 @@ void Error::messagef(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
 	vsnprintf(buf, 256, format, args);
-	perror(buf);
 	va_end(args);
 	_message = std::string(buf);
 }
 
 void Error::finalize() {
-	_message = "Error: " + _message;
+	_message = "error: " + _message;
 }
 
 void Error::finalize(int line, int column) {
 	std::ostringstream out;
-	out << "Error at line " << line << ", column " << column << ": " << _message;
+	out << "error at line " << line << ", column " << column << ": " << _message;
 	_message = out.str();
 }
 

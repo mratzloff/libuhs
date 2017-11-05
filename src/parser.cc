@@ -50,6 +50,12 @@ Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCal
 
 Parser::DataHandler::~DataHandler() {}
 
+Parser::LinkData::LinkData(
+	const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
+	: fromToken(fromToken), fromElement(fromElement), toIndex(toIndex) {}
+
+Parser::LinkData::~LinkData() {}
+
 std::shared_ptr<Error> Parser::error() {
 	return _err;
 }
@@ -60,23 +66,22 @@ std::shared_ptr<Document> Parser::parse() {
 	}};
 
 	bool ok = this->parse88a();
-	if (!ok || _done) {
+	if (! ok || _done) {
 		thread.join();
 		return _document;
 	}
 
 	if (_version != Version88a) {
 		ok = this->parse96a();
-		if (!ok) {
+		if (! ok) {
 			thread.join();
 			return _document;
 		}
 	}
-
+	
+	thread.join();
 	// _crc.finalize();
 	// _document.validCRC = _crc.valid();
-
-	thread.join();
 
 	return _document;
 }
@@ -95,7 +100,7 @@ bool Parser::parse88a() {
 		return false;
 	}
 
-	// Label
+	// Title
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
@@ -138,7 +143,7 @@ bool Parser::parse88a() {
 	// Subjects
 	NodeMap parents {{0, _document->root()}};
 	bool ok = this->parse88aElements(firstHintIndex, parents);
-	if (!ok) {
+	if (! ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
 		}
@@ -147,7 +152,7 @@ bool Parser::parse88a() {
 
 	// Hints
 	ok = this->parse88aTextNodes(lastHintIndex, parents);
-	if (!ok) {
+	if (! ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t);
 		}
@@ -167,7 +172,7 @@ bool Parser::parse88a() {
 			return true;
 		case TokenCreditSep:
 			ok = this->parse88aCreditElement(t->line());
-			if (!ok) {
+			if (! ok) {
 				this->unexpected(t);
 				return false;
 			}
@@ -353,7 +358,6 @@ bool Parser::parse88aCreditElement(int index) {
 bool Parser::parse96a() {
 	std::shared_ptr<Token> t;
 	std::shared_ptr<Element> e;
-	bool ok = false;
 
 	_parents.add(_document->root(), 0, INT_MAX);
 
@@ -373,16 +377,12 @@ bool Parser::parse96a() {
 			if (e == nullptr) {
 				return false;
 			}
-			ok = this->findAndLinkParent(e, t);
-			if (! ok) {
-				return false;
-			}
 			break;
 		case TokenData:
 			this->parseData(t);
 			break;
 		default:
-			// todo: Once all elements are handled,
+			// TODO: Once all elements are handled,
 			// return this->unexpected(t);
 			break;
 		}
@@ -390,7 +390,10 @@ bool Parser::parse96a() {
 	return true;
 }
 
+// Elements are automatically appended to their parents
 std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
+	bool ok = false;
+
 	// Length
 	int len = Strings::toInt(t->value());
 	if (len < 0) {
@@ -407,16 +410,24 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 		return nullptr;
 	}
 	std::string ident {t->value()};
-	int index {t->line() - _indexOffset};
 
 	// Create element
 	auto elementType = Element::elementType(ident);
+	int index {this->offsetIndex(t->line())};
 	auto e = std::make_shared<Element>(elementType, index, len);
 
 	// Store a reference for Link and Incentive elements
 	_elementMap[index] = e;
 
-	bool ok = true;
+	ok = this->findAndLinkParent(e, t);
+	if (! ok) {
+		return nullptr;
+	}
+
+	ok = handleDeferredLink(index);
+	if (! ok) {
+		return nullptr;
+	}
 
 	switch (elementType) {
 	case ElementUnknown:   /* No further processing required */ break;
@@ -447,22 +458,6 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 	}
 
 	return e;
-}
-
-bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t) {
-	int min = e->index();
-	int max = min + e->length();
-	auto parent = _parents.find(min, max);
-
-	if (parent == nullptr) {
-		_err = std::make_shared<Error>(ErrorValue, "orphaned element");
-		_err->finalize(t->line(), t->column());
-		return false;
-	}
-	parent->appendChild(e);
-	_parents.add(e, min, max);
-
-	return true;
 }
 
 bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
@@ -544,7 +539,7 @@ bool Parser::parseDataElement(std::shared_ptr<Element> e) {
 			intOffset = Strings::toInt(t->value());
 			if (intOffset < 0) {
 				this->expectedInt(t);
-				return -1;
+				return false;
 			}
 			offset = intOffset;
 			goto expectDataLength;
@@ -566,7 +561,7 @@ expectDataLength:
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
 		this->expectedInt(t);
-		return -1;
+		return false;
 	}
 	std::size_t len = intLen;
 
@@ -638,24 +633,94 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
+	std::shared_ptr<Token> t;
+
 	bool ok = this->parseDataElement(e);
 	if (! ok) {
 		return false;
 	}
 
-	// // Parse overlay and link elements
-	// int len = e->length();
+	// Parse child elements
+	int len = e->length();
+	std::shared_ptr<Element> child;
 
-	// for (int i = 4; i < len; ++i) {
-	// 	t = this->expect(TokenLength);
-	// 	if (_err != nullptr) {
-	// 		if (_err->type() == ErrorEOF) {
-	// 			this->unexpected(t);
-	// 		}
-	// 		return false;
-	// 	}
-	// 	e = this->parseElement(t);
-	// }
+	for (int i = 4; i < len; i += 1 + child->length()) {
+		// Interactive region top-left X coordinate
+		t = this->expect(TokenCoordX);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		auto x1 = t->value();
+		if (Strings::toInt(x1) < 0) {
+			this->expectedInt(t);
+			return false;
+		}
+
+		// Interactive region top-left Y coordinate
+		t = this->expect(TokenCoordY);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		auto y1 = t->value();
+		if (Strings::toInt(y1) < 0) {
+			this->expectedInt(t);
+			return false;
+		}
+
+		// Interactive region bottom-right X coordinate
+		t = this->expect(TokenCoordX);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		auto x2 = t->value();
+		if (Strings::toInt(x2) < 0) {
+			this->expectedInt(t);
+			return false;
+		}
+
+		// Interactive region bottom-right Y coordinate
+		t = this->expect(TokenCoordY);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		auto y2 = t->value();
+		if (Strings::toInt(y2) < 0) {
+			this->expectedInt(t);
+			return false;
+		}
+
+		// Child element (overlay or link)
+		t = this->expect(TokenLength);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+		child = this->parseElement(t);
+		if (child == nullptr) {
+			return false;
+		}
+
+		// Backfill coordinates
+		child->attr("region:top-left-x", x1);
+		child->attr("region:top-left-y", y1);
+		child->attr("region:bottom-right-x", x2);
+		child->attr("region:bottom-right-y", y2);
+	}
+
 	return true;
 }
 
@@ -816,8 +881,37 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
-	return true;
+	std::shared_ptr<Token> t;
+
+	// Label
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	e->attr("label", t->value());
+
+	// Ref index
+	t = this->expect(TokenIndex);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	int index = Strings::toInt(t->value());
+	if (index < 0) {
+		this->expectedInt(t);
+		return false;
+	}
+	auto parent = std::static_pointer_cast<Element>(e->parent());
+	if (parent->elementType() == ElementHyperpng) {
+		index += 1; // Links contained in hyperpngs point to the interactive region
+	}
+
+	return this->linkOrDefer(t, e, index);
 }
 
 bool Parser::parseNesthintElement(std::shared_ptr<Element> e) {
@@ -826,7 +920,43 @@ bool Parser::parseNesthintElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
+	std::shared_ptr<Token> t;
+
+	bool ok = this->parseDataElement(e);
+	if (! ok) {
+		return false;
+	}
+
+	// Image top-left X coordinate
+	t = this->expect(TokenCoordX);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	auto x = t->value();
+	if (Strings::toInt(x) < 0) {
+		this->expectedInt(t);
+		return false;
+	}
+	e->attr("image:x", x);
+
+	// Image bottom-right Y coordinate
+	t = this->expect(TokenCoordY);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return false;
+	}
+	auto y = t->value();
+	if (Strings::toInt(y) < 0) {
+		this->expectedInt(t);
+		return false;
+	}
+	e->attr("image:y", y);
+
 	return true;
 }
 
@@ -870,7 +1000,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	int format = Strings::toInt(t->value());
 	if (format < 0) {
 		this->expectedInt(t);
-		return -1;
+		return false;
 	}
 	if (format == TextFormatPreformatted || format == TextFormatPreformattedAlt) {
 		e->attr("preformatted", "true");
@@ -887,7 +1017,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	int intOffset = Strings::toInt(t->value());
 	if (intOffset < 0) {
 		this->expectedInt(t);
-		return -1;
+		return false;
 	}
 	std::size_t offset = intOffset;
 
@@ -902,7 +1032,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
 		this->expectedInt(t);
-		return -1;
+		return false;
 	}
 	std::size_t len = intLen;
 
@@ -953,7 +1083,7 @@ std::shared_ptr<Token> Parser::next() {
 		return t;
 	}
 	if (_debug) {
-		std::cerr << t->toString() << std::endl;
+		std::cout << t->toString() << std::endl;
 	}
 	return t;
 }
@@ -974,6 +1104,53 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 		_err->finalize(t->line(), t->column());
 	}
 	return t;
+}
+
+bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t) {
+	int min = e->index();
+	int max = min + e->length();
+	auto parent = _parents.find(min, max);
+
+	if (parent == nullptr) {
+		_err = std::make_shared<Error>(ErrorValue, "orphaned element");
+		_err->finalize(t->line(), t->column());
+		return false;
+	}
+	parent->appendChild(e);
+	_parents.add(e, min, max);
+
+	return true;
+}
+
+bool Parser::linkOrDefer(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+	if (fromElement->index() > toIndex) {
+		return this->link(fromToken, fromElement, toIndex);
+	} else {
+		_deferredLinks[toIndex] = std::make_shared<LinkData>(fromToken, fromElement, toIndex);
+	}
+	return true;
+}
+
+bool Parser::link(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+	std::weak_ptr<Element> ref; 
+
+	try {
+		ref = _elementMap.at(toIndex);
+	} catch (const std::out_of_range& ex) {
+		this->indexNotFound(fromToken, toIndex);
+		return false;
+	}
+	fromElement->ref(ref);
+
+	return true;
+}
+
+bool Parser::handleDeferredLink(int index) {
+	if (_deferredLinks.count(index) == 0) {
+		return true;
+	}
+	auto linkData = _deferredLinks[index];
+	return this->link(linkData->fromToken, linkData->fromElement, linkData->toIndex);
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
@@ -997,7 +1174,7 @@ bool Parser::parseDate(const std::string& s, std::tm& tm) const {
 	if (year < 0) {
 		return false;
 	}
-	if (year < 95) { // Info nodes were introduced in 1995
+	if (year < 95) { // Info elements were introduced in 1995
 		year += 100;
 	}
 
@@ -1070,6 +1247,10 @@ bool Parser::parseTime(const std::string& s, std::tm& tm) const {
 
 bool Parser::isPunctuation(char c) {
 	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
+}
+
+int Parser::offsetIndex(int index) {
+	return index - _indexOffset;
 }
 
 void Parser::indexNotFound(std::shared_ptr<Token> t, int index) {

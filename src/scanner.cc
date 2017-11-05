@@ -107,8 +107,8 @@ void Scanner::scan() {
 				}
 			} else if (std::regex_match(text, matches, _dataAddressRegex)) {
 				this->scanDataAddress(matches, offset);
-			} else if (std::regex_match(text, matches, _overlayRegionRegex)) {
-				this->scanOverlayRegion(matches, offset);
+			} else if (std::regex_match(text, matches, _hyperpngRegionRegex)) {
+				this->scanHyperpngRegion(matches, offset);
 			} else if (std::regex_match(text, matches, _overlayAddressRegex)) {
 				this->scanOverlayAddress(matches, offset);
 			} else {
@@ -149,13 +149,13 @@ void Scanner::scanDataAddress(std::smatch m, std::size_t offset) {
 	scanData(m, offset, tokens);
 }
 
-void Scanner::scanOverlayRegion(std::smatch m, std::size_t offset) {
-	std::vector<TokenType> tokens {TokenRegionX, TokenRegionY, TokenRegionX, TokenRegionY};
+void Scanner::scanHyperpngRegion(std::smatch m, std::size_t offset) {
+	std::vector<TokenType> tokens {TokenCoordX, TokenCoordY, TokenCoordX, TokenCoordY};
 	scanData(m, offset, tokens);
 }
 
 void Scanner::scanOverlayAddress(std::smatch m, std::size_t offset) {
-	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenRegionX, TokenRegionY};
+	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenCoordX, TokenCoordY};
 	scanData(m, offset, tokens);
 }
 
@@ -165,7 +165,7 @@ void Scanner::eof() {
 
 char Scanner::peek() {
 	char c = (char) _in.peek();
-	if (!_in.good()) {
+	if (! _in.good()) {
 		this->handleReadError();
 	}
 	return c;
@@ -174,7 +174,7 @@ char Scanner::peek() {
 char Scanner::read() {
 	char c = (char) _in.get();
 
-	if (!_in.good()) {
+	if (! _in.good()) {
 		this->handleReadError();
 		return c;
 	}
@@ -198,17 +198,18 @@ Scanner::TokenQueue::TokenQueue() : _open(true) {}
 Scanner::TokenQueue::~TokenQueue() {}
 
 bool Scanner::TokenQueue::send(std::shared_ptr<Token> t) {
-	if (!_open) {
+	if (! _open) {
 		return false;
 	}
 	std::lock_guard<std::mutex> m {_mutex};
 	_queue.push(t);
+
 	return true;
 }
 
 std::shared_ptr<Token> Scanner::TokenQueue::receive() {
 	while (this->empty()) { // Unlikely
-		if (!this->ok()) {
+		if (! this->ok()) {
 			return nullptr;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -216,6 +217,7 @@ std::shared_ptr<Token> Scanner::TokenQueue::receive() {
 	std::lock_guard<std::mutex> m {_mutex};
 	std::shared_ptr<Token> t {_queue.front()};
 	_queue.pop();
+	
 	return t;
 }
 
@@ -226,7 +228,7 @@ bool Scanner::TokenQueue::empty() {
 
 bool Scanner::TokenQueue::ok() {
 	std::lock_guard<std::mutex> m {_mutex};
-	return _open || !_queue.empty();
+	return _open || ! _queue.empty();
 }
 
 void Scanner::TokenQueue::close() {

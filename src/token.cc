@@ -6,6 +6,10 @@ const std::string Token::typeString(TokenType t) {
 	switch (t) {
 	case TokenCompatSep:
 		return "CompatSep";
+	case TokenCoordX:
+		return "CoordX";
+	case TokenCoordY:
+		return "CoordY";
 	case TokenCreditSep:
 		return "CreditSep";
 	case TokenData:
@@ -30,10 +34,6 @@ const std::string Token::typeString(TokenType t) {
 		return "NestedTextSep";
 	case TokenParagraphSep:
 		return "ParagraphSep";
-	case TokenRegionX:
-		return "RegionX";
-	case TokenRegionY:
-		return "RegionY";
 	case TokenSignature:
 		return "Signature";
 	case TokenString:
@@ -100,9 +100,9 @@ const std::string Token::toString() const {
 		// Fall through
 	case TokenLength:
 		// Fall through
-	case TokenRegionX:
+	case TokenCoordX:
 		// Fall through
-	case TokenRegionY:
+	case TokenCoordY:
 		buf += formatIntValue();
 		break;
 	default:
