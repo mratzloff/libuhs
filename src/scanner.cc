@@ -20,11 +20,11 @@ std::shared_ptr<Error> Scanner::error() {
 }
 
 void Scanner::scan() {
-	bool beforeCompatSep {true};
-	int expectedIndexLine {-1};
-	int expectedStringLine {-1};
-	std::size_t prevTextLen {0};
-	std::size_t offset {0};
+	bool beforeCompatSep = true;
+	int expectedIndexLine = -1;
+	int expectedStringLine = -1;
+	std::size_t prevTextLen = 0;
+	std::size_t offset = 0;
 
 	while (true) {
 		++_line;

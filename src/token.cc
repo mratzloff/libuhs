@@ -42,8 +42,7 @@ const std::string Token::typeString(TokenType t) {
 }
 
 Token::Token(const TokenType tokenType, std::size_t offset, int line,
-	std::size_t column, std::string value)
-
+		std::size_t column, std::string value)
 	: _type {tokenType}
 	, _line {line}
 	, _column {column}

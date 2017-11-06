@@ -47,6 +47,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 
 	root["title"] = d->title();
 	root["version"] = d->versionString();
+	root["registered"] = _registered;
 
 	if (d->version() > Version91a) {
 		root["length"] = int(d->length());
@@ -72,12 +73,9 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 			case NodeElement:
 				e = std::static_pointer_cast<Element>(n);
 
-				if (! e->visible(_registered)) {
-					break;
-				}
 				object["label"] = e->label();
 
-				if (e->isMedia()) {
+				if (e->isMedia()) { // TODO: Do something about how lazy this is
 					fname = _mediaDir + "/" + std::to_string(e->index()) + "." + e->mediaExt();
 					fout.open(fname, std::ofstream::out | std::ofstream::binary);
 					fout << e->body();
@@ -96,6 +94,9 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 					} else {
 						map[k] = v;
 					}
+				}
+				if (! e->visible(_registered)) {
+					map["visible"] = false;
 				}
 
 				map["type"] = Element::typeString(e->elementType());

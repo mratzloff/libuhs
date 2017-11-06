@@ -49,7 +49,7 @@ std::string rtrim(const std::string& s, char c) {
 
 std::vector<std::string> split(const std::string& s, const std::string sep, int n) {
 	std::vector<std::string> items;
-	std::size_t from {0};
+	std::size_t from = 0;
 	std::size_t to;
 
 	int i = 0;
@@ -70,7 +70,7 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 
 std::string join(const std::vector<std::string>& items, const std::string sep) {
 	std::string s;
-	int i {0};
+	int i = 0;
 
 	for (const auto& item : items) {
 		if (i > 0) {

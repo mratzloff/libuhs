@@ -413,12 +413,14 @@ private:
 
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
-	static constexpr const char* NoticeToken = ">";
 	static constexpr const char* InfoKeyValueSep = "=";
 	static constexpr const char* InlineStartToken = "#w+";
 	static constexpr const char* InlineEndToken = "#w.";
+	static constexpr const char* NoticeToken = ">";
 	static constexpr const char* PreformattedStartToken = "#p-";
 	static constexpr const char* PreformattedEndToken = "#p+";
+	static constexpr const char* RegisteredToken = "A";
+	static constexpr const char* UnregisteredToken = "Z";
 
 	VersionType _version;
 	bool _debug;
@@ -443,7 +445,7 @@ private:
 
 	// 96a
 	bool parse96a();
-	std::shared_ptr<Element> parseElement(std::shared_ptr<Token> t);
+	std::shared_ptr<Element> parseElement(std::shared_ptr<Token> t, bool indexByRegion = false);
 	bool parseCommentElement(std::shared_ptr<Element> e);
 	bool parseDataElement(std::shared_ptr<Element> e);
 	bool parseHintElement(std::shared_ptr<Element> e);

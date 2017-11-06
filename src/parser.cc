@@ -213,7 +213,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 			return false;
 		}
 		std::string encodedLabel {t->value()};
-		int index {t->line()};
+		int index = t->line();
 
 		t = this->expect(TokenIndex);
 		if (_err != nullptr) {
@@ -234,7 +234,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		}
 
 		std::shared_ptr<Node> parent;
-		for (int i {index}; parent == nullptr; --i) {
+		for (int i = index; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
@@ -284,10 +284,10 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 			}
 			return false;
 		}
-		int index {t->line()};
+		int index = t->line();
 
 		std::shared_ptr<Node> parent;
-		for (int i {index}; parent == nullptr; --i) {
+		for (int i = index; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
@@ -386,7 +386,7 @@ bool Parser::parse96a() {
 }
 
 // Elements are automatically appended to their parents
-std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
+std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool indexByRegion) {
 	bool ok = false;
 
 	// Length
@@ -408,7 +408,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 
 	// Create element
 	auto elementType = Element::elementType(ident);
-	int index {this->offsetIndex(t->line())};
+	int index = this->offsetIndex(t->line()) - (indexByRegion ? 1 : 0);
 	auto e = std::make_shared<Element>(elementType, index, len);
 
 	// Store a reference for Link and Incentive elements
@@ -713,7 +713,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			}
 			return false;
 		}
-		child = this->parseElement(t);
+		child = this->parseElement(t, true);
 		if (child == nullptr) {
 			return false;
 		}
@@ -747,7 +747,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 		if (continuation) {
-			s += " ";
+			s += ' ';
 		}
 		s += _codec->decode96a(t->value(), _key, false);
 		continuation = true;
@@ -788,9 +788,9 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		}
 
 		// Set visibility
-		if (instruction == "A") {
+		if (instruction == RegisteredToken) {
 			ref->visibility(VisibilityRegistered);
-		} else if (instruction == "Z") {
+		} else if (instruction == UnregisteredToken) {
 			ref->visibility(VisibilityUnregistered);
 		} else {
 			this->expectedString(t, "valid incentive instruction", instruction);
@@ -860,7 +860,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		} else {
 			auto v = _document->meta(key);
 			if (! v.empty()) {
-				v += " ";
+				v += ' ';
 			}
 			v += val;
 			_document->meta(key, v);
@@ -881,17 +881,13 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	int index = Strings::toInt(t->value());
-	if (index < 0) {
+	int refIndex = Strings::toInt(t->value());
+	if (refIndex < 0) {
 		this->expectedInt(t);
 		return false;
 	}
-	auto parent = std::static_pointer_cast<Element>(e->parent());
-	if (parent->elementType() == ElementHyperpng) {
-		index += 1; // Links contained in hyperpngs point to the interactive region
-	}
 
-	return this->linkOrDefer(t, e, index);
+	return this->linkOrDefer(t, e, refIndex);
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
@@ -1034,7 +1030,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
-	VersionType v {Version96a};
+	VersionType v = Version96a;
 
 	e->visibility(VisibilityNone);
 	this->parseCommentElement(e);

@@ -31,7 +31,7 @@ int main(int argc, const char* argv[]) {
 	UHS::ParserOptions parserOpt;
 	UHS::WriterOptions writerOpt;
 
-	for (int i {1}; i < argc; ++i) {
+	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') { // Parse options
 			switch (argv[i][1]) {
 			case 'd':
