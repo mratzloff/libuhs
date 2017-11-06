@@ -255,15 +255,15 @@ public:
 	TextNode();
 	virtual ~TextNode();
 	const std::string& toString() const;
-	const std::string& value() const;
-	void value(const std::string v);
+	const std::string& body() const;
+	void body(const std::string s);
 	void addFormat(Format f);
 	void removeFormat(Format f);
 	bool hasFormat(Format f) const;
 	Format format() const;
 
 private:
-	std::string _value;
+	std::string _body;
 	Format _fmt;
 };
 
@@ -281,14 +281,16 @@ public:
 	void index(int i);
 	int length();
 	void length(int l);
+	const std::string label() const;
+	void label(const std::string s);
+	const std::string& body() const;
+	void body(const std::string s);
 	bool visible(bool registered) const;
 	VisibilityType visibility() const;
 	void visibility(VisibilityType v);
 	const std::map<std::string, std::string>& attrs() const;
-	const std::string& attr(const std::string& key) const;
-	void attr(const std::string& key, const std::string value);
-	const std::string& value() const;
-	void value(const std::string v);
+	const std::string attr(const std::string& key) const;
+	void attr(const std::string key, const std::string value);
 	const std::weak_ptr<Element> ref() const;
 	void ref(const std::weak_ptr<Element> ref);
 	bool isMedia() const;
@@ -298,9 +300,10 @@ private:
 	ElementType _elementType;
 	int _index;
 	int _length;
+	std::string _label;
+	std::string _body;
 	VisibilityType _visibility;
 	std::map<std::string, std::string> _attrs;
-	std::string _value;
 	std::weak_ptr<Element> _ref;
 };
 

@@ -22,6 +22,7 @@ std::shared_ptr<Error> Scanner::error() {
 void Scanner::scan() {
 	bool beforeCompatSep {true};
 	int expectedIndexLine {-1};
+	int expectedStringLine {-1};
 	std::size_t prevTextLen {0};
 	std::size_t offset {0};
 
@@ -83,6 +84,13 @@ void Scanner::scan() {
 			continue;
 		}
 
+		// All descriptors are immediately followed by a string label
+		if (_line == expectedStringLine) {
+			_out.send(std::make_shared<Token>(TokenString, offset, _line, 0, text));
+			expectedStringLine = -1;
+			continue;
+		}
+
 		// Check for exact line matches
 		if (text == Token::CompatSep) {
 			beforeCompatSep = false;
@@ -105,6 +113,7 @@ void Scanner::scan() {
 				if (elementType == ElementLink) {
 					expectedIndexLine = _line + 2;
 				}
+				expectedStringLine = _line + 1;
 			} else if (std::regex_match(text, matches, _dataAddressRegex)) {
 				this->scanDataAddress(matches, offset);
 			} else if (std::regex_match(text, matches, _hyperpngRegionRegex)) {

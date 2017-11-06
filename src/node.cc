@@ -69,15 +69,15 @@ TextNode::TextNode() : Node(NodeText) {}
 TextNode::~TextNode() {}
 
 const std::string& TextNode::toString() const {
-	return _value;
+	return _body;
 }
 
-const std::string& TextNode::value() const {
-	return _value;
+const std::string& TextNode::body() const {
+	return _body;
 }
 
-void TextNode::value(const std::string v) {
-	_value = v;
+void TextNode::body(const std::string s) {
+	_body = s;
 }
 
 void TextNode::addFormat(Format f) {

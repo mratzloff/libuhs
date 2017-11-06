@@ -95,7 +95,7 @@ const std::string Element::elementTypeString() const {
 
 void Element::appendString(const std::string s) {
 	auto n = std::make_shared<TextNode>();
-	n->value(s);
+	n->body(s);
 	this->appendChild(n);
 }
 
@@ -105,6 +105,22 @@ int Element::index() {
 
 int Element::length() {
 	return _length;
+}
+
+const std::string Element::label() const {
+	return _label;
+}
+
+void Element::label(const std::string s) {
+	_label = s;
+}
+
+const std::string& Element::body() const {
+	return _body;
+}
+
+void Element::body(const std::string s) {
+	_body = s;
 }
 
 bool Element::visible(bool registered) const {
@@ -125,20 +141,18 @@ const std::map<std::string, std::string>& Element::attrs() const {
 	return _attrs;
 }
 
-const std::string& Element::attr(const std::string& key) const {
-	return _attrs.at(key);
+const std::string Element::attr(const std::string& key) const {
+	std::string s;
+	try {
+		s = _attrs.at(key);
+	} catch (const std::out_of_range& ex) {
+		// Ignore
+	}
+	return s;
 }
 
-void Element::attr(const std::string& key, const std::string value) {
+void Element::attr(const std::string key, const std::string value) {
 	_attrs[key] = value;
-}
-
-const std::string& Element::value() const {
-	return _value;
-}
-
-void Element::value(const std::string v) {
-	_value = v;
 }
 
 const std::weak_ptr<Element> Element::ref() const {

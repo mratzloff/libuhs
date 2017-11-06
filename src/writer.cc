@@ -67,7 +67,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 			switch (n->nodeType()) {
 			case NodeText:
 				tn = std::static_pointer_cast<TextNode>(n);
-				(*j)["children"].append(tn->value());
+				(*j)["children"].append(tn->body());
 				break;
 			case NodeElement:
 				e = std::static_pointer_cast<Element>(n);
@@ -75,15 +75,16 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 				if (! e->visible(_registered)) {
 					break;
 				}
+				object["label"] = e->label();
 
 				if (e->isMedia()) {
 					fname = _mediaDir + "/" + std::to_string(e->index()) + "." + e->mediaExt();
 					fout.open(fname, std::ofstream::out | std::ofstream::binary);
-					fout << e->value();
+					fout << e->body();
 					fout.close();
-					object["value"] = fname;
+					object["body"] = fname;
 				} else {
-					object["value"] = e->value();
+					object["body"] = e->body();
 				}
 
 				attrs = e->attrs();

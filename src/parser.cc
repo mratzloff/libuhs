@@ -256,7 +256,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 				label += '?';
 			}
 		}
-		e->value(label);
+		e->label(label);
 
 		parent->appendChild(e);
 
@@ -284,7 +284,6 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 			}
 			return false;
 		}
-		std::string encodedLabel {t->value()};
 		int index {t->line()};
 
 		std::shared_ptr<Node> parent;
@@ -301,8 +300,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 		}
 
 		auto n = std::make_shared<TextNode>();
-		std::string label {_codec->decode88a(encodedLabel)};
-		n->value(label);
+		n->body(_codec->decode88a(t->value()));
 		parent->appendChild(n);
 
 		if (index == lastHintIndex) {
@@ -314,12 +312,12 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 
 bool Parser::parse88aCreditElement(int index) {
 	std::shared_ptr<Token> t;
+
 	auto e = std::make_shared<Element>(ElementCredit, index);
-	e->value("Credits");
+	e->label("Credits");
 	_document->appendChild(e);
 
 	// Body
-	auto n = std::make_shared<TextNode>();
 	std::string s;
 	bool continuation = false;
 
@@ -331,8 +329,7 @@ bool Parser::parse88aCreditElement(int index) {
 
 		switch (t->type()) {
 		case TokenEOF:
-			n->value(s);
-			e->appendChild(n);
+			e->appendString(s);
 			_done = true;
 			return true;
 		case TokenString:
@@ -343,8 +340,7 @@ bool Parser::parse88aCreditElement(int index) {
 			continuation = true;
 			break;
 		case TokenCompatSep:
-			n->value(s);
-			e->appendChild(n);
+			e->appendString(s);
 			return true;
 		default:
 			this->unexpected(t);
@@ -382,9 +378,8 @@ bool Parser::parse96a() {
 			this->parseData(t);
 			break;
 		default:
-			// TODO: Once all elements are handled,
-			// return this->unexpected(t);
-			break;
+			this->unexpected(t);
+			return false;
 		}
 	}
 	return true;
@@ -429,6 +424,16 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 		return nullptr;
 	}
 
+	// Label
+	t = this->expect(TokenString);
+	if (_err != nullptr) {
+		if (_err->type() == ErrorEOF) {
+			this->unexpected(t);
+		}
+		return nullptr;
+	}
+	e->label(t->value());
+
 	switch (elementType) {
 	case ElementUnknown:   /* No further processing required */ break;
 	case ElementBlank:     /* No further processing required */ break;
@@ -451,30 +456,12 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 	if (! ok) {
 		return nullptr;
 	}
-	if (elementType == ElementSubject && ! _isTitleSet) {
-		_document->title(e->value());
-		_key = _codec->createKey(_document->title());
-		_isTitleSet = true;
-	}
-
 	return e;
 }
 
 bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 
-	// Label
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-	std::string label {t->value()};
-	e->attr("label", label);
-
-	// Body
 	int len = e->length();
 	std::string s;
 	bool continuation = false;
@@ -504,23 +491,13 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 	}
-	e->value(s);
+	e->body(s);
 
 	return true;
 }
 
 bool Parser::parseDataElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
-
-	// Label
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-	e->attr("label", t->value());
 
 	// Offset
 	std::size_t offset;
@@ -567,7 +544,7 @@ expectDataLength:
 
 	// Data
 	this->addDataCallback(offset, len, [=](std::string data) {
-		e->value(data);
+		e->body(data);
 	});
 
 	return true;
@@ -577,16 +554,6 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 	std::shared_ptr<Element> child;
 	std::string s;
-
-	// Label
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-	e->attr("label", t->value());
 
 	// Parse child elements
 	int len = e->length();
@@ -767,15 +734,6 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 
 	e->visibility(VisibilityNone);
 
-	// Ignore nested text separator
-	t = this->expect(TokenNestedTextSep);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-
 	// Read and decode visibility instructions
 	int len = e->length();
 	bool continuation = false;
@@ -794,7 +752,11 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		s += _codec->decode96a(t->value(), _key, false);
 		continuation = true;
 	}
-	e->value(s);
+	e->body(s);
+
+	if (s.empty()) {
+		return true; // No instructions to process
+	}
 
 	// Process instructions
 	auto markers = Strings::split(s, " ");
@@ -847,15 +809,6 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 	std::tm tm;
 
 	e->visibility(VisibilityNone);
-
-	// Ignore nested text separator
-	t = this->expect(TokenNestedTextSep);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
 
 	// Key-value pairs followed by a notice
 	int len = e->length();
@@ -919,16 +872,6 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 
 bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
-
-	// Label
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-	e->attr("label", t->value());
 
 	// Ref index
 	t = this->expect(TokenIndex);
@@ -994,31 +937,37 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 
 bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
+	std::shared_ptr<Element> child;
 
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
+	if (! _isTitleSet) {
+		_document->title(e->label());
+		_key = _codec->createKey(_document->title());
+		_isTitleSet = true;
 	}
-	e->value(t->value());
+	int len = e->length();
+
+	for (int i = 3; i <= len; i += child->length()) {
+		// Length
+		t = this->expect(TokenLength);
+		if (_err != nullptr) {
+			if (_err->type() == ErrorEOF) {
+				this->unexpected(t);
+			}
+			return false;
+		}
+
+		// Child element
+		child = this->parseElement(t);
+		if (child == nullptr) {
+			return false;
+		}
+	}
 
 	return true;
 }
 
 bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
-
-	// Label
-	t = this->expect(TokenString);
-	if (_err != nullptr) {
-		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
-		}
-		return false;
-	}
-	e->attr("label", t->value());
 
 	// Format
 	t = this->expect(TokenDataType);
@@ -1078,7 +1027,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 			}
 		}
 		auto value = Strings::rtrim(Strings::join(lines, "\n"), '\n');
-		e->value(value);
+		e->body(value);
 	});
 
 	return true;
@@ -1090,7 +1039,7 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 	e->visibility(VisibilityNone);
 	this->parseCommentElement(e);
 
-	auto versionString = e->attr("label");
+	auto versionString = e->label();
 	if (versionString == "91a") {
 		v = Version91a;
 	} else if (versionString == "95a") {
