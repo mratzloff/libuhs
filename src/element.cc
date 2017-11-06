@@ -149,4 +149,21 @@ void Element::ref(const std::weak_ptr<Element> ref) {
 	_ref = ref;
 }
 
+bool Element::isMedia() const {
+	return (_elementType == ElementGifa
+			|| _elementType == ElementHyperpng
+			|| _elementType == ElementOverlay
+			|| _elementType == ElementSound);
+}
+
+const std::string Element::mediaExt() const {
+	switch (_elementType) {
+	case ElementGifa:     return "gif";
+	case ElementHyperpng: return "png";
+	case ElementOverlay:  return "png";
+	case ElementSound:    return "wav";
+	default:              return "";
+	}
+}
+
 }

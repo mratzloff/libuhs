@@ -1,3 +1,4 @@
+#include <fstream>
 #include <iostream>
 #include "json.h"
 #include "uhs.h"
@@ -6,6 +7,7 @@ namespace UHS {
 
 Writer::Writer(std::ostream& out, const WriterOptions& opt)
 	: _out {out}
+	, _mediaDir {opt.mediaDir}
 	, _registered {opt.registered}
 {}
 
@@ -59,6 +61,8 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 		// Assemble JSON object
 		if (!visited) {
 			Json::Value map(Json::objectValue), object(Json::objectValue);
+			std::string fname;
+			std::ofstream fout;
 
 			switch (n->nodeType()) {
 			case NodeText:
@@ -72,8 +76,12 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 					break;
 				}
 
-				if (false) { // TODO: If binary, write to output directory.
-					object["value"] = "/path/to/file";
+				if (e->isMedia()) {
+					fname = _mediaDir + "/" + std::to_string(e->index()) + "." + e->mediaExt();
+					fout.open(fname, std::ofstream::out | std::ofstream::binary);
+					fout << e->value();
+					fout.close();
+					object["value"] = fname;
 				} else {
 					object["value"] = e->value();
 				}

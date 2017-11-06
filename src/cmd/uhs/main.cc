@@ -16,7 +16,7 @@ void printHelp() {
 	std::cout
 		<< "uhs " << UHS::Version << "\n\n"
 		<< "Usage: uhs [options] <file>\n"
-		<< "-d <dir>\tDirectory to write embedded files to\n"
+		<< "-d <dir>\tDirectory to write media files to\n"
 		<< "    --88a\tRead in 88a mode\n"
 		<< "    --unregistered\tRead in unregistered mode\n"
 		<< "    --debug\tPrint debugging statements\n"
@@ -40,8 +40,7 @@ int main(int argc, const char* argv[]) {
 					std::cerr << "uhs: error: -d requires a parameter\n";
 					return Err;
 				}
-				dir = argv[i];
-				// TODO: Expand this path
+				writerOpt.mediaDir = argv[i];
 				break;
 			case 'v':
 				printVersion();

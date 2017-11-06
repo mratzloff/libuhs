@@ -291,6 +291,8 @@ public:
 	void value(const std::string v);
 	const std::weak_ptr<Element> ref() const;
 	void ref(const std::weak_ptr<Element> ref);
+	bool isMedia() const;
+	const std::string mediaExt() const;
 
 private:
 	ElementType _elementType;
@@ -475,6 +477,7 @@ private:
 
 struct WriterOptions {
 	bool registered {true};
+	std::string mediaDir;
 };
 
 class Writer {
@@ -487,6 +490,7 @@ public:
 protected:
 	std::ostream& _out;
 	std::shared_ptr<Error> _err;
+	std::string _mediaDir;
 	bool _registered;
 };
 
