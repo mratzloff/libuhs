@@ -440,7 +440,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t) {
 	case ElementIncentive: ok = this->parseIncentiveElement(e); break;
 	case ElementInfo:      ok = this->parseInfoElement(e);      break;
 	case ElementLink:      ok = this->parseLinkElement(e);      break;
-	case ElementNesthint:  ok = this->parseNesthintElement(e);  break;
+	case ElementNesthint:  ok = this->parseHintElement(e);      break;
 	case ElementOverlay:   ok = this->parseOverlayElement(e);   break;
 	case ElementSound:     ok = this->parseDataElement(e);      break;
 	case ElementSubject:   ok = this->parseSubjectElement(e);   break;
@@ -575,6 +575,8 @@ expectDataLength:
 
 bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
+	std::shared_ptr<Element> child;
+	std::string s;
 
 	// Label
 	t = this->expect(TokenString);
@@ -584,12 +586,10 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	e->value(t->value());
+	e->attr("label", t->value());
 
-	// Body
+	// Parse child elements
 	int len = e->length();
-	auto n = std::make_shared<TextNode>();
-	std::string s;
 	bool continuation = false;
 
 	for (int i = 3; i <= len; ++i) {
@@ -603,7 +603,11 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			if (continuation) {
 				s += ' ';
 			}
-			s += _codec->decode88a(t->value());
+			if (e->elementType() == ElementNesthint) {
+				s += _codec->decode96a(t->value(), _key, false);
+			} else {
+				s += _codec->decode88a(t->value());
+			}
 			continuation = true;
 			break;
 		case TokenNestedTextSep:
@@ -611,23 +615,56 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 				this->expected(t, "string");
 				return false;
 			}
-			n->value(s);
-			e->appendChild(n);
-			n = std::make_shared<TextNode>();
-			s.clear();
+			if (! s.empty()) {
+				e->appendString(s);
+				s.clear();
+			}
 			continuation = false;
 			break;
 		case TokenParagraphSep:
 			s += "\n\n";
 			continuation = false;
 			break;
+		case TokenNestedElementSep:
+			if (i == len || e->elementType() != ElementNesthint) {
+				this->expected(t, "string");
+				return false;
+			}
+
+			// Append current text node
+			if (! s.empty()) {
+				e->appendString(s);
+				s.clear();
+			}
+			continuation = false;
+
+			// Length
+			t = this->expect(TokenLength);
+			if (_err != nullptr) {
+				if (_err->type() == ErrorEOF) {
+					this->unexpected(t);
+				}
+				return false;
+			}
+
+			// Child element
+			child = this->parseElement(t);
+			if (child == nullptr) {
+				return false;
+			}
+			i += child->length();
+
+			break;
 		default:
 			this->unexpected(t);
 			return false;
 		}
 	}
-	n->value(s);
-	e->appendChild(n);
+
+	// Append current text node
+	if (! s.empty()) {
+		e->appendString(s);
+	}
 
 	return true;
 }
@@ -912,11 +949,6 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 	}
 
 	return this->linkOrDefer(t, e, index);
-}
-
-bool Parser::parseNesthintElement(std::shared_ptr<Element> e) {
-	// TODO: Fill this in
-	return true;
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {

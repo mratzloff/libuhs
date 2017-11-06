@@ -276,6 +276,7 @@ public:
 	virtual ~Element();
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
+	void appendString(const std::string s);
 	int index();
 	void index(int i);
 	int length();
@@ -445,7 +446,6 @@ private:
 	bool parseInfoElement(std::shared_ptr<Element> e);
 	bool parseIncentiveElement(std::shared_ptr<Element> e);
 	bool parseLinkElement(std::shared_ptr<Element> e);
-	bool parseNesthintElement(std::shared_ptr<Element> e);
 	bool parseOverlayElement(std::shared_ptr<Element> e);
 	bool parseSubjectElement(std::shared_ptr<Element> e);
 	bool parseTextElement(std::shared_ptr<Element> e);

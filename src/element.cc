@@ -93,6 +93,12 @@ const std::string Element::elementTypeString() const {
 	return Element::typeString(_elementType);
 }
 
+void Element::appendString(const std::string s) {
+	auto n = std::make_shared<TextNode>();
+	n->value(s);
+	this->appendChild(n);
+}
+
 int Element::index() {
 	return _index;
 }
