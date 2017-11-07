@@ -658,7 +658,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 		auto x1 = t->value();
-		if (Strings::toInt(x1) < 0) {
+		if (Strings::toInt(x1) == Strings::NaN) {
 			this->expectedInt(t);
 			return false;
 		}
@@ -672,7 +672,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 		auto y1 = t->value();
-		if (Strings::toInt(y1) < 0) {
+		if (Strings::toInt(y1) == Strings::NaN) {
 			this->expectedInt(t);
 			return false;
 		}
@@ -686,7 +686,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 		auto x2 = t->value();
-		if (Strings::toInt(x2) < 0) {
+		if (Strings::toInt(x2) == Strings::NaN) {
 			this->expectedInt(t);
 			return false;
 		}
@@ -700,7 +700,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			return false;
 		}
 		auto y2 = t->value();
-		if (Strings::toInt(y2) < 0) {
+		if (Strings::toInt(y2) == Strings::NaN) {
 			this->expectedInt(t);
 			return false;
 		}
@@ -881,11 +881,13 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 		}
 		return false;
 	}
-	int refIndex = Strings::toInt(t->value());
+	auto body = t->value();
+	int refIndex = Strings::toInt(body);
 	if (refIndex < 0) {
 		this->expectedInt(t);
 		return false;
 	}
+	e->body(body);
 
 	return this->linkOrDefer(t, e, refIndex);
 }
@@ -907,7 +909,7 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 		return false;
 	}
 	auto x = t->value();
-	if (Strings::toInt(x) < 0) {
+	if (Strings::toInt(x) == Strings::NaN) {
 		this->expectedInt(t);
 		return false;
 	}
@@ -922,7 +924,7 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 		return false;
 	}
 	auto y = t->value();
-	if (Strings::toInt(y) < 0) {
+	if (Strings::toInt(y) == Strings::NaN) {
 		this->expectedInt(t);
 		return false;
 	}
@@ -979,7 +981,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 		this->expectedInt(t);
 		return false;
 	}
-	if (format == TextFormatPreformatted || format == TextFormatPreformattedAlt) {
+	if (format == TextFormatMonospace || format == TextFormatMonospaceAlt) {
 		e->attr("preformatted", "true");
 	}
 

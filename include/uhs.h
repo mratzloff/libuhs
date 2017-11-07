@@ -45,10 +45,15 @@ enum ErrorType {
 };
 
 enum TextFormatType {
-	TextFormatNone,            // Also used for binary data
-	TextFormatPreformatted,
-	TextFormatNoneAlt,         // These two values seem to have the same effect
-	TextFormatPreformattedAlt, // when rendered, but all four are used
+	TextFormatNone,         // Also used for binary data
+	TextFormatMonospace,
+	TextFormatNoneAlt,
+	TextFormatMonospaceAlt,
+};
+
+enum TypefaceType {
+	TypefaceProportional,
+	TypefaceMonospace,
 };
 
 enum NodeType {
@@ -95,6 +100,8 @@ static constexpr const char* EOL = "\r\n";
 static constexpr const char* Version = UHS_VERSION;
 
 namespace Strings {
+
+constexpr int NaN = INT_MIN;
 
 bool isInt(const std::string& s);
 int toInt(const std::string& s);

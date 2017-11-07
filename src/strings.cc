@@ -22,11 +22,11 @@ int toInt(const std::string& s) {
 	try {
 		intVal = std::stoi(s, &idx);
 		if (idx != s.length()) {
-			intVal = -1;
+			intVal = NaN;
 		}
 	} catch (const std::invalid_argument& e) {
 		// Return value must be checked by callers
-		intVal = -1;
+		intVal = NaN;
 	}
 	return intVal;
 }
