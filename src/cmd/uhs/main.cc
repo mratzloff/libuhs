@@ -87,7 +87,7 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	std::ifstream in {file, std::ifstream::in};
+	std::ifstream in {file, std::ifstream::in | std::ifstream::binary};
 	UHS::Parser p {in, parserOpt};
 	auto document = p.parse();
 

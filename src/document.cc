@@ -3,10 +3,10 @@
 namespace UHS {
 
 Document::Document()
-	: _root(std::make_shared<Node>(NodeContainer))
-	, _version(Version88a)
-	, _meta(std::make_shared<std::map<std::string, std::string>>())
-	, _validCRC(false)
+	: _root {std::make_shared<Node>(NodeContainer)}
+	, _version {Version88a}
+	, _meta {std::make_shared<std::map<std::string, std::string>>()}
+	, _validCRC {false}
 {};
 
 Document::~Document() {}

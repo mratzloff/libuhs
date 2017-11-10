@@ -412,7 +412,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool ind
 	auto e = std::make_shared<Element>(elementType, index, len);
 
 	// Store a reference for Link and Incentive elements
-	_elementMap[index] = e;
+	_elements[index] = e;
 
 	ok = this->findAndLinkParent(e, t);
 	if (! ok) {
@@ -781,7 +781,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		// Look up referenced element
 		std::shared_ptr<Element> ref;
 		try {
-			ref = _elementMap.at(index);
+			ref = _elements.at(index);
 		} catch (const std::out_of_range& ex) {
 			this->indexNotFound(t, index);
 			return false;
@@ -1114,7 +1114,7 @@ bool Parser::link(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fro
 	std::weak_ptr<Element> ref; 
 
 	try {
-		ref = _elementMap.at(toIndex);
+		ref = _elements.at(toIndex);
 	} catch (const std::out_of_range& ex) {
 		this->indexNotFound(fromToken, toIndex);
 		return false;

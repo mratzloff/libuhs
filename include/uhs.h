@@ -101,6 +101,8 @@ static constexpr const char* Version = UHS_VERSION;
 
 namespace Strings {
 
+typedef std::map<const std::string, const std::string> CharacterMap;
+
 constexpr int NaN = INT_MIN;
 
 bool isInt(const std::string& s);
@@ -420,14 +422,20 @@ private:
 
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
+	static constexpr const char* AsciiEncStartToken = "#a+";
+	static constexpr const char* AsciiEncEndToken = "#a-";
+	static constexpr const char* HyperlinkStartToken = "#h+";
+	static constexpr const char* HyperlinkEndToken = "#h-";
 	static constexpr const char* InfoKeyValueSep = "=";
-	static constexpr const char* InlineStartToken = "#w+";
-	static constexpr const char* InlineEndToken = "#w.";
 	static constexpr const char* NoticeToken = ">";
-	static constexpr const char* PreformattedStartToken = "#p-";
-	static constexpr const char* PreformattedEndToken = "#p+";
+	static constexpr const char* NumberSignToken = "##";
+	static constexpr const char* ProportionalStartToken = "#p+";
+	static constexpr const char* ProportionalEndToken = "#p-";
 	static constexpr const char* RegisteredToken = "A";
 	static constexpr const char* UnregisteredToken = "Z";
+	static constexpr const char* WordWrapStartToken = "#w+";
+	static constexpr const char* WordWrapEndToken = "#w-";
+	static constexpr const char* WordWrapEndTokenAlt = "#w.";
 
 	VersionType _version;
 	bool _debug;
@@ -436,7 +444,7 @@ private:
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
-	ElementMap _elementMap;
+	ElementMap _elements;
 	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;

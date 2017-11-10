@@ -32,16 +32,16 @@ valgrind: all
 	valgrind --verbose --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes $(command)
 
 $(jsoncpp): $(jsoncpp-sources)
-	$(CXX) $(FLAGS_CONTRIB) -Icontrib/jsoncpp/json -c $< -o $@
+	$(CXX) $(FLAGS_CONTRIB) -I contrib/jsoncpp/json -c $< -o $@
 
 obj/%.o: src/%.cc
-	$(CXX) $(CXXFLAGS) -Icontrib/jsoncpp/json -Iinclude -c $< -o $@
+	$(CXX) $(CXXFLAGS) -I contrib/jsoncpp/json -I include -c $< -o $@
 
 $(library): $(jsoncpp-objects) $(library-objects)
 	ar rcs $@ $(library-objects)
 
 $(command): $(jsoncpp-objects) $(command-objects)
-	$(CXX) $(CXXFLAGS) -Iinclude $^ -o $@ $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -I include $^ -o $@ $(LDFLAGS)
 
 obj:
 	mkdir -p obj/cmd/uhs
