@@ -5,6 +5,7 @@
 #define UHS_MAX_DEPTH 16
 
 #include <ctime>
+#include <fstream>
 #include <istream>
 #include <map>
 #include <memory>
@@ -133,6 +134,26 @@ private:
 	std::string _message;
 };
 
+class Pipe {
+public:
+	typedef std::function<void(const char*, std::streamsize n)> Handler;
+
+	Pipe(std::ifstream& in);
+	virtual ~Pipe();
+	void addHandler(Handler h);
+	void read();
+	bool good();
+	bool eof();
+	std::shared_ptr<Error> error();
+
+private:
+	static const std::size_t ReadLen = 1024;
+	std::ifstream& _in;
+	std::size_t _offset = 0;
+	std::vector<Handler> _handlers;
+	std::shared_ptr<Error> _err;
+};
+
 class Scanner;
 
 class Token {
@@ -177,18 +198,18 @@ private:
 
 class Scanner {
 public:
-	Scanner(std::istream& in);
+	Scanner(std::shared_ptr<Pipe> p);
 	virtual ~Scanner();
-	std::shared_ptr<Error> error();
-	void scan();
+	void scan(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::shared_ptr<Token> next();
+	std::shared_ptr<Error> error();
 
 private:
-	class TokenQueue {
+	class TokenChannel {
 	public:
-		TokenQueue();
-		virtual ~TokenQueue();
+		TokenChannel();
+		virtual ~TokenChannel();
 		bool send(std::shared_ptr<Token> t);
 		std::shared_ptr<Token> receive();
 		bool empty();
@@ -201,31 +222,30 @@ private:
 		bool _open;
 	};
 
-	static const int LineLen = 80;
-
 	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
 	const std::regex _dataAddressRegex {"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
 	const std::regex _hyperpngRegionRegex {"^([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,}) ([0-9]{4,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) ([0-9]{4,}) ([0-9]{4,})$"};
 
-	std::istream& _in;
+	std::shared_ptr<Pipe> _pipe;
 	std::shared_ptr<Error> _err;
-	TokenQueue _out;
-	int _line;
-	std::size_t _column;
-	std::size_t _offset;
 	std::string _buf;
+	int _line = 1;
+	std::size_t _offset = 0;
+	bool _beforeCompatSep = true;
+	bool _binaryMode = false;
+	int _expectedIndexLine = -1;
+	int _expectedStringLine = -1;
+	TokenChannel _out;
 
-	ElementType scanDescriptor(std::smatch m, std::size_t offset);
-	void scanData(std::smatch m, std::size_t offset, std::vector<TokenType> tokens);
-	void scanDataAddress(std::smatch m, std::size_t offset);
-	void scanHyperpngRegion(std::smatch m, std::size_t offset);
-	void scanOverlayAddress(std::smatch m, std::size_t offset);
-	void eof();
-	char peek();
-	char read();
-	void handleReadError();
-	std::shared_ptr<Error> formatError(std::shared_ptr<Error> err) const;
+	void scanLine();
+	void scanData();
+	ElementType scanDescriptor(std::smatch m);
+	void scanDataAddress(std::smatch m);
+	void scanHyperpngRegion(std::smatch m);
+	void scanOverlayAddress(std::smatch m);
+	void scanMatches(std::smatch m, std::vector<TokenType> tokens);
+	void sendEOF(std::size_t column);
 };
 
 class Node : public std::enable_shared_from_this<Node> {
@@ -374,7 +394,7 @@ struct ParserOptions {
 
 class Parser {
 public:
-	Parser(std::istream& in, const ParserOptions& opt);
+	Parser(std::ifstream& in, const ParserOptions& opt);
 	virtual ~Parser();
 	std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
@@ -440,6 +460,7 @@ private:
 	VersionType _version;
 	bool _debug;
 	std::shared_ptr<Error> _err;
+	std::shared_ptr<Pipe> _pipe;
 	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;

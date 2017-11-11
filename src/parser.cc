@@ -5,10 +5,11 @@
 
 namespace UHS {
 
-Parser::Parser(std::istream& in, const ParserOptions& opt)
+Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _debug {opt.debug}
-	, _scanner {std::make_unique<Scanner>(in)}
+	, _pipe {std::make_shared<Pipe>(in)}
+	, _scanner {std::make_unique<Scanner>(_pipe)}
 	, _codec {std::make_unique<Codec>()}
 	, _document {std::make_shared<Document>()}
 	, _isTitleSet {false}
@@ -62,7 +63,7 @@ std::shared_ptr<Error> Parser::error() {
 
 std::shared_ptr<Document> Parser::parse() {
 	std::thread thread {[&] {
-		_scanner->scan();
+		_pipe->read();
 	}};
 
 	bool ok = this->parse88a();
