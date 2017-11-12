@@ -16,26 +16,39 @@ Scanner::~Scanner() {}
 void Scanner::scan(const char* buf, std::streamsize n) {
 	std::size_t len = n;
 	std::string s {buf, len};
+	std::size_t i = 0;
 
-	for (std::size_t i = 0; i < len; ++i) {
-		char c = s[i];
-
-		if (! _binaryMode) {
-			switch (c) {
-			case Token::DataSep:
-				_binaryMode = true;
-				break; // This is safe; it always occurs at column 0
-			case '\n':
-				this->scanLine();
-				_offset += _buf.length() + 1;
-				_buf.clear();
-				++_line;
-				continue;
-			}
+	while (i < len) {
+		if (_binaryMode) {
+			_buf += s.substr(i);
+			i = s.length();
+			break;
 		}
-		_buf += c;
-	}
 
+		switch (s[i]) {
+		case Token::DataSep:
+			_binaryMode = true;
+			++i;
+			break; // This is safe; it always occurs at column 0
+		case '\n':
+			this->scanLine();
+			_offset += _buf.length() + 1;
+			_buf.clear();
+			++_line;
+			++i;
+			continue;
+		}
+
+		auto pos = s.find_first_of("\xA1\n", i);
+		if (pos == std::string::npos) {
+			_buf += s.substr(i);
+			i = s.length();
+		} else {
+			_buf += s.substr(i, pos - i);
+			i = pos;
+		}
+	}
+ 
 	std::size_t column = _buf.length();
 
 	if (_pipe->eof()) {
