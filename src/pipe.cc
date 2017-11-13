@@ -26,12 +26,10 @@ void Pipe::read() {
 		_offset += n;
 	}
 	n = _in.gcount();
-	if (n > 0) {
-		for (const auto& h : _handlers) {
-			h(buf, n);
-		}
-		_offset += n;
+	for (const auto& h : _handlers) {
+		h(buf, n);
 	}
+	_offset += n;
 	_in.close();
 }
 

@@ -4,6 +4,7 @@
 #define UHS_VERSION "1.0.0-alpha"
 #define UHS_MAX_DEPTH 16
 
+#include <cstdint>
 #include <ctime>
 #include <fstream>
 #include <istream>
@@ -64,6 +65,7 @@ enum NodeType {
 };
 
 enum TokenType {
+	TokenCRC,
 	TokenCompatSep,
 	TokenCoordX,
 	TokenCoordY,
@@ -154,6 +156,33 @@ private:
 	std::shared_ptr<Error> _err;
 };
 
+class CRC {
+public:
+	CRC(std::shared_ptr<Pipe> p);
+	virtual ~CRC();
+	void update(const char* buf, std::streamsize n);
+	void finalize();
+	bool valid();
+
+private:
+	static const int TableLen = 256;
+	static const uint16_t Polynomial = 0x8005;
+	static const uint16_t CastMask = 0xFFFF;
+	static const uint16_t MSBMask = 0x8000;
+	static const uint16_t FinalXor = 0x0100;
+
+	std::shared_ptr<Pipe> _pipe;
+	uint16_t _table[TableLen];
+	char _buf[2]; // Checksum buffer
+	int _bufLen;
+	uint16_t _rem;
+
+	void createTable();
+	void calculate(const char* buf, std::streamsize n);
+	uint8_t reflectByte(uint8_t byte);
+	uint16_t checksum();
+};
+
 class Scanner;
 
 class Token {
@@ -239,12 +268,13 @@ private:
 	TokenChannel _out;
 
 	void scanLine();
-	void scanData();
 	ElementType scanDescriptor(std::smatch m);
 	void scanDataAddress(std::smatch m);
 	void scanHyperpngRegion(std::smatch m);
 	void scanOverlayAddress(std::smatch m);
 	void scanMatches(std::smatch m, std::vector<TokenType> tokens);
+	void sendData();
+	void sendCRC(std::size_t column);
 	void sendEOF(std::size_t column);
 };
 
@@ -356,8 +386,8 @@ public:
 	void meta(std::string key, std::string value);
 	const std::shared_ptr<std::map<std::string, std::string>> meta() const;
 	const std::string meta(std::string key) const;
-	void validCRC(bool valid);
-	bool validCRC() const;
+	void validChecksum(bool value);
+	bool validChecksum() const;
 
 private:
 	std::shared_ptr<Node> _root;
@@ -366,7 +396,7 @@ private:
 	std::size_t _length;
 	std::tm _timestamp;
 	std::shared_ptr<std::map<std::string, std::string>> _meta;
-	bool _validCRC;
+	bool _validChecksum;
 };
 
 class Codec {
@@ -461,6 +491,7 @@ private:
 	bool _debug;
 	std::shared_ptr<Error> _err;
 	std::shared_ptr<Pipe> _pipe;
+	std::unique_ptr<CRC> _crc;
 	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
@@ -503,6 +534,7 @@ private:
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::shared_ptr<Token> t);
+	void checkCRC();
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
 	bool isPunctuation(char c);

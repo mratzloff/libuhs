@@ -6,7 +6,7 @@ Document::Document()
 	: _root {std::make_shared<Node>(NodeContainer)}
 	, _version {Version88a}
 	, _meta {std::make_shared<std::map<std::string, std::string>>()}
-	, _validCRC {false}
+	, _validChecksum {false}
 {};
 
 Document::~Document() {}
@@ -85,12 +85,12 @@ const std::string Document::meta(std::string key) const {
 	return (*_meta)[key];
 }
 
-void Document::validCRC(bool valid) {
-	_validCRC = valid;
+void Document::validChecksum(bool value) {
+	_validChecksum = value;
 }
 
-bool Document::validCRC() const {
-	return _validCRC;
+bool Document::validChecksum() const {
+	return _validChecksum;
 }
 
 }

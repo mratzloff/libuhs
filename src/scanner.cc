@@ -28,8 +28,9 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 		switch (s[i]) {
 		case Token::DataSep:
 			_binaryMode = true;
+			_offset += 1;
 			++i;
-			break; // This is safe; it always occurs at column 0
+			continue;
 		case '\n':
 			this->scanLine();
 			_offset += _buf.length() + 1;
@@ -52,8 +53,20 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 	std::size_t column = _buf.length();
 
 	if (_pipe->eof()) {
-		this->scanData();
-		_offset += column;
+		if (! _beforeCompatSep) {
+			// Peel off two-byte CRC value
+			std::size_t crcColumn = column - 2;
+			auto crc = _buf.substr(crcColumn);
+			_buf = _buf.substr(0, crcColumn);
+
+			this->sendData();
+
+			_buf = crc;
+			_offset += crcColumn;
+			this->sendCRC(crcColumn);
+
+			_offset += 2;
+		}
 		this->sendEOF(column);
 		return;
 	}
@@ -142,10 +155,6 @@ void Scanner::scanLine() {
 	}
 }
 
-void Scanner::scanData() {
-	_out.send(std::make_shared<Token>(TokenData, _offset + 1, _line, 1, _buf));
-}
-
 ElementType Scanner::scanDescriptor(std::smatch m) {
 	_out.send(std::make_shared<Token>(
 		TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
@@ -177,6 +186,14 @@ void Scanner::scanMatches(std::smatch m, std::vector<TokenType> tokens) {
 				tokens[i], _offset, _line, m.position(i+1), Strings::ltrim(m[i+1].str(), '0')));
 		}
 	}
+}
+
+void Scanner::sendData() {
+	_out.send(std::make_shared<Token>(TokenData, _offset, _line, 1, _buf));
+}
+
+void Scanner::sendCRC(std::size_t column) {
+	_out.send(std::make_shared<Token>(TokenCRC, _offset, _line, column, _buf));
 }
 
 void Scanner::sendEOF(std::size_t column) {

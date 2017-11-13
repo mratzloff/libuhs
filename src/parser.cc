@@ -9,6 +9,7 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _debug {opt.debug}
 	, _pipe {std::make_shared<Pipe>(in)}
+	, _crc {std::make_unique<CRC>(_pipe)}
 	, _scanner {std::make_unique<Scanner>(_pipe)}
 	, _codec {std::make_unique<Codec>()}
 	, _document {std::make_shared<Document>()}
@@ -81,9 +82,6 @@ std::shared_ptr<Document> Parser::parse() {
 	}
 	
 	thread.join();
-	// _crc.finalize();
-	// _document.validCRC = _crc.valid();
-
 	return _document;
 }
 
@@ -366,9 +364,6 @@ bool Parser::parse96a() {
 		}
 
 		switch (t->type()) {
-		case TokenEOF:
-			_done = true;
-			return true;
 		case TokenLength:
 			e = this->parseElement(t);
 			if (e == nullptr) {
@@ -378,6 +373,12 @@ bool Parser::parse96a() {
 		case TokenData:
 			this->parseData(t);
 			break;
+		case TokenCRC:
+			this->checkCRC();
+			break;
+		case TokenEOF:
+			_done = true;
+			return true;
 		default:
 			this->unexpected(t);
 			return false;
@@ -1144,6 +1145,11 @@ void Parser::parseData(std::shared_ptr<Token> t) {
 		offset = handler.offset - t->offset();
 		handler.func(t->value().substr(offset, handler.length));
 	}
+}
+
+void Parser::checkCRC() {
+	_crc->finalize();
+	_document->validChecksum(_crc->valid());
 }
 
 // Format: DD-Mon-YY

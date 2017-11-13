@@ -1,9 +1,12 @@
+#include <iomanip>
 #include "uhs.h"
 
 namespace UHS {
 
 const std::string Token::typeString(TokenType t) {
 	switch (t) {
+	case TokenCRC:
+		return "CRC";
 	case TokenCompatSep:
 		return "CompatSep";
 	case TokenCoordX:
@@ -78,16 +81,18 @@ const std::string Token::typeString() const {
 
 const std::string Token::toString() const {
 	std::string buf {"("};
-	buf += formatToken();
+	buf += this->formatToken();
 
 	switch (_type) {
+	case TokenCRC:
+		// Fall through
 	case TokenData:
-		buf += formatByteValue();
+		buf += this->formatByteValue();
 		break;
 	case TokenIdent:
 		// Fall through
 	case TokenString:
-		buf += formatStringValue();
+		buf += this->formatStringValue();
 		break;
 	case TokenDataLength:
 		// Fall through
@@ -102,7 +107,7 @@ const std::string Token::toString() const {
 	case TokenCoordX:
 		// Fall through
 	case TokenCoordY:
-		buf += formatIntValue();
+		buf += this->formatIntValue();
 		break;
 	default:
 		break; // No special processing needed
@@ -125,6 +130,7 @@ const std::string Token::formatToken() const {
 	buf += std::to_string(_column);
 	buf += ':';
 	buf += std::to_string(_offset);
+
 	return buf;
 }
 
@@ -136,6 +142,7 @@ const std::string Token::formatIntValue() const {
 		buf += '?';
 	}
 	buf += ']';
+
 	return buf;
 }
 
@@ -143,12 +150,27 @@ const std::string Token::formatStringValue() const {
 	std::string buf {" ["};
 	buf += _value;
 	buf += ']';
+
 	return buf;
 }
 
-// todo: Fix this later
 const std::string Token::formatByteValue() const {
-	return this->formatStringValue();
+	std::ostringstream ss;
+
+	ss << std::hex << std::setfill('0') << std::uppercase;
+	int i = 0;
+	for (const auto c : _value) {
+		if (i > 0) {
+			ss << ' ';
+		}
+		ss << std::setw(2) << (int(c) & ~0xFFFFFF00);
+		++i;
+	}
+	std::string buf {" ["};
+	buf += ss.str();
+	buf += ']';
+
+	return buf;
 }
 
 }

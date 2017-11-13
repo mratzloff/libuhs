@@ -47,7 +47,11 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 
 	root["title"] = d->title();
 	root["version"] = d->versionString();
-	root["registered"] = _registered;
+
+	if (d->version() > Version88a) {
+		root["registered"] = _registered;
+		root["validChecksum"] = d->validChecksum();
+	}
 
 	if (d->version() > Version91a) {
 		root["length"] = int(d->length());

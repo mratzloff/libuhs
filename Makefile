@@ -18,7 +18,7 @@ command-sources = $(wildcard src/cmd/uhs/*.cc)
 command-objects = $(command-sources:src/%.cc=obj/%.o)
 
 .PHONY: all
-all: obj $(jsoncpp) $(library) $(command)
+all: clean obj $(jsoncpp) $(library) $(command)
 
 .PHONY: clean
 clean:
