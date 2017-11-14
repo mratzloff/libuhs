@@ -511,6 +511,7 @@ private:
 	bool parse88aElements(int firstHintIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
 	bool parse88aCreditElement(int index);
+	void parseCompatSep(std::shared_ptr<Token> t);
 
 	// 96a
 	bool parse96a();

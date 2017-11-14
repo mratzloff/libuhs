@@ -159,49 +159,39 @@ bool Parser::parse88a() {
 	}
 
 	// Credits
-	while (true) {
-		// Anything from this point on is part of the 88a credits
-		// until EOF or the backwards compatibility token.
-		auto t = this->next();
-		if (_err != nullptr) {
-			return false;
-		}
 
-		switch (t->type()) {
-		case TokenString:
-			// Fall through
-		case TokenCreditSep: // This is informal but common
-			ok = this->parse88aCreditElement(t->line());
-			if (! ok) {
-				this->unexpected(t);
-				return false;
-			}
-			if (_done) {
-				return true;
-			}
-			// Fall through
-		case TokenCompatSep:
-			if (_version == Version88a) {
-				_done = true;
-			} else {
-				// 96a element indexes don't include compatibility header
-				_indexOffset = t->line();
+	// Anything from this point on is part of the 88a credits
+	// until EOF or the backwards compatibility token.
+	t = this->next();
+	if (_err != nullptr) {
+		return false;
+	}
 
-				// Throw away what we've done so far
-				_document = std::make_shared<Document>();
-				_document->version(Version96a);
-			}
-			return true;
-		case TokenEOF:
-			_done = true;
-			return true;
-		default:
+	switch (t->type()) {
+	case TokenString:
+		// Fall through
+	case TokenCreditSep: // This is informal but common
+		ok = this->parse88aCreditElement(t->line());
+		if (! ok) {
 			this->unexpected(t);
-			return false;
 		}
+		return ok;
+	case TokenCompatSep:
+		this->parseCompatSep(t);
+		return true;
+	case TokenEOF:
+		_done = true;
+		return true;
+	default:
+		this->unexpected(t);
+		return false;
 	}
 }
 
+// This (correctly) errors out on sq4g.uhs, which appears to be miscompiled
+// from the original 88a precompile format. The official Windows reader
+// doesn't support it, and as far as I can tell no one bothered to ever check
+// it. It mostly works in the DOS reader, but it looks glitchy.
 bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 	std::shared_ptr<Token> t;
 	ElementType elementType {ElementSubject};
@@ -343,6 +333,7 @@ bool Parser::parse88aCreditElement(int index) {
 			continuation = true;
 			break;
 		case TokenCompatSep:
+			this->parseCompatSep(t);
 			e->appendString(s);
 			return true;
 		default:
@@ -350,6 +341,20 @@ bool Parser::parse88aCreditElement(int index) {
 			return false;
 		}
 	}
+}
+
+void Parser::parseCompatSep(std::shared_ptr<Token> t) {
+	if (_version == Version88a) {
+		_done = true;
+		return;
+	}
+
+	// 96a element indexes don't include compatibility header
+	_indexOffset = t->line();
+
+	// Throw away what we've done so far
+	_document = std::make_shared<Document>();
+	_document->version(Version96a);
 }
 
 //================================= UHS 96a =================================//
