@@ -158,18 +158,19 @@ bool Parser::parse88a() {
 		return false;
 	}
 
-	// Credits (or compatibility separator)
+	// Credits
 	while (true) {
+		// Anything from this point on is part of the 88a credits
+		// until EOF or the backwards compatibility token.
 		auto t = this->next();
 		if (_err != nullptr) {
 			return false;
 		}
 
 		switch (t->type()) {
-		case TokenEOF:
-			_done = true;
-			return true;
-		case TokenCreditSep:
+		case TokenString:
+			// Fall through
+		case TokenCreditSep: // This is informal but common
 			ok = this->parse88aCreditElement(t->line());
 			if (! ok) {
 				this->unexpected(t);
@@ -190,6 +191,9 @@ bool Parser::parse88a() {
 				_document = std::make_shared<Document>();
 				_document->version(Version96a);
 			}
+			return true;
+		case TokenEOF:
+			_done = true;
 			return true;
 		default:
 			this->unexpected(t);
