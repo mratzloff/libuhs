@@ -730,6 +730,9 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
+// A bad instruction ("12") is found at the beginning or end of the incentive
+// list for four files, so we skip bad instructions of that form. Fourteen
+// other files have indexes pointing to nowhere, so we skip those, too.
 bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 	std::string s;
@@ -767,16 +770,16 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 	for (const auto& marker : markers) {
 		markerLen = marker.length();
 
-		// Split index-instruction pair
+		// Split instruction (e.g., "3Z")
 		if (markerLen < 2) {
-			this->expectedString(t, "incentive index-instruction pair", marker);
+			this->expectedString(t, "incentive instruction", marker);
 		}
 		auto indexString = marker.substr(0, markerLen-1);
 		auto instruction = marker.substr(markerLen-1, 1);
 
 		int index = Strings::toInt(indexString);
 		if (index < 0) {
-			this->expectedString(t, "valid incentive index integer", indexString);
+			this->expectedString(t, "valid incentive index", indexString);
 			return false;
 		}
 
@@ -785,8 +788,8 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		try {
 			ref = _elements.at(index);
 		} catch (const std::out_of_range& ex) {
-			this->indexNotFound(t, index);
-			return false;
+			// Skip bad instructions
+			continue;
 		}
 
 		// Set visibility
@@ -795,7 +798,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		} else if (instruction == UnregisteredToken) {
 			ref->visibility(VisibilityUnregistered);
 		} else {
-			this->expectedString(t, "valid incentive instruction", instruction);
+			// Skip bad instructions
 		}
 	}
 
