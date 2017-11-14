@@ -1261,7 +1261,7 @@ void Parser::expectedInt(std::shared_ptr<Token> t) {
 
 void Parser::unexpected(std::shared_ptr<Token> t) {
 	_err = std::make_shared<Error>(ErrorToken);
-	_err->messagef("unexpected %s", t->typeString().data());
+	_err->messagef("unexpected %s token", t->typeString().data());
 	_err->finalize(t->line(), t->column());
 }
 

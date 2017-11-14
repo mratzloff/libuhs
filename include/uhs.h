@@ -158,6 +158,8 @@ private:
 
 class CRC {
 public:
+	static const int Size = 2;
+
 	CRC(std::shared_ptr<Pipe> p);
 	virtual ~CRC();
 	void update(const char* buf, std::streamsize n);
@@ -268,13 +270,13 @@ private:
 	TokenChannel _out;
 
 	void scanLine();
-	ElementType scanDescriptor(std::smatch m);
-	void scanDataAddress(std::smatch m);
-	void scanHyperpngRegion(std::smatch m);
-	void scanOverlayAddress(std::smatch m);
-	void scanMatches(std::smatch m, std::vector<TokenType> tokens);
-	void sendData();
-	void sendCRC(std::size_t column);
+	ElementType scanDescriptor(const std::smatch& m);
+	void scanDataAddress(const std::smatch& m);
+	void scanHyperpngRegion(const std::smatch& m);
+	void scanOverlayAddress(const std::smatch& m);
+	void scanMatches(const std::smatch& m, const std::vector<TokenType>& tokens);
+	void sendData(const std::string& data, std::size_t column);
+	void sendCRC(const std::string& crc, std::size_t column);
 	void sendEOF(std::size_t column);
 };
 

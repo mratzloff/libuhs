@@ -125,6 +125,10 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 	std::size_t from = 0;
 	std::size_t to;
 
+	if (s.length() == 0) {
+		return items;
+	}
+
 	int i = 0;
 	while (true) {
 		if (n > 0 && i >= n) {

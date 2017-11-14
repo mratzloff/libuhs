@@ -17,6 +17,8 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 	std::size_t len = n;
 	std::string s {buf, len};
 	std::size_t i = 0;
+	std::size_t column = 0;
+	std::size_t lineLen;
 
 	while (i < len) {
 		if (_binaryMode) {
@@ -25,22 +27,7 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 			break;
 		}
 
-		switch (s[i]) {
-		case Token::DataSep:
-			_binaryMode = true;
-			_offset += 1;
-			++i;
-			continue;
-		case '\n':
-			this->scanLine();
-			_offset += _buf.length() + 1;
-			_buf.clear();
-			++_line;
-			++i;
-			continue;
-		}
-
-		auto pos = s.find_first_of("\xA1\n", i);
+		auto pos = s.find_first_of("\x1A\n", i);
 		if (pos == std::string::npos) {
 			_buf += s.substr(i);
 			i = s.length();
@@ -48,26 +35,44 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 			_buf += s.substr(i, pos - i);
 			i = pos;
 		}
+
+		if (s[i] == Token::DataSep || s[i] == '\n') {
+			this->scanLine();
+			lineLen = _buf.length() + 1;
+			_buf.clear();
+			_offset += lineLen;
+
+			switch (s[i]) {
+			case Token::DataSep:
+				_binaryMode = true;
+				column = lineLen;
+				break;
+			case '\n':
+				++_line;
+				column = 0;
+				break;
+			}
+			++i;
+		}
 	}
- 
-	std::size_t column = _buf.length();
 
 	if (_pipe->eof()) {
+		auto eofColumn = column + _buf.length();
+
 		if (! _beforeCompatSep) {
-			// Peel off two-byte CRC value
-			std::size_t crcColumn = column - 2;
-			auto crc = _buf.substr(crcColumn);
-			_buf = _buf.substr(0, crcColumn);
+			auto crcColumn = eofColumn - CRC::Size;
+			auto dataLen = crcColumn - column;
+			auto data = _buf.substr(0, dataLen);
+			this->sendData(data, column);
 
-			this->sendData();
+			column = crcColumn;
+			_offset += column;
+			auto crc = _buf.substr(dataLen);
+			this->sendCRC(crc, column);
 
-			_buf = crc;
-			_offset += crcColumn;
-			this->sendCRC(crcColumn);
-
-			_offset += 2;
+			_offset += CRC::Size;
 		}
-		this->sendEOF(column);
+		this->sendEOF(eofColumn);
 		return;
 	}
 	if (! _pipe->good()) {
@@ -100,6 +105,7 @@ std::shared_ptr<Error> Scanner::error() {
 void Scanner::scanLine() {
 	// UHS uses DOS-style line endings
 	auto s = Strings::rtrim(_buf, '\r');
+
 	// Empty lines may be safely ignored
 	if (s.length() == 0) {
 		return;
@@ -155,7 +161,7 @@ void Scanner::scanLine() {
 	}
 }
 
-ElementType Scanner::scanDescriptor(std::smatch m) {
+ElementType Scanner::scanDescriptor(const std::smatch& m) {
 	_out.send(std::make_shared<Token>(
 		TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
@@ -164,22 +170,22 @@ ElementType Scanner::scanDescriptor(std::smatch m) {
 	return Element::elementType(ident);
 }
 
-void Scanner::scanDataAddress(std::smatch m) {
+void Scanner::scanDataAddress(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenDataType, TokenDataOffset, TokenDataLength};
 	this->scanMatches(m, tokens);
 }
 
-void Scanner::scanHyperpngRegion(std::smatch m) {
+void Scanner::scanHyperpngRegion(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenCoordX, TokenCoordY, TokenCoordX, TokenCoordY};
 	this->scanMatches(m, tokens);
 }
 
-void Scanner::scanOverlayAddress(std::smatch m) {
+void Scanner::scanOverlayAddress(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenCoordX, TokenCoordY};
 	this->scanMatches(m, tokens);
 }
 
-void Scanner::scanMatches(std::smatch m, std::vector<TokenType> tokens) {
+void Scanner::scanMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (m[i+1].length() > 0) {
 			_out.send(std::make_shared<Token>(
@@ -188,12 +194,12 @@ void Scanner::scanMatches(std::smatch m, std::vector<TokenType> tokens) {
 	}
 }
 
-void Scanner::sendData() {
-	_out.send(std::make_shared<Token>(TokenData, _offset, _line, 1, _buf));
+void Scanner::sendData(const std::string& data, std::size_t column) {
+	_out.send(std::make_shared<Token>(TokenData, _offset, _line, column, data));
 }
 
-void Scanner::sendCRC(std::size_t column) {
-	_out.send(std::make_shared<Token>(TokenCRC, _offset, _line, column, _buf));
+void Scanner::sendCRC(const std::string& crc, std::size_t column) {
+	_out.send(std::make_shared<Token>(TokenCRC, _offset, _line, column, crc));
 }
 
 void Scanner::sendEOF(std::size_t column) {
