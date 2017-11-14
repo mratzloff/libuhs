@@ -552,6 +552,9 @@ expectDataLength:
 	return true;
 }
 
+// A hint element ending with a nested text separator ("-") should be an
+// error, but bluforce.uhs has an instance of this. This actually screws
+// up the official reader UI for that particular hint.
 bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Token> t;
 	std::shared_ptr<Element> child;
@@ -580,10 +583,6 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			continuation = true;
 			break;
 		case TokenNestedTextSep:
-			if (i == len) {
-				this->expected(t, "string");
-				return false;
-			}
 			if (! s.empty()) {
 				e->appendString(s);
 				s.clear();
