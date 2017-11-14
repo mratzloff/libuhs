@@ -419,11 +419,16 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool ind
 
 	// Create element
 	auto elementType = Element::elementType(ident);
-	int index = this->offsetIndex(t->line()) - (indexByRegion ? 1 : 0);
+	int index = this->offsetIndex(t->line());
 	auto e = std::make_shared<Element>(elementType, index, len);
 
 	// Store a reference for Link and Incentive elements
 	_elements[index] = e;
+
+	// Internal hyperpng links refer to region index instead of element index
+	if (indexByRegion) {
+		_elements[index-1] = e;
+	}
 
 	ok = this->findAndLinkParent(e, t);
 	if (! ok) {
