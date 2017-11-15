@@ -185,7 +185,7 @@ private:
 	uint16_t checksum();
 };
 
-class Scanner;
+class Tokenizer;
 
 class Token {
 public:
@@ -206,7 +206,7 @@ public:
 	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 
 private:
-	friend class Scanner;
+	friend class Tokenizer;
 
 	static constexpr const char* Signature = "UHS";
 	static constexpr const char* CompatSep = "** END OF 88A FORMAT **";
@@ -227,11 +227,11 @@ private:
 	const std::string formatByteValue() const;
 };
 
-class Scanner {
+class Tokenizer {
 public:
-	Scanner(std::shared_ptr<Pipe> p);
-	virtual ~Scanner();
-	void scan(const char* buf, std::streamsize n);
+	Tokenizer(std::shared_ptr<Pipe> p);
+	virtual ~Tokenizer();
+	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::shared_ptr<Token> next();
 	std::shared_ptr<Error> error();
@@ -269,15 +269,15 @@ private:
 	int _expectedStringLine = -1;
 	TokenChannel _out;
 
-	void scanLine();
-	ElementType scanDescriptor(const std::smatch& m);
-	void scanDataAddress(const std::smatch& m);
-	void scanHyperpngRegion(const std::smatch& m);
-	void scanOverlayAddress(const std::smatch& m);
-	void scanMatches(const std::smatch& m, const std::vector<TokenType>& tokens);
-	void sendData(const std::string& data, std::size_t column);
-	void sendCRC(const std::string& crc, std::size_t column);
-	void sendEOF(std::size_t column);
+	void tokenizeLine();
+	ElementType tokenizeDescriptor(const std::smatch& m);
+	void tokenizeDataAddress(const std::smatch& m);
+	void tokenizeHyperpngRegion(const std::smatch& m);
+	void tokenizeOverlayAddress(const std::smatch& m);
+	void tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens);
+	void tokenizeData(const std::string& data, std::size_t column);
+	void tokenizeCRC(const std::string& crc, std::size_t column);
+	void tokenizeEOF(std::size_t column);
 };
 
 class Node : public std::enable_shared_from_this<Node> {
@@ -493,8 +493,8 @@ private:
 	bool _debug;
 	std::shared_ptr<Error> _err;
 	std::shared_ptr<Pipe> _pipe;
+	std::unique_ptr<Tokenizer> _tokenizer;
 	std::unique_ptr<CRC> _crc;
-	std::unique_ptr<Scanner> _scanner;
 	std::unique_ptr<Codec> _codec;
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
@@ -552,7 +552,7 @@ private:
 };
 
 struct WriterOptions {
-	bool registered {true};
+	bool registered {true}; // JSONWriter only
 	std::string mediaDir;
 };
 
@@ -561,7 +561,7 @@ public:
 	Writer(std::ostream& out, const WriterOptions& opt);
 	virtual ~Writer();
 	std::shared_ptr<Error> error();
-	virtual bool write(std::shared_ptr<Document>) const;
+	virtual bool write(std::shared_ptr<Document> d) const;
 
 protected:
 	std::ostream& _out;
@@ -574,7 +574,7 @@ class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions& opt);
 	virtual ~JSONWriter();
-	bool write(std::shared_ptr<Document>) const override;
+	bool write(std::shared_ptr<Document> d) const override;
 };
 
 }

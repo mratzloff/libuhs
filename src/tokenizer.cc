@@ -5,15 +5,15 @@
 
 namespace UHS {
 
-Scanner::Scanner(std::shared_ptr<Pipe> p) : _pipe {p} {
+Tokenizer::Tokenizer(std::shared_ptr<Pipe> p) : _pipe {p} {
 	_pipe->addHandler([=](const char* s, std::streamsize n) {
-		this->scan(s, n);
+		this->tokenize(s, n);
 	});
 }
 
-Scanner::~Scanner() {}
+Tokenizer::~Tokenizer() {}
 
-void Scanner::scan(const char* buf, std::streamsize n) {
+void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 	std::size_t len = n;
 	std::string s {buf, len};
 	std::size_t i = 0;
@@ -37,7 +37,7 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 		}
 
 		if (s[i] == Token::DataSep || s[i] == '\n') {
-			this->scanLine();
+			this->tokenizeLine();
 			lineLen = _buf.length() + 1;
 			_buf.clear();
 			_offset += lineLen;
@@ -63,16 +63,16 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 			auto crcColumn = eofColumn - CRC::Size;
 			auto dataLen = crcColumn - column;
 			auto data = _buf.substr(0, dataLen);
-			this->sendData(data, column);
+			this->tokenizeData(data, column);
 
 			column = crcColumn;
 			_offset += column;
 			auto crc = _buf.substr(dataLen);
-			this->sendCRC(crc, column);
+			this->tokenizeCRC(crc, column);
 
 			_offset += CRC::Size;
 		}
-		this->sendEOF(eofColumn);
+		this->tokenizeEOF(eofColumn);
 		return;
 	}
 	if (! _pipe->good()) {
@@ -84,15 +84,15 @@ void Scanner::scan(const char* buf, std::streamsize n) {
 	}
 }
 
-bool Scanner::hasNext() {
+bool Tokenizer::hasNext() {
 	return _out.ok();
 }
 
-std::shared_ptr<Token> Scanner::next() {
+std::shared_ptr<Token> Tokenizer::next() {
 	return _out.receive();
 }
 
-std::shared_ptr<Error> Scanner::error() {
+std::shared_ptr<Error> Tokenizer::error() {
 	if (_err == nullptr) {
 		return nullptr;
 	}
@@ -102,7 +102,7 @@ std::shared_ptr<Error> Scanner::error() {
 	return _err;
 }
 
-void Scanner::scanLine() {
+void Tokenizer::tokenizeLine() {
 	// UHS uses DOS-style line endings
 	auto s = Strings::rtrim(_buf, '\r');
 
@@ -144,24 +144,24 @@ void Scanner::scanLine() {
 		// Check for line match patterns
 		std::smatch matches;
 		if (std::regex_match(s, matches, _descriptorRegex)) {
-			ElementType elementType = this->scanDescriptor(matches);
+			ElementType elementType = this->tokenizeDescriptor(matches);
 			if (elementType == ElementLink) {
 				_expectedIndexLine = _line + 2;
 			}
 			_expectedStringLine = _line + 1;
 		} else if (std::regex_match(s, matches, _dataAddressRegex)) {
-			this->scanDataAddress(matches);
+			this->tokenizeDataAddress(matches);
 		} else if (std::regex_match(s, matches, _hyperpngRegionRegex)) {
-			this->scanHyperpngRegion(matches);
+			this->tokenizeHyperpngRegion(matches);
 		} else if (std::regex_match(s, matches, _overlayAddressRegex)) {
-			this->scanOverlayAddress(matches);
+			this->tokenizeOverlayAddress(matches);
 		} else {
 			_out.send(std::make_shared<Token>(TokenString, _offset, _line, 0, s));
 		}
 	}
 }
 
-ElementType Scanner::scanDescriptor(const std::smatch& m) {
+ElementType Tokenizer::tokenizeDescriptor(const std::smatch& m) {
 	_out.send(std::make_shared<Token>(
 		TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
@@ -170,22 +170,22 @@ ElementType Scanner::scanDescriptor(const std::smatch& m) {
 	return Element::elementType(ident);
 }
 
-void Scanner::scanDataAddress(const std::smatch& m) {
+void Tokenizer::tokenizeDataAddress(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenDataType, TokenDataOffset, TokenDataLength};
-	this->scanMatches(m, tokens);
+	this->tokenizeMatches(m, tokens);
 }
 
-void Scanner::scanHyperpngRegion(const std::smatch& m) {
+void Tokenizer::tokenizeHyperpngRegion(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenCoordX, TokenCoordY, TokenCoordX, TokenCoordY};
-	this->scanMatches(m, tokens);
+	this->tokenizeMatches(m, tokens);
 }
 
-void Scanner::scanOverlayAddress(const std::smatch& m) {
+void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
 	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenCoordX, TokenCoordY};
-	this->scanMatches(m, tokens);
+	this->tokenizeMatches(m, tokens);
 }
 
-void Scanner::scanMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
+void Tokenizer::tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (m[i+1].length() > 0) {
 			_out.send(std::make_shared<Token>(
@@ -194,23 +194,23 @@ void Scanner::scanMatches(const std::smatch& m, const std::vector<TokenType>& to
 	}
 }
 
-void Scanner::sendData(const std::string& data, std::size_t column) {
+void Tokenizer::tokenizeData(const std::string& data, std::size_t column) {
 	_out.send(std::make_shared<Token>(TokenData, _offset, _line, column, data));
 }
 
-void Scanner::sendCRC(const std::string& crc, std::size_t column) {
+void Tokenizer::tokenizeCRC(const std::string& crc, std::size_t column) {
 	_out.send(std::make_shared<Token>(TokenCRC, _offset, _line, column, crc));
 }
 
-void Scanner::sendEOF(std::size_t column) {
+void Tokenizer::tokenizeEOF(std::size_t column) {
 	_out.send(std::make_shared<Token>(TokenEOF, _offset, _line, column));
 }
 
-Scanner::TokenChannel::TokenChannel() : _open(true) {}
+Tokenizer::TokenChannel::TokenChannel() : _open(true) {}
 
-Scanner::TokenChannel::~TokenChannel() {}
+Tokenizer::TokenChannel::~TokenChannel() {}
 
-bool Scanner::TokenChannel::send(std::shared_ptr<Token> t) {
+bool Tokenizer::TokenChannel::send(std::shared_ptr<Token> t) {
 	if (! _open) {
 		return false;
 	}
@@ -220,7 +220,7 @@ bool Scanner::TokenChannel::send(std::shared_ptr<Token> t) {
 	return true;
 }
 
-std::shared_ptr<Token> Scanner::TokenChannel::receive() {
+std::shared_ptr<Token> Tokenizer::TokenChannel::receive() {
 	while (this->empty()) { // Unlikely
 		if (! this->ok()) {
 			return nullptr;
@@ -234,17 +234,17 @@ std::shared_ptr<Token> Scanner::TokenChannel::receive() {
 	return t;
 }
 
-bool Scanner::TokenChannel::empty() {
+bool Tokenizer::TokenChannel::empty() {
 	std::lock_guard<std::mutex> m {_mutex};
 	return _queue.empty();
 }
 
-bool Scanner::TokenChannel::ok() {
+bool Tokenizer::TokenChannel::ok() {
 	std::lock_guard<std::mutex> m {_mutex};
 	return _open || ! _queue.empty();
 }
 
-void Scanner::TokenChannel::close() {
+void Tokenizer::TokenChannel::close() {
 	_open = false;
 }
 

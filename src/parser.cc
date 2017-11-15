@@ -9,8 +9,8 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _debug {opt.debug}
 	, _pipe {std::make_shared<Pipe>(in)}
+	, _tokenizer {std::make_unique<Tokenizer>(_pipe)}
 	, _crc {std::make_unique<CRC>(_pipe)}
-	, _scanner {std::make_unique<Scanner>(_pipe)}
 	, _codec {std::make_unique<Codec>()}
 	, _document {std::make_shared<Document>()}
 	, _isTitleSet {false}
@@ -1067,8 +1067,8 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 }
 
 std::shared_ptr<Token> Parser::next() {
-	auto t = _scanner->next();
-	auto err = _scanner->error();
+	auto t = _tokenizer->next();
+	auto err = _tokenizer->error();
 
 	if (err != nullptr) {
 		_err = err;
