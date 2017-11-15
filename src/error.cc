@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-Error::Error() : _type {ErrorUnknown} {}
+Error::Error() {}
 
 Error::Error(ErrorType t) : _type {t} {}
 

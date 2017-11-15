@@ -75,11 +75,11 @@ const std::string Element::typeString(ElementType t) {
 	}
 }
 
-Element::Element(ElementType t, int index, int length) : Node(NodeElement)
+Element::Element(ElementType t, int index, int length)
+	: Node(NodeElement)
 	, _elementType {t}
 	, _index {index}
 	, _length {length}
-	, _visibility {VisibilityAll}
 {}
 
 Element::~Element() {}

@@ -11,9 +11,7 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	, _pipe {std::make_shared<Pipe>(in)}
 	, _tokenizer {_pipe}
 	, _crc {_pipe}
-	, _document {std::make_shared<Document>()}
-	, _isTitleSet {false}
-	, _done {false}
+	, _document {std::make_shared<Document>(Version88a)}
 {}
 
 Parser::~Parser() {}

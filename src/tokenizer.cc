@@ -206,7 +206,7 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 	_out.send(std::make_shared<Token>(TokenEOF, _offset, _line, column));
 }
 
-Tokenizer::TokenChannel::TokenChannel() : _open(true) {}
+Tokenizer::TokenChannel::TokenChannel() {}
 
 Tokenizer::TokenChannel::~TokenChannel() {}
 

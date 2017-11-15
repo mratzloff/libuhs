@@ -132,7 +132,7 @@ public:
 	void finalize(int line, int column);
 
 private:
-	int _type;
+	int _type = ErrorUnknown;
 	std::string _message;
 };
 
@@ -176,8 +176,8 @@ private:
 	std::shared_ptr<Pipe> _pipe;
 	uint16_t _table[TableLen];
 	char _buf[2]; // Checksum buffer
-	int _bufLen;
-	uint16_t _rem;
+	int _bufLen = 0;
+	uint16_t _rem = 0x0000;
 
 	void createTable();
 	void calculate(const char* buf, std::streamsize n);
@@ -216,9 +216,9 @@ private:
 	static const char DataSep = '\x1A';
 
 	const TokenType _type;
-	int _line;
-	std::size_t _column;
-	std::size_t _offset;
+	int _line = 0;
+	std::size_t _column = 0;
+	std::size_t _offset = 0;
 	std::string _value;
 
 	const std::string formatToken() const;
@@ -250,7 +250,7 @@ private:
 	private:
 		std::queue<std::shared_ptr<Token>> _queue;
 		std::mutex _mutex;
-		bool _open;
+		bool _open = true;
 	};
 
 	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
@@ -265,8 +265,8 @@ private:
 	std::size_t _offset = 0;
 	bool _beforeCompatSep = true;
 	bool _binaryMode = false;
-	int _expectedIndexLine = -1;
-	int _expectedStringLine = -1;
+	int _expectedIndexLine = 0;
+	int _expectedStringLine = 0;
 	TokenChannel _out;
 
 	void tokenizeLine();
@@ -359,11 +359,11 @@ public:
 
 private:
 	ElementType _elementType;
-	int _index;
-	int _length;
+	int _index = 0;
+	int _length = 0;
+	VisibilityType _visibility = VisibilityAll;
 	std::string _label;
 	std::string _body;
-	VisibilityType _visibility;
 	std::map<std::string, std::string> _attrs;
 	std::weak_ptr<Element> _ref;
 };
@@ -371,6 +371,7 @@ private:
 class Document {
 public:
 	Document();
+	Document(VersionType version);
 	virtual ~Document();
 	void appendChild(std::shared_ptr<Node> n);
 	std::string toString() const;
@@ -395,10 +396,10 @@ private:
 	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
-	std::size_t _length;
+	std::size_t _length = 0;
 	std::tm _timestamp;
 	std::shared_ptr<std::map<std::string, std::string>> _meta;
-	bool _validChecksum;
+	bool _validChecksum = false;
 };
 
 class Codec {
@@ -489,8 +490,8 @@ private:
 	static constexpr const char* WordWrapEndToken = "#w-";
 	static constexpr const char* WordWrapEndTokenAlt = "#w.";
 
-	VersionType _version;
-	bool _debug;
+	VersionType _version = Version96a;
+	bool _debug = false;
 	std::shared_ptr<Error> _err;
 	std::shared_ptr<Pipe> _pipe;
 	Tokenizer _tokenizer;
@@ -502,9 +503,9 @@ private:
 	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
-	int _indexOffset;
-	bool _isTitleSet;
-	bool _done;
+	int _indexOffset = 0;
+	bool _isTitleSet = false;
+	bool _done = false;
 
 	// 88a
 	bool parse88a();
@@ -552,7 +553,7 @@ private:
 };
 
 struct WriterOptions {
-	bool registered {true}; // JSONWriter only
+	bool registered = true; // JSONWriter only
 	std::string mediaDir;
 };
 
