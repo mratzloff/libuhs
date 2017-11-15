@@ -9,9 +9,8 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _debug {opt.debug}
 	, _pipe {std::make_shared<Pipe>(in)}
-	, _tokenizer {std::make_unique<Tokenizer>(_pipe)}
-	, _crc {std::make_unique<CRC>(_pipe)}
-	, _codec {std::make_unique<Codec>()}
+	, _tokenizer {_pipe}
+	, _crc {_pipe}
 	, _document {std::make_shared<Document>()}
 	, _isTitleSet {false}
 	, _done {false}
@@ -20,7 +19,7 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 Parser::~Parser() {}
 
 Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
-	: node(n), min(min), max(max) {}
+	: node {n}, min {min}, max {max} {}
 
 Parser::NodeRange::~NodeRange() {}
 
@@ -242,7 +241,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 
 		auto e = std::make_shared<Element>(elementType, index);
 
-		std::string label {_codec->decode88a(encodedLabel)};
+		std::string label {_codec.decode88a(encodedLabel)};
 		if (parent != _document->root()) {
 			char finalChar = label[label.length()-1];
 			if (!this->isPunctuation(finalChar)) {
@@ -293,7 +292,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 		}
 
 		auto n = std::make_shared<TextNode>();
-		n->body(_codec->decode88a(t->value()));
+		n->body(_codec.decode88a(t->value()));
 		parent->appendChild(n);
 
 		if (index == lastHintIndex) {
@@ -590,9 +589,9 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 				s += ' ';
 			}
 			if (e->elementType() == ElementNesthint) {
-				s += _codec->decode96a(t->value(), _key, false);
+				s += _codec.decode96a(t->value(), _key, false);
 			} else {
-				s += _codec->decode88a(t->value());
+				s += _codec.decode88a(t->value());
 			}
 			continuation = true;
 			break;
@@ -767,7 +766,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		if (continuation) {
 			s += ' ';
 		}
-		s += _codec->decode96a(t->value(), _key, false);
+		s += _codec.decode96a(t->value(), _key, false);
 		continuation = true;
 	}
 	e->body(s);
@@ -957,7 +956,7 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 
 	if (! _isTitleSet) {
 		_document->title(e->label());
-		_key = _codec->createKey(_document->title());
+		_key = _codec.createKey(_document->title());
 		_isTitleSet = true;
 	}
 	int len = e->length();
@@ -1037,7 +1036,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	this->addDataCallback(offset, len, [=](std::string data) {
 		auto lines = Strings::split(data, UHS::EOL);
 		for (auto line = lines.begin(); line != lines.end(); ++line) {
-			*line = _codec->decode96a(*line, _key, true);
+			*line = _codec.decode96a(*line, _key, true);
 			if (*line == Token::ParagraphSep) {
 				*line = "";
 			}
@@ -1067,8 +1066,8 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 }
 
 std::shared_ptr<Token> Parser::next() {
-	auto t = _tokenizer->next();
-	auto err = _tokenizer->error();
+	auto t = _tokenizer.next();
+	auto err = _tokenizer.error();
 
 	if (err != nullptr) {
 		_err = err;
@@ -1164,8 +1163,8 @@ void Parser::parseData(std::shared_ptr<Token> t) {
 }
 
 void Parser::checkCRC() {
-	_crc->finalize();
-	_document->validChecksum(_crc->valid());
+	_crc.finalize();
+	_document->validChecksum(_crc.valid());
 }
 
 // Format: DD-Mon-YY

@@ -493,9 +493,9 @@ private:
 	bool _debug;
 	std::shared_ptr<Error> _err;
 	std::shared_ptr<Pipe> _pipe;
-	std::unique_ptr<Tokenizer> _tokenizer;
-	std::unique_ptr<CRC> _crc;
-	std::unique_ptr<Codec> _codec;
+	Tokenizer _tokenizer;
+	CRC _crc;
+	Codec _codec;
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
 	ElementMap _elements;
