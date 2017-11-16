@@ -198,7 +198,6 @@ bool Parser::parse88a() {
 bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 	std::shared_ptr<Token> t;
 	ElementType elementType {ElementSubject};
-	std::shared_ptr<Element> p;
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -268,9 +267,6 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 
 bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 	std::shared_ptr<Token> t;
-	std::shared_ptr<Element> p;
-	std::shared_ptr<TextNode> c;
-	std::vector<std::shared_ptr<Node>> children;
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -1034,10 +1030,10 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	// Data
 	this->addDataCallback(offset, len, [=](std::string data) {
 		auto lines = Strings::split(data, UHS::EOL);
-		for (auto line = lines.begin(); line != lines.end(); ++line) {
-			*line = _codec.decode96a(*line, _key, true);
-			if (*line == Token::ParagraphSep) {
-				*line = "";
+		for (auto& line : lines) {
+			line = _codec.decode96a(line, _key, true);
+			if (line == Token::ParagraphSep) {
+				line = "";
 			}
 		}
 		auto value = Strings::rtrim(Strings::join(lines, "\n"), '\n');
