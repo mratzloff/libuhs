@@ -1,11 +1,10 @@
 #include <fstream>
 #include <iostream>
-#include "json.h"
 #include "uhs.h"
 
 namespace UHS {
 
-Writer::Writer(std::ostream& out, const WriterOptions& opt)
+Writer::Writer(std::ostream& out, const WriterOptions opt)
 	: _out {out}
 	, _mediaDir {opt.mediaDir}
 	, _registered {opt.registered}
@@ -21,24 +20,29 @@ bool Writer::write(std::shared_ptr<Document>) const {
 	return false;
 }
 
-JSONWriter::JSONWriter(std::ostream& out, const WriterOptions& opt)
+JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
 
 JSONWriter::~JSONWriter() {}
 
 bool JSONWriter::write(std::shared_ptr<Document> d) const {
+	_out << this->serialize(d);
+	return true;
+}
+
+Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 	std::shared_ptr<Node> n;
 	std::shared_ptr<TextNode> tn;
 	std::shared_ptr<Element> e;
 	std::map<std::string, std::string> attrs;
 	bool visited = false;
 	int depth = 0;
-	Json::Value root(Json::objectValue);
+	Json::Value root {Json::objectValue};
 	Json::Value* j;
 	Json::Value* parents[UHS_MAX_DEPTH];
 
 	if (d == nullptr) {
-		return false;
+		return root;
 	}
 
 	n = d->root();
@@ -49,6 +53,9 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 	root["version"] = d->versionString();
 
 	if (d->version() > Version88a) {
+		auto header = this->serialize(d->header());
+		root["header"] = header;
+
 		root["registered"] = _registered;
 		root["validChecksum"] = d->validChecksum();
 	}
@@ -65,7 +72,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 	while (n != nullptr) {
 		// Assemble JSON object
 		if (!visited) {
-			Json::Value map(Json::objectValue), object(Json::objectValue);
+			Json::Value map {Json::objectValue}, object {Json::objectValue};
 			std::string fname;
 			std::ofstream fout;
 
@@ -139,9 +146,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 		}
 	}
 
-	_out << root;
-
-	return true;
+	return root;
 }
 
 }

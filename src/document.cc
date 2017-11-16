@@ -14,6 +14,14 @@ Document::Document(VersionType version) : Document() {
 
 Document::~Document() {}
 
+void Document::header(std::shared_ptr<Document> d) {
+	_header = d;
+}
+
+std::shared_ptr<Document> Document::header() const {
+	return _header;
+}
+
 void Document::appendChild(std::shared_ptr<Node> n) {
 	_root->appendChild(n);
 }

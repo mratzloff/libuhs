@@ -11,7 +11,6 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	, _pipe {std::make_shared<Pipe>(in)}
 	, _tokenizer {_pipe}
 	, _crc {_pipe}
-	, _document {std::make_shared<Document>(Version88a)}
 {}
 
 Parser::~Parser() {}
@@ -64,6 +63,8 @@ std::shared_ptr<Document> Parser::parse() {
 		_pipe->read();
 	}};
 
+	_document = std::make_shared<Document>(Version88a);
+
 	bool ok = this->parse88a();
 	if (! ok || _done) {
 		thread.join();
@@ -71,6 +72,11 @@ std::shared_ptr<Document> Parser::parse() {
 	}
 
 	if (_version != Version88a) {
+		// Swap parent document and set 88a header
+		auto document = std::make_shared<Document>(Version96a);
+		document->header(_document);
+		_document = document;
+
 		ok = this->parse96a();
 		if (! ok) {
 			thread.join();
@@ -173,8 +179,8 @@ bool Parser::parse88a() {
 			this->unexpected(t);
 		}
 		return ok;
-	case TokenCompatSep:
-		this->parseCompatSep(t);
+	case TokenHeaderSep:
+		this->parseHeaderSep(t);
 		return true;
 	case TokenEOF:
 		_done = true;
@@ -329,8 +335,8 @@ bool Parser::parse88aCreditElement(int index) {
 			s += t->value();
 			continuation = true;
 			break;
-		case TokenCompatSep:
-			this->parseCompatSep(t);
+		case TokenHeaderSep:
+			this->parseHeaderSep(t);
 			e->appendString(s);
 			return true;
 		default:
@@ -340,21 +346,16 @@ bool Parser::parse88aCreditElement(int index) {
 	}
 }
 
-void Parser::parseCompatSep(std::shared_ptr<Token> t) {
+//================================= UHS 96a =================================//
+
+void Parser::parseHeaderSep(std::shared_ptr<Token> t) {
 	if (_version == Version88a) {
 		_done = true;
 		return;
 	}
-
 	// 96a element indexes don't include compatibility header
 	_indexOffset = t->line();
-
-	// Throw away what we've done so far
-	_document = std::make_shared<Document>();
-	_document->version(Version96a);
 }
-
-//================================= UHS 96a =================================//
 
 bool Parser::parse96a() {
 	std::shared_ptr<Token> t;

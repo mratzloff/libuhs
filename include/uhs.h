@@ -16,6 +16,7 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include "json.h"
 
 namespace UHS {
 
@@ -66,7 +67,6 @@ enum NodeType {
 
 enum TokenType {
 	TokenCRC,
-	TokenCompatSep,
 	TokenCoordX,
 	TokenCoordY,
 	TokenCreditSep,
@@ -75,6 +75,7 @@ enum TokenType {
 	TokenDataOffset,
 	TokenDataType,
 	TokenEOF,
+	TokenHeaderSep,
 	TokenIdent,
 	TokenIndex,
 	TokenLength,
@@ -263,7 +264,7 @@ private:
 	std::string _buf;
 	int _line = 1;
 	std::size_t _offset = 0;
-	bool _beforeCompatSep = true;
+	bool _beforeHeaderSep = true;
 	bool _binaryMode = false;
 	int _expectedIndexLine = 0;
 	int _expectedStringLine = 0;
@@ -373,6 +374,8 @@ public:
 	Document();
 	Document(VersionType version);
 	virtual ~Document();
+	void header(std::shared_ptr<Document> d);
+	std::shared_ptr<Document> header() const;
 	void appendChild(std::shared_ptr<Node> n);
 	std::string toString() const;
 	const std::shared_ptr<Node> root();
@@ -393,6 +396,7 @@ public:
 	bool validChecksum() const;
 
 private:
+	std::shared_ptr<Document> _header;
 	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
@@ -512,7 +516,7 @@ private:
 	bool parse88aElements(int firstHintIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
 	bool parse88aCreditElement(int index);
-	void parseCompatSep(std::shared_ptr<Token> t);
+	void parseHeaderSep(std::shared_ptr<Token> t);
 
 	// 96a
 	bool parse96a();
@@ -559,7 +563,7 @@ struct WriterOptions {
 
 class Writer {
 public:
-	Writer(std::ostream& out, const WriterOptions& opt);
+	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer();
 	std::shared_ptr<Error> error();
 	virtual bool write(std::shared_ptr<Document> d) const;
@@ -573,9 +577,12 @@ protected:
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(std::ostream& out, const WriterOptions& opt);
+	JSONWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~JSONWriter();
 	bool write(std::shared_ptr<Document> d) const override;
+
+private:
+	Json::Value serialize(std::shared_ptr<Document> d) const;
 };
 
 }

@@ -7,7 +7,7 @@ const std::string Token::typeString(TokenType t) {
 	switch (t) {
 	case TokenCRC:
 		return "CRC";
-	case TokenCompatSep:
+	case TokenHeaderSep:
 		return "CompatSep";
 	case TokenCoordX:
 		return "CoordX";

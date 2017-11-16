@@ -59,7 +59,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 	if (_pipe->eof()) {
 		auto eofColumn = column + _buf.length();
 
-		if (! _beforeCompatSep) {
+		if (! _beforeHeaderSep) {
 			auto crcColumn = eofColumn - CRC::Size;
 			auto dataLen = crcColumn - column;
 			auto data = _buf.substr(0, dataLen);
@@ -112,7 +112,7 @@ void Tokenizer::tokenizeLine() {
 	}
 
 	// All numbers are indexes in 88a, and link elements contain an index
-	if (Strings::isInt(s) && (_beforeCompatSep || _line == _expectedIndexLine)) {
+	if (Strings::isInt(s) && (_beforeHeaderSep || _line == _expectedIndexLine)) {
 		_out.send(std::make_shared<Token>(
 			TokenIndex, _offset, _line, 0, Strings::ltrim(s, '0')));
 		_expectedIndexLine = -1;
@@ -128,8 +128,8 @@ void Tokenizer::tokenizeLine() {
 
 	// Check for exact line matches
 	if (s == Token::CompatSep) {
-		_beforeCompatSep = false;
-		_out.send(std::make_shared<Token>(TokenCompatSep, _offset, _line));
+		_beforeHeaderSep = false;
+		_out.send(std::make_shared<Token>(TokenHeaderSep, _offset, _line));
 	} else if (s == Token::CreditSep) {
 		_out.send(std::make_shared<Token>(TokenCreditSep, _offset, _line));
 	} else if (s == Token::NestedElementSep) {
