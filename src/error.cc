@@ -2,8 +2,6 @@
 
 namespace UHS {
 
-Error::Error() {}
-
 Error::Error(ErrorType t) : _type {t} {}
 
 Error::Error(ErrorType t, std::string s) : _type {t}, _message {s} {}

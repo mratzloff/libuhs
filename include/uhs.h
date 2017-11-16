@@ -120,7 +120,7 @@ std::string join(const std::vector<std::string>& s, const std::string sep);
 
 class Error {
 public:
-	Error();
+	Error() = default;
 	Error(ErrorType t);
 	Error(ErrorType t, std::string s);
 	virtual ~Error() = default;
@@ -407,7 +407,7 @@ private:
 
 class Codec {
 public:
-	Codec();
+	Codec() = default;
 	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
 	const std::string decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey = false) const;

@@ -2,8 +2,6 @@
 
 namespace UHS {
 
-Codec::Codec() {}
-
 const std::string Codec::decode88a(std::string encoded) const {
 	std::string& decoded = encoded;
 
