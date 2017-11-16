@@ -123,7 +123,7 @@ public:
 	Error();
 	Error(ErrorType t);
 	Error(ErrorType t, std::string s);
-	virtual ~Error();
+	virtual ~Error() = default;
 	int type() const;
 	void type(ErrorType t);
 	const std::string message() const;
@@ -142,7 +142,7 @@ public:
 	typedef std::function<void(const char*, std::streamsize n)> Handler;
 
 	Pipe(std::ifstream& in);
-	virtual ~Pipe();
+	virtual ~Pipe() = default;
 	void addHandler(Handler h);
 	void read();
 	bool good();
@@ -162,7 +162,7 @@ public:
 	static const int Size = 2;
 
 	CRC(std::shared_ptr<Pipe> p);
-	virtual ~CRC();
+	virtual ~CRC() = default;
 	void update(const char* buf, std::streamsize n);
 	void finalize();
 	bool valid();
@@ -196,7 +196,7 @@ public:
 	
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
 		std::size_t column = 0, std::string value = "");
-	virtual ~Token();
+	virtual ~Token() = default;
 	TokenType type() const;
 	int line() const;
 	std::size_t column() const;
@@ -231,7 +231,7 @@ private:
 class Tokenizer {
 public:
 	Tokenizer(std::shared_ptr<Pipe> p);
-	virtual ~Tokenizer();
+	virtual ~Tokenizer() = default;
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::shared_ptr<Token> next();
@@ -241,7 +241,7 @@ private:
 	class TokenChannel {
 	public:
 		TokenChannel();
-		virtual ~TokenChannel();
+		virtual ~TokenChannel() = default;
 		bool send(std::shared_ptr<Token> t);
 		std::shared_ptr<Token> receive();
 		bool empty();
@@ -284,10 +284,9 @@ private:
 class Node : public std::enable_shared_from_this<Node> {
 public:
 	Node(NodeType t);
-	virtual ~Node();
+	virtual ~Node() = default;
 	NodeType nodeType() const;
 	void appendChild(std::shared_ptr<Node> n);
-	std::vector<std::shared_ptr<Node>> children() const;
 	std::shared_ptr<Node> parent() const;
 	bool hasNextSibling() const;
 	std::shared_ptr<Node> nextSibling() const;
@@ -307,7 +306,7 @@ private:
 class ContainerNode : public Node {
 public:
 	ContainerNode();
-	virtual ~ContainerNode();
+	virtual ~ContainerNode() = default;
 };
 
 typedef uint8_t Format;
@@ -315,7 +314,7 @@ typedef uint8_t Format;
 class TextNode : public Node {
 public:
 	TextNode();
-	virtual ~TextNode();
+	virtual ~TextNode() = default;
 	const std::string& toString() const;
 	const std::string& body() const;
 	void body(const std::string s);
@@ -335,7 +334,7 @@ public:
 	static const std::string typeString(ElementType t);
 
 	Element(ElementType t, int index, int length = 0);
-	virtual ~Element();
+	virtual ~Element() = default;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
@@ -373,7 +372,7 @@ class Document {
 public:
 	Document();
 	Document(VersionType version);
-	virtual ~Document();
+	virtual ~Document() = default;
 	void header(std::shared_ptr<Document> d);
 	std::shared_ptr<Document> header() const;
 	void appendChild(std::shared_ptr<Node> n);
@@ -409,7 +408,7 @@ private:
 class Codec {
 public:
 	Codec();
-	virtual ~Codec();
+	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
 	const std::string decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey = false) const;
 	const std::string createKey(std::string secret) const;
@@ -432,7 +431,7 @@ struct ParserOptions {
 class Parser {
 public:
 	Parser(std::ifstream& in, const ParserOptions& opt);
-	virtual ~Parser();
+	virtual ~Parser() = default;
 	std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
 
@@ -447,14 +446,14 @@ private:
 		int max;
 
 		NodeRange(std::shared_ptr<Node> n, int min, int max);
-		virtual ~NodeRange();
+		virtual ~NodeRange() = default;
 	};
 
 	struct NodeRangeList {
 		std::vector<std::shared_ptr<NodeRange>> data;
 
 		NodeRangeList();
-		virtual ~NodeRangeList();
+		virtual ~NodeRangeList() = default;
 		std::shared_ptr<Node> find(int min, int max);
 		void add(std::shared_ptr<Node> n, int min, int max);
 	};
@@ -465,7 +464,7 @@ private:
 		int toIndex;
 
 		LinkData(const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
-		virtual ~LinkData();
+		virtual ~LinkData() = default;
 	};
 
 	struct DataHandler {
@@ -474,7 +473,7 @@ private:
 		DataCallback func;
 
 		DataHandler(std::size_t offset, std::size_t length, DataCallback func);
-		virtual ~DataHandler();
+		virtual ~DataHandler() = default;
 	};
 
 	static const int HeaderLen = 4;
@@ -564,7 +563,7 @@ struct WriterOptions {
 class Writer {
 public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
-	virtual ~Writer();
+	virtual ~Writer() = default;
 	std::shared_ptr<Error> error();
 	virtual bool write(std::shared_ptr<Document> d) const;
 
@@ -578,7 +577,7 @@ protected:
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
-	virtual ~JSONWriter();
+	virtual ~JSONWriter() = default;
 	bool write(std::shared_ptr<Document> d) const override;
 
 private:

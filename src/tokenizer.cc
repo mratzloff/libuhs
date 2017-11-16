@@ -11,8 +11,6 @@ Tokenizer::Tokenizer(std::shared_ptr<Pipe> p) : _pipe {p} {
 	});
 }
 
-Tokenizer::~Tokenizer() {}
-
 void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 	std::size_t len = n;
 	std::string s {buf, len};
@@ -207,8 +205,6 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 }
 
 Tokenizer::TokenChannel::TokenChannel() {}
-
-Tokenizer::TokenChannel::~TokenChannel() {}
 
 bool Tokenizer::TokenChannel::send(std::shared_ptr<Token> t) {
 	if (! _open) {

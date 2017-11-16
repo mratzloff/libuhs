@@ -10,8 +10,6 @@ Writer::Writer(std::ostream& out, const WriterOptions opt)
 	, _registered {opt.registered}
 {}
 
-Writer::~Writer() {}
-
 std::shared_ptr<Error> Writer::error() {
 	return _err;
 }
@@ -22,8 +20,6 @@ bool Writer::write(std::shared_ptr<Document>) const {
 
 JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
-
-JSONWriter::~JSONWriter() {}
 
 bool JSONWriter::write(std::shared_ptr<Document> d) const {
 	_out << this->serialize(d);
@@ -53,9 +49,7 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 	root["version"] = d->versionString();
 
 	if (d->version() > Version88a) {
-		auto header = this->serialize(d->header());
-		root["header"] = header;
-
+		root["header"] = this->serialize(d->header());
 		root["registered"] = _registered;
 		root["validChecksum"] = d->validChecksum();
 	}

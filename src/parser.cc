@@ -13,16 +13,10 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	, _crc {_pipe}
 {}
 
-Parser::~Parser() {}
-
 Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
 	: node {n}, min {min}, max {max} {}
 
-Parser::NodeRange::~NodeRange() {}
-
 Parser::NodeRangeList::NodeRangeList() : data({}) {}
-
-Parser::NodeRangeList::~NodeRangeList() {}
 
 std::shared_ptr<Node> Parser::NodeRangeList::find(int min, int max) {
 	std::shared_ptr<Node> n;
@@ -46,13 +40,9 @@ void Parser::NodeRangeList::add(std::shared_ptr<Node> n, int min, int max) {
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
 	: offset(offset), length(length), func(func) {}
 
-Parser::DataHandler::~DataHandler() {}
-
 Parser::LinkData::LinkData(
 	const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
 	: fromToken(fromToken), fromElement(fromElement), toIndex(toIndex) {}
-
-Parser::LinkData::~LinkData() {}
 
 std::shared_ptr<Error> Parser::error() {
 	return _err;

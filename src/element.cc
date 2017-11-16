@@ -82,8 +82,6 @@ Element::Element(ElementType t, int index, int length)
 	, _length {length}
 {}
 
-Element::~Element() {}
-
 ElementType Element::elementType() const {
 	return _elementType;
 }

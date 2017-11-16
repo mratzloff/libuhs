@@ -53,8 +53,6 @@ Token::Token(const TokenType tokenType, std::size_t offset, int line,
 	, _value {value}
 {}
 
-Token::~Token() {}
-
 TokenType Token::type() const {
 	return _type;
 }

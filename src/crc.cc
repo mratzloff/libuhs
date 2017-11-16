@@ -17,8 +17,6 @@ CRC::CRC(std::shared_ptr<Pipe> p) : _pipe {p}, _buf {0}, _rem {0} {
 	});
 }
 
-CRC::~CRC() {}
-
 void CRC::update(const char* buf, std::streamsize n) {
 	switch (n) {
 	case 0:

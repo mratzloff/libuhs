@@ -12,8 +12,6 @@ Document::Document(VersionType version) : Document() {
 	_version = version;
 };
 
-Document::~Document() {}
-
 void Document::header(std::shared_ptr<Document> d) {
 	_header = d;
 }

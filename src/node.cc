@@ -4,8 +4,6 @@ namespace UHS {
 
 Node::Node(NodeType t) : _nodeType {t} {}
 
-Node::~Node() {}
-
 NodeType Node::nodeType() const {
 	return _nodeType;
 }
@@ -19,17 +17,6 @@ void Node::appendChild(std::shared_ptr<Node> n) {
 		_lastChild = n;
 	}
 	n->_parent = this->shared_from_this();
-}
-
-std::vector<std::shared_ptr<Node>> Node::children() const {
-	std::vector<std::shared_ptr<Node>> v;
-	std::shared_ptr<Node> n {_firstChild};
-
-	while (n != nullptr) {
-		v.push_back(n);
-		n = n->nextSibling();
-	}
-	return v;
 }
 
 std::shared_ptr<Node> Node::parent() const {
@@ -62,11 +49,7 @@ std::shared_ptr<Node> Node::lastChild() const {
 
 ContainerNode::ContainerNode() : Node(NodeContainer) {}
 
-ContainerNode::~ContainerNode() {}
-
 TextNode::TextNode() : Node(NodeText) {}
-
-TextNode::~TextNode() {}
 
 const std::string& TextNode::toString() const {
 	return _body;

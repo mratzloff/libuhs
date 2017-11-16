@@ -9,8 +9,6 @@ Pipe::Pipe(std::ifstream& in) : _in {in} {
 	}
 }
 
-Pipe::~Pipe() {}
-
 void Pipe::addHandler(Pipe::Handler h) {
 	_handlers.push_back(h);
 }
