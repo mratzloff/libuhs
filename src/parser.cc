@@ -866,12 +866,12 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 			}
 			_document->timestamp(tm);
 		} else {
-			auto v = _document->meta(key);
+			auto v = _document->attr(key);
 			if (! v.empty()) {
 				v += ' ';
 			}
 			v += val;
-			_document->meta(key, v);
+			_document->attr(key, v);
 		}
 	}
 

@@ -3,9 +3,9 @@
 namespace UHS {
 
 Document::Document()
-	: _root {std::make_shared<Node>(NodeContainer)}
+	: Attributes()
+	, _root {std::make_shared<Node>(NodeContainer)}
 	, _version {Version88a}
-	, _meta {std::make_shared<std::map<std::string, std::string>>()}
 {}
 
 Document::Document(VersionType version) : Document() {
@@ -80,18 +80,6 @@ const std::string Document::timestampString() const {
 		return "";
 	}
 	return buf;
-}
-
-void Document::meta(std::string key, std::string value) {
-	(*_meta)[key] = value;
-}
-
-const std::shared_ptr<std::map<std::string, std::string>> Document::meta() const {
-	return _meta;
-}
-
-const std::string Document::meta(std::string key) const {
-	return (*_meta)[key];
 }
 
 void Document::validChecksum(bool value) {

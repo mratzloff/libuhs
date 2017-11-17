@@ -51,7 +51,7 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 		root["timestamp"] = d->timestampString();
 	}
 
-	for (const auto& [k, v] : *d->meta()) {
+	for (const auto& [k, v] : d->attrs()) {
 		root[k] = v;
 	}
 

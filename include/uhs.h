@@ -119,6 +119,16 @@ std::string join(const std::vector<std::string>& s, const std::string sep);
 
 }
 
+class Attributes {
+public:
+	const std::map<std::string, std::string>& attrs() const;
+	const std::string attr(const std::string& key) const;
+	void attr(const std::string key, const std::string value);
+
+private:
+	std::map<std::string, std::string> _attrs;
+};
+
 class Error {
 public:
 	Error() = default;
@@ -365,7 +375,7 @@ private:
 	Format _fmt;
 };
 
-class Element : public Node {
+class Element : public Node, public Attributes {
 public:
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
@@ -386,9 +396,6 @@ public:
 	bool visible(bool registered) const;
 	VisibilityType visibility() const;
 	void visibility(VisibilityType v);
-	const std::map<std::string, std::string>& attrs() const;
-	const std::string attr(const std::string& key) const;
-	void attr(const std::string key, const std::string value);
 	const std::weak_ptr<Element> ref() const;
 	void ref(const std::weak_ptr<Element> ref);
 	bool isMedia() const;
@@ -401,11 +408,10 @@ private:
 	VisibilityType _visibility = VisibilityAll;
 	std::string _label;
 	std::string _body;
-	std::map<std::string, std::string> _attrs;
 	std::weak_ptr<Element> _ref;
 };
 
-class Document {
+class Document : public Attributes {
 public:
 	Document();
 	Document(VersionType version);
@@ -425,9 +431,6 @@ public:
 	void timestamp(const std::tm time);
 	std::tm timestamp() const;
 	const std::string timestampString() const;
-	void meta(std::string key, std::string value);
-	const std::shared_ptr<std::map<std::string, std::string>> meta() const;
-	const std::string meta(std::string key) const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
 
@@ -444,7 +447,6 @@ private:
 	std::string _title;
 	std::size_t _length = 0;
 	std::tm _timestamp;
-	std::shared_ptr<std::map<std::string, std::string>> _meta;
 	bool _validChecksum = false;
 };
 

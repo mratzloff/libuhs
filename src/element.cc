@@ -77,6 +77,7 @@ const std::string Element::typeString(ElementType t) {
 
 Element::Element(ElementType t, int index, int length)
 	: Node(NodeElement)
+	, Attributes()
 	, _elementType {t}
 	, _index {index}
 	, _length {length}
@@ -132,24 +133,6 @@ VisibilityType Element::visibility() const {
 
 void Element::visibility(VisibilityType v) {
 	_visibility = v;
-}
-
-const std::map<std::string, std::string>& Element::attrs() const {
-	return _attrs;
-}
-
-const std::string Element::attr(const std::string& key) const {
-	std::string s;
-	try {
-		s = _attrs.at(key);
-	} catch (const std::out_of_range& ex) {
-		// Ignore
-	}
-	return s;
-}
-
-void Element::attr(const std::string key, const std::string value) {
-	_attrs[key] = value;
 }
 
 const std::weak_ptr<Element> Element::ref() const {
