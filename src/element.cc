@@ -96,11 +96,11 @@ void Element::appendString(const std::string s) {
 	this->appendChild(n);
 }
 
-int Element::index() {
+int Element::index() const {
 	return _index;
 }
 
-int Element::length() {
+int Element::length() const {
 	return _length;
 }
 

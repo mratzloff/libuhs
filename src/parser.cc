@@ -38,11 +38,17 @@ void Parser::NodeRangeList::add(std::shared_ptr<Node> n, int min, int max) {
 }
 
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
-	: offset(offset), length(length), func(func) {}
+	: offset(offset)
+	, length(length)
+	, func(func)
+{}
 
 Parser::LinkData::LinkData(
-	const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
-	: fromToken(fromToken), fromElement(fromElement), toIndex(toIndex) {}
+		const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
+	: fromToken(fromToken)
+	, fromElement(fromElement)
+	, toIndex(toIndex)
+{}
 
 std::shared_ptr<Error> Parser::error() {
 	return _err;
@@ -78,7 +84,7 @@ std::shared_ptr<Document> Parser::parse() {
 	return _document;
 }
 
-//================================= UHS 88a =================================//
+//--------------------------------- UHS 88a ---------------------------------//
 
 bool Parser::parse88a() {
 	std::shared_ptr<Token> t;
@@ -248,7 +254,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		if (index < firstHintIndex) {
 			parents[firstChildIndex] = e;
 		}
-		if (index+2 == firstHintIndex) {
+		if (index + 2 == firstHintIndex) {
 			break; // Done parsing subjects
 		}
 	}
@@ -332,7 +338,7 @@ bool Parser::parse88aCreditElement(int index) {
 	}
 }
 
-//================================= UHS 96a =================================//
+//--------------------------------- UHS 96a ---------------------------------//
 
 void Parser::parseHeaderSep(std::shared_ptr<Token> t) {
 	if (_version == Version88a) {

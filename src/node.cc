@@ -2,10 +2,27 @@
 
 namespace UHS {
 
+const std::string Node::typeString(NodeType t) {
+	switch (t) {
+	case NodeElement:
+		return "element";
+	case NodeContainer:
+		return "container";
+	case NodeText:
+		return "text";
+	default:
+		return "";
+	}
+}
+
 Node::Node(NodeType t) : _nodeType {t} {}
 
 NodeType Node::nodeType() const {
 	return _nodeType;
+}
+
+const std::string Node::nodeTypeString() const {
+	return Node::typeString(_nodeType);
 }
 
 void Node::appendChild(std::shared_ptr<Node> n) {
@@ -47,7 +64,82 @@ std::shared_ptr<Node> Node::lastChild() const {
 	return _lastChild;
 }
 
+int Node::depth() const {
+	if (_depth < 0) {
+		auto p = this->parent();
+		if (p == nullptr) {
+			return 0;
+		}
+		_depth = p->depth() + 1;
+	}
+	return _depth;
+}
+
+//------------------------------ NodeIterator -------------------------------//
+
+template <typename T>
+NodeIterator<T>::NodeIterator(NodeIterator<T>::pointer n) {
+	_current = n;
+}
+
+template <typename T>
+typename NodeIterator<T>::reference NodeIterator<T>::operator*() const {
+	return *_current;
+}
+
+template <typename T>
+typename NodeIterator<T>::pointer NodeIterator<T>::operator->() const {
+	return _current;
+}
+
+// ++it
+template <typename T>
+NodeIterator<T>& NodeIterator<T>::operator++() {
+	do {
+		if (_current->hasFirstChild() && ! _visited) { // Down
+			_current = _current->firstChild();
+			_visited = false;
+		} else if (_current->hasNextSibling()) { // Next
+			_current = _current->nextSibling();
+			_visited = false;
+		} else { // Up
+			_current = _current->parent();
+			if (_current == nullptr) {
+				break;
+			}
+			_visited = true;
+		}
+	} while (_visited);
+
+	return *this;
+}
+
+// it++
+template <typename T>
+NodeIterator<T> NodeIterator<T>::operator++(int) {
+	auto tmp = *this;
+	++(*this);
+	return tmp;
+}
+
+template <typename T>
+bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) {
+	return _current == rhs._current;
+}
+
+template <typename T>
+bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) {
+	return !(*this == rhs);
+}
+
+template class NodeIterator<Node>;
+template class NodeIterator<const Node>;
+
+//------------------------------ ContainerNode ------------------------------//
+
 ContainerNode::ContainerNode() : Node(NodeContainer) {}
+
+//-------------------------------- TextNode --------------------------------//
 
 TextNode::TextNode() : Node(NodeText) {}
 

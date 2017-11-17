@@ -8,6 +8,7 @@
 #include <ctime>
 #include <fstream>
 #include <istream>
+#include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -281,11 +282,20 @@ private:
 	void tokenizeEOF(std::size_t column);
 };
 
+template <typename T>
+class NodeIterator;
+
 class Node : public std::enable_shared_from_this<Node> {
 public:
+	using iterator = NodeIterator<Node>;
+	using const_iterator = NodeIterator<const Node>;
+
+	static const std::string typeString(NodeType t);
+
 	Node(NodeType t);
 	virtual ~Node() = default;
 	NodeType nodeType() const;
+	const std::string nodeTypeString() const;
 	void appendChild(std::shared_ptr<Node> n);
 	std::shared_ptr<Node> parent() const;
 	bool hasNextSibling() const;
@@ -294,6 +304,7 @@ public:
 	std::shared_ptr<Node> firstChild() const;
 	bool hasLastChild() const;
 	std::shared_ptr<Node> lastChild() const;
+	int depth() const;
 
 private:
 	NodeType _nodeType;
@@ -301,6 +312,32 @@ private:
 	std::shared_ptr<Node> _nextSibling;
 	std::shared_ptr<Node> _firstChild;
 	std::shared_ptr<Node> _lastChild;
+	mutable int _depth = -1;
+};
+
+template <typename T>
+class NodeIterator {
+public:
+	using value_type = T;
+	using difference_type = std::ptrdiff_t;
+	using pointer = std::shared_ptr<T>;
+	using reference = T&;
+	using iterator_category = std::forward_iterator_tag;
+
+	NodeIterator() = default;
+	NodeIterator(pointer n);
+	reference operator*() const;
+	pointer operator->() const;
+	NodeIterator<T>& operator++();
+	NodeIterator<T> operator++(int);
+	NodeIterator<T>& operator--();
+	NodeIterator<T> operator--(int);
+	bool operator==(const NodeIterator<T>& rhs);
+	bool operator!=(const NodeIterator<T>& rhs);
+
+private:
+	pointer _current;
+	bool _visited = false;
 };
 
 class ContainerNode : public Node {
@@ -338,9 +375,9 @@ public:
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
-	int index();
+	int index() const;
 	void index(int i);
-	int length();
+	int length() const;
 	void length(int l);
 	const std::string label() const;
 	void label(const std::string s);
@@ -373,11 +410,11 @@ public:
 	Document();
 	Document(VersionType version);
 	virtual ~Document() = default;
+	std::string toString() const;
+	void appendChild(std::shared_ptr<Node> n);
+	const std::shared_ptr<Node> root();
 	void header(std::shared_ptr<Document> d);
 	std::shared_ptr<Document> header() const;
-	void appendChild(std::shared_ptr<Node> n);
-	std::string toString() const;
-	const std::shared_ptr<Node> root();
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
@@ -393,6 +430,12 @@ public:
 	const std::string meta(std::string key) const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
+
+	// Iterators
+	Node::iterator begin() const;
+	Node::iterator end() const;
+	Node::const_iterator cbegin() const;
+	Node::const_iterator cend() const;
 
 private:
 	std::shared_ptr<Document> _header;
@@ -450,7 +493,7 @@ private:
 	};
 
 	struct NodeRangeList {
-		std::vector<std::shared_ptr<NodeRange>> data;
+		std::vector<std::shared_ptr<NodeRange>> data; // TODO: Remove unnecessary shared_ptr
 
 		NodeRangeList();
 		virtual ~NodeRangeList() = default;
@@ -503,7 +546,7 @@ private:
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
 	ElementMap _elements;
-	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks;
+	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks; // TODO: unique_ptr with move
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
 	int _indexOffset = 0;

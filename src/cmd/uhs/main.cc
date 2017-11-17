@@ -98,6 +98,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	UHS::JSONWriter w {std::cout, writerOpt};
+	// UHS::UHSWriter w {std::cout, writerOpt};
 	w.write(document);
 
 	return OK;

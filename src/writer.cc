@@ -27,31 +27,23 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 }
 
 Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
-	std::shared_ptr<Node> n;
-	std::shared_ptr<TextNode> tn;
-	std::shared_ptr<Element> e;
-	std::map<std::string, std::string> attrs;
-	bool visited = false;
-	int depth = 0;
 	Json::Value root {Json::objectValue};
-	Json::Value* j;
 	Json::Value* parents[UHS_MAX_DEPTH];
+	Json::Value* j;
+	std::map<std::string, std::string> attrs;
 
 	if (d == nullptr) {
 		return root;
 	}
-
-	n = d->root();
-	parents[depth] = &root;
-	j = &root;
 
 	root["title"] = d->title();
 	root["version"] = d->versionString();
 
 	if (d->version() > Version88a) {
 		root["header"] = this->serialize(d->header());
+		root["header"]["visible"] = false;
 		root["registered"] = _registered;
-		root["validChecksum"] = d->validChecksum();
+		root["valid-checksum"] = d->validChecksum();
 	}
 
 	if (d->version() > Version91a) {
@@ -63,81 +55,74 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 		root[k] = v;
 	}
 
-	while (n != nullptr) {
-		// Assemble JSON object
-		if (!visited) {
-			Json::Value map {Json::objectValue}, object {Json::objectValue};
-			std::string fname;
-			std::ofstream fout;
+	int depth = 0;
+	parents[depth] = &root;
+	j = &root;
 
-			switch (n->nodeType()) {
-			case NodeText:
-				tn = std::static_pointer_cast<TextNode>(n);
-				(*j)["children"].append(tn->body());
-				break;
-			case NodeElement:
-				e = std::static_pointer_cast<Element>(n);
-
-				object["label"] = e->label();
-
-				if (e->isMedia()) { // TODO: Do something about how lazy this is
-					fname = _mediaDir + "/" + std::to_string(e->index()) + "." + e->mediaExt();
-					fout.open(fname, std::ofstream::out | std::ofstream::binary);
-					fout << e->body();
-					fout.close();
-					object["body"] = fname;
-				} else {
-					object["body"] = e->body();
-				}
-
-				attrs = e->attrs();
-				for (const auto& [k, v] : attrs) {
-					if (v == "true") {
-						map[k] = true;
-					} else if (v == "false") {
-						map[k] = false;
-					} else {
-						map[k] = v;
-					}
-				}
-				if (! e->visible(_registered)) {
-					map["visible"] = false;
-				}
-
-				map["type"] = Element::typeString(e->elementType());
-				object["attributes"] = map;
-				(*j)["children"].append(object);
-
-				break;
-			case NodeContainer:
-				// Ignore
-				break;
-			}
-		}
-
-		// Navigate
-		if (n->hasFirstChild() && !visited) { // Down
-			n = n->firstChild();
-			visited = false;
+	for (const auto& n : *d) {
+		// Create JSON arrays when we descend
+		int newDepth = n.depth();
+		if (newDepth > depth) { // Down
 			parents[depth] = j;
-			++depth;
 			if ((*j)["children"].empty()) {
 				Json::Value a(Json::arrayValue);
 				(*j)["children"] = a;
 			} else {
 				j = &((*j)["children"][(*j)["children"].size()-1]);
 			}
-		} else if (n->hasNextSibling()) { // Next
-			n = n->nextSibling();
-			visited = false;
-		} else { // Up
-			n = n->parent();
-			visited = true;
-			--depth;
-			if (depth >= 0) {
-				j = parents[depth];
+		} else if (newDepth < depth) { // Up
+			if (newDepth >= 0) {
+				j = parents[newDepth];
 			}
 		}
+
+		Json::Value map {Json::objectValue}, object {Json::objectValue};
+		std::string fname;
+		std::ofstream fout;
+
+		auto nodeType = n.nodeType();
+
+		if (nodeType == NodeText) {
+			const auto& tn = dynamic_cast<const TextNode&>(n);
+			(*j)["children"].append(tn.body());
+
+		} else if (nodeType == NodeElement) {
+			const auto& e = dynamic_cast<const Element&>(n);
+			object["label"] = e.label();
+
+			if (e.isMedia()) { // TODO: Do something about how lazy this is
+				fname = _mediaDir + "/" + std::to_string(e.index()) + "." + e.mediaExt();
+				fout.open(fname, std::ofstream::out | std::ofstream::binary);
+				fout << e.body();
+				fout.close();
+				object["body"] = fname;
+			} else {
+				object["body"] = e.body();
+			}
+
+			attrs = e.attrs();
+			for (const auto& [k, v] : attrs) {
+				if (v == "true") {
+					map[k] = true;
+				} else if (v == "false") {
+					map[k] = false;
+				} else {
+					map[k] = v;
+				}
+			}
+			if (! e.visible(_registered)) {
+				map["visible"] = false;
+			}
+
+			map["type"] = Element::typeString(e.elementType());
+			object["attributes"] = map;
+			(*j)["children"].append(object);
+
+		} else if (nodeType == NodeContainer) {
+			// Ignore
+		}
+
+		depth = newDepth;
 	}
 
 	return root;

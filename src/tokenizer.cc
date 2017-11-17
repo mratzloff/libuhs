@@ -185,9 +185,9 @@ void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
 
 void Tokenizer::tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
-		if (m[i+1].length() > 0) {
+		if (m[i + 1].length() > 0) {
 			_out.send(std::make_shared<Token>(
-				tokens[i], _offset, _line, m.position(i+1), Strings::ltrim(m[i+1].str(), '0')));
+				tokens[i], _offset, _line, m.position(i + 1), Strings::ltrim(m[i + 1].str(), '0')));
 		}
 	}
 }

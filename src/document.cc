@@ -12,24 +12,24 @@ Document::Document(VersionType version) : Document() {
 	_version = version;
 };
 
-void Document::header(std::shared_ptr<Document> d) {
-	_header = d;
-}
-
-std::shared_ptr<Document> Document::header() const {
-	return _header;
+std::string Document::toString() const {
+	return "";
 }
 
 void Document::appendChild(std::shared_ptr<Node> n) {
 	_root->appendChild(n);
 }
 
-std::string Document::toString() const {
-	return "";
-}
-
 const std::shared_ptr<Node> Document::root() {
 	return _root;
+}
+
+void Document::header(std::shared_ptr<Document> d) {
+	_header = d;
+}
+
+std::shared_ptr<Document> Document::header() const {
+	return _header;
 }
 
 void Document::version(VersionType v) {
@@ -100,6 +100,22 @@ void Document::validChecksum(bool value) {
 
 bool Document::validChecksum() const {
 	return _validChecksum;
+}
+
+Node::iterator Document::begin() const {
+	return Node::iterator(_root);
+}
+
+Node::iterator Document::end() const {
+	return Node::iterator(nullptr);
+}
+
+Node::const_iterator Document::cbegin() const {
+	return Node::const_iterator(_root);
+}
+
+Node::const_iterator Document::cend() const {
+	return Node::const_iterator(nullptr);
 }
 
 }

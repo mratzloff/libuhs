@@ -115,7 +115,7 @@ std::string ltrim(const std::string& s, char c) {
 std::string rtrim(const std::string& s, char c) {
 	auto pos = s.find_last_not_of(c);
 	if (pos != std::string::npos) {
-		return s.substr(0, pos+1);
+		return s.substr(0, pos + 1);
 	}
 	return s;
 }
