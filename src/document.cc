@@ -57,31 +57,6 @@ std::string Document::title() const {
 	return _title;
 }
 
-void Document::length(const std::size_t len) {
-	_length = len;
-}
-
-std::size_t Document::length() const {
-	return _length;
-}
-
-void Document::timestamp(const std::tm time) {
-	_timestamp = time;
-}
-
-std::tm Document::timestamp() const {
-	return _timestamp;
-}
-
-const std::string Document::timestampString() const {
-	char buf[20];
-	auto len = std::strftime(buf, 20, "%Y-%m-%dT%H:%M:%S", &_timestamp);
-	if (len == 0) {
-		return "";
-	}
-	return buf;
-}
-
 void Document::validChecksum(bool value) {
 	_validChecksum = value;
 }

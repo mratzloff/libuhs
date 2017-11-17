@@ -28,6 +28,7 @@ bool JSONWriter::write(std::shared_ptr<Document> d) const {
 
 Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 	Json::Value root {Json::objectValue};
+	Json::Value map {Json::objectValue};
 	Json::Value* parents[UHS_MAX_DEPTH];
 	Json::Value* j;
 	std::map<std::string, std::string> attrs;
@@ -43,17 +44,13 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 		root["header"] = this->serialize(d->header());
 		root["header"]["visible"] = false;
 		root["registered"] = _registered;
-		root["valid-checksum"] = d->validChecksum();
-	}
-
-	if (d->version() > Version91a) {
-		root["length"] = int(d->length());
-		root["timestamp"] = d->timestampString();
+		root["validChecksum"] = d->validChecksum();
 	}
 
 	for (const auto& [k, v] : d->attrs()) {
-		root[k] = v;
+		map[k] = v;
 	}
+	root["attributes"] = map;
 
 	int depth = 0;
 	parents[depth] = &root;
@@ -76,7 +73,7 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 			}
 		}
 
-		Json::Value map {Json::objectValue}, object {Json::objectValue};
+		Json::Value object {Json::objectValue};
 		std::string fname;
 		std::ofstream fout;
 
@@ -101,6 +98,8 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 			}
 
 			attrs = e.attrs();
+			map.clear();
+
 			for (const auto& [k, v] : attrs) {
 				if (v == "true") {
 					map[k] = true;

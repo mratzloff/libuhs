@@ -426,11 +426,6 @@ public:
 	const std::string versionString() const;
 	void title(std::string s);
 	std::string title() const;
-	void length(const std::size_t len);
-	std::size_t length() const;
-	void timestamp(const std::tm time);
-	std::tm timestamp() const;
-	const std::string timestampString() const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
 
@@ -445,8 +440,6 @@ private:
 	std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
-	std::size_t _length = 0;
-	std::tm _timestamp;
 	bool _validChecksum = false;
 };
 

@@ -843,12 +843,12 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		}
 
 		if (key == "length") {
-			int fileLen = Strings::toInt(val);
-			if (fileLen < 0) {
+			int intVal = Strings::toInt(val);
+			if (intVal < 0) {
 				this->expectedInt(t);
 				return false;
 			}
-			_document->length(fileLen);
+			_document->attr("length", std::to_string(intVal));
 		} else if (key == "date") {
 			bool ok = this->parseDate(val, tm);
 			if (! ok) {
@@ -864,7 +864,9 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 				this->expected(t, "valid timestamp");
 				return false;
 			}
-			_document->timestamp(tm);
+			char buf[20];
+			auto len = std::strftime(buf, 20, "%Y-%m-%dT%H:%M:%S", &tm);
+			_document->attr("timestamp", std::string(buf, len));
 		} else {
 			auto v = _document->attr(key);
 			if (! v.empty()) {
