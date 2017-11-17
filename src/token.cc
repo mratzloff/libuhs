@@ -7,8 +7,6 @@ const std::string Token::typeString(TokenType t) {
 	switch (t) {
 	case TokenCRC:
 		return "CRC";
-	case TokenHeaderSep:
-		return "CompatSep";
 	case TokenCoordX:
 		return "CoordX";
 	case TokenCoordY:
@@ -25,6 +23,8 @@ const std::string Token::typeString(TokenType t) {
 		return "DataType";
 	case TokenEOF:
 		return "EOF";
+	case TokenHeaderSep:
+		return "HeaderSep";
 	case TokenIdent:
 		return "Ident";
 	case TokenIndex:

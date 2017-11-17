@@ -125,7 +125,7 @@ void Tokenizer::tokenizeLine() {
 	}
 
 	// Check for exact line matches
-	if (s == Token::CompatSep) {
+	if (s == Token::HeaderSep) {
 		_beforeHeaderSep = false;
 		_out.send(std::make_shared<Token>(TokenHeaderSep, _offset, _line));
 	} else if (s == Token::CreditSep) {

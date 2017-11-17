@@ -221,7 +221,7 @@ private:
 	friend class Tokenizer;
 
 	static constexpr const char* Signature = "UHS";
-	static constexpr const char* CompatSep = "** END OF 88A FORMAT **";
+	static constexpr const char* HeaderSep = "** END OF 88A FORMAT **";
 	static constexpr const char* CreditSep = "CREDITS:";
 	static constexpr const char* NestedElementSep = "=";
 	static constexpr const char* NestedTextSep = "-";
@@ -437,7 +437,7 @@ public:
 
 private:
 	std::shared_ptr<Document> _header;
-	std::shared_ptr<Node> _root;
+	const std::shared_ptr<Node> _root;
 	VersionType _version;
 	std::string _title;
 	bool _validChecksum = false;

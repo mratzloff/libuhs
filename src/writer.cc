@@ -42,7 +42,6 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 
 	if (d->version() > Version88a) {
 		root["header"] = this->serialize(d->header());
-		root["header"]["visible"] = false;
 		root["registered"] = _registered;
 		root["validChecksum"] = d->validChecksum();
 	}
@@ -62,7 +61,7 @@ Json::Value JSONWriter::serialize(std::shared_ptr<Document> d) const {
 		if (newDepth > depth) { // Down
 			parents[depth] = j;
 			if ((*j)["children"].empty()) {
-				Json::Value a(Json::arrayValue);
+				Json::Value a {Json::arrayValue};
 				(*j)["children"] = a;
 			} else {
 				j = &((*j)["children"][(*j)["children"].size()-1]);
