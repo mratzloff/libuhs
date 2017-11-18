@@ -169,10 +169,10 @@ bool Parser::parse88a() {
 	}
 
 	switch (t->type()) {
-	case TokenString:
-		// Fall through
 	case TokenCreditSep: // This is informal but common
-		ok = this->parse88aCreditElement(t->line());
+		// Fall through
+	case TokenString:
+		ok = this->parse88aCreditElement(t);
 		if (! ok) {
 			this->unexpected(t);
 		}
@@ -300,10 +300,8 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 	return true;
 }
 
-bool Parser::parse88aCreditElement(int index) {
-	std::shared_ptr<Token> t;
-
-	auto e = std::make_shared<Element>(ElementCredit, index);
+bool Parser::parse88aCreditElement(std::shared_ptr<Token> t) {
+	auto e = std::make_shared<Element>(ElementCredit, t->line());
 	e->title("Credits");
 	_document->appendChild(e);
 
@@ -312,16 +310,22 @@ bool Parser::parse88aCreditElement(int index) {
 	bool continuation = false;
 
 	while (true) {
-		t = this->next();
-		if (_err != nullptr) {
-			return false;
-		}
-
 		switch (t->type()) {
 		case TokenEOF:
-			e->appendString(s);
+			if (! s.empty()) {
+				e->appendString(s);
+			}
 			_done = true;
 			return true;
+		case TokenHeaderSep:
+			this->parseHeaderSep(t);
+			if (! s.empty()) {
+				e->appendString(s);
+			}
+			return true;
+		case TokenCreditSep:
+			// Ignore
+			break;
 		case TokenString:
 			if (continuation) {
 				s += ' ';
@@ -329,12 +333,13 @@ bool Parser::parse88aCreditElement(int index) {
 			s += t->value();
 			continuation = true;
 			break;
-		case TokenHeaderSep:
-			this->parseHeaderSep(t);
-			e->appendString(s);
-			return true;
 		default:
 			this->unexpected(t);
+			return false;
+		}
+
+		t = this->next();
+		if (_err != nullptr) {
 			return false;
 		}
 	}
@@ -798,9 +803,9 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		}
 
 		// Set visibility
-		if (instruction == RegisteredToken) {
+		if (instruction == Token::Registered) {
 			ref->visibility(VisibilityRegistered);
-		} else if (instruction == UnregisteredToken) {
+		} else if (instruction == Token::Unregistered) {
 			ref->visibility(VisibilityUnregistered);
 		} else {
 			// Skip bad instructions
@@ -832,13 +837,13 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		}
 		s = t->value();
 
-		if (s.substr(0, 1) == NoticeToken) {
+		if (s.substr(0, 1) == Token::Notice) {
 			key = "notice";
 			val = s.substr(1);
 		} else {
-			auto parts = Strings::split(s, InfoKeyValueSep, 2);
+			auto parts = Strings::split(s, Token::InfoKeyValueSep, 2);
 			if (parts.size() != 2) {
-				this->expected(t, InfoKeyValueSep);
+				this->expected(t, Token::InfoKeyValueSep);
 			}
 			key = parts[0];
 			val = parts[1];

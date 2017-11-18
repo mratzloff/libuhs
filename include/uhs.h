@@ -235,7 +235,27 @@ class Tokenizer;
 
 class Token {
 public:
+	static constexpr const char* AsciiEncStart = "#a+";
+	static constexpr const char* AsciiEncEnd = "#a-";
+	static constexpr const char* CreditSep = "CREDITS:";
+	static const char DataSep = '\x1A';
+	static constexpr const char* HyperlinkStart = "#h+";
+	static constexpr const char* HyperlinkEnd = "#h-";
+	static constexpr const char* HeaderSep = "** END OF 88A FORMAT **";
+	static constexpr const char* InfoKeyValueSep = "=";
+	static constexpr const char* NestedElementSep = "=";
+	static constexpr const char* NestedTextSep = "-";
+	static constexpr const char* Notice = ">";
+	static constexpr const char* NumberSign = "##";
 	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
+	static constexpr const char* ProportionalStart = "#p+";
+	static constexpr const char* ProportionalEnd = "#p-";
+	static constexpr const char* Registered = "A";
+	static constexpr const char* Signature = "UHS";
+	static constexpr const char* Unregistered = "Z";
+	static constexpr const char* WordWrapStart = "#w+";
+	static constexpr const char* WordWrapEnd = "#w-";
+	static constexpr const char* WordWrapEndAlt = "#w.";
 
 	static const std::string typeString(TokenType t);
 	
@@ -253,13 +273,6 @@ public:
 
 private:
 	friend class Tokenizer;
-
-	static constexpr const char* Signature = "UHS";
-	static constexpr const char* HeaderSep = "** END OF 88A FORMAT **";
-	static constexpr const char* CreditSep = "CREDITS:";
-	static constexpr const char* NestedElementSep = "=";
-	static constexpr const char* NestedTextSep = "-";
-	static const char DataSep = '\x1A';
 
 	const TokenType _type;
 	int _line = 0;
@@ -533,20 +546,6 @@ private:
 
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
-	static constexpr const char* AsciiEncStartToken = "#a+";
-	static constexpr const char* AsciiEncEndToken = "#a-";
-	static constexpr const char* HyperlinkStartToken = "#h+";
-	static constexpr const char* HyperlinkEndToken = "#h-";
-	static constexpr const char* InfoKeyValueSep = "=";
-	static constexpr const char* NoticeToken = ">";
-	static constexpr const char* NumberSignToken = "##";
-	static constexpr const char* ProportionalStartToken = "#p+";
-	static constexpr const char* ProportionalEndToken = "#p-";
-	static constexpr const char* RegisteredToken = "A";
-	static constexpr const char* UnregisteredToken = "Z";
-	static constexpr const char* WordWrapStartToken = "#w+";
-	static constexpr const char* WordWrapEndToken = "#w-";
-	static constexpr const char* WordWrapEndTokenAlt = "#w.";
 
 	VersionType _version = Version96a;
 	bool _debug = false;
@@ -569,7 +568,7 @@ private:
 	bool parse88a();
 	bool parse88aElements(int firstHintIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
-	bool parse88aCreditElement(int index);
+	bool parse88aCreditElement(std::shared_ptr<Token> t);
 	void parseHeaderSep(std::shared_ptr<Token> t);
 
 	// 96a
