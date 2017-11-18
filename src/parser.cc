@@ -55,12 +55,13 @@ std::shared_ptr<Error> Parser::error() {
 }
 
 std::shared_ptr<Document> Parser::parse() {
+	// Pipe interleaves disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
 		_pipe->read();
 	}};
 
+	// Meanwhile, build out document by parsing emitted tokens in parallel
 	_document = std::make_shared<Document>(Version88a);
-
 	bool ok = this->parse88a();
 	if (! ok || _done) {
 		thread.join();
@@ -68,9 +69,10 @@ std::shared_ptr<Document> Parser::parse() {
 	}
 
 	if (_version != Version88a) {
-		// Swap parent document and set 88a header
+		// Set 88a header as first (hidden) child of 96a document
+		_document->visibility(VisibilityNone);
 		auto document = std::make_shared<Document>(Version96a);
-		document->header(_document);
+		document->appendChild(_document);
 		_document = document;
 
 		ok = this->parse96a();
@@ -139,7 +141,7 @@ bool Parser::parse88a() {
 	lastHintIndex += HeaderLen;
 
 	// Subjects
-	NodeMap parents {{0, _document->root()}};
+	NodeMap parents {{0, _document}};
 	bool ok = this->parse88aElements(firstHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
@@ -203,7 +205,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 			}
 			return false;
 		}
-		std::string encodedLabel {t->value()};
+		std::string encodedTitle {t->value()};
 		int index = t->line();
 
 		t = this->expect(TokenIndex);
@@ -240,14 +242,14 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 
 		auto e = std::make_shared<Element>(elementType, index);
 
-		std::string label {_codec.decode88a(encodedLabel)};
-		if (parent != _document->root()) {
-			char finalChar = label[label.length()-1];
+		std::string title {_codec.decode88a(encodedTitle)};
+		if (parent->nodeType() != NodeDocument) {
+			char finalChar = title[title.length()-1];
 			if (!this->isPunctuation(finalChar)) {
-				label += '?';
+				title += '?';
 			}
 		}
-		e->label(label);
+		e->title(title);
 
 		parent->appendChild(e);
 
@@ -302,7 +304,7 @@ bool Parser::parse88aCreditElement(int index) {
 	std::shared_ptr<Token> t;
 
 	auto e = std::make_shared<Element>(ElementCredit, index);
-	e->label("Credits");
+	e->title("Credits");
 	_document->appendChild(e);
 
 	// Body
@@ -353,7 +355,7 @@ bool Parser::parse96a() {
 	std::shared_ptr<Token> t;
 	std::shared_ptr<Element> e;
 
-	_parents.add(_document->root(), 0, INT_MAX);
+	_parents.add(_document, 0, INT_MAX);
 
 	// Parse elements
 	while (true) {
@@ -430,7 +432,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool ind
 		return nullptr;
 	}
 
-	// Label
+	// Title
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
@@ -438,7 +440,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool ind
 		}
 		return nullptr;
 	}
-	e->label(t->value());
+	e->title(t->value());
 
 	switch (elementType) {
 	case ElementUnknown:   /* No further processing required */ break;
@@ -948,7 +950,7 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 	std::shared_ptr<Element> child;
 
 	if (! _isTitleSet) {
-		_document->title(e->label());
+		_document->title(e->title());
 		_key = _codec.createKey(_document->title());
 		_isTitleSet = true;
 	}
@@ -1047,7 +1049,7 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 	e->visibility(VisibilityNone);
 	this->parseCommentElement(e);
 
-	auto versionString = e->label();
+	auto versionString = e->title();
 	if (versionString == "91a") {
 		v = Version91a;
 	} else if (versionString == "95a") {

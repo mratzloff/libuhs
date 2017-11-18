@@ -77,7 +77,6 @@ const std::string Element::typeString(ElementType t) {
 
 Element::Element(ElementType t, int index, int length)
 	: Node(NodeElement)
-	, Attributes()
 	, _elementType {t}
 	, _index {index}
 	, _length {length}
@@ -103,36 +102,6 @@ int Element::index() const {
 
 int Element::length() const {
 	return _length;
-}
-
-const std::string Element::label() const {
-	return _label;
-}
-
-void Element::label(const std::string s) {
-	_label = s;
-}
-
-const std::string& Element::body() const {
-	return _body;
-}
-
-void Element::body(const std::string s) {
-	_body = s;
-}
-
-bool Element::visible(bool registered) const {
-	return (_visibility == VisibilityAll
-		|| (! registered && _visibility == VisibilityUnregistered)
-		|| (registered && _visibility == VisibilityRegistered));
-}
-
-VisibilityType Element::visibility() const {
-	return _visibility;
-}
-
-void Element::visibility(VisibilityType v) {
-	_visibility = v;
 }
 
 const std::weak_ptr<Element> Element::ref() const {

@@ -61,8 +61,8 @@ enum TypefaceType {
 };
 
 enum NodeType {
+	NodeDocument,
 	NodeElement,
-	NodeContainer,
 	NodeText,
 };
 
@@ -119,15 +119,49 @@ std::string join(const std::vector<std::string>& s, const std::string sep);
 
 }
 
+namespace Traits {
+
 class Attributes {
 public:
-	const std::map<std::string, std::string>& attrs() const;
+	typedef std::map<std::string, std::string> Type;
+
+	const Type& attrs() const;
 	const std::string attr(const std::string& key) const;
 	void attr(const std::string key, const std::string value);
 
 private:
-	std::map<std::string, std::string> _attrs;
+	Type _attrs;
 };
+
+class Body {
+public:
+	const std::string& body() const;
+	void body(const std::string s);
+
+private:
+	std::string _body;
+};
+
+class Title {
+public:
+	const std::string title() const;
+	void title(const std::string s);
+
+private:
+	std::string _title;
+};
+
+class Visibility {
+public:
+	bool visible(bool registered) const;
+	VisibilityType visibility() const;
+	void visibility(VisibilityType v);
+
+private:
+	VisibilityType _visibility = VisibilityAll;
+};
+
+}
 
 class Error {
 public:
@@ -316,6 +350,12 @@ public:
 	std::shared_ptr<Node> lastChild() const;
 	int depth() const;
 
+	// Iterators
+	iterator begin();
+	iterator end();
+	const_iterator begin() const;
+	const_iterator end() const;
+
 private:
 	NodeType _nodeType;
 	std::shared_ptr<Node> _parent;
@@ -340,8 +380,6 @@ public:
 	pointer operator->() const;
 	NodeIterator<T>& operator++();
 	NodeIterator<T> operator++(int);
-	NodeIterator<T>& operator--();
-	NodeIterator<T> operator--(int);
 	bool operator==(const NodeIterator<T>& rhs);
 	bool operator!=(const NodeIterator<T>& rhs);
 
@@ -350,32 +388,32 @@ private:
 	bool _visited = false;
 };
 
-class ContainerNode : public Node {
-public:
-	ContainerNode();
-	virtual ~ContainerNode() = default;
-};
-
 typedef uint8_t Format;
 
-class TextNode : public Node {
+class TextNode
+	: public Node
+	, public Traits::Body
+{
 public:
 	TextNode();
 	virtual ~TextNode() = default;
 	const std::string& toString() const;
-	const std::string& body() const;
-	void body(const std::string s);
 	void addFormat(Format f);
 	void removeFormat(Format f);
 	bool hasFormat(Format f) const;
 	Format format() const;
 
 private:
-	std::string _body;
 	Format _fmt;
 };
 
-class Element : public Node, public Attributes {
+class Element
+	: public Node
+	, public Traits::Attributes
+	, public Traits::Body
+	, public Traits::Title
+	, public Traits::Visibility
+{
 public:
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
@@ -389,13 +427,6 @@ public:
 	void index(int i);
 	int length() const;
 	void length(int l);
-	const std::string label() const;
-	void label(const std::string s);
-	const std::string& body() const;
-	void body(const std::string s);
-	bool visible(bool registered) const;
-	VisibilityType visibility() const;
-	void visibility(VisibilityType v);
 	const std::weak_ptr<Element> ref() const;
 	void ref(const std::weak_ptr<Element> ref);
 	bool isMedia() const;
@@ -405,41 +436,27 @@ private:
 	ElementType _elementType;
 	int _index = 0;
 	int _length = 0;
-	VisibilityType _visibility = VisibilityAll;
-	std::string _label;
-	std::string _body;
 	std::weak_ptr<Element> _ref;
 };
 
-class Document : public Attributes {
+class Document
+	: public Node
+	, public Traits::Attributes
+	, public Traits::Title
+	, public Traits::Visibility
+{
 public:
 	Document();
 	Document(VersionType version);
 	virtual ~Document() = default;
-	std::string toString() const;
-	void appendChild(std::shared_ptr<Node> n);
-	const std::shared_ptr<Node> root();
-	void header(std::shared_ptr<Document> d);
-	std::shared_ptr<Document> header() const;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
-	void title(std::string s);
-	std::string title() const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
 
-	// Iterators
-	Node::iterator begin() const;
-	Node::iterator end() const;
-	Node::const_iterator cbegin() const;
-	Node::const_iterator cend() const;
-
 private:
-	std::shared_ptr<Document> _header;
-	const std::shared_ptr<Node> _root;
 	VersionType _version;
-	std::string _title;
 	bool _validChecksum = false;
 };
 
@@ -603,7 +620,7 @@ public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
 	std::shared_ptr<Error> error();
-	virtual bool write(std::shared_ptr<Document> d) const;
+	virtual bool write(const std::shared_ptr<const Document> d) const;
 
 protected:
 	std::ostream& _out;
@@ -616,10 +633,13 @@ class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~JSONWriter() = default;
-	bool write(std::shared_ptr<Document> d) const override;
+	bool write(const std::shared_ptr<const Document> d) const override;
 
 private:
-	Json::Value serialize(std::shared_ptr<Document> d) const;
+	Json::Value serialize(const std::shared_ptr<const Document> d) const;
+	void serializeElement(const Element& e, Json::Value& obj) const;
+	void serializeDocument(const Document& d, Json::Value& obj) const;
+	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& obj) const;
 };
 
 }

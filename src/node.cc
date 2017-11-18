@@ -4,10 +4,10 @@ namespace UHS {
 
 const std::string Node::typeString(NodeType t) {
 	switch (t) {
+	case NodeDocument:
+		return "document";
 	case NodeElement:
 		return "element";
-	case NodeContainer:
-		return "container";
 	case NodeText:
 		return "text";
 	default:
@@ -75,6 +75,22 @@ int Node::depth() const {
 	return _depth;
 }
 
+Node::iterator Node::begin() {
+	return Node::iterator(this->shared_from_this());
+}
+
+Node::iterator Node::end() {
+	return Node::iterator(nullptr);
+}
+
+Node::const_iterator Node::begin() const {
+	return Node::const_iterator(this->shared_from_this());
+}
+
+Node::const_iterator Node::end() const {
+	return Node::const_iterator(nullptr);
+}
+
 //------------------------------ NodeIterator -------------------------------//
 
 template <typename T>
@@ -135,24 +151,12 @@ bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) {
 template class NodeIterator<Node>;
 template class NodeIterator<const Node>;
 
-//------------------------------ ContainerNode ------------------------------//
-
-ContainerNode::ContainerNode() : Node(NodeContainer) {}
-
 //-------------------------------- TextNode --------------------------------//
 
 TextNode::TextNode() : Node(NodeText) {}
 
 const std::string& TextNode::toString() const {
-	return _body;
-}
-
-const std::string& TextNode::body() const {
-	return _body;
-}
-
-void TextNode::body(const std::string s) {
-	_body = s;
+	return this->body();
 }
 
 void TextNode::addFormat(Format f) {

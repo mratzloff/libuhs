@@ -117,7 +117,7 @@ void Tokenizer::tokenizeLine() {
 		return;
 	}
 
-	// All descriptors are immediately followed by a string label
+	// All descriptors are immediately followed by a string title
 	if (_line == _expectedStringLine) {
 		_out.send(std::make_shared<Token>(TokenString, _offset, _line, 0, s));
 		_expectedStringLine = -1;
