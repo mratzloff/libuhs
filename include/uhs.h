@@ -636,7 +636,7 @@ public:
 	bool write(const std::shared_ptr<const Document> d) const override;
 
 private:
-	Json::Value serialize(const std::shared_ptr<const Document> d) const;
+	Json::Value serialize(const Document& d, Json::Value& root) const;
 	void serializeElement(const Element& e, Json::Value& obj) const;
 	void serializeDocument(const Document& d, Json::Value& obj) const;
 	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& obj) const;

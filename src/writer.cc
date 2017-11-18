@@ -18,67 +18,68 @@ bool Writer::write(const std::shared_ptr<const Document>) const {
 	return false;
 }
 
+//------------------------------- JSONWriter --------------------------------//
+
 JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
 
 bool JSONWriter::write(const std::shared_ptr<const Document> d) const {
-	_out << this->serialize(d);
+	Json::Value root {Json::objectValue};
+
+	if (d == nullptr) {
+		return false;
+	}
+	this->serialize(*d, root);
+	_out << root;
+
 	return true;
 }
 
-Json::Value JSONWriter::serialize(const std::shared_ptr<const Document> d) const {
-	Json::Value root {Json::objectValue};
+Json::Value JSONWriter::serialize(const Document& d, Json::Value& root) const {
 	Json::Value* parents[UHS_MAX_DEPTH];
-	Json::Value* j;
-
-	if (d == nullptr) {
-		return root;
-	}
-
-	this->serializeDocument(*d, root);
+	Json::Value* parent = &root;
 
 	int depth = 0;
 	parents[depth] = &root;
-	j = &root;
 
-	for (const auto& n : *d) {
+	for (const auto& n : d) {
 		// Manage JSON arrays as we descend and ascend
 		int nodeDepth = n.depth();
 		if (nodeDepth > depth) { // Down
-			parents[depth] = j;
-			if ((*j)["children"].empty()) {
+			parents[depth] = parent;
+			if ((*parent)["children"].empty()) {
 				Json::Value a {Json::arrayValue};
-				(*j)["children"] = a;
+				(*parent)["children"] = a;
 			} else {
-				j = &((*j)["children"][(*j)["children"].size()-1]);
+				parent = &((*parent)["children"][(*parent)["children"].size()-1]);
 			}
 		} else if (nodeDepth < depth) { // Up
 			if (nodeDepth >= 0) {
-				j = parents[nodeDepth];
+				parent = parents[nodeDepth];
 			}
 		}
 
 		// Serialize node
-		Json::Value obj {Json::objectValue};
 		auto nodeType = n.nodeType();
+		Json::Value obj {Json::objectValue};
 
 		if (nodeType == NodeText) {
 			const auto& tn = dynamic_cast<const TextNode&>(n);
-			(*j)["children"].append(tn.body());
+			(*parent)["children"].append(tn.body());
 
 		} else if (nodeType == NodeElement) {
 			const auto& e = dynamic_cast<const Element&>(n);
 			this->serializeElement(e, obj);
-			(*j)["children"].append(obj);
+			(*parent)["children"].append(obj);
 
 		} else if (nodeType == NodeDocument) {
-			const auto& d = dynamic_cast<const Document&>(n);
-			if (nodeDepth == 0) {
-				obj = root;
-			}
-			this->serializeDocument(d, obj);
+			const auto& doc = dynamic_cast<const Document&>(n);
+
 			if (nodeDepth > 0) {
-				(*j)["children"].append(obj);
+				this->serializeDocument(doc, obj);
+				(*parent)["children"].append(obj);
+			} else {
+				this->serializeDocument(doc, root);
 			}
 		}
 
