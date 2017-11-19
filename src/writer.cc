@@ -272,20 +272,25 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 	_out << lastHintIndex << EOL;
 	_out << ss.str();
 
-	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
-	if (credit != nullptr) {
-		_out << Token::CreditSep << EOL;
-
-		for (const auto& n : *credit) {
-			if (n.nodeType() == NodeText) {
-				const auto& tn = dynamic_cast<const TextNode&>(n);
-				_out << Strings::wrap(tn.body(), EOL, LineLen - strlen(EOL)) << EOL;
-				break;
-			}
-		}
-	}
+	this->write88aCreditElement(credit);
 
 	return true;
+}
+
+void UHSWriter::write88aCreditElement(const std::shared_ptr<const Element> e) {
+	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
+	if (e == nullptr) {
+		return;
+	}
+
+	const auto& n = *(e->firstChild());
+	if (n.nodeType() != NodeText) {
+		return;
+	}
+
+	const auto& tn = dynamic_cast<const TextNode&>(n);
+	_out << Token::CreditSep << EOL;
+	_out << Strings::wrap(tn.body(), EOL, LineLen - strlen(EOL)) << EOL;
 }
 
 bool UHSWriter::write96a(const Document& d) {

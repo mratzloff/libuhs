@@ -660,6 +660,7 @@ public:
 
 private:
 	bool write88a(std::shared_ptr<const Document> d);
+	void write88aCreditElement(const std::shared_ptr<const Element> e);
 	bool write96a(const Document& d);
 
 	Codec _codec;
