@@ -6,6 +6,7 @@ namespace UHS {
 Pipe::Pipe(std::ifstream& in) : _in {in} {
 	if (! _in.is_open()) {
 		_err = std::make_shared<Error>(ErrorRead, "could not open file");
+		_err->finalize();
 	}
 }
 
@@ -39,7 +40,7 @@ bool Pipe::eof() {
 	return _in.eof();
 }
 
-std::shared_ptr<Error> Pipe::error() {
+const std::shared_ptr<Error> Pipe::error() {
 	return _err;
 }
 

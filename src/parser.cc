@@ -44,18 +44,18 @@ Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCal
 {}
 
 Parser::LinkData::LinkData(
-		const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
+		const std::shared_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
 	: fromToken(fromToken)
 	, fromElement(fromElement)
 	, toIndex(toIndex)
 {}
 
-std::shared_ptr<Error> Parser::error() {
+const std::shared_ptr<Error> Parser::error() {
 	return _err;
 }
 
 std::shared_ptr<Document> Parser::parse() {
-	// Pipe interleaves disk reads with tokenization and CRC calculation
+	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
 		_pipe->read();
 	}};
@@ -89,7 +89,7 @@ std::shared_ptr<Document> Parser::parse() {
 //--------------------------------- UHS 88a ---------------------------------//
 
 bool Parser::parse88a() {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	// Signature
 	t = this->expect(TokenSignature);
@@ -194,7 +194,7 @@ bool Parser::parse88a() {
 // doesn't support it, and as far as I can tell no one bothered to ever check
 // it. It mostly works in the DOS reader, but it looks glitchy.
 bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	ElementType elementType {ElementSubject};
 
 	while (true) {
@@ -264,7 +264,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 }
 
 bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	while (true) {
 		t = this->expect(TokenString);
@@ -300,7 +300,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 	return true;
 }
 
-bool Parser::parse88aCreditElement(std::shared_ptr<Token> t) {
+bool Parser::parse88aCreditElement(std::shared_ptr<const Token> t) {
 	auto e = std::make_shared<Element>(ElementCredit, t->line());
 	e->title("Credits");
 	_document->appendChild(e);
@@ -347,7 +347,7 @@ bool Parser::parse88aCreditElement(std::shared_ptr<Token> t) {
 
 //--------------------------------- UHS 96a ---------------------------------//
 
-void Parser::parseHeaderSep(std::shared_ptr<Token> t) {
+void Parser::parseHeaderSep(std::shared_ptr<const Token> t) {
 	if (_version == Version88a) {
 		_done = true;
 		return;
@@ -357,7 +357,7 @@ void Parser::parseHeaderSep(std::shared_ptr<Token> t) {
 }
 
 bool Parser::parse96a() {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	std::shared_ptr<Element> e;
 
 	_parents.add(_document, 0, INT_MAX);
@@ -394,7 +394,7 @@ bool Parser::parse96a() {
 }
 
 // Elements are automatically appended to their parents
-std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool indexByRegion) {
+std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bool indexByRegion) {
 	bool ok = false;
 
 	// Length
@@ -473,7 +473,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<Token> t, bool ind
 }
 
 bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	int len = e->length();
 	std::string s;
@@ -510,7 +510,7 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseDataElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	// Offset
 	std::size_t offset;
@@ -567,7 +567,7 @@ expectDataLength:
 // error, but bluforce.uhs has an instance of this. This actually screws
 // up the official reader UI for that particular hint.
 bool Parser::parseHintElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	std::shared_ptr<Element> child;
 	std::string s;
 
@@ -649,7 +649,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
 	if (! ok) {
@@ -744,7 +744,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 // list for four files, so we skip bad instructions of that form. Fourteen
 // other files have indexes pointing to nowhere, so we skip those, too.
 bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	std::string s;
 
 	e->visibility(VisibilityNone);
@@ -816,7 +816,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	std::string s;
 	std::string key;
 	std::string val;
@@ -888,7 +888,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	// Ref index
 	t = this->expect(TokenIndex);
@@ -910,7 +910,7 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
 	if (! ok) {
@@ -951,7 +951,7 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 	std::shared_ptr<Element> child;
 
 	if (! _isTitleSet) {
@@ -982,7 +982,7 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseTextElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<Token> t;
+	std::shared_ptr<const Token> t;
 
 	// Format
 	t = this->expect(TokenDataType);
@@ -1065,18 +1065,14 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-std::shared_ptr<Token> Parser::next() {
+const std::shared_ptr<const Token> Parser::next() {
 	auto t = _tokenizer.next();
-	auto err = _tokenizer.error();
-
-	if (err != nullptr) {
-		_err = err;
-		return t;
-	}
 	if (t == nullptr) {
-		_err = std::make_shared<Error>(ErrorRead, "received null token from scanner");
-		_err->finalize();
-		return t;
+		auto err = _tokenizer.error();
+		if (err != nullptr) {
+			_err = err;
+			return t;
+		}
 	}
 	if (_debug) {
 		std::cout << t->toString() << std::endl;
@@ -1084,7 +1080,7 @@ std::shared_ptr<Token> Parser::next() {
 	return t;
 }
 
-std::shared_ptr<Token> Parser::expect(TokenType expected) {
+const std::shared_ptr<const Token> Parser::expect(TokenType expected) {
 	auto t = this->next();
 	if (_err != nullptr) {
 		return t;
@@ -1102,7 +1098,7 @@ std::shared_ptr<Token> Parser::expect(TokenType expected) {
 	return t;
 }
 
-bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t) {
+bool Parser::findAndLinkParent(std::shared_ptr<Element> e, const std::shared_ptr<const Token> t) {
 	int min = e->index();
 	int max = min + e->length();
 	auto parent = _parents.find(min, max);
@@ -1118,7 +1114,7 @@ bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token
 	return true;
 }
 
-bool Parser::linkOrDefer(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+bool Parser::linkOrDefer(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
 	if (fromElement->index() > toIndex) {
 		return this->link(fromToken, fromElement, toIndex);
 	} else {
@@ -1127,7 +1123,7 @@ bool Parser::linkOrDefer(std::shared_ptr<Token> fromToken, std::shared_ptr<Eleme
 	return true;
 }
 
-bool Parser::link(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+bool Parser::link(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
 	std::weak_ptr<Element> ref; 
 
 	try {
@@ -1153,7 +1149,7 @@ void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallbac
 	_dataHandlers.push_back(DataHandler(offset, length, func));
 }
 
-void Parser::parseData(std::shared_ptr<Token> t) {
+void Parser::parseData(std::shared_ptr<const Token> t) {
 	std::size_t offset;
 
 	for (const auto& handler : _dataHandlers) {
@@ -1254,27 +1250,27 @@ int Parser::offsetIndex(int index) {
 	return index - _indexOffset;
 }
 
-void Parser::indexNotFound(std::shared_ptr<Token> t, int index) {
+void Parser::indexNotFound(const std::shared_ptr<const Token> t, int index) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("index not found: %d", index);
 	_err->finalize(t->line(), t->column());
 }
 
-void Parser::expectedString(std::shared_ptr<Token> t, std::string expected, std::string found) {
+void Parser::expectedString(const std::shared_ptr<const Token> t, std::string expected, std::string found) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'", expected.data(), found.data());
 	_err->finalize(t->line(), t->column());
 }
 
-void Parser::expected(std::shared_ptr<Token> t, std::string expected) {
+void Parser::expected(const std::shared_ptr<const Token> t, std::string expected) {
 	this->expectedString(t, expected, t->value());
 }
 
-void Parser::expectedInt(std::shared_ptr<Token> t) {
+void Parser::expectedInt(std::shared_ptr<const Token> t) {
 	this->expected(t, "valid integer");
 }
 
-void Parser::unexpected(std::shared_ptr<Token> t) {
+void Parser::unexpected(std::shared_ptr<const Token> t) {
 	_err = std::make_shared<Error>(ErrorToken);
 	_err->messagef("unexpected %s token", t->typeString().data());
 	_err->finalize(t->line(), t->column());

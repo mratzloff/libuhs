@@ -44,6 +44,7 @@ enum ErrorType {
 	ErrorUnknown,
 	ErrorEOF,
 	ErrorRead,
+	ErrorWrite,
 	ErrorValue,
 	ErrorToken,
 };
@@ -116,6 +117,7 @@ std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string sep, int n = 0);
 std::string join(const std::vector<std::string>& s, const std::string sep);
+std::string wrap(const std::string& s, const std::string sep, std::size_t width);
 
 }
 
@@ -144,7 +146,7 @@ private:
 
 class Title {
 public:
-	const std::string title() const;
+	const std::string& title() const;
 	void title(const std::string s);
 
 private:
@@ -171,7 +173,7 @@ public:
 	virtual ~Error() = default;
 	int type() const;
 	void type(ErrorType t);
-	const std::string message() const;
+	const std::string& message() const;
 	void message(const std::string s);
 	void messagef(const char* format, ...);
 	void finalize();
@@ -192,7 +194,7 @@ public:
 	void read();
 	bool good();
 	bool eof();
-	std::shared_ptr<Error> error();
+	const std::shared_ptr<Error> error();
 
 private:
 	static const std::size_t ReadLen = 1024;
@@ -206,7 +208,7 @@ class CRC {
 public:
 	static const int Size = 2;
 
-	CRC(std::shared_ptr<Pipe> p);
+	CRC(const std::shared_ptr<Pipe> p);
 	virtual ~CRC() = default;
 	void update(const char* buf, std::streamsize n);
 	void finalize();
@@ -219,7 +221,7 @@ private:
 	static const uint16_t MSBMask = 0x8000;
 	static const uint16_t FinalXor = 0x0100;
 
-	std::shared_ptr<Pipe> _pipe;
+	const std::shared_ptr<Pipe> _pipe;
 	uint16_t _table[TableLen];
 	char _buf[2]; // Checksum buffer
 	int _bufLen = 0;
@@ -288,26 +290,29 @@ private:
 
 class Tokenizer {
 public:
-	Tokenizer(std::shared_ptr<Pipe> p);
+	Tokenizer(const std::shared_ptr<Pipe> p);
 	virtual ~Tokenizer() = default;
+	const std::shared_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
-	std::shared_ptr<Token> next();
-	std::shared_ptr<Error> error();
+	const std::shared_ptr<const Token> next();
 
 private:
 	class TokenChannel {
 	public:
-		TokenChannel();
+		TokenChannel(const std::shared_ptr<Pipe> p);
 		virtual ~TokenChannel() = default;
-		bool send(std::shared_ptr<Token> t);
-		std::shared_ptr<Token> receive();
+		const std::shared_ptr<Error> error();
+		bool send(std::shared_ptr<const Token> t);
+		const std::shared_ptr<const Token> receive();
 		bool empty();
 		bool ok();
 		void close();
 
 	private:
-		std::queue<std::shared_ptr<Token>> _queue;
+		const std::shared_ptr<Pipe> _pipe; // For errors
+		std::shared_ptr<Error> _err;
+		std::queue<const std::shared_ptr<const Token>> _queue;
 		std::mutex _mutex;
 		bool _open = true;
 	};
@@ -317,7 +322,7 @@ private:
 	const std::regex _hyperpngRegionRegex {"^(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 
-	std::shared_ptr<Pipe> _pipe;
+	const std::shared_ptr<Pipe> _pipe;
 	std::shared_ptr<Error> _err;
 	std::string _buf;
 	int _line = 1;
@@ -348,6 +353,7 @@ public:
 	using const_iterator = NodeIterator<const Node>;
 
 	static const std::string typeString(NodeType t);
+	static bool isElementOfType(const Node& n, ElementType t);
 
 	Node(NodeType t);
 	virtual ~Node() = default;
@@ -361,6 +367,7 @@ public:
 	std::shared_ptr<Node> firstChild() const;
 	bool hasLastChild() const;
 	std::shared_ptr<Node> lastChild() const;
+	int numChildren() const;
 	int depth() const;
 
 	// Iterators
@@ -375,6 +382,7 @@ private:
 	std::shared_ptr<Node> _nextSibling;
 	std::shared_ptr<Node> _firstChild;
 	std::shared_ptr<Node> _lastChild;
+	int _numChildren = 0;
 	mutable int _depth = -1;
 };
 
@@ -478,6 +486,7 @@ public:
 	Codec() = default;
 	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
+	const std::string encode88a(std::string decoded) const;
 	const std::string decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey = false) const;
 	const std::string createKey(std::string secret) const;
 
@@ -500,7 +509,7 @@ class Parser {
 public:
 	Parser(std::ifstream& in, const ParserOptions& opt);
 	virtual ~Parser() = default;
-	std::shared_ptr<Error> error();
+	const std::shared_ptr<Error> error();
 	std::shared_ptr<Document> parse();
 
 private:
@@ -527,11 +536,11 @@ private:
 	};
 
 	struct LinkData {
-		const std::shared_ptr<Token> fromToken;
+		const std::shared_ptr<const Token> fromToken;
 		const std::shared_ptr<Element> fromElement;
 		int toIndex;
 
-		LinkData(const std::shared_ptr<Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
+		LinkData(const std::shared_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
 		virtual ~LinkData() = default;
 	};
 
@@ -550,7 +559,7 @@ private:
 	VersionType _version = Version96a;
 	bool _debug = false;
 	std::shared_ptr<Error> _err;
-	std::shared_ptr<Pipe> _pipe;
+	const std::shared_ptr<Pipe> _pipe;
 	Tokenizer _tokenizer;
 	CRC _crc;
 	Codec _codec;
@@ -568,12 +577,12 @@ private:
 	bool parse88a();
 	bool parse88aElements(int firstHintIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
-	bool parse88aCreditElement(std::shared_ptr<Token> t);
-	void parseHeaderSep(std::shared_ptr<Token> t);
+	bool parse88aCreditElement(std::shared_ptr<const Token> t);
+	void parseHeaderSep(std::shared_ptr<const Token> t);
 
 	// 96a
 	bool parse96a();
-	std::shared_ptr<Element> parseElement(std::shared_ptr<Token> t, bool indexByRegion = false);
+	std::shared_ptr<Element> parseElement(std::shared_ptr<const Token> t, bool indexByRegion = false);
 	bool parseCommentElement(std::shared_ptr<Element> e);
 	bool parseDataElement(std::shared_ptr<Element> e);
 	bool parseHintElement(std::shared_ptr<Element> e);
@@ -587,14 +596,14 @@ private:
 	bool parseVersionElement(std::shared_ptr<Element> e);
 
 	// Parse helpers
-	std::shared_ptr<Token> next();
-	std::shared_ptr<Token> expect(TokenType expected);
-	bool findAndLinkParent(std::shared_ptr<Element> e, std::shared_ptr<Token> t);
-	bool linkOrDefer(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
-	bool link(std::shared_ptr<Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	const std::shared_ptr<const Token> next();
+	const std::shared_ptr<const Token> expect(TokenType expected);
+	bool findAndLinkParent(std::shared_ptr<Element> e, const std::shared_ptr<const Token> t);
+	bool linkOrDefer(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	bool link(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
-	void parseData(std::shared_ptr<Token> t);
+	void parseData(std::shared_ptr<const Token> t);
 	void checkCRC();
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
@@ -602,11 +611,11 @@ private:
 	int offsetIndex(int index);
 
 	// Error helpers
-	void indexNotFound(std::shared_ptr<Token> t, int index);
-	void expectedString(std::shared_ptr<Token> t, std::string expected, std::string found);
-	void expected(std::shared_ptr<Token> t, std::string expected);
-	void expectedInt(std::shared_ptr<Token> t);
-	void unexpected(std::shared_ptr<Token> t);
+	void indexNotFound(const std::shared_ptr<const Token> t, int index);
+	void expectedString(const std::shared_ptr<const Token> t, std::string expected, std::string found);
+	void expected(const std::shared_ptr<const Token> t, std::string expected);
+	void expectedInt(std::shared_ptr<const Token> t);
+	void unexpected(std::shared_ptr<const Token> t);
 };
 
 struct WriterOptions {
@@ -618,8 +627,8 @@ class Writer {
 public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
-	std::shared_ptr<Error> error();
-	virtual bool write(const std::shared_ptr<const Document> d) const;
+	const std::shared_ptr<Error> error();
+	virtual bool write(const std::shared_ptr<const Document> d) = 0;
 
 protected:
 	std::ostream& _out;
@@ -632,13 +641,28 @@ class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~JSONWriter() = default;
-	bool write(const std::shared_ptr<const Document> d) const override;
+	bool write(const std::shared_ptr<const Document> d) override;
 
 private:
 	Json::Value serialize(const Document& d, Json::Value& root) const;
 	void serializeElement(const Element& e, Json::Value& obj) const;
 	void serializeDocument(const Document& d, Json::Value& obj) const;
 	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& obj) const;
+};
+
+class UHSWriter : public Writer {
+public:
+	static const std::size_t LineLen = 80;
+
+	UHSWriter(std::ostream& out, const WriterOptions opt = {});
+	virtual ~UHSWriter() = default;
+	bool write(const std::shared_ptr<const Document> d) override;
+
+private:
+	bool write88a(std::shared_ptr<const Document> d);
+	bool write96a(const Document& d);
+
+	Codec _codec;
 };
 
 }

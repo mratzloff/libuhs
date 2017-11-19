@@ -142,6 +142,7 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 		from = to + sep.length();
 		++i;
 	}
+
 	return items;
 }
 
@@ -157,6 +158,37 @@ std::string join(const std::vector<std::string>& items, const std::string sep) {
 		++i;
 	}
 	return s;
+}
+
+std::string wrap(const std::string& s, const std::string sep, std::size_t width) {
+	std::string lines;
+	std::size_t i = 0;
+	auto length = s.length();
+
+	while (i < length) {
+		std::size_t len = 0;
+
+		if (length - i > width) {
+			// Select position of first newline or last space within width
+			auto pos1 = s.find('\n', i);
+			auto pos2 = s.find_last_of(' ', i + width);
+			auto pos = (pos1 < pos2) ? pos1 : pos2;
+
+			len = pos - i;
+			if (len > width) { // Hard cut (no whitespace found)
+				len = width;
+			}
+		} else {
+			len = length - i;
+		}
+		if (i > 0) {
+			lines += sep;
+		}
+		lines += s.substr(i, len);
+		i += len + 1;
+	}
+
+	return lines;
 }
 
 }

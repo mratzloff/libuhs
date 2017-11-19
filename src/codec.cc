@@ -9,16 +9,29 @@ const std::string Codec::decode88a(std::string encoded) const {
 	for (std::size_t i = 0; i < len; ++i) {
 		char c = encoded[i];
 		if (this->isPrintable(c)) {
-			int offset = AsciiEnd;
-			if (c < 80) {
-				offset = AsciiStart;
-			}
-			decoded[i] = (char) ((int) c) * 2 - offset;
+			int offset = (c < 80) ? AsciiStart : AsciiEnd;
+			decoded[i] = static_cast<char>(static_cast<int>(c) * 2 - offset);
 		} else {
 			decoded[i] = '?';
 		}
 	}
 	return decoded;
+}
+
+const std::string Codec::encode88a(std::string decoded) const {
+	std::string& encoded = decoded;
+
+	std::size_t len = encoded.length();
+	for (std::size_t i = 0; i < len; ++i) {
+		char c = decoded[i];
+		if (this->isPrintable(c)) {
+			int offset = (c % 2 == 0) ? AsciiStart : AsciiEnd;
+			encoded[i] = static_cast<char>((static_cast<int>(c) + offset) / 2);
+		} else {
+			encoded[i] = '?';
+		}
+	}
+	return encoded;
 }
 
 const std::string Codec::decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey) const {
@@ -45,7 +58,7 @@ const std::string Codec::createKey(std::string secret) const {
 }
 
 int Codec::keystream(std::string key, std::size_t keyLen, std::size_t index, bool isTextElement) const {
-	int intIndex = int(index); // Guarantee signedness
+	int intIndex = static_cast<int>(index); // Guarantee signedness
 	int offset = intIndex % keyLen;
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);
 }

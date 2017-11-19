@@ -16,28 +16,43 @@ void printHelp() {
 	std::cout
 		<< "uhs " << UHS::Version << "\n\n"
 		<< "Usage: uhs [options] <file>\n"
-		<< "-d <dir>\tDirectory to write media files to\n"
-		<< "    --88a\tRead in 88a mode\n"
+		<< "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
+		<< "-d <dir>\t\tDirectory to write media files to\n"
+		<< "    --88a\t\tForce 88a mode\n"
 		<< "    --unregistered\tRead in unregistered mode\n"
-		<< "    --debug\tPrint debugging statements\n"
-		<< "-v, --version\tPrint the version\n"
-		<< "-h, --help\tPrint this help statement"
+		<< "    --debug\t\tPrint debugging statements\n"
+		<< "-v, --version\t\tPrint the version\n"
+		<< "-h, --help\t\tPrint this help statement"
 		<< std::endl;
 }
 
 int main(int argc, const char* argv[]) {
+	std::string format;
 	std::string file;
 	std::string dir;
 	UHS::ParserOptions parserOpt;
 	UHS::WriterOptions writerOpt;
 
+	if (argc == 1) {
+		printHelp();
+		return OK;
+	}
+
 	for (int i = 1; i < argc; ++i) {
 		if (argv[i][0] == '-') { // Parse options
 			switch (argv[i][1]) {
+			case 'f':
+				++i;
+				if (i >= argc) {
+					std::cerr << "uhs: error: -f requires a parameter" << std::endl;
+					return Err;
+				}
+				format = argv[i];
+				break;
 			case 'd':
 				++i;
 				if (i >= argc) {
-					std::cerr << "uhs: error: -d requires a parameter\n";
+					std::cerr << "uhs: error: -d requires a parameter" << std::endl;
 					return Err;
 				}
 				writerOpt.mediaDir = argv[i];
@@ -83,7 +98,15 @@ int main(int argc, const char* argv[]) {
 	}
 
 	if (file.empty()) {
-		std::cerr << "uhs: error: no input file\n";
+		std::cerr << "uhs: error: no input file" << std::endl;
+		return Err;
+	}
+	if (format.length() == 0) {
+		std::cerr << "uhs: error: no output format specified" << std::endl;
+		return Err;
+	}
+	if (format != "json" && format != "uhs") {
+		std::cerr << "uhs: error: unknown output format: " << format << std::endl;
 		return Err;
 	}
 
@@ -97,9 +120,21 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	UHS::JSONWriter w {std::cout, writerOpt};
-	// UHS::UHSWriter w {std::cout, writerOpt};
-	w.write(document);
+	// TODO: Make default constructor possible for Writer
+	if (format == "json") {
+		UHS::JSONWriter w {std::cout, writerOpt};
+		w.write(document);
+		err = w.error();
+	} else if (format == "uhs") {
+		UHS::UHSWriter w {std::cout, writerOpt};
+		w.write(document);
+		err = w.error();
+	}
+
+	if (err != nullptr) {
+		std::cerr << "uhs: " << err->message() << std::endl;
+		return Err;
+	}
 
 	return OK;
 }

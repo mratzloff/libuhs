@@ -14,7 +14,7 @@ void Error::type(ErrorType t) {
 	_type = t;
 }
 
-const std::string Error::message() const {
+const std::string& Error::message() const {
 	return _message;
 }
 

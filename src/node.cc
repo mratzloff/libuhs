@@ -15,6 +15,14 @@ const std::string Node::typeString(NodeType t) {
 	}
 }
 
+bool Node::isElementOfType(const Node& n, ElementType t) {
+	if (n.nodeType() == NodeElement) {
+		const auto& e = dynamic_cast<const Element&>(n);
+		return (e.elementType() == t);
+	}
+	return false;
+}
+
 Node::Node(NodeType t) : _nodeType {t} {}
 
 NodeType Node::nodeType() const {
@@ -34,6 +42,7 @@ void Node::appendChild(std::shared_ptr<Node> n) {
 		_lastChild = n;
 	}
 	n->_parent = this->shared_from_this();
+	++_numChildren;
 }
 
 std::shared_ptr<Node> Node::parent() const {
@@ -62,6 +71,10 @@ bool Node::hasLastChild() const {
 
 std::shared_ptr<Node> Node::lastChild() const {
 	return _lastChild;
+}
+
+int Node::numChildren() const {
+	return _numChildren;
 }
 
 int Node::depth() const {

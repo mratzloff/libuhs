@@ -10,12 +10,8 @@ Writer::Writer(std::ostream& out, const WriterOptions opt)
 	, _registered {opt.registered}
 {}
 
-std::shared_ptr<Error> Writer::error() {
+const std::shared_ptr<Error> Writer::error() {
 	return _err;
-}
-
-bool Writer::write(const std::shared_ptr<const Document>) const {
-	return false;
 }
 
 //------------------------------- JSONWriter --------------------------------//
@@ -23,7 +19,7 @@ bool Writer::write(const std::shared_ptr<const Document>) const {
 JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
 
-bool JSONWriter::write(const std::shared_ptr<const Document> d) const {
+bool JSONWriter::write(const std::shared_ptr<const Document> d) {
 	Json::Value root {Json::objectValue};
 
 	if (d == nullptr) {
@@ -31,6 +27,7 @@ bool JSONWriter::write(const std::shared_ptr<const Document> d) const {
 	}
 	this->serialize(*d, root);
 	_out << root;
+	std::flush(_out);
 
 	return true;
 }
@@ -159,6 +156,142 @@ void JSONWriter::serializeMap(const Traits::Attributes::Type& attrs,
 			obj[k] = v;
 		}
 	}
+}
+
+//-------------------------------- UHSWriter --------------------------------//
+
+UHSWriter::UHSWriter(std::ostream& out, const WriterOptions opt)
+	: Writer(out, opt) {}
+
+bool UHSWriter::write(const std::shared_ptr<const Document> d) {
+	if (d == nullptr) {
+		return false;
+	}
+	auto version = d->version();
+
+	if (version == Version88a) {
+		this->write88a(d);
+	} else {
+		this->write96a(*d);
+	}
+	std::flush(_out);
+
+	return true;
+}
+
+bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
+	std::queue<std::shared_ptr<const Node>> queue;
+	std::shared_ptr<const Node> n;
+	auto prevType = ElementUnknown;
+	int index = 1;
+	int numPrevChildren = 0;
+	int firstHintIndex = 0;
+	int lastHintIndex = 0;
+
+	// Find credit node, if any
+	std::shared_ptr<const Element> credit;
+	for (const auto& n : *d) {
+		if (n.nodeType() == NodeElement) {
+			const auto& e = dynamic_cast<const Element&>(n);
+			if (e.elementType() == ElementCredit) {
+				credit = std::make_shared<const Element>(e);
+				break;
+			}
+		}
+	}
+
+	// Traverse tree, breadth first
+	queue.push(d);
+	std::ostringstream ss;
+
+	while (! queue.empty()) {
+		n = queue.front();
+		queue.pop();
+
+		auto nodeType = n->nodeType();
+		if (nodeType == NodeText) {
+			if (lastHintIndex == 0) {
+				lastHintIndex = index + numPrevChildren - 1;
+			}
+			const auto& tn = dynamic_cast<const TextNode&>(*n);
+			ss << _codec.encode88a(tn.body()) << EOL;
+
+		} else if (nodeType == NodeElement) {
+			const auto& e = dynamic_cast<const Element&>(*n);
+			auto elementType = e.elementType();
+
+			std::string title;
+			if (elementType == ElementHint) {
+				title = Strings::rtrim(e.title(), '?');
+			} else {
+				title = e.title();
+			}
+
+			if (elementType == ElementSubject || prevType == ElementSubject) {
+				index += numPrevChildren * 2;
+			} else if (elementType == ElementHint) {
+				if (firstHintIndex == 0) {
+					firstHintIndex = index;
+				}
+				index += numPrevChildren;
+			} else {
+				_err = std::make_shared<Error>(ErrorValue);
+ 				_err->messagef("unexpected element: %s", Element::typeString(elementType).data());
+ 				_err->finalize();
+ 				return false;
+			}
+
+			ss << _codec.encode88a(title) << EOL;
+			ss << index << EOL;
+
+			prevType = elementType;
+		}
+
+		numPrevChildren = n->numChildren();
+		if (n == d && credit != nullptr) {
+			--numPrevChildren; // Don't count credits for indexing purposes
+		}
+
+		if (n->hasFirstChild()) {
+			n = n->firstChild();
+			if (! Node::isElementOfType(*n, ElementCredit)) {
+				queue.push(n);
+			}
+			while (n->hasNextSibling()) {
+				n = n->nextSibling();
+				if (! Node::isElementOfType(*n, ElementCredit)) {
+					queue.push(n);
+				}
+			}
+		}
+	}
+
+	_out << Token::Signature << EOL;
+	_out << d->title() << EOL;
+	_out << firstHintIndex << EOL;
+	_out << lastHintIndex << EOL;
+	_out << ss.str();
+
+	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
+	if (credit != nullptr) {
+		_out << Token::CreditSep << EOL;
+
+		for (const auto& n : *credit) {
+			if (n.nodeType() == NodeText) {
+				const auto& tn = dynamic_cast<const TextNode&>(n);
+				_out << Strings::wrap(tn.body(), EOL, LineLen - strlen(EOL)) << EOL;
+				break;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool UHSWriter::write96a(const Document& d) {
+	_err = std::make_shared<Error>(ErrorWrite, "not implemented");
+	_err->finalize();
+	return false;
 }
 
 }
