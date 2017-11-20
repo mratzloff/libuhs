@@ -8,7 +8,7 @@ namespace UHS {
 Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	: _version {opt.version}
 	, _debug {opt.debug}
-	, _pipe {std::make_shared<Pipe>(in)}
+	, _pipe {Pipe(in)}
 	, _tokenizer {_pipe}
 	, _crc {_pipe}
 {}
@@ -57,7 +57,7 @@ const std::shared_ptr<Error> Parser::error() {
 std::shared_ptr<Document> Parser::parse() {
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
-		_pipe->read();
+		_pipe.read();
 	}};
 
 	// Meanwhile, build out document by parsing emitted tokens in parallel

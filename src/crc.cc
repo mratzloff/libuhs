@@ -10,9 +10,9 @@ namespace UHS {
 // 
 // The second is tfc.uhs, which contains a stray CRLF at the end. If removed,
 // the checksum is also correct.
-CRC::CRC(std::shared_ptr<Pipe> p) : _pipe {p}, _buf {0}, _rem {0} {
+CRC::CRC(Pipe& p) : _pipe {p}, _buf {0}, _rem {0} {
 	this->createTable();
-	_pipe->addHandler([=](const char* s, std::streamsize n) {
+	_pipe.addHandler([=](const char* s, std::streamsize n) {
 		this->update(s, n);
 	});
 }

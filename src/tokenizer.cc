@@ -5,8 +5,8 @@
 
 namespace UHS {
 
-Tokenizer::Tokenizer(const std::shared_ptr<Pipe> p) : _pipe {p}, _out {p} {
-	_pipe->addHandler([=](const char* s, std::streamsize n) {
+Tokenizer::Tokenizer(Pipe& p) : _pipe {p}, _out {p} {
+	_pipe.addHandler([=](const char* s, std::streamsize n) {
 		this->tokenize(s, n);
 	});
 }
@@ -64,7 +64,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 		}
 	}
 
-	if (_pipe->eof()) {
+	if (_pipe.eof()) {
 		auto eofColumn = column + _buf.length();
 
 		if (! _beforeHeaderSep) {
@@ -197,7 +197,7 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 	_out.send({TokenEOF, _offset, _line, column});
 }
 
-Tokenizer::TokenChannel::TokenChannel(const std::shared_ptr<Pipe> p)
+Tokenizer::TokenChannel::TokenChannel(Pipe& p)
 	: _pipe {p} {}
 
 const std::shared_ptr<Error> Tokenizer::TokenChannel::error() {
@@ -217,7 +217,7 @@ bool Tokenizer::TokenChannel::send(const Token&& t) {
 std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
 	while (this->empty()) { // Unlikely
 		if (! this->ok()) {
-			auto err = _pipe->error();
+			auto err = _pipe.error();
 			if (err != nullptr) {
 				_err = err;
 			}
@@ -240,7 +240,7 @@ bool Tokenizer::TokenChannel::empty() const {
 bool Tokenizer::TokenChannel::ok() const {
 	std::lock_guard<std::mutex> m {_mutex};
 
-	if (_pipe->error() != nullptr) {
+	if (_pipe.error() != nullptr) {
 		return false;
 	}
 	return _open || ! _queue.empty();

@@ -208,7 +208,7 @@ class CRC {
 public:
 	static const int Size = 2;
 
-	CRC(const std::shared_ptr<Pipe> p);
+	CRC(Pipe& p);
 	virtual ~CRC() = default;
 	void update(const char* buf, std::streamsize n);
 	void finalize();
@@ -221,7 +221,7 @@ private:
 	static const uint16_t MSBMask = 0x8000;
 	static const uint16_t FinalXor = 0x0100;
 
-	const std::shared_ptr<Pipe> _pipe;
+	Pipe& _pipe;
 	uint16_t _table[TableLen];
 	char _buf[2]; // Checksum buffer
 	int _bufLen = 0;
@@ -290,7 +290,7 @@ private:
 
 class Tokenizer {
 public:
-	Tokenizer(const std::shared_ptr<Pipe> p);
+	Tokenizer(Pipe& p);
 	virtual ~Tokenizer() = default;
 	const std::shared_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
@@ -300,7 +300,7 @@ public:
 private:
 	class TokenChannel {
 	public:
-		TokenChannel(const std::shared_ptr<Pipe> p);
+		TokenChannel(Pipe& p);
 		virtual ~TokenChannel() = default;
 		const std::shared_ptr<Error> error();
 		bool send(const Token&& t);
@@ -310,7 +310,7 @@ private:
 		void close();
 
 	private:
-		const std::shared_ptr<Pipe> _pipe; // For errors
+		Pipe& _pipe; // For errors
 		std::shared_ptr<Error> _err;
 		std::queue<const Token> _queue;
 		mutable std::mutex _mutex;
@@ -322,7 +322,7 @@ private:
 	const std::regex _hyperpngRegionRegex {"^(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 
-	const std::shared_ptr<Pipe> _pipe;
+	Pipe& _pipe;
 	std::shared_ptr<Error> _err;
 	std::string _buf;
 	int _line = 1;
@@ -559,7 +559,7 @@ private:
 	VersionType _version = Version96a;
 	bool _debug = false;
 	std::shared_ptr<Error> _err;
-	const std::shared_ptr<Pipe> _pipe;
+	Pipe _pipe;
 	Tokenizer _tokenizer;
 	CRC _crc;
 	Codec _codec;
