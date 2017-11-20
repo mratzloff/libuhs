@@ -190,18 +190,19 @@ public:
 
 	Pipe(std::ifstream& in);
 	virtual ~Pipe() = default;
+	const std::unique_ptr<Error> error();
 	void addHandler(Handler h);
 	void read();
 	bool good();
 	bool eof();
-	const std::shared_ptr<Error> error();
 
 private:
 	static const std::size_t ReadLen = 1024;
+
 	std::ifstream& _in;
+	std::unique_ptr<Error> _err;
 	std::size_t _offset = 0;
 	std::vector<Handler> _handlers;
-	std::shared_ptr<Error> _err;
 };
 
 class CRC {
@@ -292,7 +293,7 @@ class Tokenizer {
 public:
 	Tokenizer(Pipe& p);
 	virtual ~Tokenizer() = default;
-	const std::shared_ptr<Error> error();
+	const std::unique_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::unique_ptr<const Token> next();
@@ -302,7 +303,7 @@ private:
 	public:
 		TokenChannel(Pipe& p);
 		virtual ~TokenChannel() = default;
-		const std::shared_ptr<Error> error();
+		const std::unique_ptr<Error> error();
 		bool send(const Token&& t);
 		std::unique_ptr<const Token> receive();
 		bool empty() const;
@@ -311,7 +312,7 @@ private:
 
 	private:
 		Pipe& _pipe; // For errors
-		std::shared_ptr<Error> _err;
+		std::unique_ptr<Error> _err;
 		std::queue<const Token> _queue;
 		mutable std::mutex _mutex;
 		bool _open = true;
@@ -323,7 +324,7 @@ private:
 	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 
 	Pipe& _pipe;
-	std::shared_ptr<Error> _err;
+	std::unique_ptr<Error> _err;
 	std::string _buf;
 	int _line = 1;
 	std::size_t _offset = 0;
@@ -509,7 +510,7 @@ class Parser {
 public:
 	Parser(std::ifstream& in, const ParserOptions& opt);
 	virtual ~Parser() = default;
-	const std::shared_ptr<Error> error();
+	const Error* error();
 	std::shared_ptr<Document> parse();
 
 private:
@@ -558,7 +559,7 @@ private:
 
 	VersionType _version = Version96a;
 	bool _debug = false;
-	std::shared_ptr<Error> _err;
+	std::unique_ptr<Error> _err;
 	Pipe _pipe;
 	Tokenizer _tokenizer;
 	CRC _crc;
@@ -627,12 +628,12 @@ class Writer {
 public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
-	const std::shared_ptr<Error> error();
+	const Error* error();
 	virtual bool write(const std::shared_ptr<const Document> d) = 0;
 
 protected:
 	std::ostream& _out;
-	std::shared_ptr<Error> _err;
+	std::unique_ptr<Error> _err;
 	std::string _mediaDir;
 	bool _registered;
 };

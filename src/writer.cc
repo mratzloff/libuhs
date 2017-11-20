@@ -10,8 +10,8 @@ Writer::Writer(std::ostream& out, const WriterOptions opt)
 	, _registered {opt.registered}
 {}
 
-const std::shared_ptr<Error> Writer::error() {
-	return _err;
+const Error* Writer::error() {
+	return _err.get();
 }
 
 //------------------------------- JSONWriter --------------------------------//
@@ -235,7 +235,7 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 				}
 				index += numPrevChildren;
 			} else {
-				_err = std::make_shared<Error>(ErrorValue);
+				_err = std::make_unique<Error>(ErrorValue);
  				_err->messagef("unexpected element: %s", Element::typeString(elementType).data());
  				_err->finalize();
  				return false;
@@ -294,7 +294,7 @@ void UHSWriter::write88aCreditElement(const std::unique_ptr<const Element> e) {
 }
 
 bool UHSWriter::write96a(const Document& d) {
-	_err = std::make_shared<Error>(ErrorWrite, "not implemented");
+	_err = std::make_unique<Error>(ErrorWrite, "not implemented");
 	_err->finalize();
 	return false;
 }

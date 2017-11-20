@@ -1,5 +1,4 @@
 #include <chrono>
-#include <iostream>
 #include <thread>
 #include "uhs.h"
 
@@ -11,14 +10,14 @@ Tokenizer::Tokenizer(Pipe& p) : _pipe {p}, _out {p} {
 	});
 }
 
-const std::shared_ptr<Error> Tokenizer::error() {
+const std::unique_ptr<Error> Tokenizer::error() {
 	if (_err == nullptr) {
 		return nullptr;
 	}
 	if (_err->type() == ErrorEOF) {
 		return nullptr;
 	}
-	return _err;
+	return std::move(_err);
 }
 
 void Tokenizer::tokenize(const char* buf, std::streamsize n) {
@@ -92,7 +91,10 @@ bool Tokenizer::hasNext() {
 std::unique_ptr<const Token> Tokenizer::next() {
 	auto t = _out.receive();
 	if (t == nullptr) {
-		_err = _out.error();
+		auto err = _out.error();
+		if (err != nullptr) {
+			_err = std::move(err);
+		}
 	}
 	return t;
 }
@@ -197,11 +199,10 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 	_out.send({TokenEOF, _offset, _line, column});
 }
 
-Tokenizer::TokenChannel::TokenChannel(Pipe& p)
-	: _pipe {p} {}
+Tokenizer::TokenChannel::TokenChannel(Pipe& p) : _pipe {p} {}
 
-const std::shared_ptr<Error> Tokenizer::TokenChannel::error() {
-	return _err;
+const std::unique_ptr<Error> Tokenizer::TokenChannel::error() {
+	return std::move(_err);
 }
 
 bool Tokenizer::TokenChannel::send(const Token&& t) {
@@ -219,7 +220,7 @@ std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
 		if (! this->ok()) {
 			auto err = _pipe.error();
 			if (err != nullptr) {
-				_err = err;
+				_err = std::move(err);
 			}
 			return nullptr;
 		}

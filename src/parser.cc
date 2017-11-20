@@ -50,8 +50,8 @@ Parser::LinkData::LinkData(
 	, toIndex {toIndex}
 {}
 
-const std::shared_ptr<Error> Parser::error() {
-	return _err;
+const Error* Parser::error() {
+	return _err.get();
 }
 
 std::shared_ptr<Document> Parser::parse() {
@@ -235,7 +235,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		}
 
 		if (parent == nullptr) {
-			_err = std::make_shared<Error>(ErrorValue, "could not find parent node");
+			_err = std::make_unique<Error>(ErrorValue, "could not find parent node");
 			_err->finalize(t->line(), t->column());
 			return false;
 		}
@@ -284,7 +284,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 			}
 		}
 		if (parent == nullptr) {
-			_err = std::make_shared<Error>(ErrorValue, "could not find parent node");
+			_err = std::make_unique<Error>(ErrorValue, "could not find parent node");
 			_err->finalize(t->line(), t->column());
 			return false;
 		}
@@ -1074,7 +1074,7 @@ std::unique_ptr<const Token> Parser::next() {
 	if (t == nullptr) {
 		auto err = _tokenizer.error();
 		if (err != nullptr) {
-			_err = err;
+			_err = std::move(err);
 			return t;
 		}
 	}
@@ -1091,10 +1091,10 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	}
 
 	if (t->type() == TokenEOF && expected != TokenEOF) {
-		_err = std::make_shared<Error>(ErrorEOF);
+		_err = std::make_unique<Error>(ErrorEOF);
 		_err->finalize(t->line(), t->column());
 	} else if (t->type() != expected) {
-		_err = std::make_shared<Error>(ErrorToken);
+		_err = std::make_unique<Error>(ErrorToken);
 		_err->messagef("expected %s, found %s",
 			Token::typeString(expected).data(), t->typeString().data());
 		_err->finalize(t->line(), t->column());
@@ -1108,7 +1108,7 @@ bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const
 	auto parent = _parents.find(min, max);
 
 	if (parent == nullptr) {
-		_err = std::make_shared<Error>(ErrorValue, "orphaned element");
+		_err = std::make_unique<Error>(ErrorValue, "orphaned element");
 		_err->finalize(t->line(), t->column());
 		return false;
 	}
@@ -1258,13 +1258,13 @@ int Parser::offsetIndex(int index) {
 }
 
 void Parser::indexNotFound(std::unique_ptr<const Token> t, int index) {
-	_err = std::make_shared<Error>(ErrorValue);
+	_err = std::make_unique<Error>(ErrorValue);
 	_err->messagef("index not found: %d", index);
 	_err->finalize(t->line(), t->column());
 }
 
 void Parser::expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found) {
-	_err = std::make_shared<Error>(ErrorValue);
+	_err = std::make_unique<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'", expected.data(), found.data());
 	_err->finalize(t->line(), t->column());
 }
@@ -1278,7 +1278,7 @@ void Parser::expectedInt(std::unique_ptr<const Token> t) {
 }
 
 void Parser::unexpected(std::unique_ptr<const Token> t) {
-	_err = std::make_shared<Error>(ErrorToken);
+	_err = std::make_unique<Error>(ErrorToken);
 	_err->messagef("unexpected %s token", t->typeString().data());
 	_err->finalize(t->line(), t->column());
 }

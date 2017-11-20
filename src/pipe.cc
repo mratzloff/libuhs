@@ -1,13 +1,16 @@
-#include <iostream>
 #include "uhs.h"
 
 namespace UHS {
 
 Pipe::Pipe(std::ifstream& in) : _in {in} {
 	if (! _in.is_open()) {
-		_err = std::make_shared<Error>(ErrorRead, "could not open file");
+		_err = std::make_unique<Error>(ErrorRead, "could not open file");
 		_err->finalize();
 	}
+}
+
+const std::unique_ptr<Error> Pipe::error() {
+	return std::move(_err);
 }
 
 void Pipe::addHandler(Pipe::Handler h) {
@@ -38,10 +41,6 @@ bool Pipe::good() {
 
 bool Pipe::eof() {
 	return _in.eof();
-}
-
-const std::shared_ptr<Error> Pipe::error() {
-	return _err;
 }
 
 }
