@@ -108,15 +108,14 @@ void Tokenizer::tokenizeLine() {
 
 	// All numbers are indexes in 88a, and link elements contain an index
 	if (Strings::isInt(s) && (_beforeHeaderSep || _line == _expectedIndexLine)) {
-		_out.send(std::make_unique<const Token>(
-			TokenIndex, _offset, _line, 0, Strings::ltrim(s, '0')));
+		_out.send({TokenIndex, _offset, _line, 0, Strings::ltrim(s, '0')});
 		_expectedIndexLine = -1;
 		return;
 	}
 
 	// All descriptors are immediately followed by a string title
 	if (_line == _expectedStringLine) {
-		_out.send(std::make_unique<const Token>(TokenString, _offset, _line, 0, s));
+		_out.send({TokenString, _offset, _line, 0, s});
 		_expectedStringLine = -1;
 		return;
 	}
@@ -124,17 +123,17 @@ void Tokenizer::tokenizeLine() {
 	// Check for exact line matches
 	if (s == Token::HeaderSep) {
 		_beforeHeaderSep = false;
-		_out.send(std::make_unique<const Token>(TokenHeaderSep, _offset, _line));
+		_out.send({TokenHeaderSep, _offset, _line});
 	} else if (s == Token::CreditSep) {
-		_out.send(std::make_unique<const Token>(TokenCreditSep, _offset, _line));
+		_out.send({TokenCreditSep, _offset, _line});
 	} else if (s == Token::NestedElementSep) {
-		_out.send(std::make_unique<const Token>(TokenNestedElementSep, _offset, _line));
+		_out.send({TokenNestedElementSep, _offset, _line});
 	} else if (s == Token::NestedTextSep) {
-		_out.send(std::make_unique<const Token>(TokenNestedTextSep, _offset, _line));
+		_out.send({TokenNestedTextSep, _offset, _line});
 	} else if (s == Token::ParagraphSep) {
-		_out.send(std::make_unique<const Token>(TokenParagraphSep, _offset, _line));
+		_out.send({TokenParagraphSep, _offset, _line});
 	} else if (s == Token::Signature) {
-		_out.send(std::make_unique<const Token>(TokenSignature, _offset, _line));
+		_out.send({TokenSignature, _offset, _line});
 	} else {
 		// Check for line match patterns
 		std::smatch matches;
@@ -151,54 +150,51 @@ void Tokenizer::tokenizeLine() {
 		} else if (std::regex_match(s, matches, _overlayAddressRegex)) {
 			this->tokenizeOverlayAddress(matches);
 		} else {
-			_out.send(std::make_unique<const Token>(TokenString, _offset, _line, 0, s));
+			_out.send({TokenString, _offset, _line, 0, s});
 		}
 	}
 }
 
 ElementType Tokenizer::tokenizeDescriptor(const std::smatch& m) {
-	_out.send(std::make_unique<const Token>(
-		TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
+	_out.send({TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')});
 	std::string ident {m[2].str()};
-	auto column = m.position(2);
-	_out.send(std::make_unique<const Token>(TokenIdent, _offset + column, _line, column, ident));
+	auto column = static_cast<std::size_t>(m.position(2));
+	_out.send({TokenIdent, _offset + column, _line, column, ident});
 	return Element::elementType(ident);
 }
 
 void Tokenizer::tokenizeDataAddress(const std::smatch& m) {
-	std::vector<TokenType> tokens {TokenDataType, TokenDataOffset, TokenDataLength};
-	this->tokenizeMatches(m, tokens);
+	this->tokenizeMatches(m, {TokenDataType, TokenDataOffset, TokenDataLength});
 }
 
 void Tokenizer::tokenizeHyperpngRegion(const std::smatch& m) {
-	std::vector<TokenType> tokens {TokenCoordX, TokenCoordY, TokenCoordX, TokenCoordY};
-	this->tokenizeMatches(m, tokens);
+	this->tokenizeMatches(m, {TokenCoordX, TokenCoordY, TokenCoordX, TokenCoordY});
 }
 
 void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
-	std::vector<TokenType> tokens {TokenDataOffset, TokenDataLength, TokenCoordX, TokenCoordY};
-	this->tokenizeMatches(m, tokens);
+	this->tokenizeMatches(m, {TokenDataOffset, TokenDataLength, TokenCoordX, TokenCoordY});
 }
 
-void Tokenizer::tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
+void Tokenizer::tokenizeMatches(const std::smatch& m, const std::vector<TokenType>&& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (m[i + 1].length() > 0) {
-			_out.send(std::make_unique<const Token>(
-				tokens[i], _offset, _line, m.position(i + 1), Strings::ltrim(m[i + 1].str(), '0')));
+			auto column = static_cast<std::size_t>(m.position(i + 1));
+			_out.send({tokens[i], _offset, _line, column,
+				Strings::ltrim(m[i + 1].str(), '0')});
 		}
 	}
 }
 
 void Tokenizer::tokenizeData(const std::string& data, std::size_t column) {
-	_out.send(std::make_unique<const Token>(TokenData, _offset, _line, column, data));
+	_out.send({TokenData, _offset, _line, column, data});
 }
 
 void Tokenizer::tokenizeCRC(const std::string& crc, std::size_t column) {
-	_out.send(std::make_unique<const Token>(TokenCRC, _offset, _line, column, crc));
+	_out.send({TokenCRC, _offset, _line, column, crc});
 }
 
 void Tokenizer::tokenizeEOF(std::size_t column) {
-	_out.send(std::make_unique<const Token>(TokenEOF, _offset, _line, column));
+	_out.send({TokenEOF, _offset, _line, column});
 }
 
 Tokenizer::TokenChannel::TokenChannel(const std::shared_ptr<Pipe> p)
@@ -208,12 +204,12 @@ const std::shared_ptr<Error> Tokenizer::TokenChannel::error() {
 	return _err;
 }
 
-bool Tokenizer::TokenChannel::send(std::unique_ptr<const Token> t) {
+bool Tokenizer::TokenChannel::send(const Token&& t) {
 	if (! _open) {
 		return false;
 	}
 	std::lock_guard<std::mutex> m {_mutex};
-	_queue.push(std::move(t));
+	_queue.push(t);
 
 	return true;
 }
@@ -221,28 +217,30 @@ bool Tokenizer::TokenChannel::send(std::unique_ptr<const Token> t) {
 std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
 	while (this->empty()) { // Unlikely
 		if (! this->ok()) {
+			auto err = _pipe->error();
+			if (err != nullptr) {
+				_err = err;
+			}
 			return nullptr;
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	std::lock_guard<std::mutex> m {_mutex};
-	std::unique_ptr<const Token> t {std::move(_queue.front())};
+	auto t = std::make_unique<const Token>(_queue.front());
 	_queue.pop();
 	
 	return t;
 }
 
-bool Tokenizer::TokenChannel::empty() {
+bool Tokenizer::TokenChannel::empty() const {
 	std::lock_guard<std::mutex> m {_mutex};
 	return _queue.empty();
 }
 
-bool Tokenizer::TokenChannel::ok() {
+bool Tokenizer::TokenChannel::ok() const {
 	std::lock_guard<std::mutex> m {_mutex};
 
-	auto err = _pipe->error();
-	if (err != nullptr) {
-		_err = err;
+	if (_pipe->error() != nullptr) {
 		return false;
 	}
 	return _open || ! _queue.empty();

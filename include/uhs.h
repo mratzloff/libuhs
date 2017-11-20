@@ -303,17 +303,17 @@ private:
 		TokenChannel(const std::shared_ptr<Pipe> p);
 		virtual ~TokenChannel() = default;
 		const std::shared_ptr<Error> error();
-		bool send(std::unique_ptr<const Token> t);
+		bool send(const Token&& t);
 		std::unique_ptr<const Token> receive();
-		bool empty();
-		bool ok();
+		bool empty() const;
+		bool ok() const;
 		void close();
 
 	private:
 		const std::shared_ptr<Pipe> _pipe; // For errors
 		std::shared_ptr<Error> _err;
-		std::queue<std::unique_ptr<const Token>> _queue;
-		std::mutex _mutex;
+		std::queue<const Token> _queue;
+		mutable std::mutex _mutex;
 		bool _open = true;
 	};
 
@@ -338,7 +338,7 @@ private:
 	void tokenizeDataAddress(const std::smatch& m);
 	void tokenizeHyperpngRegion(const std::smatch& m);
 	void tokenizeOverlayAddress(const std::smatch& m);
-	void tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens);
+	void tokenizeMatches(const std::smatch& m, const std::vector<TokenType>&& tokens);
 	void tokenizeData(const std::string& data, std::size_t column);
 	void tokenizeCRC(const std::string& crc, std::size_t column);
 	void tokenizeEOF(std::size_t column);
