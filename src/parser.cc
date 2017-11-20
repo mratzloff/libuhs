@@ -95,7 +95,7 @@ bool Parser::parse88a() {
 	t = this->expect(TokenSignature);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
@@ -104,7 +104,7 @@ bool Parser::parse88a() {
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
@@ -114,13 +114,13 @@ bool Parser::parse88a() {
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	int firstHintIndex = Strings::toInt(t->value());
 	if (firstHintIndex < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	firstHintIndex += HeaderLen;
@@ -129,13 +129,13 @@ bool Parser::parse88a() {
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	int lastHintIndex = Strings::toInt(t->value());
 	if (lastHintIndex < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	lastHintIndex += HeaderLen;
@@ -145,7 +145,7 @@ bool Parser::parse88a() {
 	bool ok = this->parse88aElements(firstHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
@@ -154,7 +154,7 @@ bool Parser::parse88a() {
 	ok = this->parse88aTextNodes(lastHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
@@ -174,7 +174,7 @@ bool Parser::parse88a() {
 	case TokenString:
 		ok = this->parse88aCreditElement(std::move(t));
 		if (! ok) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return ok;
 	case TokenHeaderSep:
@@ -184,7 +184,7 @@ bool Parser::parse88a() {
 		_done = true;
 		return true;
 	default:
-		this->unexpected(std::move(t));
+		this->unexpected(t->type(), t->line(), t->column());
 		return false;
 	}
 }
@@ -201,7 +201,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -211,13 +211,13 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		t = this->expect(TokenIndex);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
 		int firstChildIndex = Strings::toInt(t->value());
 		if (firstChildIndex < 0) {
-			this->expectedInt(std::move(t));
+			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
 		firstChildIndex += HeaderLen;
@@ -270,7 +270,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -334,7 +334,7 @@ bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
 			continuation = true;
 			break;
 		default:
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 			return false;
 		}
 
@@ -386,7 +386,7 @@ bool Parser::parse96a() {
 			_done = true;
 			return true;
 		default:
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 			return false;
 		}
 	}
@@ -400,7 +400,7 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bo
 	// Length
 	int len = Strings::toInt(t->value());
 	if (len < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return nullptr;
 	}
 
@@ -408,7 +408,7 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bo
 	t = this->expect(TokenIdent);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return nullptr;
 	}
@@ -441,7 +441,7 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bo
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return nullptr;
 	}
@@ -500,7 +500,7 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 			continuation = false;
 			break;
 		default:
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 			return false;
 		}
 	}
@@ -528,13 +528,13 @@ bool Parser::parseDataElement(std::shared_ptr<Element> e) {
 		case TokenDataOffset:
 			intOffset = Strings::toInt(t->value());
 			if (intOffset < 0) {
-				this->expectedInt(std::move(t));
+				this->expectedInt(t->value(), t->line(), t->column());
 				return false;
 			}
 			offset = intOffset;
 			goto expectDataLength;
 		default:
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 			return false;
 		}
 	}
@@ -544,13 +544,13 @@ expectDataLength:
 	t = this->expect(TokenDataLength);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	std::size_t len = intLen;
@@ -606,7 +606,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			break;
 		case TokenNestedElementSep:
 			if (i == len || e->elementType() != ElementNesthint) {
-				this->expected(std::move(t), "string");
+				this->expected("string", t->value(), t->line(), t->column());
 				return false;
 			}
 
@@ -621,7 +621,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			t = this->expect(TokenLength);
 			if (_err != nullptr) {
 				if (_err->type() == ErrorEOF) {
-					this->unexpected(std::move(t));
+					this->unexpected(t->type(), t->line(), t->column());
 				}
 				return false;
 			}
@@ -635,7 +635,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 
 			break;
 		default:
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 			return false;
 		}
 	}
@@ -665,13 +665,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordX);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
 		auto x1 = t->value();
 		if (Strings::toInt(x1) == Strings::NaN) {
-			this->expectedInt(std::move(t));
+			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
 
@@ -679,13 +679,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordY);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
 		auto y1 = t->value();
 		if (Strings::toInt(y1) == Strings::NaN) {
-			this->expectedInt(std::move(t));
+			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
 
@@ -693,13 +693,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordX);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
 		auto x2 = t->value();
 		if (Strings::toInt(x2) == Strings::NaN) {
-			this->expectedInt(std::move(t));
+			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
 
@@ -707,13 +707,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordY);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
 		auto y2 = t->value();
 		if (Strings::toInt(y2) == Strings::NaN) {
-			this->expectedInt(std::move(t));
+			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
 
@@ -721,7 +721,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenLength);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -757,7 +757,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -782,7 +782,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 
 		// Split instruction (e.g., "3Z")
 		if (markerLen < 2) {
-			this->expectedString(std::move(t), "incentive instruction", marker);
+			this->expected("incentive instruction", marker, t->line(), t->column());
 			return false;
 		}
 		auto indexString = marker.substr(0, markerLen-1);
@@ -790,7 +790,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 
 		int index = Strings::toInt(indexString);
 		if (index < 0) {
-			this->expectedString(std::move(t), "valid incentive index", indexString);
+			this->expected("valid incentive index", indexString, t->line(), t->column());
 			return false;
 		}
 
@@ -832,7 +832,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -844,7 +844,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		} else {
 			auto parts = Strings::split(s, Token::InfoKeyValueSep, 2);
 			if (parts.size() != 2) {
-				this->expected(std::move(t), Token::InfoKeyValueSep);
+				this->expected(Token::InfoKeyValueSep, t->value(), t->line(), t->column());
 				return false;
 			}
 			key = parts[0];
@@ -854,25 +854,25 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		if (key == "length") {
 			int intVal = Strings::toInt(val);
 			if (intVal < 0) {
-				this->expectedInt(std::move(t));
+				this->expectedInt(t->value(), t->line(), t->column());
 				return false;
 			}
 			_document->attr("length", std::to_string(intVal));
 		} else if (key == "date") {
 			bool ok = this->parseDate(val, tm);
 			if (! ok) {
-				this->expected(std::move(t), "valid date");
+				this->expected("valid date", t->value(), t->line(), t->column());
 				return false;
 			}
 		} else if (key == "time") {
 			bool ok = this->parseTime(val, tm);
 			if (! ok) {
-				this->expected(std::move(t), "valid time");
+				this->expected("valid time", t->value(), t->line(), t->column());
 				return false;
 			}
 			auto time = mktime(&tm);
 			if (time == -1) {
-				this->expected(std::move(t), "valid timestamp");
+				this->expected("valid timestamp", t->value(), t->line(), t->column());
 				return false;
 			}
 			char buf[20];
@@ -898,14 +898,14 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	auto body = t->value();
 	int refIndex = Strings::toInt(body);
 	if (refIndex < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	e->body(body);
@@ -925,13 +925,13 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenCoordX);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	auto x = t->value();
 	if (Strings::toInt(x) == Strings::NaN) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	e->attr("image:x", x);
@@ -940,13 +940,13 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenCoordY);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	auto y = t->value();
 	if (Strings::toInt(y) == Strings::NaN) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	e->attr("image:y", y);
@@ -970,7 +970,7 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenLength);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(std::move(t));
+				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
@@ -992,14 +992,14 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenDataType);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 
 	int format = Strings::toInt(t->value());
 	if (format < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	if (format == TextFormatMonospace || format == TextFormatMonospaceAlt) {
@@ -1010,13 +1010,13 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenDataOffset);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	int intOffset = Strings::toInt(t->value());
 	if (intOffset < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	std::size_t offset = intOffset;
@@ -1025,13 +1025,13 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenDataLength);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(std::move(t));
+			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
-		this->expectedInt(std::move(t));
+		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	std::size_t len = intLen;
@@ -1270,24 +1270,20 @@ void Parser::indexNotFound(int index, int line, int column) {
 	_err->finalize(line, column);
 }
 
-void Parser::expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found) {
+void Parser::expected(std::string expected, std::string found, int line, int column) {
 	_err = std::make_unique<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'", expected.data(), found.data());
-	_err->finalize(t->line(), t->column());
+	_err->finalize(line, column);
 }
 
-void Parser::expected(std::unique_ptr<const Token> t, std::string expected) {
-	this->expectedString(std::move(t), expected, t->value());
+void Parser::expectedInt(std::string found, int line, int column) {
+	this->expected("valid integer", found, line, column);
 }
 
-void Parser::expectedInt(std::unique_ptr<const Token> t) {
-	this->expected(std::move(t), "valid integer");
-}
-
-void Parser::unexpected(std::unique_ptr<const Token> t) {
+void Parser::unexpected(TokenType type, int line, int column) {
 	_err = std::make_unique<Error>(ErrorToken);
-	_err->messagef("unexpected %s token", t->typeString().data());
-	_err->finalize(t->line(), t->column());
+	_err->messagef("unexpected %s token", Token::typeString(type).data());
+	_err->finalize(line, column);
 }
 
 }

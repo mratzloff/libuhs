@@ -621,10 +621,9 @@ private:
 
 	// Error helpers
 	void indexNotFound(int index, int line, int column);
-	void expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found);
-	void expected(std::unique_ptr<const Token> t, std::string expected);
-	void expectedInt(std::unique_ptr<const Token> t);
-	void unexpected(std::unique_ptr<const Token> t);
+	void expected(std::string expected, std::string found, int line, int column);
+	void expectedInt(std::string found, int line, int column);
+	void unexpected(TokenType type, int line, int column);
 };
 
 struct WriterOptions {
