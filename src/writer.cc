@@ -33,7 +33,7 @@ bool JSONWriter::write(const std::shared_ptr<const Document> d) {
 }
 
 Json::Value JSONWriter::serialize(const Document& d, Json::Value& root) const {
-	Json::Value* parents[UHS_MAX_DEPTH];
+	Json::Value* parents[MaxDepth];
 	Json::Value* parent = &root;
 
 	int depth = 0;

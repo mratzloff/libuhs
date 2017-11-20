@@ -2,7 +2,6 @@
 #define UHS_H
 
 #define UHS_VERSION "1.0.0-alpha"
-#define UHS_MAX_DEPTH 16
 
 #include <cstdint>
 #include <ctime>
@@ -103,6 +102,7 @@ enum VisibilityType {
 };
 
 static constexpr const char* EOL = "\r\n";
+static const int MaxDepth = 16;
 static constexpr const char* Version = UHS_VERSION;
 
 namespace Strings {
