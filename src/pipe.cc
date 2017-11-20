@@ -9,7 +9,7 @@ Pipe::Pipe(std::ifstream& in) : _in {in} {
 	}
 }
 
-const std::unique_ptr<Error> Pipe::error() {
+std::unique_ptr<Error> Pipe::error() {
 	return std::move(_err);
 }
 

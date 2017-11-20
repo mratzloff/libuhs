@@ -34,7 +34,7 @@ Node* Parser::NodeRangeList::find(int min, int max) {
 }
 
 void Parser::NodeRangeList::add(Node& n, int min, int max) {
-	data.emplace_back(NodeRange(n, min, max));
+	data.emplace_back(n, min, max);
 }
 
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
@@ -43,11 +43,11 @@ Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCal
 	, func {func}
 {}
 
-Parser::LinkData::LinkData(
-		std::unique_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
-	: fromToken {std::move(fromToken)}
-	, fromElement {fromElement}
+Parser::LinkData::LinkData(Element* fromElement, int toIndex, int line, int column)
+	: fromElement {fromElement}
 	, toIndex {toIndex}
+	, line {line}
+	, column {column}
 {}
 
 const Error* Parser::error() {
@@ -910,7 +910,7 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 	}
 	e->body(body);
 
-	return this->linkOrDefer(std::move(t), e, refIndex);
+	return this->linkOrDefer(e.get(), refIndex, t->line(), t->column());
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
@@ -1118,22 +1118,32 @@ bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const
 	return true;
 }
 
-bool Parser::linkOrDefer(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+bool Parser::linkOrDefer(Element* fromElement, int toIndex, int line, int column) {
+	if (fromElement == nullptr) {
+		return false;
+	}
+
 	if (fromElement->index() > toIndex) {
-		return this->link(std::move(fromToken), fromElement, toIndex);
+		return this->link(fromElement, toIndex, line, column);
 	} else {
-		_deferredLinks[toIndex] = std::make_shared<LinkData>(std::move(fromToken), fromElement, toIndex);
+		_deferredLinks.emplace(
+			std::piecewise_construct
+			, std::make_tuple(toIndex)
+			, std::make_tuple(fromElement, toIndex, line, column));
 	}
 	return true;
 }
 
-bool Parser::link(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
-	std::weak_ptr<Element> ref; 
+bool Parser::link(Element* fromElement, int toIndex, int line, int column) {
+	if (fromElement == nullptr) {
+		return false;
+	}
 
+	std::weak_ptr<Element> ref;
 	try {
 		ref = _elements.at(toIndex);
 	} catch (const std::out_of_range& ex) {
-		this->indexNotFound(std::move(fromToken), toIndex);
+		this->indexNotFound(toIndex, line, column);
 		return false;
 	}
 	fromElement->ref(ref);
@@ -1145,11 +1155,8 @@ bool Parser::handleDeferredLink(int index) {
 	if (_deferredLinks.count(index) == 0) {
 		return true;
 	}
-	auto linkData = _deferredLinks[index];
-	return this->link(
-		std::move(linkData->fromToken)
-		, linkData->fromElement
-		, linkData->toIndex);
+	const auto& ld = _deferredLinks[index];
+	return this->link(ld.fromElement, ld.toIndex, ld.line, ld.column);
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
@@ -1257,10 +1264,10 @@ int Parser::offsetIndex(int index) {
 	return index - _indexOffset;
 }
 
-void Parser::indexNotFound(std::unique_ptr<const Token> t, int index) {
+void Parser::indexNotFound(int index, int line, int column) {
 	_err = std::make_unique<Error>(ErrorValue);
 	_err->messagef("index not found: %d", index);
-	_err->finalize(t->line(), t->column());
+	_err->finalize(line, column);
 }
 
 void Parser::expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found) {

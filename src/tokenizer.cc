@@ -10,7 +10,7 @@ Tokenizer::Tokenizer(Pipe& p) : _pipe {p}, _out {p} {
 	});
 }
 
-const std::unique_ptr<Error> Tokenizer::error() {
+std::unique_ptr<Error> Tokenizer::error() {
 	if (_err == nullptr) {
 		return nullptr;
 	}
@@ -201,7 +201,7 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 
 Tokenizer::TokenChannel::TokenChannel(Pipe& p) : _pipe {p} {}
 
-const std::unique_ptr<Error> Tokenizer::TokenChannel::error() {
+std::unique_ptr<Error> Tokenizer::TokenChannel::error() {
 	return std::move(_err);
 }
 

@@ -16,6 +16,7 @@
 #include <regex>
 #include <sstream>
 #include <string>
+#include <vector>
 #include "json.h"
 
 namespace UHS {
@@ -190,7 +191,7 @@ public:
 
 	Pipe(std::ifstream& in);
 	virtual ~Pipe() = default;
-	const std::unique_ptr<Error> error();
+	std::unique_ptr<Error> error();
 	void addHandler(Handler h);
 	void read();
 	bool good();
@@ -293,7 +294,7 @@ class Tokenizer {
 public:
 	Tokenizer(Pipe& p);
 	virtual ~Tokenizer() = default;
-	const std::unique_ptr<Error> error();
+	std::unique_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::unique_ptr<const Token> next();
@@ -303,7 +304,7 @@ private:
 	public:
 		TokenChannel(Pipe& p);
 		virtual ~TokenChannel() = default;
-		const std::unique_ptr<Error> error();
+		std::unique_ptr<Error> error();
 		bool send(const Token&& t);
 		std::unique_ptr<const Token> receive();
 		bool empty() const;
@@ -318,10 +319,14 @@ private:
 		bool _open = true;
 	};
 
-	const std::regex _descriptorRegex {"^([0-9]+) ([a-z]{4,})$"};
-	const std::regex _dataAddressRegex {"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
-	const std::regex _hyperpngRegionRegex {"^(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
-	const std::regex _overlayAddressRegex {"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
+	const std::regex _descriptorRegex
+		{"^([0-9]+) ([a-z]{4,})$"};
+	const std::regex _dataAddressRegex
+		{"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
+	const std::regex _hyperpngRegionRegex
+		{"^(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
+	const std::regex _overlayAddressRegex
+		{"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 
 	Pipe& _pipe;
 	std::unique_ptr<Error> _err;
@@ -488,7 +493,8 @@ public:
 	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
 	const std::string encode88a(std::string decoded) const;
-	const std::string decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey = false) const;
+	const std::string decode96a(std::string encoded, std::string key, 
+		bool isTextElement, bool createKey = false) const;
 	const std::string createKey(std::string secret) const;
 
 private:
@@ -528,7 +534,7 @@ private:
 	};
 
 	struct NodeRangeList {
-		std::vector<NodeRange> data;
+		std::vector<const NodeRange> data;
 
 		NodeRangeList();
 		virtual ~NodeRangeList() = default;
@@ -537,11 +543,13 @@ private:
 	};
 
 	struct LinkData {
-		std::unique_ptr<const Token> fromToken;
-		const std::shared_ptr<Element> fromElement;
+		Element* fromElement;
 		int toIndex;
+		int line;
+		int column;
 
-		LinkData(std::unique_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
+		LinkData() = default;
+		LinkData(Element* fromElement, int toIndex, int line, int column);
 		virtual ~LinkData() = default;
 	};
 
@@ -567,7 +575,7 @@ private:
 	std::shared_ptr<Document> _document;
 	NodeRangeList _parents;
 	ElementMap _elements;
-	std::map<const int, std::shared_ptr<LinkData>> _deferredLinks; // TODO: unique_ptr with move
+	std::map<int, LinkData> _deferredLinks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
 	int _indexOffset = 0;
@@ -600,8 +608,8 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const Token> t);
-	bool linkOrDefer(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
-	bool link(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	bool linkOrDefer(Element* fromElement, int toIndex, int line, int column);
+	bool link(Element* fromElement, int toIndex, int line, int column);
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
@@ -612,7 +620,7 @@ private:
 	int offsetIndex(int index);
 
 	// Error helpers
-	void indexNotFound(std::unique_ptr<const Token> t, int index);
+	void indexNotFound(int index, int line, int column);
 	void expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found);
 	void expected(std::unique_ptr<const Token> t, std::string expected);
 	void expectedInt(std::unique_ptr<const Token> t);
@@ -661,7 +669,7 @@ public:
 
 private:
 	bool write88a(std::shared_ptr<const Document> d);
-	void write88aCreditElement(const std::unique_ptr<const Element> e);
+	void write88aCreditElement(std::unique_ptr<const Element> e);
 	bool write96a(const Document& d);
 
 	Codec _codec;

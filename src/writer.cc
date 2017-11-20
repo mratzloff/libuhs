@@ -277,7 +277,7 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 	return true;
 }
 
-void UHSWriter::write88aCreditElement(const std::unique_ptr<const Element> e) {
+void UHSWriter::write88aCreditElement(std::unique_ptr<const Element> e) {
 	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
 	if (e == nullptr) {
 		return;
