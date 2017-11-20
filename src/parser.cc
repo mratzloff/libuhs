@@ -50,8 +50,8 @@ Parser::LinkData::LinkData(Element* fromElement, int toIndex, int line, int colu
 	, column {column}
 {}
 
-const Error* Parser::error() {
-	return _err.get();
+std::unique_ptr<Error> Parser::error() {
+	return std::move(_err);
 }
 
 std::shared_ptr<Document> Parser::parse() {

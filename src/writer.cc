@@ -10,8 +10,8 @@ Writer::Writer(std::ostream& out, const WriterOptions opt)
 	, _registered {opt.registered}
 {}
 
-const Error* Writer::error() {
-	return _err.get();
+std::unique_ptr<Error> Writer::error() {
+	return std::move(_err);
 }
 
 //------------------------------- JSONWriter --------------------------------//

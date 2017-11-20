@@ -516,7 +516,7 @@ class Parser {
 public:
 	Parser(std::ifstream& in, const ParserOptions& opt);
 	virtual ~Parser() = default;
-	const Error* error();
+	std::unique_ptr<Error> error();
 	std::shared_ptr<Document> parse();
 
 private:
@@ -635,7 +635,7 @@ class Writer {
 public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
-	const Error* error();
+	std::unique_ptr<Error> error();
 	virtual bool write(const std::shared_ptr<const Document> d) = 0;
 
 protected:
