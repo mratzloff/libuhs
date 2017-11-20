@@ -89,7 +89,7 @@ bool Tokenizer::hasNext() {
 	return _out.ok();
 }
 
-const std::shared_ptr<const Token> Tokenizer::next() {
+std::unique_ptr<const Token> Tokenizer::next() {
 	auto t = _out.receive();
 	if (t == nullptr) {
 		_err = _out.error();
@@ -108,7 +108,7 @@ void Tokenizer::tokenizeLine() {
 
 	// All numbers are indexes in 88a, and link elements contain an index
 	if (Strings::isInt(s) && (_beforeHeaderSep || _line == _expectedIndexLine)) {
-		_out.send(std::make_shared<const Token>(
+		_out.send(std::make_unique<const Token>(
 			TokenIndex, _offset, _line, 0, Strings::ltrim(s, '0')));
 		_expectedIndexLine = -1;
 		return;
@@ -116,7 +116,7 @@ void Tokenizer::tokenizeLine() {
 
 	// All descriptors are immediately followed by a string title
 	if (_line == _expectedStringLine) {
-		_out.send(std::make_shared<const Token>(TokenString, _offset, _line, 0, s));
+		_out.send(std::make_unique<const Token>(TokenString, _offset, _line, 0, s));
 		_expectedStringLine = -1;
 		return;
 	}
@@ -124,17 +124,17 @@ void Tokenizer::tokenizeLine() {
 	// Check for exact line matches
 	if (s == Token::HeaderSep) {
 		_beforeHeaderSep = false;
-		_out.send(std::make_shared<const Token>(TokenHeaderSep, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenHeaderSep, _offset, _line));
 	} else if (s == Token::CreditSep) {
-		_out.send(std::make_shared<const Token>(TokenCreditSep, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenCreditSep, _offset, _line));
 	} else if (s == Token::NestedElementSep) {
-		_out.send(std::make_shared<const Token>(TokenNestedElementSep, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenNestedElementSep, _offset, _line));
 	} else if (s == Token::NestedTextSep) {
-		_out.send(std::make_shared<const Token>(TokenNestedTextSep, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenNestedTextSep, _offset, _line));
 	} else if (s == Token::ParagraphSep) {
-		_out.send(std::make_shared<const Token>(TokenParagraphSep, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenParagraphSep, _offset, _line));
 	} else if (s == Token::Signature) {
-		_out.send(std::make_shared<const Token>(TokenSignature, _offset, _line));
+		_out.send(std::make_unique<const Token>(TokenSignature, _offset, _line));
 	} else {
 		// Check for line match patterns
 		std::smatch matches;
@@ -151,17 +151,17 @@ void Tokenizer::tokenizeLine() {
 		} else if (std::regex_match(s, matches, _overlayAddressRegex)) {
 			this->tokenizeOverlayAddress(matches);
 		} else {
-			_out.send(std::make_shared<const Token>(TokenString, _offset, _line, 0, s));
+			_out.send(std::make_unique<const Token>(TokenString, _offset, _line, 0, s));
 		}
 	}
 }
 
 ElementType Tokenizer::tokenizeDescriptor(const std::smatch& m) {
-	_out.send(std::make_shared<const Token>(
+	_out.send(std::make_unique<const Token>(
 		TokenLength, _offset, _line, 0, Strings::ltrim(m[1].str(), '0')));
 	std::string ident {m[2].str()};
 	auto column = m.position(2);
-	_out.send(std::make_shared<const Token>(TokenIdent, _offset + column, _line, column, ident));
+	_out.send(std::make_unique<const Token>(TokenIdent, _offset + column, _line, column, ident));
 	return Element::elementType(ident);
 }
 
@@ -183,22 +183,22 @@ void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
 void Tokenizer::tokenizeMatches(const std::smatch& m, const std::vector<TokenType>& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (m[i + 1].length() > 0) {
-			_out.send(std::make_shared<const Token>(
+			_out.send(std::make_unique<const Token>(
 				tokens[i], _offset, _line, m.position(i + 1), Strings::ltrim(m[i + 1].str(), '0')));
 		}
 	}
 }
 
 void Tokenizer::tokenizeData(const std::string& data, std::size_t column) {
-	_out.send(std::make_shared<const Token>(TokenData, _offset, _line, column, data));
+	_out.send(std::make_unique<const Token>(TokenData, _offset, _line, column, data));
 }
 
 void Tokenizer::tokenizeCRC(const std::string& crc, std::size_t column) {
-	_out.send(std::make_shared<const Token>(TokenCRC, _offset, _line, column, crc));
+	_out.send(std::make_unique<const Token>(TokenCRC, _offset, _line, column, crc));
 }
 
 void Tokenizer::tokenizeEOF(std::size_t column) {
-	_out.send(std::make_shared<const Token>(TokenEOF, _offset, _line, column));
+	_out.send(std::make_unique<const Token>(TokenEOF, _offset, _line, column));
 }
 
 Tokenizer::TokenChannel::TokenChannel(const std::shared_ptr<Pipe> p)
@@ -208,17 +208,17 @@ const std::shared_ptr<Error> Tokenizer::TokenChannel::error() {
 	return _err;
 }
 
-bool Tokenizer::TokenChannel::send(std::shared_ptr<const Token> t) {
+bool Tokenizer::TokenChannel::send(std::unique_ptr<const Token> t) {
 	if (! _open) {
 		return false;
 	}
 	std::lock_guard<std::mutex> m {_mutex};
-	_queue.push(t);
+	_queue.push(std::move(t));
 
 	return true;
 }
 
-const std::shared_ptr<const Token> Tokenizer::TokenChannel::receive() {
+std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
 	while (this->empty()) { // Unlikely
 		if (! this->ok()) {
 			return nullptr;
@@ -226,7 +226,7 @@ const std::shared_ptr<const Token> Tokenizer::TokenChannel::receive() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	std::lock_guard<std::mutex> m {_mutex};
-	const std::shared_ptr<const Token> t {_queue.front()};
+	std::unique_ptr<const Token> t {std::move(_queue.front())};
 	_queue.pop();
 	
 	return t;

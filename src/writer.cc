@@ -189,12 +189,12 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 	int lastHintIndex = 0;
 
 	// Find credit node, if any
-	std::shared_ptr<const Element> credit;
+	std::unique_ptr<const Element> credit;
 	for (const auto& n : *d) {
 		if (n.nodeType() == NodeElement) {
 			const auto& e = dynamic_cast<const Element&>(n);
 			if (e.elementType() == ElementCredit) {
-				credit = std::make_shared<const Element>(e);
+				credit = std::make_unique<const Element>(e);
 				break;
 			}
 		}
@@ -272,12 +272,12 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 	_out << lastHintIndex << EOL;
 	_out << ss.str();
 
-	this->write88aCreditElement(credit);
+	this->write88aCreditElement(std::move(credit));
 
 	return true;
 }
 
-void UHSWriter::write88aCreditElement(const std::shared_ptr<const Element> e) {
+void UHSWriter::write88aCreditElement(const std::unique_ptr<const Element> e) {
 	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
 	if (e == nullptr) {
 		return;

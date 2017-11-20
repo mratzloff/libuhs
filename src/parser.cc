@@ -38,16 +38,16 @@ void Parser::NodeRangeList::add(std::shared_ptr<Node> n, int min, int max) {
 }
 
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
-	: offset(offset)
-	, length(length)
-	, func(func)
+	: offset {offset}
+	, length {length}
+	, func {func}
 {}
 
 Parser::LinkData::LinkData(
-		const std::shared_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
-	: fromToken(fromToken)
-	, fromElement(fromElement)
-	, toIndex(toIndex)
+		std::unique_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex)
+	: fromToken {std::move(fromToken)}
+	, fromElement {fromElement}
+	, toIndex {toIndex}
 {}
 
 const std::shared_ptr<Error> Parser::error() {
@@ -89,13 +89,13 @@ std::shared_ptr<Document> Parser::parse() {
 //--------------------------------- UHS 88a ---------------------------------//
 
 bool Parser::parse88a() {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	// Signature
 	t = this->expect(TokenSignature);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
@@ -104,7 +104,7 @@ bool Parser::parse88a() {
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
@@ -114,13 +114,13 @@ bool Parser::parse88a() {
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	int firstHintIndex = Strings::toInt(t->value());
 	if (firstHintIndex < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	firstHintIndex += HeaderLen;
@@ -129,13 +129,13 @@ bool Parser::parse88a() {
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	int lastHintIndex = Strings::toInt(t->value());
 	if (lastHintIndex < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	lastHintIndex += HeaderLen;
@@ -145,7 +145,7 @@ bool Parser::parse88a() {
 	bool ok = this->parse88aElements(firstHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
@@ -154,7 +154,7 @@ bool Parser::parse88a() {
 	ok = this->parse88aTextNodes(lastHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
@@ -172,19 +172,19 @@ bool Parser::parse88a() {
 	case TokenCreditSep: // This is informal but common
 		// Fall through
 	case TokenString:
-		ok = this->parse88aCreditElement(t);
+		ok = this->parse88aCreditElement(std::move(t));
 		if (! ok) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return ok;
 	case TokenHeaderSep:
-		this->parseHeaderSep(t);
+		this->parseHeaderSep(std::move(t));
 		return true;
 	case TokenEOF:
 		_done = true;
 		return true;
 	default:
-		this->unexpected(t);
+		this->unexpected(std::move(t));
 		return false;
 	}
 }
@@ -194,14 +194,14 @@ bool Parser::parse88a() {
 // doesn't support it, and as far as I can tell no one bothered to ever check
 // it. It mostly works in the DOS reader, but it looks glitchy.
 bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	ElementType elementType {ElementSubject};
 
 	while (true) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
@@ -211,13 +211,13 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		t = this->expect(TokenIndex);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 		int firstChildIndex = Strings::toInt(t->value());
 		if (firstChildIndex < 0) {
-			this->expectedInt(t);
+			this->expectedInt(std::move(t));
 			return false;
 		}
 		firstChildIndex += HeaderLen;
@@ -264,13 +264,13 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 }
 
 bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	while (true) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
@@ -300,7 +300,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 	return true;
 }
 
-bool Parser::parse88aCreditElement(std::shared_ptr<const Token> t) {
+bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
 	auto e = std::make_shared<Element>(ElementCredit, t->line());
 	e->title("Credits");
 	_document->appendChild(e);
@@ -318,7 +318,7 @@ bool Parser::parse88aCreditElement(std::shared_ptr<const Token> t) {
 			_done = true;
 			return true;
 		case TokenHeaderSep:
-			this->parseHeaderSep(t);
+			this->parseHeaderSep(std::move(t));
 			if (! s.empty()) {
 				e->appendString(s);
 			}
@@ -334,7 +334,7 @@ bool Parser::parse88aCreditElement(std::shared_ptr<const Token> t) {
 			continuation = true;
 			break;
 		default:
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 			return false;
 		}
 
@@ -347,7 +347,7 @@ bool Parser::parse88aCreditElement(std::shared_ptr<const Token> t) {
 
 //--------------------------------- UHS 96a ---------------------------------//
 
-void Parser::parseHeaderSep(std::shared_ptr<const Token> t) {
+void Parser::parseHeaderSep(std::unique_ptr<const Token> t) {
 	if (_version == Version88a) {
 		_done = true;
 		return;
@@ -357,7 +357,7 @@ void Parser::parseHeaderSep(std::shared_ptr<const Token> t) {
 }
 
 bool Parser::parse96a() {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	std::shared_ptr<Element> e;
 
 	_parents.add(_document, 0, INT_MAX);
@@ -371,13 +371,13 @@ bool Parser::parse96a() {
 
 		switch (t->type()) {
 		case TokenLength:
-			e = this->parseElement(t);
+			e = this->parseElement(std::move(t));
 			if (e == nullptr) {
 				return false;
 			}
 			break;
 		case TokenData:
-			this->parseData(t);
+			this->parseData(std::move(t));
 			break;
 		case TokenCRC:
 			this->checkCRC();
@@ -386,7 +386,7 @@ bool Parser::parse96a() {
 			_done = true;
 			return true;
 		default:
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 			return false;
 		}
 	}
@@ -394,13 +394,13 @@ bool Parser::parse96a() {
 }
 
 // Elements are automatically appended to their parents
-std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bool indexByRegion) {
+std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion) {
 	bool ok = false;
 
 	// Length
 	int len = Strings::toInt(t->value());
 	if (len < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return nullptr;
 	}
 
@@ -408,7 +408,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bo
 	t = this->expect(TokenIdent);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return nullptr;
 	}
@@ -427,7 +427,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bo
 		_elements[index-1] = e;
 	}
 
-	ok = this->findAndLinkParent(e, t);
+	ok = this->findAndLinkParent(e, std::move(t));
 	if (! ok) {
 		return nullptr;
 	}
@@ -441,7 +441,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bo
 	t = this->expect(TokenString);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return nullptr;
 	}
@@ -473,7 +473,7 @@ std::shared_ptr<Element> Parser::parseElement(std::shared_ptr<const Token> t, bo
 }
 
 bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	int len = e->length();
 	std::string s;
@@ -500,7 +500,7 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 			continuation = false;
 			break;
 		default:
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 			return false;
 		}
 	}
@@ -510,7 +510,7 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseDataElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	// Offset
 	std::size_t offset;
@@ -528,13 +528,13 @@ bool Parser::parseDataElement(std::shared_ptr<Element> e) {
 		case TokenDataOffset:
 			intOffset = Strings::toInt(t->value());
 			if (intOffset < 0) {
-				this->expectedInt(t);
+				this->expectedInt(std::move(t));
 				return false;
 			}
 			offset = intOffset;
 			goto expectDataLength;
 		default:
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 			return false;
 		}
 	}
@@ -544,13 +544,13 @@ expectDataLength:
 	t = this->expect(TokenDataLength);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	std::size_t len = intLen;
@@ -567,7 +567,7 @@ expectDataLength:
 // error, but bluforce.uhs has an instance of this. This actually screws
 // up the official reader UI for that particular hint.
 bool Parser::parseHintElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	std::shared_ptr<Element> child;
 	std::string s;
 
@@ -606,7 +606,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			break;
 		case TokenNestedElementSep:
 			if (i == len || e->elementType() != ElementNesthint) {
-				this->expected(t, "string");
+				this->expected(std::move(t), "string");
 				return false;
 			}
 
@@ -621,13 +621,13 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 			t = this->expect(TokenLength);
 			if (_err != nullptr) {
 				if (_err->type() == ErrorEOF) {
-					this->unexpected(t);
+					this->unexpected(std::move(t));
 				}
 				return false;
 			}
 
 			// Child element
-			child = this->parseElement(t);
+			child = this->parseElement(std::move(t));
 			if (child == nullptr) {
 				return false;
 			}
@@ -635,7 +635,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 
 			break;
 		default:
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 			return false;
 		}
 	}
@@ -649,7 +649,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
 	if (! ok) {
@@ -665,13 +665,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordX);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 		auto x1 = t->value();
 		if (Strings::toInt(x1) == Strings::NaN) {
-			this->expectedInt(t);
+			this->expectedInt(std::move(t));
 			return false;
 		}
 
@@ -679,13 +679,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordY);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 		auto y1 = t->value();
 		if (Strings::toInt(y1) == Strings::NaN) {
-			this->expectedInt(t);
+			this->expectedInt(std::move(t));
 			return false;
 		}
 
@@ -693,13 +693,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordX);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 		auto x2 = t->value();
 		if (Strings::toInt(x2) == Strings::NaN) {
-			this->expectedInt(t);
+			this->expectedInt(std::move(t));
 			return false;
 		}
 
@@ -707,13 +707,13 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenCoordY);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 		auto y2 = t->value();
 		if (Strings::toInt(y2) == Strings::NaN) {
-			this->expectedInt(t);
+			this->expectedInt(std::move(t));
 			return false;
 		}
 
@@ -721,11 +721,11 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenLength);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
-		child = this->parseElement(t, true);
+		child = this->parseElement(std::move(t), true);
 		if (child == nullptr) {
 			return false;
 		}
@@ -744,7 +744,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 // list for four files, so we skip bad instructions of that form. Fourteen
 // other files have indexes pointing to nowhere, so we skip those, too.
 bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	std::string s;
 
 	e->visibility(VisibilityNone);
@@ -757,7 +757,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
@@ -782,14 +782,15 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 
 		// Split instruction (e.g., "3Z")
 		if (markerLen < 2) {
-			this->expectedString(t, "incentive instruction", marker);
+			this->expectedString(std::move(t), "incentive instruction", marker);
+			return false;
 		}
 		auto indexString = marker.substr(0, markerLen-1);
 		auto instruction = marker.substr(markerLen-1, 1);
 
 		int index = Strings::toInt(indexString);
 		if (index < 0) {
-			this->expectedString(t, "valid incentive index", indexString);
+			this->expectedString(std::move(t), "valid incentive index", indexString);
 			return false;
 		}
 
@@ -816,7 +817,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	std::string s;
 	std::string key;
 	std::string val;
@@ -831,7 +832,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenString);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
@@ -843,7 +844,8 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		} else {
 			auto parts = Strings::split(s, Token::InfoKeyValueSep, 2);
 			if (parts.size() != 2) {
-				this->expected(t, Token::InfoKeyValueSep);
+				this->expected(std::move(t), Token::InfoKeyValueSep);
+				return false;
 			}
 			key = parts[0];
 			val = parts[1];
@@ -852,23 +854,25 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 		if (key == "length") {
 			int intVal = Strings::toInt(val);
 			if (intVal < 0) {
-				this->expectedInt(t);
+				this->expectedInt(std::move(t));
 				return false;
 			}
 			_document->attr("length", std::to_string(intVal));
 		} else if (key == "date") {
 			bool ok = this->parseDate(val, tm);
 			if (! ok) {
-				this->expected(t, "valid date");
+				this->expected(std::move(t), "valid date");
+				return false;
 			}
 		} else if (key == "time") {
 			bool ok = this->parseTime(val, tm);
 			if (! ok) {
-				this->expected(t, "valid time");
+				this->expected(std::move(t), "valid time");
+				return false;
 			}
 			auto time = mktime(&tm);
 			if (time == -1) {
-				this->expected(t, "valid timestamp");
+				this->expected(std::move(t), "valid timestamp");
 				return false;
 			}
 			char buf[20];
@@ -888,29 +892,29 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	// Ref index
 	t = this->expect(TokenIndex);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	auto body = t->value();
 	int refIndex = Strings::toInt(body);
 	if (refIndex < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	e->body(body);
 
-	return this->linkOrDefer(t, e, refIndex);
+	return this->linkOrDefer(std::move(t), e, refIndex);
 }
 
 bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
 	if (! ok) {
@@ -921,13 +925,13 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenCoordX);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	auto x = t->value();
 	if (Strings::toInt(x) == Strings::NaN) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	e->attr("image:x", x);
@@ -936,13 +940,13 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenCoordY);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	auto y = t->value();
 	if (Strings::toInt(y) == Strings::NaN) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	e->attr("image:y", y);
@@ -951,7 +955,7 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 	std::shared_ptr<Element> child;
 
 	if (! _isTitleSet) {
@@ -966,13 +970,13 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 		t = this->expect(TokenLength);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorEOF) {
-				this->unexpected(t);
+				this->unexpected(std::move(t));
 			}
 			return false;
 		}
 
 		// Child element
-		child = this->parseElement(t);
+		child = this->parseElement(std::move(t));
 		if (child == nullptr) {
 			return false;
 		}
@@ -982,20 +986,20 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 }
 
 bool Parser::parseTextElement(std::shared_ptr<Element> e) {
-	std::shared_ptr<const Token> t;
+	std::unique_ptr<const Token> t;
 
 	// Format
 	t = this->expect(TokenDataType);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 
 	int format = Strings::toInt(t->value());
 	if (format < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	if (format == TextFormatMonospace || format == TextFormatMonospaceAlt) {
@@ -1006,13 +1010,13 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenDataOffset);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	int intOffset = Strings::toInt(t->value());
 	if (intOffset < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	std::size_t offset = intOffset;
@@ -1021,13 +1025,13 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	t = this->expect(TokenDataLength);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
-			this->unexpected(t);
+			this->unexpected(std::move(t));
 		}
 		return false;
 	}
 	int intLen = Strings::toInt(t->value());
 	if (intLen < 0) {
-		this->expectedInt(t);
+		this->expectedInt(std::move(t));
 		return false;
 	}
 	std::size_t len = intLen;
@@ -1065,7 +1069,7 @@ bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-const std::shared_ptr<const Token> Parser::next() {
+std::unique_ptr<const Token> Parser::next() {
 	auto t = _tokenizer.next();
 	if (t == nullptr) {
 		auto err = _tokenizer.error();
@@ -1080,7 +1084,7 @@ const std::shared_ptr<const Token> Parser::next() {
 	return t;
 }
 
-const std::shared_ptr<const Token> Parser::expect(TokenType expected) {
+std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	auto t = this->next();
 	if (_err != nullptr) {
 		return t;
@@ -1098,7 +1102,7 @@ const std::shared_ptr<const Token> Parser::expect(TokenType expected) {
 	return t;
 }
 
-bool Parser::findAndLinkParent(std::shared_ptr<Element> e, const std::shared_ptr<const Token> t) {
+bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const Token> t) {
 	int min = e->index();
 	int max = min + e->length();
 	auto parent = _parents.find(min, max);
@@ -1114,22 +1118,22 @@ bool Parser::findAndLinkParent(std::shared_ptr<Element> e, const std::shared_ptr
 	return true;
 }
 
-bool Parser::linkOrDefer(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+bool Parser::linkOrDefer(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
 	if (fromElement->index() > toIndex) {
-		return this->link(fromToken, fromElement, toIndex);
+		return this->link(std::move(fromToken), fromElement, toIndex);
 	} else {
-		_deferredLinks[toIndex] = std::make_shared<LinkData>(fromToken, fromElement, toIndex);
+		_deferredLinks[toIndex] = std::make_shared<LinkData>(std::move(fromToken), fromElement, toIndex);
 	}
 	return true;
 }
 
-bool Parser::link(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
+bool Parser::link(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex) {
 	std::weak_ptr<Element> ref; 
 
 	try {
 		ref = _elements.at(toIndex);
 	} catch (const std::out_of_range& ex) {
-		this->indexNotFound(fromToken, toIndex);
+		this->indexNotFound(std::move(fromToken), toIndex);
 		return false;
 	}
 	fromElement->ref(ref);
@@ -1142,14 +1146,17 @@ bool Parser::handleDeferredLink(int index) {
 		return true;
 	}
 	auto linkData = _deferredLinks[index];
-	return this->link(linkData->fromToken, linkData->fromElement, linkData->toIndex);
+	return this->link(
+		std::move(linkData->fromToken)
+		, linkData->fromElement
+		, linkData->toIndex);
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
 	_dataHandlers.push_back(DataHandler(offset, length, func));
 }
 
-void Parser::parseData(std::shared_ptr<const Token> t) {
+void Parser::parseData(std::unique_ptr<const Token> t) {
 	std::size_t offset;
 
 	for (const auto& handler : _dataHandlers) {
@@ -1250,27 +1257,27 @@ int Parser::offsetIndex(int index) {
 	return index - _indexOffset;
 }
 
-void Parser::indexNotFound(const std::shared_ptr<const Token> t, int index) {
+void Parser::indexNotFound(std::unique_ptr<const Token> t, int index) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("index not found: %d", index);
 	_err->finalize(t->line(), t->column());
 }
 
-void Parser::expectedString(const std::shared_ptr<const Token> t, std::string expected, std::string found) {
+void Parser::expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found) {
 	_err = std::make_shared<Error>(ErrorValue);
 	_err->messagef("expected %s, found '%s'", expected.data(), found.data());
 	_err->finalize(t->line(), t->column());
 }
 
-void Parser::expected(const std::shared_ptr<const Token> t, std::string expected) {
-	this->expectedString(t, expected, t->value());
+void Parser::expected(std::unique_ptr<const Token> t, std::string expected) {
+	this->expectedString(std::move(t), expected, t->value());
 }
 
-void Parser::expectedInt(std::shared_ptr<const Token> t) {
-	this->expected(t, "valid integer");
+void Parser::expectedInt(std::unique_ptr<const Token> t) {
+	this->expected(std::move(t), "valid integer");
 }
 
-void Parser::unexpected(std::shared_ptr<const Token> t) {
+void Parser::unexpected(std::unique_ptr<const Token> t) {
 	_err = std::make_shared<Error>(ErrorToken);
 	_err->messagef("unexpected %s token", t->typeString().data());
 	_err->finalize(t->line(), t->column());

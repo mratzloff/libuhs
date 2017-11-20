@@ -295,7 +295,7 @@ public:
 	const std::shared_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
-	const std::shared_ptr<const Token> next();
+	std::unique_ptr<const Token> next();
 
 private:
 	class TokenChannel {
@@ -303,8 +303,8 @@ private:
 		TokenChannel(const std::shared_ptr<Pipe> p);
 		virtual ~TokenChannel() = default;
 		const std::shared_ptr<Error> error();
-		bool send(std::shared_ptr<const Token> t);
-		const std::shared_ptr<const Token> receive();
+		bool send(std::unique_ptr<const Token> t);
+		std::unique_ptr<const Token> receive();
 		bool empty();
 		bool ok();
 		void close();
@@ -312,7 +312,7 @@ private:
 	private:
 		const std::shared_ptr<Pipe> _pipe; // For errors
 		std::shared_ptr<Error> _err;
-		std::queue<const std::shared_ptr<const Token>> _queue;
+		std::queue<std::unique_ptr<const Token>> _queue;
 		std::mutex _mutex;
 		bool _open = true;
 	};
@@ -536,11 +536,11 @@ private:
 	};
 
 	struct LinkData {
-		const std::shared_ptr<const Token> fromToken;
+		std::unique_ptr<const Token> fromToken;
 		const std::shared_ptr<Element> fromElement;
 		int toIndex;
 
-		LinkData(const std::shared_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
+		LinkData(std::unique_ptr<const Token> fromToken, const std::shared_ptr<Element> fromElement, int toIndex);
 		virtual ~LinkData() = default;
 	};
 
@@ -577,12 +577,12 @@ private:
 	bool parse88a();
 	bool parse88aElements(int firstHintIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
-	bool parse88aCreditElement(std::shared_ptr<const Token> t);
-	void parseHeaderSep(std::shared_ptr<const Token> t);
+	bool parse88aCreditElement(std::unique_ptr<const Token> t);
+	void parseHeaderSep(std::unique_ptr<const Token> t);
 
 	// 96a
 	bool parse96a();
-	std::shared_ptr<Element> parseElement(std::shared_ptr<const Token> t, bool indexByRegion = false);
+	std::shared_ptr<Element> parseElement(std::unique_ptr<const Token> t, bool indexByRegion = false);
 	bool parseCommentElement(std::shared_ptr<Element> e);
 	bool parseDataElement(std::shared_ptr<Element> e);
 	bool parseHintElement(std::shared_ptr<Element> e);
@@ -596,14 +596,14 @@ private:
 	bool parseVersionElement(std::shared_ptr<Element> e);
 
 	// Parse helpers
-	const std::shared_ptr<const Token> next();
-	const std::shared_ptr<const Token> expect(TokenType expected);
-	bool findAndLinkParent(std::shared_ptr<Element> e, const std::shared_ptr<const Token> t);
-	bool linkOrDefer(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
-	bool link(const std::shared_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	std::unique_ptr<const Token> next();
+	std::unique_ptr<const Token> expect(TokenType expected);
+	bool findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const Token> t);
+	bool linkOrDefer(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
+	bool link(std::unique_ptr<const Token> fromToken, std::shared_ptr<Element> fromElement, int toIndex);
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
-	void parseData(std::shared_ptr<const Token> t);
+	void parseData(std::unique_ptr<const Token> t);
 	void checkCRC();
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
@@ -611,11 +611,11 @@ private:
 	int offsetIndex(int index);
 
 	// Error helpers
-	void indexNotFound(const std::shared_ptr<const Token> t, int index);
-	void expectedString(const std::shared_ptr<const Token> t, std::string expected, std::string found);
-	void expected(const std::shared_ptr<const Token> t, std::string expected);
-	void expectedInt(std::shared_ptr<const Token> t);
-	void unexpected(std::shared_ptr<const Token> t);
+	void indexNotFound(std::unique_ptr<const Token> t, int index);
+	void expectedString(std::unique_ptr<const Token> t, std::string expected, std::string found);
+	void expected(std::unique_ptr<const Token> t, std::string expected);
+	void expectedInt(std::unique_ptr<const Token> t);
+	void unexpected(std::unique_ptr<const Token> t);
 };
 
 struct WriterOptions {
@@ -660,7 +660,7 @@ public:
 
 private:
 	bool write88a(std::shared_ptr<const Document> d);
-	void write88aCreditElement(const std::shared_ptr<const Element> e);
+	void write88aCreditElement(const std::unique_ptr<const Element> e);
 	bool write96a(const Document& d);
 
 	Codec _codec;
