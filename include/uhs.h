@@ -519,21 +519,21 @@ private:
 	typedef std::function<void(std::string)> DataCallback;
 
 	struct NodeRange {
-		std::shared_ptr<Node> node;
+		Node& node;
 		int min;
 		int max;
 
-		NodeRange(std::shared_ptr<Node> n, int min, int max);
+		NodeRange(Node& n, int min, int max);
 		virtual ~NodeRange() = default;
 	};
 
 	struct NodeRangeList {
-		std::vector<std::shared_ptr<NodeRange>> data; // TODO: Remove unnecessary shared_ptr
+		std::vector<NodeRange> data;
 
 		NodeRangeList();
 		virtual ~NodeRangeList() = default;
-		std::shared_ptr<Node> find(int min, int max);
-		void add(std::shared_ptr<Node> n, int min, int max);
+		Node* find(int min, int max);
+		void add(Node& n, int min, int max);
 	};
 
 	struct LinkData {

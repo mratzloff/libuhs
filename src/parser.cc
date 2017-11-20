@@ -13,18 +13,18 @@ Parser::Parser(std::ifstream& in, const ParserOptions& opt)
 	, _crc {_pipe}
 {}
 
-Parser::NodeRange::NodeRange(std::shared_ptr<Node> n, int min, int max)
+Parser::NodeRange::NodeRange(Node& n, int min, int max)
 	: node {n}, min {min}, max {max} {}
 
 Parser::NodeRangeList::NodeRangeList() : data({}) {}
 
-std::shared_ptr<Node> Parser::NodeRangeList::find(int min, int max) {
-	std::shared_ptr<Node> n;
+Node* Parser::NodeRangeList::find(int min, int max) {
+	Node* n;
 
-	for (auto nr : data) {
-		if (min > nr->min) {
-			if (max <= nr->max) {
-				n = nr->node;
+	for (const auto& nr : data) {
+		if (min > nr.min) {
+			if (max <= nr.max) {
+				n = &nr.node;
 			}
 		} else {
 			break;
@@ -33,8 +33,8 @@ std::shared_ptr<Node> Parser::NodeRangeList::find(int min, int max) {
 	return n;
 }
 
-void Parser::NodeRangeList::add(std::shared_ptr<Node> n, int min, int max) {
-	data.push_back(std::make_shared<NodeRange>(n, min, max));
+void Parser::NodeRangeList::add(Node& n, int min, int max) {
+	data.emplace_back(NodeRange(n, min, max));
 }
 
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
@@ -360,7 +360,7 @@ bool Parser::parse96a() {
 	std::unique_ptr<const Token> t;
 	std::shared_ptr<Element> e;
 
-	_parents.add(_document, 0, INT_MAX);
+	_parents.add(*_document, 0, INT_MAX);
 
 	// Parse elements
 	while (true) {
@@ -1113,7 +1113,7 @@ bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const
 		return false;
 	}
 	parent->appendChild(e);
-	_parents.add(e, min, max);
+	_parents.add(*e, min, max);
 
 	return true;
 }
