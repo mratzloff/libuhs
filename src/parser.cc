@@ -19,7 +19,7 @@ Parser::NodeRange::NodeRange(Node& n, int min, int max)
 Parser::NodeRangeList::NodeRangeList() : data({}) {}
 
 Node* Parser::NodeRangeList::find(int min, int max) {
-	Node* n;
+	Node* n = nullptr;
 
 	for (const auto& nr : data) {
 		if (min > nr.min) {
@@ -54,36 +54,36 @@ std::unique_ptr<Error> Parser::error() {
 	return std::move(_err);
 }
 
-std::shared_ptr<Document> Parser::parse() {
+std::unique_ptr<Document> Parser::parse() {
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
 		_pipe.read();
 	}};
 
 	// Meanwhile, build out document by parsing emitted tokens in parallel
-	_document = std::make_shared<Document>(Version88a);
+	_document = std::make_unique<Document>(Version88a);
 	bool ok = this->parse88a();
 	if (! ok || _done) {
-		thread.join();
-		return _document;
+		goto exit;
 	}
 
 	if (_version != Version88a) {
 		// Set 88a header as first (hidden) child of 96a document
 		_document->visibility(VisibilityNone);
-		auto document = std::make_shared<Document>(Version96a);
-		document->appendChild(_document);
-		_document = document;
+
+		auto d = std::make_unique<Document>(Version96a);
+		_document.swap(d);
+		_document->appendChild(std::move(d));
 
 		ok = this->parse96a();
 		if (! ok) {
-			thread.join();
-			return _document;
+			goto exit;
 		}
 	}
-	
+
+exit:
 	thread.join();
-	return _document;
+	return std::move(_document);
 }
 
 //--------------------------------- UHS 88a ---------------------------------//
@@ -141,7 +141,7 @@ bool Parser::parse88a() {
 	lastHintIndex += HeaderLen;
 
 	// Subjects
-	NodeMap parents {{0, _document}};
+	NodeMap parents {{0, _document.get()}};
 	bool ok = this->parse88aElements(firstHintIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
@@ -168,13 +168,17 @@ bool Parser::parse88a() {
 		return false;
 	}
 
+	auto tokenType = t->type();
+	int line = t->line();
+	int column = t->column();
+
 	switch (t->type()) {
 	case TokenCreditSep: // This is informal but common
 		// Fall through
 	case TokenString:
 		ok = this->parse88aCreditElement(std::move(t));
 		if (! ok) {
-			this->unexpected(t->type(), t->line(), t->column());
+			this->unexpected(tokenType, line, column);
 		}
 		return ok;
 	case TokenHeaderSep:
@@ -184,7 +188,7 @@ bool Parser::parse88a() {
 		_done = true;
 		return true;
 	default:
-		this->unexpected(t->type(), t->line(), t->column());
+		this->unexpected(tokenType, line, column);
 		return false;
 	}
 }
@@ -226,7 +230,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 			elementType = ElementHint;
 		}
 
-		std::shared_ptr<Node> parent;
+		Node* parent = nullptr;
 		for (int i = index; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
@@ -240,7 +244,9 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 			return false;
 		}
 
-		auto e = std::make_shared<Element>(elementType, index);
+		auto e = std::make_unique<Element>(elementType, index);
+		auto ptr = e.get();
+		parent->appendChild(std::move(e));
 
 		std::string title {_codec.decode88a(encodedTitle)};
 		if (parent->nodeType() != NodeDocument) {
@@ -249,12 +255,10 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 				title += '?';
 			}
 		}
-		e->title(title);
-
-		parent->appendChild(e);
+		ptr->title(title);
 
 		if (index < firstHintIndex) {
-			parents[firstChildIndex] = e;
+			parents[firstChildIndex] = ptr;
 		}
 		if (index + 2 == firstHintIndex) {
 			break; // Done parsing subjects
@@ -276,7 +280,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 		}
 		int index = t->line();
 
-		std::shared_ptr<Node> parent;
+		Node* parent = nullptr;
 		for (int i = index; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
@@ -289,9 +293,9 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 			return false;
 		}
 
-		auto n = std::make_shared<TextNode>();
+		auto n = std::make_unique<TextNode>();
 		n->body(_codec.decode88a(t->value()));
-		parent->appendChild(n);
+		parent->appendChild(std::move(n));
 
 		if (index == lastHintIndex) {
 			break; // Done parsing hints
@@ -301,28 +305,30 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 }
 
 bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
-	auto e = std::make_shared<Element>(ElementCredit, t->line());
+	auto e = std::make_unique<Element>(ElementCredit, t->line());
 	e->title("Credits");
-	_document->appendChild(e);
 
 	// Body
 	std::string s;
 	bool continuation = false;
+	bool ok = false;
 
 	while (true) {
 		switch (t->type()) {
 		case TokenEOF:
 			if (! s.empty()) {
-				e->appendString(s);
+				e->body(s);
 			}
 			_done = true;
-			return true;
+			ok = true;
+			goto exit;
 		case TokenHeaderSep:
-			this->parseHeaderSep(std::move(t));
 			if (! s.empty()) {
-				e->appendString(s);
+				e->body(s);
 			}
-			return true;
+			this->parseHeaderSep(std::move(t));
+			ok = true;
+			goto exit;
 		case TokenCreditSep:
 			// Ignore
 			break;
@@ -335,14 +341,20 @@ bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
 			break;
 		default:
 			this->unexpected(t->type(), t->line(), t->column());
-			return false;
+			ok = false;
+			goto exit;
 		}
 
 		t = this->next();
 		if (_err != nullptr) {
-			return false;
+			ok = false;
+			goto exit;
 		}
 	}
+
+exit:
+	_document->appendChild(std::move(e));
+	return ok;
 }
 
 //--------------------------------- UHS 96a ---------------------------------//
@@ -358,8 +370,6 @@ void Parser::parseHeaderSep(std::unique_ptr<const Token> t) {
 
 bool Parser::parse96a() {
 	std::unique_ptr<const Token> t;
-	std::shared_ptr<Element> e;
-
 	_parents.add(*_document, 0, INT_MAX);
 
 	// Parse elements
@@ -371,9 +381,11 @@ bool Parser::parse96a() {
 
 		switch (t->type()) {
 		case TokenLength:
-			e = this->parseElement(std::move(t));
-			if (e == nullptr) {
-				return false;
+			{
+				const auto e = this->parseElement(std::move(t));
+				if (e == nullptr) {
+					return false;
+				}
 			}
 			break;
 		case TokenData:
@@ -394,7 +406,7 @@ bool Parser::parse96a() {
 }
 
 // Elements are automatically appended to their parents
-std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion) {
+Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion) {
 	bool ok = false;
 
 	// Length
@@ -417,17 +429,18 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bo
 	// Create element
 	auto elementType = Element::elementType(ident);
 	int index = this->offsetIndex(t->line());
-	auto e = std::make_shared<Element>(elementType, index, len);
+	auto e = std::make_unique<Element>(elementType, index, len);
+	auto ptr = e.get();
 
 	// Store a reference for Link and Incentive elements
-	_elements[index] = e;
+	_elements[index] = ptr;
 
 	// Internal hyperpng links refer to region index instead of element index
 	if (indexByRegion) {
-		_elements[index-1] = e;
+		_elements[index-1] = ptr;
 	}
 
-	ok = this->findAndLinkParent(e, std::move(t));
+	ok = this->findParentAndAppend(std::move(e), std::move(t));
 	if (! ok) {
 		return nullptr;
 	}
@@ -445,34 +458,34 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> t, bo
 		}
 		return nullptr;
 	}
-	e->title(t->value());
+	ptr->title(t->value());
 
 	switch (elementType) {
-	case ElementUnknown:   /* No further processing required */ break;
-	case ElementBlank:     /* No further processing required */ break;
-	case ElementComment:   ok = this->parseCommentElement(e);   break;
-	case ElementCredit:    ok = this->parseCommentElement(e);   break;
-	case ElementGifa:      ok = this->parseDataElement(e);      break;
-	case ElementHint:      ok = this->parseHintElement(e);      break;
-	case ElementHyperpng:  ok = this->parseHyperpngElement(e);  break;
-	case ElementIncentive: ok = this->parseIncentiveElement(e); break;
-	case ElementInfo:      ok = this->parseInfoElement(e);      break;
-	case ElementLink:      ok = this->parseLinkElement(e);      break;
-	case ElementNesthint:  ok = this->parseHintElement(e);      break;
-	case ElementOverlay:   ok = this->parseOverlayElement(e);   break;
-	case ElementSound:     ok = this->parseDataElement(e);      break;
-	case ElementSubject:   ok = this->parseSubjectElement(e);   break;
-	case ElementText:      ok = this->parseTextElement(e);      break;
-	case ElementVersion:   ok = this->parseVersionElement(e);   break;
+	case ElementUnknown:   /* No further processing required */   break;
+	case ElementBlank:     /* No further processing required */   break;
+	case ElementComment:   ok = this->parseCommentElement(ptr);   break;
+	case ElementCredit:    ok = this->parseCommentElement(ptr);   break;
+	case ElementGifa:      ok = this->parseDataElement(ptr);      break;
+	case ElementHint:      ok = this->parseHintElement(ptr);      break;
+	case ElementHyperpng:  ok = this->parseHyperpngElement(ptr);  break;
+	case ElementIncentive: ok = this->parseIncentiveElement(ptr); break;
+	case ElementInfo:      ok = this->parseInfoElement(ptr);      break;
+	case ElementLink:      ok = this->parseLinkElement(ptr);      break;
+	case ElementNesthint:  ok = this->parseHintElement(ptr);      break;
+	case ElementOverlay:   ok = this->parseOverlayElement(ptr);   break;
+	case ElementSound:     ok = this->parseDataElement(ptr);      break;
+	case ElementSubject:   ok = this->parseSubjectElement(ptr);   break;
+	case ElementText:      ok = this->parseTextElement(ptr);      break;
+	case ElementVersion:   ok = this->parseVersionElement(ptr);   break;
 	}
 
 	if (! ok) {
 		return nullptr;
 	}
-	return e;
+	return ptr;
 }
 
-bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
+bool Parser::parseCommentElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	int len = e->length();
@@ -509,7 +522,7 @@ bool Parser::parseCommentElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseDataElement(std::shared_ptr<Element> e) {
+bool Parser::parseDataElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	// Offset
@@ -566,9 +579,8 @@ expectDataLength:
 // A hint element ending with a nested text separator ("-") should be an
 // error, but bluforce.uhs has an instance of this. This actually screws
 // up the official reader UI for that particular hint.
-bool Parser::parseHintElement(std::shared_ptr<Element> e) {
+bool Parser::parseHintElement(Element* const e) {
 	std::unique_ptr<const Token> t;
-	std::shared_ptr<Element> child;
 	std::string s;
 
 	// Parse child elements
@@ -626,13 +638,13 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 				return false;
 			}
 
-			// Child element
-			child = this->parseElement(std::move(t));
-			if (child == nullptr) {
-				return false;
+			{ // Child element
+				const auto child = this->parseElement(std::move(t));
+				if (child == nullptr) {
+					return false;
+				}
+				i += child->length();
 			}
-			i += child->length();
-
 			break;
 		default:
 			this->unexpected(t->type(), t->line(), t->column());
@@ -648,7 +660,7 @@ bool Parser::parseHintElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
+bool Parser::parseHyperpngElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
@@ -658,9 +670,9 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 
 	// Parse child elements
 	int len = e->length();
-	std::shared_ptr<Element> child;
+	int childLen = 0;
 
-	for (int i = 4; i < len; i += 1 + child->length()) {
+	for (int i = 4; i < len; i += 1 + childLen) {
 		// Interactive region top-left X coordinate
 		t = this->expect(TokenCoordX);
 		if (_err != nullptr) {
@@ -725,10 +737,11 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 			}
 			return false;
 		}
-		child = this->parseElement(std::move(t), true);
+		const auto child = this->parseElement(std::move(t), true);
 		if (child == nullptr) {
 			return false;
 		}
+		childLen = child->length();
 
 		// Backfill coordinates
 		child->attr("region:top-left-x", x1);
@@ -743,7 +756,7 @@ bool Parser::parseHyperpngElement(std::shared_ptr<Element> e) {
 // A bad instruction ("12") is found at the beginning or end of the incentive
 // list for four files, so we skip bad instructions of that form. Fourteen
 // other files have indexes pointing to nowhere, so we skip those, too.
-bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
+bool Parser::parseIncentiveElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 	std::string s;
 
@@ -795,7 +808,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 		}
 
 		// Look up referenced element
-		std::shared_ptr<Element> ref;
+		Element* ref = nullptr;
 		try {
 			ref = _elements.at(index);
 		} catch (const std::out_of_range& ex) {
@@ -816,7 +829,7 @@ bool Parser::parseIncentiveElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
+bool Parser::parseInfoElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 	std::string s;
 	std::string key;
@@ -891,7 +904,7 @@ bool Parser::parseInfoElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
+bool Parser::parseLinkElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	// Ref index
@@ -910,10 +923,10 @@ bool Parser::parseLinkElement(std::shared_ptr<Element> e) {
 	}
 	e->body(body);
 
-	return this->linkOrDefer(e.get(), refIndex, t->line(), t->column());
+	return this->linkOrDefer(e, refIndex, t->line(), t->column());
 }
 
-bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
+bool Parser::parseOverlayElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	bool ok = this->parseDataElement(e);
@@ -954,18 +967,19 @@ bool Parser::parseOverlayElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
+bool Parser::parseSubjectElement(Element* const e) {
 	std::unique_ptr<const Token> t;
-	std::shared_ptr<Element> child;
 
 	if (! _isTitleSet) {
 		_document->title(e->title());
 		_key = _codec.createKey(_document->title());
 		_isTitleSet = true;
 	}
-	int len = e->length();
 
-	for (int i = 3; i <= len; i += child->length()) {
+	int len = e->length();
+	int childLen = 0;
+
+	for (int i = 3; i <= len; i += childLen) {
 		// Length
 		t = this->expect(TokenLength);
 		if (_err != nullptr) {
@@ -976,16 +990,17 @@ bool Parser::parseSubjectElement(std::shared_ptr<Element> e) {
 		}
 
 		// Child element
-		child = this->parseElement(std::move(t));
+		const auto child = this->parseElement(std::move(t));
 		if (child == nullptr) {
 			return false;
 		}
+		childLen = child->length();
 	}
 
 	return true;
 }
 
-bool Parser::parseTextElement(std::shared_ptr<Element> e) {
+bool Parser::parseTextElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	// Format
@@ -1052,7 +1067,7 @@ bool Parser::parseTextElement(std::shared_ptr<Element> e) {
 	return true;
 }
 
-bool Parser::parseVersionElement(std::shared_ptr<Element> e) {
+bool Parser::parseVersionElement(Element* const e) {
 	VersionType v = Version96a;
 
 	e->visibility(VisibilityNone);
@@ -1102,18 +1117,22 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	return t;
 }
 
-bool Parser::findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const Token> t) {
+bool Parser::findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t) {
+	if (e == nullptr) {
+		return false;
+	}
+
 	int min = e->index();
 	int max = min + e->length();
 	auto parent = _parents.find(min, max);
+	_parents.add(*e, min, max);
 
 	if (parent == nullptr) {
 		_err = std::make_unique<Error>(ErrorValue, "orphaned element");
 		_err->finalize(t->line(), t->column());
 		return false;
 	}
-	parent->appendChild(e);
-	_parents.add(*e, min, max);
+	parent->appendChild(std::move(e));
 
 	return true;
 }
@@ -1139,7 +1158,7 @@ bool Parser::link(Element* fromElement, int toIndex, int line, int column) {
 		return false;
 	}
 
-	std::weak_ptr<Element> ref;
+	Element* ref = nullptr;
 	try {
 		ref = _elements.at(toIndex);
 	} catch (const std::out_of_range& ex) {

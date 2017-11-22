@@ -33,19 +33,26 @@ const std::string Node::nodeTypeString() const {
 	return Node::typeString(_nodeType);
 }
 
-void Node::appendChild(std::shared_ptr<Node> n) {
+// Note that this node must be attached to a document tree in order to
+// correctly set the _depth property when appending its own children.
+void Node::appendChild(std::unique_ptr<Node> n) {
+	auto ptr = n.get();
 	if (_firstChild == nullptr) {
-		_firstChild = n;
-		_lastChild = n;
+		_firstChild = std::move(n);
+		_lastChild = ptr;
 	} else {
-		_lastChild->_nextSibling = n;
-		_lastChild = n;
+		_lastChild->_nextSibling = std::move(n);
+		_lastChild = ptr;
 	}
-	n->_parent = this->shared_from_this();
+	ptr->_parent = this;
+
+	for (auto& child : *ptr) {
+		child._depth = child._parent->_depth + 1;
+	}
 	++_numChildren;
 }
 
-std::shared_ptr<Node> Node::parent() const {
+Node* Node::parent() const {
 	return _parent;
 }
 
@@ -53,23 +60,23 @@ bool Node::hasNextSibling() const {
 	return _nextSibling != nullptr;
 }
 
-std::shared_ptr<Node> Node::nextSibling() const {
-	return _nextSibling;
+Node* Node::nextSibling() const {
+	return _nextSibling.get();
 }
 
 bool Node::hasFirstChild() const {
 	return _firstChild != nullptr;
 }
 
-std::shared_ptr<Node> Node::firstChild() const {
-	return _firstChild;
+Node* Node::firstChild() const {
+	return _firstChild.get();
 }
 
 bool Node::hasLastChild() const {
 	return _lastChild != nullptr;
 }
 
-std::shared_ptr<Node> Node::lastChild() const {
+Node* Node::lastChild() const {
 	return _lastChild;
 }
 
@@ -78,18 +85,11 @@ int Node::numChildren() const {
 }
 
 int Node::depth() const {
-	if (_depth < 0) {
-		auto p = this->parent();
-		if (p == nullptr) {
-			return 0;
-		}
-		_depth = p->depth() + 1;
-	}
 	return _depth;
 }
 
 Node::iterator Node::begin() {
-	return Node::iterator(this->shared_from_this());
+	return Node::iterator(this);
 }
 
 Node::iterator Node::end() {
@@ -97,7 +97,7 @@ Node::iterator Node::end() {
 }
 
 Node::const_iterator Node::begin() const {
-	return Node::const_iterator(this->shared_from_this());
+	return Node::const_iterator(this);
 }
 
 Node::const_iterator Node::end() const {
@@ -125,6 +125,9 @@ typename NodeIterator<T>::pointer NodeIterator<T>::operator->() const {
 template <typename T>
 NodeIterator<T>& NodeIterator<T>::operator++() {
 	do {
+		if (_current == nullptr) {
+			break;
+		}
 		if (_current->hasFirstChild() && ! _visited) { // Down
 			_current = _current->firstChild();
 			_visited = false;
@@ -133,9 +136,6 @@ NodeIterator<T>& NodeIterator<T>::operator++() {
 			_visited = false;
 		} else { // Up
 			_current = _current->parent();
-			if (_current == nullptr) {
-				break;
-			}
 			_visited = true;
 		}
 	} while (_visited);
@@ -167,6 +167,11 @@ template class NodeIterator<const Node>;
 //-------------------------------- TextNode --------------------------------//
 
 TextNode::TextNode() : Node(NodeText) {}
+
+TextNode::TextNode(const std::string body)
+	: Node(NodeText)
+	, Body(body)
+{}
 
 const std::string& TextNode::toString() const {
 	return this->body();

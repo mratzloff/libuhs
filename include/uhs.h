@@ -138,6 +138,8 @@ private:
 
 class Body {
 public:
+	Body() = default;
+	explicit Body(const std::string s);
 	const std::string& body() const;
 	void body(const std::string s);
 
@@ -201,7 +203,7 @@ private:
 	static const std::size_t ReadLen = 1024;
 
 	std::ifstream& _in;
-	std::unique_ptr<Error> _err;
+	std::unique_ptr<Error> _err = nullptr;
 	std::size_t _offset = 0;
 	std::vector<Handler> _handlers;
 };
@@ -313,7 +315,7 @@ private:
 
 	private:
 		Pipe& _pipe; // For errors
-		std::unique_ptr<Error> _err;
+		std::unique_ptr<Error> _err = nullptr;
 		std::queue<const Token> _queue;
 		mutable std::mutex _mutex;
 		bool _open = true;
@@ -329,7 +331,7 @@ private:
 		{"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
 
 	Pipe& _pipe;
-	std::unique_ptr<Error> _err;
+	std::unique_ptr<Error> _err = nullptr;
 	std::string _buf;
 	int _line = 1;
 	std::size_t _offset = 0;
@@ -353,7 +355,7 @@ private:
 template <typename T>
 class NodeIterator;
 
-class Node : public std::enable_shared_from_this<Node> {
+class Node {
 public:
 	using iterator = NodeIterator<Node>;
 	using const_iterator = NodeIterator<const Node>;
@@ -365,14 +367,14 @@ public:
 	virtual ~Node() = default;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
-	void appendChild(std::shared_ptr<Node> n);
-	std::shared_ptr<Node> parent() const;
+	void appendChild(std::unique_ptr<Node> n);
+	Node* parent() const;
 	bool hasNextSibling() const;
-	std::shared_ptr<Node> nextSibling() const;
+	Node* nextSibling() const;
 	bool hasFirstChild() const;
-	std::shared_ptr<Node> firstChild() const;
+	Node* firstChild() const;
 	bool hasLastChild() const;
-	std::shared_ptr<Node> lastChild() const;
+	Node* lastChild() const;
 	int numChildren() const;
 	int depth() const;
 
@@ -384,12 +386,12 @@ public:
 
 private:
 	NodeType _nodeType;
-	std::shared_ptr<Node> _parent;
-	std::shared_ptr<Node> _nextSibling;
-	std::shared_ptr<Node> _firstChild;
-	std::shared_ptr<Node> _lastChild;
+	Node* _parent = nullptr;
+	std::unique_ptr<Node> _nextSibling = nullptr;
+	std::unique_ptr<Node> _firstChild = nullptr;
+	Node* _lastChild = nullptr;
 	int _numChildren = 0;
-	mutable int _depth = -1;
+	int _depth = 0;
 };
 
 template <typename T>
@@ -397,7 +399,7 @@ class NodeIterator {
 public:
 	using value_type = T;
 	using difference_type = std::ptrdiff_t;
-	using pointer = std::shared_ptr<T>;
+	using pointer = T*;
 	using reference = T&;
 	using iterator_category = std::forward_iterator_tag;
 
@@ -411,7 +413,7 @@ public:
 	bool operator!=(const NodeIterator<T>& rhs);
 
 private:
-	pointer _current;
+	pointer _current = nullptr;
 	bool _visited = false;
 };
 
@@ -423,6 +425,7 @@ class TextNode
 {
 public:
 	TextNode();
+	TextNode(const std::string body);
 	virtual ~TextNode() = default;
 	const std::string& toString() const;
 	void addFormat(Format f);
@@ -454,8 +457,8 @@ public:
 	void index(int i);
 	int length() const;
 	void length(int l);
-	const std::weak_ptr<Element> ref() const;
-	void ref(const std::weak_ptr<Element> ref);
+	const Element* ref() const;
+	void ref(const Element* ref);
 	bool isMedia() const;
 	const std::string mediaExt() const;
 
@@ -463,7 +466,7 @@ private:
 	ElementType _elementType;
 	int _index = 0;
 	int _length = 0;
-	std::weak_ptr<Element> _ref;
+	const Element* _ref = nullptr;
 };
 
 class Document
@@ -517,11 +520,11 @@ public:
 	Parser(std::ifstream& in, const ParserOptions& opt);
 	virtual ~Parser() = default;
 	std::unique_ptr<Error> error();
-	std::shared_ptr<Document> parse();
+	std::unique_ptr<Document> parse();
 
 private:
-	typedef std::map<const int, std::shared_ptr<Node>> NodeMap;
-	typedef std::map<const int, std::shared_ptr<Element>> ElementMap;
+	typedef std::map<const int, Node*> NodeMap;
+	typedef std::map<const int, Element*> ElementMap;
 	typedef std::function<void(std::string)> DataCallback;
 
 	struct NodeRange {
@@ -543,7 +546,7 @@ private:
 	};
 
 	struct LinkData {
-		Element* fromElement;
+		Element* fromElement = nullptr;
 		int toIndex;
 		int line;
 		int column;
@@ -567,12 +570,12 @@ private:
 
 	VersionType _version = Version96a;
 	bool _debug = false;
-	std::unique_ptr<Error> _err;
+	std::unique_ptr<Error> _err = nullptr;
 	Pipe _pipe;
 	Tokenizer _tokenizer;
 	CRC _crc;
 	Codec _codec;
-	std::shared_ptr<Document> _document;
+	std::unique_ptr<Document> _document = nullptr;
 	NodeRangeList _parents;
 	ElementMap _elements;
 	std::map<int, LinkData> _deferredLinks;
@@ -591,25 +594,25 @@ private:
 
 	// 96a
 	bool parse96a();
-	std::shared_ptr<Element> parseElement(std::unique_ptr<const Token> t, bool indexByRegion = false);
-	bool parseCommentElement(std::shared_ptr<Element> e);
-	bool parseDataElement(std::shared_ptr<Element> e);
-	bool parseHintElement(std::shared_ptr<Element> e);
-	bool parseHyperpngElement(std::shared_ptr<Element> e);
-	bool parseInfoElement(std::shared_ptr<Element> e);
-	bool parseIncentiveElement(std::shared_ptr<Element> e);
-	bool parseLinkElement(std::shared_ptr<Element> e);
-	bool parseOverlayElement(std::shared_ptr<Element> e);
-	bool parseSubjectElement(std::shared_ptr<Element> e);
-	bool parseTextElement(std::shared_ptr<Element> e);
-	bool parseVersionElement(std::shared_ptr<Element> e);
+	Element* parseElement(std::unique_ptr<const Token> t, bool indexByRegion = false);
+	bool parseCommentElement(Element* const e);
+	bool parseDataElement(Element* const e);
+	bool parseHintElement(Element* const e);
+	bool parseHyperpngElement(Element* const e);
+	bool parseInfoElement(Element* const e);
+	bool parseIncentiveElement(Element* const e);
+	bool parseLinkElement(Element* const e);
+	bool parseOverlayElement(Element* const e);
+	bool parseSubjectElement(Element* const e);
+	bool parseTextElement(Element* const e);
+	bool parseVersionElement(Element* const e);
 
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	bool findAndLinkParent(std::shared_ptr<Element> e, std::unique_ptr<const Token> t);
-	bool linkOrDefer(Element* fromElement, int toIndex, int line, int column);
-	bool link(Element* fromElement, int toIndex, int line, int column);
+	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
+	bool linkOrDefer(Element* const fromElement, int toIndex, int line, int column);
+	bool link(Element* const fromElement, int toIndex, int line, int column);
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
@@ -636,11 +639,11 @@ public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
 	std::unique_ptr<Error> error();
-	virtual bool write(const std::shared_ptr<const Document> d) = 0;
+	virtual bool write(const Document& d) = 0;
 
 protected:
 	std::ostream& _out;
-	std::unique_ptr<Error> _err;
+	std::unique_ptr<Error> _err = nullptr;
 	std::string _mediaDir;
 	bool _registered;
 };
@@ -649,7 +652,7 @@ class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~JSONWriter() = default;
-	bool write(const std::shared_ptr<const Document> d) override;
+	bool write(const Document& d) override;
 
 private:
 	Json::Value serialize(const Document& d, Json::Value& root) const;
@@ -664,12 +667,11 @@ public:
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~UHSWriter() = default;
-	bool write(const std::shared_ptr<const Document> d) override;
+	bool write(const Document& d) override;
 
 private:
-	bool write88a(std::shared_ptr<const Document> d);
-	void write88aCreditElement(std::unique_ptr<const Element> e);
-	bool write96a(const Document& d);
+	bool serialize88a(const Document& d, std::ostringstream& ss);
+	bool serialize96a(const Document& d, std::ostringstream& ss);
 
 	Codec _codec;
 };

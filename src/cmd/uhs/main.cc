@@ -123,11 +123,11 @@ int main(int argc, const char* argv[]) {
 	// TODO: Make default constructor possible for Writer
 	if (format == "json") {
 		UHS::JSONWriter w {std::cout, writerOpt};
-		w.write(document);
+		w.write(*document);
 		err = w.error();
 	} else if (format == "uhs") {
 		UHS::UHSWriter w {std::cout, writerOpt};
-		w.write(document);
+		w.write(*document);
 		err = w.error();
 	}
 

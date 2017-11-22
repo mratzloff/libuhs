@@ -24,6 +24,8 @@ void Attributes::attr(const std::string key, const std::string value) {
 
 //---------------------------------- Body -----------------------------------//
 
+Body::Body(const std::string s) : _body {s} {}
+
 const std::string& Body::body() const {
 	return _body;
 }

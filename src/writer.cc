@@ -19,15 +19,11 @@ std::unique_ptr<Error> Writer::error() {
 JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
 
-bool JSONWriter::write(const std::shared_ptr<const Document> d) {
+bool JSONWriter::write(const Document& d) {
 	Json::Value root {Json::objectValue};
 
-	if (d == nullptr) {
-		return false;
-	}
-	this->serialize(*d, root);
-	_out << root;
-	std::flush(_out);
+	this->serialize(d, root);
+	_out << root << std::endl;
 
 	return true;
 }
@@ -57,27 +53,33 @@ Json::Value JSONWriter::serialize(const Document& d, Json::Value& root) const {
 		}
 
 		// Serialize node
-		auto nodeType = n.nodeType();
 		Json::Value obj {Json::objectValue};
 
-		if (nodeType == NodeText) {
-			const auto& tn = dynamic_cast<const TextNode&>(n);
-			(*parent)["children"].append(tn.body());
-
-		} else if (nodeType == NodeElement) {
-			const auto& e = dynamic_cast<const Element&>(n);
-			this->serializeElement(e, obj);
-			(*parent)["children"].append(obj);
-
-		} else if (nodeType == NodeDocument) {
-			const auto& doc = dynamic_cast<const Document&>(n);
-
-			if (nodeDepth > 0) {
-				this->serializeDocument(doc, obj);
-				(*parent)["children"].append(obj);
-			} else {
-				this->serializeDocument(doc, root);
+		switch (n.nodeType()) {
+		case NodeText:
+			{
+				const auto& tn = dynamic_cast<const TextNode&>(n);
+				(*parent)["children"].append(tn.body());
 			}
+			break;
+		case NodeElement:
+			{
+				const auto& e = dynamic_cast<const Element&>(n);
+				this->serializeElement(e, obj);
+				(*parent)["children"].append(obj);
+			}
+			break;
+		case NodeDocument:
+			{
+				const auto& doc = dynamic_cast<const Document&>(n);
+				if (nodeDepth > 0) {
+					this->serializeDocument(doc, obj);
+					(*parent)["children"].append(obj);
+				} else {
+					this->serializeDocument(doc, root);
+				}
+			}
+			break;
 		}
 
 		depth = nodeDepth;
@@ -163,25 +165,23 @@ void JSONWriter::serializeMap(const Traits::Attributes::Type& attrs,
 UHSWriter::UHSWriter(std::ostream& out, const WriterOptions opt)
 	: Writer(out, opt) {}
 
-bool UHSWriter::write(const std::shared_ptr<const Document> d) {
-	if (d == nullptr) {
-		return false;
-	}
-	auto version = d->version();
-
-	if (version == Version88a) {
-		this->write88a(d);
+bool UHSWriter::write(const Document& d) {
+	bool ok = false;
+	std::ostringstream buf;
+	
+	if (d.version() == Version88a) {
+		ok = this->serialize88a(d, buf);
 	} else {
-		this->write96a(*d);
+		ok = this->serialize96a(d, buf);
 	}
+	_out << buf.str();
 	std::flush(_out);
 
-	return true;
+	return ok;
 }
 
-bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
-	std::queue<std::shared_ptr<const Node>> queue;
-	std::shared_ptr<const Node> n;
+bool UHSWriter::serialize88a(const Document& d, std::ostringstream& out) {
+	std::queue<const Node*> queue;
 	auto prevType = ElementUnknown;
 	int index = 1;
 	int numPrevChildren = 0;
@@ -189,111 +189,107 @@ bool UHSWriter::write88a(std::shared_ptr<const Document> d) {
 	int lastHintIndex = 0;
 
 	// Find credit node, if any
-	std::unique_ptr<const Element> credit;
-	for (const auto& n : *d) {
+	const Element* credit = nullptr;
+	for (const auto& n : d) {
 		if (n.nodeType() == NodeElement) {
 			const auto& e = dynamic_cast<const Element&>(n);
 			if (e.elementType() == ElementCredit) {
-				credit = std::make_unique<const Element>(e);
+				credit = &e;
 				break;
 			}
 		}
 	}
 
 	// Traverse tree, breadth first
-	queue.push(d);
-	std::ostringstream ss;
+	queue.push(&d);
+	std::ostringstream buf;
 
 	while (! queue.empty()) {
-		n = queue.front();
+		const auto n = queue.front();
 		queue.pop();
 
-		auto nodeType = n->nodeType();
-		if (nodeType == NodeText) {
+		switch (n->nodeType()) {
+		case NodeText:
 			if (lastHintIndex == 0) {
 				lastHintIndex = index + numPrevChildren - 1;
 			}
-			const auto& tn = dynamic_cast<const TextNode&>(*n);
-			ss << _codec.encode88a(tn.body()) << EOL;
-
-		} else if (nodeType == NodeElement) {
-			const auto& e = dynamic_cast<const Element&>(*n);
-			auto elementType = e.elementType();
-
-			std::string title;
-			if (elementType == ElementHint) {
-				title = Strings::rtrim(e.title(), '?');
-			} else {
-				title = e.title();
+			{
+				const auto& tn = dynamic_cast<const TextNode&>(*n);
+				buf << _codec.encode88a(tn.body()) << EOL;
 			}
+			break;
+		
+		case NodeElement:
+			{
+				const auto& e = dynamic_cast<const Element&>(*n);
+				ElementType elementType = e.elementType();
 
-			if (elementType == ElementSubject || prevType == ElementSubject) {
-				index += numPrevChildren * 2;
-			} else if (elementType == ElementHint) {
-				if (firstHintIndex == 0) {
-					firstHintIndex = index;
+				std::string title;
+				if (elementType == ElementHint) {
+					title = Strings::rtrim(e.title(), '?');
+				} else {
+					title = e.title();
 				}
-				index += numPrevChildren;
-			} else {
-				_err = std::make_unique<Error>(ErrorValue);
- 				_err->messagef("unexpected element: %s", Element::typeString(elementType).data());
- 				_err->finalize();
- 				return false;
+
+				if (elementType == ElementSubject || prevType == ElementSubject) {
+					index += numPrevChildren * 2;
+				} else if (elementType == ElementHint) {
+					if (firstHintIndex == 0) {
+						firstHintIndex = index;
+					}
+					index += numPrevChildren;
+				} else {
+					_err = std::make_unique<Error>(ErrorValue);
+	 				_err->messagef("unexpected element: %s", Element::typeString(elementType).data());
+	 				_err->finalize();
+	 				return false;
+				}
+
+				buf << _codec.encode88a(title) << EOL;
+				buf << index << EOL;
+
+				prevType = elementType;
 			}
+			break;
 
-			ss << _codec.encode88a(title) << EOL;
-			ss << index << EOL;
-
-			prevType = elementType;
+		default:
+			break; // Ignore
 		}
 
 		numPrevChildren = n->numChildren();
-		if (n == d && credit != nullptr) {
+		if (n->nodeType() == NodeDocument && credit != nullptr) {
 			--numPrevChildren; // Don't count credits for indexing purposes
 		}
 
 		if (n->hasFirstChild()) {
-			n = n->firstChild();
-			if (! Node::isElementOfType(*n, ElementCredit)) {
-				queue.push(n);
+			auto child = n->firstChild();
+			if (! Node::isElementOfType(*child, ElementCredit)) {
+				queue.push(child);
 			}
-			while (n->hasNextSibling()) {
-				n = n->nextSibling();
-				if (! Node::isElementOfType(*n, ElementCredit)) {
-					queue.push(n);
+			while (child->hasNextSibling()) {
+				child = child->nextSibling();
+				if (! Node::isElementOfType(*child, ElementCredit)) {
+					queue.push(child);
 				}
 			}
 		}
 	}
 
-	_out << Token::Signature << EOL;
-	_out << d->title() << EOL;
-	_out << firstHintIndex << EOL;
-	_out << lastHintIndex << EOL;
-	_out << ss.str();
+	out << Token::Signature << EOL;
+	out << d.title() << EOL;
+	out << firstHintIndex << EOL;
+	out << lastHintIndex << EOL;
+	out << buf.str();
 
-	this->write88aCreditElement(std::move(credit));
+	if (credit != nullptr) {
+		out << Token::CreditSep << EOL;
+		out << Strings::wrap(credit->body(), EOL, LineLen - strlen(EOL)) << EOL;
+	}
 
 	return true;
 }
 
-void UHSWriter::write88aCreditElement(std::unique_ptr<const Element> e) {
-	// TODO: Note that credit nodes support the "\r\n \r\n" paragraph idiom
-	if (e == nullptr) {
-		return;
-	}
-
-	const auto& n = *(e->firstChild());
-	if (n.nodeType() != NodeText) {
-		return;
-	}
-
-	const auto& tn = dynamic_cast<const TextNode&>(n);
-	_out << Token::CreditSep << EOL;
-	_out << Strings::wrap(tn.body(), EOL, LineLen - strlen(EOL)) << EOL;
-}
-
-bool UHSWriter::write96a(const Document& d) {
+bool UHSWriter::serialize96a(const Document& d, std::ostringstream& out) {
 	_err = std::make_unique<Error>(ErrorWrite, "not implemented");
 	_err->finalize();
 	return false;

@@ -46,7 +46,6 @@ void CRC::update(const char* buf, std::streamsize n) {
 		_buf[1] = buf[n-1];
 		_bufLen = 2;
 		this->calculate(buf, n - _bufLen);
-		break;
 	}
 }
 

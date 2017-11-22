@@ -91,9 +91,7 @@ const std::string Element::elementTypeString() const {
 }
 
 void Element::appendString(const std::string s) {
-	auto n = std::make_shared<TextNode>();
-	n->body(s);
-	this->appendChild(n);
+	this->appendChild(std::make_unique<TextNode>(s));
 }
 
 int Element::index() const {
@@ -104,11 +102,11 @@ int Element::length() const {
 	return _length;
 }
 
-const std::weak_ptr<Element> Element::ref() const {
+const Element* Element::ref() const {
 	return _ref;
 }
 
-void Element::ref(const std::weak_ptr<Element> ref) {
+void Element::ref(const Element* ref) {
 	_ref = ref;
 }
 
