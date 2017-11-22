@@ -511,16 +511,17 @@ private:
 };
 
 struct ParserOptions {
-	VersionType version {Version96a};
-	bool debug {false};
+	bool force88aMode = false;
+	bool debug = false;
 };
 
 class Parser {
 public:
-	Parser(std::ifstream& in, const ParserOptions& opt);
+	Parser(const ParserOptions opt = {});
 	virtual ~Parser() = default;
 	std::unique_ptr<Error> error();
-	std::unique_ptr<Document> parse();
+	std::unique_ptr<Document> parse(std::ifstream& in);
+	void reset();
 
 private:
 	typedef std::map<const int, Node*> NodeMap;
@@ -543,6 +544,7 @@ private:
 		virtual ~NodeRangeList() = default;
 		Node* find(int min, int max);
 		void add(Node& n, int min, int max);
+		void clear();
 	};
 
 	struct LinkData {
@@ -568,12 +570,11 @@ private:
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
 
-	VersionType _version = Version96a;
-	bool _debug = false;
+	const ParserOptions _opt;
 	std::unique_ptr<Error> _err = nullptr;
-	Pipe _pipe;
-	Tokenizer _tokenizer;
-	CRC _crc;
+	std::unique_ptr<Pipe> _pipe = nullptr;
+	std::unique_ptr<Tokenizer> _tokenizer = nullptr;
+	std::unique_ptr<CRC> _crc = nullptr;
 	Codec _codec;
 	std::unique_ptr<Document> _document = nullptr;
 	NodeRangeList _parents;
@@ -640,12 +641,12 @@ public:
 	virtual ~Writer() = default;
 	std::unique_ptr<Error> error();
 	virtual bool write(const Document& d) = 0;
+	void reset();
 
 protected:
 	std::ostream& _out;
+	const WriterOptions _opt;
 	std::unique_ptr<Error> _err = nullptr;
-	std::string _mediaDir;
-	bool _registered;
 };
 
 class JSONWriter : public Writer {

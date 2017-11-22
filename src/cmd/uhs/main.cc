@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
 				return OK;
 			case '-':
 				if (std::strncmp("--88a", argv[i], 5) == 0) {
-					parserOpt.version = UHS::Version88a;
+					parserOpt.force88aMode = true;
 					break;
 				}
 				if (std::strncmp("--unregistered", argv[i], 14) == 0) {
@@ -110,9 +110,9 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
+	UHS::Parser p {parserOpt};
 	std::ifstream in {file, std::ifstream::in | std::ifstream::binary};
-	UHS::Parser p {in, parserOpt};
-	auto document = p.parse();
+	auto document = p.parse(in);
 
 	auto err = p.error();
 	if (err != nullptr) {
@@ -120,7 +120,6 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	// TODO: Make default constructor possible for Writer
 	if (format == "json") {
 		UHS::JSONWriter w {std::cout, writerOpt};
 		w.write(*document);
@@ -129,11 +128,6 @@ int main(int argc, const char* argv[]) {
 		UHS::UHSWriter w {std::cout, writerOpt};
 		w.write(*document);
 		err = w.error();
-	}
-
-	if (err != nullptr) {
-		std::cerr << "uhs: " << err->message() << std::endl;
-		return Err;
 	}
 
 	return OK;

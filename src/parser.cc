@@ -5,13 +5,7 @@
 
 namespace UHS {
 
-Parser::Parser(std::ifstream& in, const ParserOptions& opt)
-	: _version {opt.version}
-	, _debug {opt.debug}
-	, _pipe {Pipe(in)}
-	, _tokenizer {_pipe}
-	, _crc {_pipe}
-{}
+Parser::Parser(const ParserOptions opt) : _opt {opt} {}
 
 Parser::NodeRange::NodeRange(Node& n, int min, int max)
 	: node {n}, min {min}, max {max} {}
@@ -37,6 +31,10 @@ void Parser::NodeRangeList::add(Node& n, int min, int max) {
 	data.emplace_back(n, min, max);
 }
 
+void Parser::NodeRangeList::clear() {
+	data.clear();
+}
+
 Parser::DataHandler::DataHandler(std::size_t offset, std::size_t length, DataCallback func)
 	: offset {offset}
 	, length {length}
@@ -54,10 +52,14 @@ std::unique_ptr<Error> Parser::error() {
 	return std::move(_err);
 }
 
-std::unique_ptr<Document> Parser::parse() {
+std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
+	_pipe = std::make_unique<Pipe>(in);
+	_tokenizer = std::make_unique<Tokenizer>(*_pipe);
+	_crc = std::make_unique<CRC>(*_pipe);
+
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
-		_pipe.read();
+		_pipe->read();
 	}};
 
 	// Meanwhile, build out document by parsing emitted tokens in parallel
@@ -67,7 +69,7 @@ std::unique_ptr<Document> Parser::parse() {
 		goto exit;
 	}
 
-	if (_version != Version88a) {
+	if (! _opt.force88aMode) {
 		// Set 88a header as first (hidden) child of 96a document
 		_document->visibility(VisibilityNone);
 
@@ -84,6 +86,22 @@ std::unique_ptr<Document> Parser::parse() {
 exit:
 	thread.join();
 	return std::move(_document);
+}
+
+void Parser::reset() {
+	_err = nullptr;
+	_pipe = nullptr;
+	_tokenizer = nullptr;
+	_crc = nullptr;
+	_document = nullptr;
+	_parents.clear();
+	_elements.clear();
+	_deferredLinks.clear();
+	_dataHandlers.clear();
+	_key.clear();
+	_indexOffset = 0;
+	_isTitleSet = false;
+	_done = false;
 }
 
 //--------------------------------- UHS 88a ---------------------------------//
@@ -360,7 +378,7 @@ exit:
 //--------------------------------- UHS 96a ---------------------------------//
 
 void Parser::parseHeaderSep(std::unique_ptr<const Token> t) {
-	if (_version == Version88a) {
+	if (_opt.force88aMode) {
 		_done = true;
 		return;
 	}
@@ -1085,15 +1103,15 @@ bool Parser::parseVersionElement(Element* const e) {
 }
 
 std::unique_ptr<const Token> Parser::next() {
-	auto t = _tokenizer.next();
+	auto t = _tokenizer->next();
 	if (t == nullptr) {
-		auto err = _tokenizer.error();
+		auto err = _tokenizer->error();
 		if (err != nullptr) {
 			_err = std::move(err);
 			return t;
 		}
 	}
-	if (_debug) {
+	if (_opt.debug) {
 		std::cout << t->toString() << std::endl;
 	}
 	return t;
@@ -1192,8 +1210,8 @@ void Parser::parseData(std::unique_ptr<const Token> t) {
 }
 
 void Parser::checkCRC() {
-	_crc.finalize();
-	_document->validChecksum(_crc.valid());
+	_crc->finalize();
+	_document->validChecksum(_crc->valid());
 }
 
 // Format: DD-Mon-YY

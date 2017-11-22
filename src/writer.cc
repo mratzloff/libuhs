@@ -5,13 +5,14 @@
 namespace UHS {
 
 Writer::Writer(std::ostream& out, const WriterOptions opt)
-	: _out {out}
-	, _mediaDir {opt.mediaDir}
-	, _registered {opt.registered}
-{}
+	: _out {out}, _opt {opt} {}
 
 std::unique_ptr<Error> Writer::error() {
 	return std::move(_err);
+}
+
+void Writer::reset() {
+	_err = nullptr;
 }
 
 //------------------------------- JSONWriter --------------------------------//
@@ -95,7 +96,7 @@ void JSONWriter::serializeElement(const Element& e, Json::Value& obj) const {
 	obj["title"] = e.title();
 	
 	if (e.isMedia()) { // TODO: Do something about how lazy this is
-		fname = _mediaDir + "/" + std::to_string(e.index()) + "." + e.mediaExt();
+		fname = _opt.mediaDir + "/" + std::to_string(e.index()) + "." + e.mediaExt();
 		fout.open(fname, std::ofstream::out | std::ofstream::binary);
 		fout << e.body();
 		fout.close();
@@ -107,7 +108,7 @@ void JSONWriter::serializeElement(const Element& e, Json::Value& obj) const {
 		}
 	}
 
-	if (! e.visible(_registered)) {
+	if (! e.visible(_opt.registered)) {
 		obj["visible"] = false;
 	}
 	obj["type"] = Element::typeString(e.elementType());
@@ -126,10 +127,10 @@ void JSONWriter::serializeDocument(const Document& d, Json::Value& obj) const {
 	obj["version"] = d.versionString();
 
 	if (d.version() > Version88a) {
-		obj["registered"] = _registered;
+		obj["registered"] = _opt.registered;
 		obj["validChecksum"] = d.validChecksum();
 	}
-	if (! d.visible(_registered)) {
+	if (! d.visible(_opt.registered)) {
 		obj["visible"] = false;
 	}
 	obj["type"] = Node::typeString(d.nodeType());
