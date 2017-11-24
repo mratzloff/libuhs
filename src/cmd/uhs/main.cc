@@ -15,21 +15,21 @@ void printVersion() {
 void printHelp() {
 	std::cout
 		<< "uhs " << UHS::Version << "\n\n"
-		<< "Usage: uhs [options] <file>\n"
-		<< "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
-		<< "-d <dir>\t\tDirectory to write media files to\n"
+		<< "Usage: uhs -f <fmt> [options] <file>\n"
+		<< "-f <fmt>\t\t* Output format (\"json\", \"uhs\")\n"
+		<< "-o <file>\t\tOutput file\n"
+		<< "-m <dir>\t\tMedia directory\n"
 		<< "    --88a\t\tForce 88a mode for reading and writing\n"
 		<< "    --unregistered\tRead in unregistered mode\n"
 		<< "    --debug\t\tPrint debugging statements\n"
 		<< "-v, --version\t\tPrint the version\n"
-		<< "-h, --help\t\tPrint this help statement"
+		<< "-h, --help\t\tPrint this help statement\n\n"
+		<< "* = required"
 		<< std::endl;
 }
 
 int main(int argc, const char* argv[]) {
-	std::string format;
-	std::string file;
-	std::string dir;
+	std::string format, infile, outfile, dir;
 	UHS::ParserOptions parserOpt;
 	UHS::WriterOptions writerOpt;
 
@@ -49,10 +49,18 @@ int main(int argc, const char* argv[]) {
 				}
 				format = argv[i];
 				break;
-			case 'd':
+			case 'o':
 				++i;
 				if (i >= argc) {
-					std::cerr << "uhs: error: -d requires a parameter" << std::endl;
+					std::cerr << "uhs: error: -o requires a parameter" << std::endl;
+					return Err;
+				}
+				outfile = argv[i];
+				break;
+			case 'm':
+				++i;
+				if (i >= argc) {
+					std::cerr << "uhs: error: -m requires a parameter" << std::endl;
 					return Err;
 				}
 				writerOpt.mediaDir = argv[i];
@@ -68,25 +76,24 @@ int main(int argc, const char* argv[]) {
 					parserOpt.force88aMode = true;
 					writerOpt.force88aMode = true;
 					break;
-				}
-				if (std::strncmp("--unregistered", argv[i], 14) == 0) {
+				} else if (std::strncmp("--unregistered", argv[i], 14) == 0) {
 					writerOpt.registered = false;
 					break;
-				}
-				if (std::strncmp("--debug", argv[i], 7) == 0) {
+				} else if (std::strncmp("--debug", argv[i], 7) == 0) {
 					parserOpt.debug = true;
 					break;
-				}
-				if (std::strncmp("--help", argv[i], 6) == 0) {
+				} else if (std::strncmp("--help", argv[i], 6) == 0) {
 					printHelp();
 					return OK;
-				}
-				if (std::strncmp("--version", argv[i], 9) == 0) {
+				} else if (std::strncmp("--version", argv[i], 9) == 0) {
 					printVersion();
 					return OK;
+				} else {
+					std::cerr << "uhs: unknown option: " << argv[i] << std::endl;
+					return Err;
 				}
 			default:
-				printHelp();
+				std::cerr << "uhs: unknown option: " << argv[i] << std::endl;
 				return Err;
 			}
 		} else { // Parse filename (required)
@@ -94,11 +101,11 @@ int main(int argc, const char* argv[]) {
 				printHelp();
 				return Err;
 			}
-			file = argv[argc-1];
+			infile = argv[argc-1];
 		}
 	}
 
-	if (file.empty()) {
+	if (infile.empty()) {
 		std::cerr << "uhs: error: no input file" << std::endl;
 		return Err;
 	}
@@ -112,7 +119,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	UHS::Parser p {parserOpt};
-	std::ifstream in {file, std::ifstream::in | std::ifstream::binary};
+	std::ifstream in {infile, std::ios::in | std::ios::binary};
 	auto document = p.parse(in);
 
 	auto err = p.error();
@@ -121,12 +128,18 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
+	std::ofstream fout;
+	if (! outfile.empty()) {
+		fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
+	}
+	std::ostream& out = (outfile.empty()) ? std::cout : fout;
+
 	if (format == "json") {
-		UHS::JSONWriter w {std::cout, writerOpt};
+		UHS::JSONWriter w {out, writerOpt};
 		w.write(*document);
 		err = w.error();
 	} else if (format == "uhs") {
-		UHS::UHSWriter w {std::cout, writerOpt};
+		UHS::UHSWriter w {out, writerOpt};
 		w.write(*document);
 		err = w.error();
 	}

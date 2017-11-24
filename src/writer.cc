@@ -95,9 +95,10 @@ void JSONWriter::serializeElement(const Element& e, Json::Value& obj) const {
 
 	obj["title"] = e.title();
 	
-	if (e.isMedia()) { // TODO: Do something about how lazy this is
+	if (e.isMedia() && ! _opt.mediaDir.empty()) {
+		// TODO: Do something about how lazy this is
 		fname = _opt.mediaDir + "/" + std::to_string(e.index()) + "." + e.mediaExt();
-		fout.open(fname, std::ofstream::out | std::ofstream::binary);
+		fout.open(fname, std::ios::out | std::ios::binary);
 		fout << e.body();
 		fout.close();
 		obj["body"] = fname;
@@ -340,10 +341,7 @@ bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
 
 	// TODO: Add data
 
-	auto buf = out.str();
-	_crc.calculate(buf.data(), buf.length());
-	_crc.finalize();
-	out << _crc.string(); // Does NOT work when CRC contains 0x0
+	this->serializeCRC(out);
 
 	return true;
 }
@@ -438,6 +436,19 @@ bool UHSWriter::serializeSubjectElement(const Element& e, std::ostream& out, int
 	}
 
 	return true;
+}
+
+void UHSWriter::serializeCRC(std::ostringstream& out) {
+	// Calculate
+	auto buf = out.str();
+	_crc.calculate(buf.data(), buf.length());
+	_crc.finalize();
+
+	// Write checksum
+	std::vector<char> checksum;
+	_crc.checksum(checksum);
+	out.put(checksum[0]); // Ensure that 0x00 will be written (to a file)
+	out.put(checksum[1]);
 }
 
 bool UHSWriter::convertTo96a(Document& d) {

@@ -71,13 +71,9 @@ void CRC::finalize() {
 	}
 }
 
-std::string CRC::string() {
-	char buf[3];
-	buf[0] = _rem & 0xFF; // low
-	buf[1] = _rem >> 8;   // high
-	buf[2] = '\0';
-
-	return std::string(buf);
+void CRC::checksum(std::vector<char>& out) {
+	out.push_back(_rem & 0xFF); // low
+	out.push_back(_rem >> 8);   // high
 }
 
 bool CRC::valid() {

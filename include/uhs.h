@@ -223,7 +223,7 @@ public:
 	void calculate(const char* buf, std::streamsize n, bool bufferChecksum);
 	void calculate(const char* buf, std::streamsize n);
 	void finalize();
-	std::string string();
+	void checksum(std::vector<char>& out);
 	bool valid();
 
 private:
@@ -693,6 +693,7 @@ private:
 	bool serializeCommentElement(const Element& e, std::ostream& out, int& len);
 	bool serializeHintElement(const Element& e, std::ostream& out, int& len);
 	bool serializeSubjectElement(const Element& e, std::ostream& out, int& len);
+	void serializeCRC(std::ostringstream& out);
 	bool convertTo96a(Document& d);
 
 	Codec _codec;
