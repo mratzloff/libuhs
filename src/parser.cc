@@ -55,7 +55,8 @@ std::unique_ptr<Error> Parser::error() {
 std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 	_pipe = std::make_unique<Pipe>(in);
 	_tokenizer = std::make_unique<Tokenizer>(*_pipe);
-	_crc = std::make_unique<CRC>(*_pipe);
+	_crc = std::make_unique<CRC>();
+	_crc->upstream(*_pipe.get());
 
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread {[&] {
@@ -89,11 +90,11 @@ exit:
 }
 
 void Parser::reset() {
-	_err = nullptr;
-	_pipe = nullptr;
-	_tokenizer = nullptr;
-	_crc = nullptr;
-	_document = nullptr;
+	_err.release();
+	_pipe.release();
+	_tokenizer.release();
+	_crc.release();
+	_document.release();
 	_parents.clear();
 	_elements.clear();
 	_deferredLinks.clear();
@@ -554,8 +555,6 @@ bool Parser::parseDataElement(Element* const e) {
 		}
 
 		switch (t->type()) {
-		case TokenDataType:
-			continue; // Ignore
 		case TokenDataOffset:
 			intOffset = Strings::toInt(t->value());
 			if (intOffset < 0) {
@@ -564,6 +563,8 @@ bool Parser::parseDataElement(Element* const e) {
 			}
 			offset = intOffset;
 			goto expectDataLength;
+		case TokenTextFormat:
+			continue; // Ignore
 		default:
 			this->unexpected(t->type(), t->line(), t->column());
 			return false;
@@ -1022,7 +1023,7 @@ bool Parser::parseTextElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
 	// Format
-	t = this->expect(TokenDataType);
+	t = this->expect(TokenTextFormat);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t->type(), t->line(), t->column());

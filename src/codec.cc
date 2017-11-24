@@ -27,8 +27,6 @@ const std::string Codec::encode88a(std::string decoded) const {
 		if (this->isPrintable(c)) {
 			int offset = (c % 2 == 0) ? AsciiStart : AsciiEnd;
 			encoded[i] = static_cast<char>((static_cast<int>(c) + offset) / 2);
-		} else {
-			encoded[i] = '?';
 		}
 	}
 	return encoded;

@@ -75,7 +75,6 @@ enum TokenType {
 	TokenData,
 	TokenDataLength,
 	TokenDataOffset,
-	TokenDataType,
 	TokenEOF,
 	TokenHeaderSep,
 	TokenIdent,
@@ -86,6 +85,7 @@ enum TokenType {
 	TokenParagraphSep,
 	TokenSignature,
 	TokenString,
+	TokenTextFormat,
 };
 
 enum VersionType {
@@ -119,6 +119,7 @@ std::string rtrim(const std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string sep, int n = 0);
 std::string join(const std::vector<std::string>& s, const std::string sep);
 std::string wrap(const std::string& s, const std::string sep, std::size_t width);
+std::string wrap(const std::string& s, const std::string sep, std::size_t width, int& numLines);
 
 }
 
@@ -194,7 +195,7 @@ public:
 	Pipe(std::ifstream& in);
 	virtual ~Pipe() = default;
 	std::unique_ptr<Error> error();
-	void addHandler(Handler h);
+	void addHandler(Handler func);
 	void read();
 	bool good();
 	bool eof();
@@ -210,12 +211,15 @@ private:
 
 class CRC {
 public:
-	static const int Size = 2;
+	static const int ByteSize = 2;
 
-	CRC(Pipe& p);
+	CRC();
 	virtual ~CRC() = default;
-	void update(const char* buf, std::streamsize n);
+	void upstream(Pipe& p);
+	void calculate(const char* buf, std::streamsize n, bool bufferChecksum);
+	void calculate(const char* buf, std::streamsize n);
 	void finalize();
+	std::string string();
 	bool valid();
 
 private:
@@ -225,14 +229,13 @@ private:
 	static const uint16_t MSBMask = 0x8000;
 	static const uint16_t FinalXor = 0x0100;
 
-	Pipe& _pipe;
+	Pipe* _pipe = nullptr;
 	uint16_t _table[TableLen];
 	char _buf[2]; // Checksum buffer
 	int _bufLen = 0;
 	uint16_t _rem = 0x0000;
 
 	void createTable();
-	void calculate(const char* buf, std::streamsize n);
 	uint8_t reflectByte(uint8_t byte);
 	uint16_t checksum();
 };
@@ -383,6 +386,8 @@ public:
 	iterator end();
 	const_iterator begin() const;
 	const_iterator end() const;
+	const_iterator cbegin() const;
+	const_iterator cend() const;
 
 private:
 	NodeType _nodeType;
@@ -413,6 +418,7 @@ public:
 	bool operator!=(const NodeIterator<T>& rhs);
 
 private:
+	pointer _initial = nullptr;
 	pointer _current = nullptr;
 	bool _visited = false;
 };
@@ -454,9 +460,8 @@ public:
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
 	int index() const;
-	void index(int i);
 	int length() const;
-	void length(int l);
+	void length(int len); // Used by UHSWriter
 	const Element* ref() const;
 	void ref(const Element* ref);
 	bool isMedia() const;
@@ -664,17 +669,25 @@ private:
 
 class UHSWriter : public Writer {
 public:
-	static const std::size_t LineLen = 80;
+	// The official readers work with lines longer than 76 characters, but 
+	// lines were capped at 76 so that DOS readers would display correctly
+	// within the standard 80-character window (with border and padding).
+	static const std::size_t LineLen = 76;
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~UHSWriter() = default;
 	bool write(const Document& d) override;
 
 private:
-	bool serialize88a(const Document& d, std::ostringstream& ss);
-	bool serialize96a(const Document& d, std::ostringstream& ss);
+	bool serialize88a(const Document& d, std::ostream& out);
+	bool serialize96a(const Document& d, std::ostringstream& out);
+	bool serializeElement(const Element& e, std::ostream& out, int& len);
+	bool serializeCommentElement(const Element& e, std::ostream& out, int& len);
+	bool serializeHintElement(const Element& e, std::ostream& out, int& len);
+	bool serializeSubjectElement(const Element& e, std::ostream& out, int& len);
 
 	Codec _codec;
+	CRC _crc;
 };
 
 }

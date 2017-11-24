@@ -67,7 +67,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 		auto eofColumn = column + _buf.length();
 
 		if (! _beforeHeaderSep) {
-			auto crcColumn = eofColumn - CRC::Size;
+			auto crcColumn = eofColumn - CRC::ByteSize;
 			auto dataLen = crcColumn - column;
 			auto data = _buf.substr(0, dataLen);
 			this->tokenizeData(data, column);
@@ -77,7 +77,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 			auto crc = _buf.substr(dataLen);
 			this->tokenizeCRC(crc, column);
 
-			_offset += CRC::Size;
+			_offset += CRC::ByteSize;
 		}
 		this->tokenizeEOF(eofColumn);
 		return;
@@ -166,7 +166,7 @@ ElementType Tokenizer::tokenizeDescriptor(const std::smatch& m) {
 }
 
 void Tokenizer::tokenizeDataAddress(const std::smatch& m) {
-	this->tokenizeMatches(m, {TokenDataType, TokenDataOffset, TokenDataLength});
+	this->tokenizeMatches(m, {TokenTextFormat, TokenDataOffset, TokenDataLength});
 }
 
 void Tokenizer::tokenizeHyperpngRegion(const std::smatch& m) {

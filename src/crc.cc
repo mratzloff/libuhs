@@ -10,14 +10,30 @@ namespace UHS {
 // 
 // The second is tfc.uhs, which contains a stray CRLF at the end. If removed,
 // the checksum is also correct.
-CRC::CRC(Pipe& p) : _pipe {p}, _buf {0}, _rem {0} {
+CRC::CRC() {
 	this->createTable();
-	_pipe.addHandler([=](const char* s, std::streamsize n) {
-		this->update(s, n);
+}
+
+void CRC::upstream(Pipe& p) {
+	_pipe = &p;
+	_pipe->addHandler([=](const char* s, std::streamsize n) {
+		this->calculate(s, n, true);
 	});
 }
 
-void CRC::update(const char* buf, std::streamsize n) {
+void CRC::calculate(const char* buf, std::streamsize n) {
+	for (int i = 0; i < n; ++i) {
+		uint8_t byte = this->reflectByte(buf[i] & 0xFF);
+		_rem = (_rem ^ (byte << 8)) & CastMask;
+		int pos = (_rem >> 8) & 0xFF;
+		_rem = (_rem << 8) & CastMask;
+		_rem = (_rem ^ _table[pos]) & CastMask;
+	}
+}
+
+void CRC::calculate(const char* buf, std::streamsize n,
+		bool bufferChecksum __attribute__((unused))) {
+
 	switch (n) {
 	case 0:
 		return;
@@ -55,6 +71,15 @@ void CRC::finalize() {
 	}
 }
 
+std::string CRC::string() {
+	char buf[3];
+	buf[0] = _rem & 0xFF; // low
+	buf[1] = _rem >> 8;   // high
+	buf[2] = '\0';
+
+	return std::string(buf);
+}
+
 bool CRC::valid() {
 	return _rem == this->checksum();
 }
@@ -71,16 +96,6 @@ void CRC::createTable() {
 			}
 		}
 		_table[i] = byte & CastMask;
-	}
-}
-
-void CRC::calculate(const char* buf, std::streamsize n) {
-	for (int i = 0; i < n; ++i) {
-		uint8_t byte = this->reflectByte(buf[i] & 0xFF);
-		_rem = (_rem ^ (byte << 8)) & CastMask;
-		int pos = (_rem >> 8) & 0xFF;
-		_rem = (_rem << 8) & CastMask;
-		_rem = (_rem ^ _table[pos]) & CastMask;
 	}
 }
 

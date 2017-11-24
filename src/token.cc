@@ -19,8 +19,6 @@ const std::string Token::typeString(TokenType t) {
 		return "DataLength";
 	case TokenDataOffset:
 		return "DataOffset";
-	case TokenDataType:
-		return "DataType";
 	case TokenEOF:
 		return "EOF";
 	case TokenHeaderSep:
@@ -41,6 +39,8 @@ const std::string Token::typeString(TokenType t) {
 		return "Signature";
 	case TokenString:
 		return "String";
+	case TokenTextFormat:
+		return "TextFormat";
 	}
 }
 
@@ -96,8 +96,6 @@ const std::string Token::toString() const {
 		// Fall through
 	case TokenDataOffset:
 		// Fall through
-	case TokenDataType:
-		// Fall through
 	case TokenIndex:
 		// Fall through
 	case TokenLength:
@@ -105,6 +103,8 @@ const std::string Token::toString() const {
 	case TokenCoordX:
 		// Fall through
 	case TokenCoordY:
+		// Fall through
+	case TokenTextFormat:
 		buf += this->formatIntValue();
 		break;
 	default:

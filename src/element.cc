@@ -98,6 +98,7 @@ int Element::index() const {
 	return _index;
 }
 
+// Used only for bookkeeping while parsing
 int Element::length() const {
 	return _length;
 }

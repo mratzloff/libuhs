@@ -181,7 +181,7 @@ bool UHSWriter::write(const Document& d) {
 	return ok;
 }
 
-bool UHSWriter::serialize88a(const Document& d, std::ostringstream& out) {
+bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 	std::queue<const Node*> queue;
 	auto prevType = ElementUnknown;
 	int index = 1;
@@ -284,16 +284,136 @@ bool UHSWriter::serialize88a(const Document& d, std::ostringstream& out) {
 
 	if (credit != nullptr) {
 		out << Token::CreditSep << EOL;
-		out << Strings::wrap(credit->body(), EOL, LineLen - strlen(EOL)) << EOL;
+		out << Strings::wrap(credit->body(), EOL, LineLen) << EOL;
 	}
 
 	return true;
 }
 
 bool UHSWriter::serialize96a(const Document& d, std::ostringstream& out) {
-	_err = std::make_unique<Error>(ErrorWrite, "not implemented");
-	_err->finalize();
-	return false;
+	for (Node* n = d.firstChild(); n != nullptr; n = n->nextSibling()) {
+		switch (n->nodeType()) {
+		case NodeDocument:
+			{
+				const auto& child = dynamic_cast<const Document&>(*n);
+				if (child.version() != Version88a) {
+					continue;
+				}
+				this->serialize88a(child, out);
+			}
+			out << Token::HeaderSep << EOL;
+			break;
+
+		case NodeElement:
+			{
+				int len = 0;
+				const auto& child = dynamic_cast<const Element&>(*n);
+				this->serializeElement(child, out, len);
+			}
+			break;
+
+		default:
+			// TODO: Create error; no text nodes should be at this level
+			return false;
+		}
+	}
+	out << Token::DataSep;
+
+	// TODO: Add data
+
+	auto buf = out.str();
+	_crc.calculate(buf.data(), buf.length());
+	_crc.finalize();
+	out << _crc.string();
+
+	return true;
+}
+
+bool UHSWriter::serializeElement(const Element& e, std::ostream& out, int& len) {
+	bool ok = false;
+	std::ostringstream buf;
+
+	int childLen = 0;
+
+	switch (e.elementType()) {
+	case ElementUnknown:   /* No further processing required */                  break;
+	case ElementBlank:     /* No further processing required */                  break;
+	case ElementComment:   ok = this->serializeCommentElement(e, buf, childLen); break;
+	case ElementCredit:    ok = this->serializeCommentElement(e, buf, childLen); break;
+	case ElementGifa:      /* TODO */                                            break;
+	case ElementHint:      ok = this->serializeHintElement(e, buf, childLen);    break;
+	case ElementHyperpng:  /* TODO */                                            break;
+	case ElementIncentive: /* TODO */                                            break;
+	case ElementInfo:      /* TODO */                                            break;
+	case ElementLink:      /* TODO */                                            break;
+	case ElementNesthint:  /* TODO */                                            break;
+	case ElementOverlay:   /* TODO */                                            break;
+	case ElementSound:     /* TODO */                                            break;
+	case ElementSubject:   ok = this->serializeSubjectElement(e, buf, childLen); break;
+	case ElementText:      /* TODO */                                            break;
+	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen); break;
+	}
+
+	childLen += 2; // Include descriptor and title in length
+	out << childLen << ' ' << e.elementTypeString() << EOL;
+	out << e.title() << EOL;
+
+	if (! ok) {
+		return false;
+	}
+
+	out << buf.str();
+	len += childLen;
+
+	return true;
+}
+
+bool UHSWriter::serializeCommentElement(const Element& e, std::ostream& out, int& len) {
+	const auto& body = e.body();
+	if (! body.empty()) {
+		out << Strings::wrap(body, EOL, LineLen, len) << EOL;
+	}
+	return true;
+}
+
+bool UHSWriter::serializeHintElement(const Element& e, std::ostream& out, int& len) {
+	bool continuation = false;
+
+	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
+		if (continuation) {
+			out << Token::NestedTextSep << EOL;
+			++len;
+		}
+		if (n->nodeType() != NodeText) {
+			// TODO: Create error, hint should only contain text nodes at this point
+			return false;
+		}
+		const auto& tn = dynamic_cast<const TextNode&>(*n);
+		auto body = tn.body();
+		out << _codec.encode88a(Strings::wrap(body, EOL, LineLen, len)) << EOL;
+
+		continuation = true;
+	}
+
+	return true;
+}
+
+bool UHSWriter::serializeSubjectElement(const Element& e, std::ostream& out, int& len) {
+	bool ok = false;
+
+	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
+		if (n->nodeType() != NodeElement) {
+			// TODO: Create error, subject should only contain elements
+			return false;
+		}
+		const auto& child = dynamic_cast<const Element&>(*n);
+		ok = this->serializeElement(child, out, len);
+		if (! ok) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 }

@@ -13,8 +13,8 @@ std::unique_ptr<Error> Pipe::error() {
 	return std::move(_err);
 }
 
-void Pipe::addHandler(Pipe::Handler h) {
-	_handlers.push_back(h);
+void Pipe::addHandler(Pipe::Handler func) {
+	_handlers.push_back(func);
 }
 
 void Pipe::read() {
@@ -22,14 +22,14 @@ void Pipe::read() {
 	char buf[ReadLen] = {0};
 
 	while (_in.read(buf, n)) {
-		for (const auto& h : _handlers) {
-			h(buf, n);
+		for (const auto& func : _handlers) {
+			func(buf, n);
 		}
 		_offset += n;
 	}
 	n = _in.gcount();
-	for (const auto& h : _handlers) {
-		h(buf, n);
+	for (const auto& func : _handlers) {
+		func(buf, n);
 	}
 	_offset += n;
 	_in.close();

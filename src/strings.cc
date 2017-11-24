@@ -161,6 +161,11 @@ std::string join(const std::vector<std::string>& items, const std::string sep) {
 }
 
 std::string wrap(const std::string& s, const std::string sep, std::size_t width) {
+	int numLines = 0;
+	return wrap(s, sep, width, numLines);
+}
+
+std::string wrap(const std::string& s, const std::string sep, std::size_t width, int& numLines) {
 	std::string lines;
 	std::size_t i = 0;
 	auto length = s.length();
@@ -185,6 +190,7 @@ std::string wrap(const std::string& s, const std::string sep, std::size_t width)
 			lines += sep;
 		}
 		lines += s.substr(i, len);
+		++numLines;
 		i += len + 1;
 	}
 

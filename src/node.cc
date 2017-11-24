@@ -104,10 +104,19 @@ Node::const_iterator Node::end() const {
 	return Node::const_iterator(nullptr);
 }
 
+Node::const_iterator Node::cbegin() const {
+	return Node::begin();
+}
+
+Node::const_iterator Node::cend() const {
+	return Node::end();
+}
+
 //------------------------------ NodeIterator -------------------------------//
 
 template <typename T>
 NodeIterator<T>::NodeIterator(NodeIterator<T>::pointer n) {
+	_initial = n;
 	_current = n;
 }
 
@@ -136,6 +145,10 @@ NodeIterator<T>& NodeIterator<T>::operator++() {
 			_visited = false;
 		} else { // Up
 			_current = _current->parent();
+			if (_current == _initial) {
+				_current = nullptr;
+				break;
+			}
 			_visited = true;
 		}
 	} while (_visited);
