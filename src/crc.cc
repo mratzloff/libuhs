@@ -67,7 +67,7 @@ void CRC::calculate(const char* buf, std::streamsize n,
 
 void CRC::finalize() {
 	if (_rem > Polynomial) {
-		_rem = (_rem + FinalXor) & CastMask;
+		_rem = (_rem + FinalXOR) & CastMask;
 	}
 }
 

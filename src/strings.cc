@@ -1,3 +1,4 @@
+#include <iomanip>
 #include "uhs.h"
 
 namespace UHS {
@@ -195,6 +196,29 @@ std::string wrap(const std::string& s, const std::string sep, std::size_t width,
 	}
 
 	return lines;
+}
+
+const std::string hex(const std::string& s) {
+	std::ostringstream out;
+
+	out << std::hex << std::setfill('0') << std::uppercase;
+	int i = 0;
+	for (auto c : s) {
+		if (i > 0) {
+			out << ' ';
+		}
+		out << std::setw(2) << (int(c) & ~0xFFFFFF00);
+		++i;
+	}
+	return out.str();
+}
+
+const std::string hex(char c) {
+	std::ostringstream out;
+
+	out << std::hex << std::setfill('0') << std::uppercase;
+	out << std::setw(2) << (int(c) & ~0xFFFFFF00);
+	return out.str();
 }
 
 }

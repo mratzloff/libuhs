@@ -90,11 +90,11 @@ exit:
 }
 
 void Parser::reset() {
-	_err.release();
-	_pipe.release();
-	_tokenizer.release();
-	_crc.release();
-	_document.release();
+	_err.reset();
+	_pipe.reset();
+	_tokenizer.reset();
+	_crc.reset();
+	_document.reset();
 	_parents.clear();
 	_elements.clear();
 	_deferredLinks.clear();
@@ -137,12 +137,12 @@ bool Parser::parse88a() {
 		}
 		return false;
 	}
-	int firstHintIndex = Strings::toInt(t->value());
-	if (firstHintIndex < 0) {
+	int firstHintTextIndex = Strings::toInt(t->value());
+	if (firstHintTextIndex < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
-	firstHintIndex += HeaderLen;
+	firstHintTextIndex += HeaderLen;
 
 	// Last hint index
 	t = this->expect(TokenIndex);
@@ -152,16 +152,16 @@ bool Parser::parse88a() {
 		}
 		return false;
 	}
-	int lastHintIndex = Strings::toInt(t->value());
-	if (lastHintIndex < 0) {
+	int lastHintTextIndex = Strings::toInt(t->value());
+	if (lastHintTextIndex < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
-	lastHintIndex += HeaderLen;
+	lastHintTextIndex += HeaderLen;
 
-	// Subjects
+	// Subject and hint elements
 	NodeMap parents {{0, _document.get()}};
-	bool ok = this->parse88aElements(firstHintIndex, parents);
+	bool ok = this->parse88aElements(firstHintTextIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t->type(), t->line(), t->column());
@@ -169,8 +169,8 @@ bool Parser::parse88a() {
 		return false;
 	}
 
-	// Hints
-	ok = this->parse88aTextNodes(lastHintIndex, parents);
+	// Hint text nodes
+	ok = this->parse88aTextNodes(lastHintTextIndex, parents);
 	if (! ok) {
 		if (_err->type() == ErrorEOF) {
 			this->unexpected(t->type(), t->line(), t->column());
@@ -216,7 +216,7 @@ bool Parser::parse88a() {
 // from the original 88a precompile format. The official Windows reader
 // doesn't support it, and as far as I can tell no one bothered to ever check
 // it. It mostly works in the DOS reader, but it looks glitchy.
-bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
+bool Parser::parse88aElements(int firstHintTextIndex, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
 	ElementType elementType {ElementSubject};
 
@@ -245,7 +245,7 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		}
 		firstChildIndex += HeaderLen;
 
-		if (firstChildIndex == firstHintIndex) {
+		if (firstChildIndex == firstHintTextIndex) {
 			elementType = ElementHint;
 		}
 
@@ -276,17 +276,17 @@ bool Parser::parse88aElements(int firstHintIndex, NodeMap& parents) {
 		}
 		ptr->title(title);
 
-		if (index < firstHintIndex) {
+		if (index < firstHintTextIndex) {
 			parents[firstChildIndex] = ptr;
 		}
-		if (index + 2 == firstHintIndex) {
+		if (index + 2 == firstHintTextIndex) {
 			break; // Done parsing subjects
 		}
 	}
 	return true;
 }
 
-bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
+bool Parser::parse88aTextNodes(int lastHintTextIndex, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
 
 	while (true) {
@@ -316,7 +316,7 @@ bool Parser::parse88aTextNodes(int lastHintIndex, NodeMap& parents) {
 		n->body(_codec.decode88a(t->value()));
 		parent->appendChild(std::move(n));
 
-		if (index == lastHintIndex) {
+		if (index == lastHintTextIndex) {
 			break; // Done parsing hints
 		}
 	}
@@ -1113,7 +1113,7 @@ std::unique_ptr<const Token> Parser::next() {
 		}
 	}
 	if (_opt.debug) {
-		std::cout << t->toString() << std::endl;
+		std::cout << t->string() << std::endl;
 	}
 	return t;
 }

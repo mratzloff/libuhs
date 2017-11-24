@@ -4,9 +4,11 @@ namespace UHS {
 
 Document::Document() : Node(NodeDocument), _version {Version88a} {}
 
-Document::Document(VersionType version) : Document() {
-	_version = version;
-};
+Document::Document(VersionType version, const std::string title)
+	: Node(NodeDocument)
+	, Traits::Title(title)
+	, _version {version}
+{};
 
 void Document::version(VersionType v) {
 	_version = v;

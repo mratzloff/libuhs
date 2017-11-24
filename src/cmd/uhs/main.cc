@@ -18,7 +18,7 @@ void printHelp() {
 		<< "Usage: uhs [options] <file>\n"
 		<< "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
 		<< "-d <dir>\t\tDirectory to write media files to\n"
-		<< "    --88a\t\tForce 88a mode\n"
+		<< "    --88a\t\tForce 88a mode for reading and writing\n"
 		<< "    --unregistered\tRead in unregistered mode\n"
 		<< "    --debug\t\tPrint debugging statements\n"
 		<< "-v, --version\t\tPrint the version\n"
@@ -66,6 +66,7 @@ int main(int argc, const char* argv[]) {
 			case '-':
 				if (std::strncmp("--88a", argv[i], 5) == 0) {
 					parserOpt.force88aMode = true;
+					writerOpt.force88aMode = true;
 					break;
 				}
 				if (std::strncmp("--unregistered", argv[i], 14) == 0) {
@@ -128,6 +129,11 @@ int main(int argc, const char* argv[]) {
 		UHS::UHSWriter w {std::cout, writerOpt};
 		w.write(*document);
 		err = w.error();
+	}
+
+	if (err != nullptr) {
+		std::cerr << "uhs: " << err->message() << std::endl;
+		return Err;
 	}
 
 	return OK;

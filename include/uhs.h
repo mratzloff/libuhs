@@ -120,6 +120,8 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 std::string join(const std::vector<std::string>& s, const std::string sep);
 std::string wrap(const std::string& s, const std::string sep, std::size_t width);
 std::string wrap(const std::string& s, const std::string sep, std::size_t width, int& numLines);
+const std::string hex(const std::string& s);
+const std::string hex(char s);
 
 }
 
@@ -150,6 +152,8 @@ private:
 
 class Title {
 public:
+	Title() = default;
+	explicit Title(const std::string s);
 	const std::string& title() const;
 	void title(const std::string s);
 
@@ -227,7 +231,7 @@ private:
 	static const uint16_t Polynomial = 0x8005;
 	static const uint16_t CastMask = 0xFFFF;
 	static const uint16_t MSBMask = 0x8000;
-	static const uint16_t FinalXor = 0x0100;
+	static const uint16_t FinalXOR = 0x0100;
 
 	Pipe* _pipe = nullptr;
 	uint16_t _table[TableLen];
@@ -277,7 +281,7 @@ public:
 	std::size_t offset() const;
 	const std::string& value() const;
 	const std::string typeString() const;
-	const std::string toString() const;
+	const std::string string() const;
 	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 
 private:
@@ -370,7 +374,9 @@ public:
 	virtual ~Node() = default;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
+	std::unique_ptr<Node> removeChild(Node* n);
 	void appendChild(std::unique_ptr<Node> n);
+	void insertBefore(std::unique_ptr<Node> n, Node* ref);
 	Node* parent() const;
 	bool hasNextSibling() const;
 	Node* nextSibling() const;
@@ -433,7 +439,7 @@ public:
 	TextNode();
 	TextNode(const std::string body);
 	virtual ~TextNode() = default;
-	const std::string& toString() const;
+	const std::string& string() const;
 	void addFormat(Format f);
 	void removeFormat(Format f);
 	bool hasFormat(Format f) const;
@@ -454,7 +460,8 @@ public:
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
-	Element(ElementType t, int index, int length = 0);
+	Element(ElementType t, int index = 0, int length = 0);
+	Element(ElementType t, const std::string title);
 	virtual ~Element() = default;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
@@ -482,7 +489,7 @@ class Document
 {
 public:
 	Document();
-	Document(VersionType version);
+	Document(VersionType version, const std::string title = "");
 	virtual ~Document() = default;
 	void version(VersionType v);
 	VersionType version() const;
@@ -516,8 +523,8 @@ private:
 };
 
 struct ParserOptions {
-	bool force88aMode = false;
 	bool debug = false;
+	bool force88aMode = false;
 };
 
 class Parser {
@@ -593,8 +600,8 @@ private:
 
 	// 88a
 	bool parse88a();
-	bool parse88aElements(int firstHintIndex, NodeMap& parents);
-	bool parse88aTextNodes(int lastHintIndex, NodeMap& parents);
+	bool parse88aElements(int firstHintTextIndex, NodeMap& parents);
+	bool parse88aTextNodes(int lastHintTextIndex, NodeMap& parents);
 	bool parse88aCreditElement(std::unique_ptr<const Token> t);
 	void parseHeaderSep(std::unique_ptr<const Token> t);
 
@@ -636,8 +643,9 @@ private:
 };
 
 struct WriterOptions {
-	bool registered = true; // JSONWriter only
+	bool force88aMode = false;
 	std::string mediaDir;
+	bool registered = true; // JSONWriter only
 };
 
 class Writer {
@@ -645,7 +653,7 @@ public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
 	std::unique_ptr<Error> error();
-	virtual bool write(const Document& d) = 0;
+	virtual bool write(Document& d) = 0; // TODO: Make this const again
 	void reset();
 
 protected:
@@ -658,7 +666,7 @@ class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~JSONWriter() = default;
-	bool write(const Document& d) override;
+	bool write(Document& d) override; // TODO: Make this const again
 
 private:
 	Json::Value serialize(const Document& d, Json::Value& root) const;
@@ -676,15 +684,16 @@ public:
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~UHSWriter() = default;
-	bool write(const Document& d) override;
+	bool write(Document& d) override; // TODO: Make this const again
 
 private:
 	bool serialize88a(const Document& d, std::ostream& out);
-	bool serialize96a(const Document& d, std::ostringstream& out);
+	bool serialize96a(Document& d, std::ostringstream& out); // TODO: Make this const again
 	bool serializeElement(const Element& e, std::ostream& out, int& len);
 	bool serializeCommentElement(const Element& e, std::ostream& out, int& len);
 	bool serializeHintElement(const Element& e, std::ostream& out, int& len);
 	bool serializeSubjectElement(const Element& e, std::ostream& out, int& len);
+	bool convertTo96a(Document& d);
 
 	Codec _codec;
 	CRC _crc;

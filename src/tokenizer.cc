@@ -123,18 +123,18 @@ void Tokenizer::tokenizeLine() {
 	}
 
 	// Check for exact line matches
-	if (s == Token::HeaderSep) {
+	if (s == Token::HeaderSep && _beforeHeaderSep) {
 		_beforeHeaderSep = false;
 		_out.send({TokenHeaderSep, _offset, _line});
-	} else if (s == Token::CreditSep) {
+	} else if (s == Token::CreditSep && _beforeHeaderSep) {
 		_out.send({TokenCreditSep, _offset, _line});
-	} else if (s == Token::NestedElementSep) {
+	} else if (s == Token::NestedElementSep && ! _beforeHeaderSep) {
 		_out.send({TokenNestedElementSep, _offset, _line});
-	} else if (s == Token::NestedTextSep) {
+	} else if (s == Token::NestedTextSep && ! _beforeHeaderSep) {
 		_out.send({TokenNestedTextSep, _offset, _line});
-	} else if (s == Token::ParagraphSep) {
+	} else if (s == Token::ParagraphSep && ! _beforeHeaderSep) {
 		_out.send({TokenParagraphSep, _offset, _line});
-	} else if (s == Token::Signature) {
+	} else if (s == Token::Signature && _line == 1) {
 		_out.send({TokenSignature, _offset, _line});
 	} else {
 		// Check for line match patterns

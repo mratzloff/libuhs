@@ -1,4 +1,3 @@
-#include <iomanip>
 #include "uhs.h"
 
 namespace UHS {
@@ -77,7 +76,7 @@ const std::string Token::typeString() const {
 	return Token::typeString(_type);
 }
 
-const std::string Token::toString() const {
+const std::string Token::string() const {
 	std::string buf {"("};
 	buf += this->formatToken();
 
@@ -116,7 +115,7 @@ const std::string Token::toString() const {
 }
 
 std::ostream& operator<<(std::ostream& out, const Token& t) {
-	out << t.toString();
+	out << t.string();
 	return out;
 }
 
@@ -153,19 +152,8 @@ const std::string Token::formatStringValue() const {
 }
 
 const std::string Token::formatByteValue() const {
-	std::ostringstream ss;
-
-	ss << std::hex << std::setfill('0') << std::uppercase;
-	int i = 0;
-	for (const auto c : _value) {
-		if (i > 0) {
-			ss << ' ';
-		}
-		ss << std::setw(2) << (int(c) & ~0xFFFFFF00);
-		++i;
-	}
 	std::string buf {" ["};
-	buf += ss.str();
+	buf += Strings::hex(_value);
 	buf += ']';
 
 	return buf;

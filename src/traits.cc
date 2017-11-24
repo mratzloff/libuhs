@@ -36,6 +36,8 @@ void Body::body(const std::string s) {
 
 //---------------------------------- Title ----------------------------------//
 
+Title::Title(const std::string s) : _title {s} {}
+
 const std::string& Title::title() const {
 	return _title;
 }

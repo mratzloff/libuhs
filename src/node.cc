@@ -33,10 +33,43 @@ const std::string Node::nodeTypeString() const {
 	return Node::typeString(_nodeType);
 }
 
+std::unique_ptr<Node> Node::removeChild(Node* n) {
+	if (n == nullptr) {
+		return nullptr;
+	}
+
+	n->_parent = nullptr;
+	--_numChildren;
+
+	if (n == this->firstChild()) {
+		auto detachedNode = std::move(_firstChild);
+		if (n->_nextSibling != nullptr) {
+			_firstChild = std::move(n->_nextSibling);
+		}
+		return detachedNode;
+	} else {
+		Node* previous = nullptr;
+		for (Node* child = this->firstChild()
+				; child != nullptr
+				; child = child->nextSibling()) {
+			if (n == child) {
+				auto detachedNode = std::move(previous->_nextSibling);
+				previous->_nextSibling = std::move(n->_nextSibling);
+				return detachedNode;
+			} else {
+				previous = child;
+			}
+		}
+	}
+
+	return nullptr;
+}
+
 // Note that this node must be attached to a document tree in order to
 // correctly set the _depth property when appending its own children.
 void Node::appendChild(std::unique_ptr<Node> n) {
 	auto ptr = n.get();
+
 	if (_firstChild == nullptr) {
 		_firstChild = std::move(n);
 		_lastChild = ptr;
@@ -50,6 +83,36 @@ void Node::appendChild(std::unique_ptr<Node> n) {
 		child._depth = child._parent->_depth + 1;
 	}
 	++_numChildren;
+}
+
+// See note for appendChild() regarding depth.
+void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
+	if (ref == nullptr) {
+		this->appendChild(std::move(n));
+		return;
+	}
+
+	Node* previousChild = nullptr;
+
+	for (Node* child = this->firstChild(); child != nullptr; child = child->nextSibling()) {
+		if (child != ref) {
+			continue;
+		}
+		auto ptr = n.get();
+		if (child == this->firstChild()) {
+			n->_nextSibling = std::move(_firstChild);
+			_firstChild = std::move(n);
+		} else {
+			n->_nextSibling = std::move(previousChild->_nextSibling);
+			previousChild->_nextSibling = std::move(n);
+		}
+		ptr->_parent = this;
+
+		for (auto& child : *ptr) {
+			child._depth = child._parent->_depth + 1;
+		}
+		++_numChildren;
+	}
 }
 
 Node* Node::parent() const {
@@ -186,7 +249,7 @@ TextNode::TextNode(const std::string body)
 	, Body(body)
 {}
 
-const std::string& TextNode::toString() const {
+const std::string& TextNode::string() const {
 	return this->body();
 }
 

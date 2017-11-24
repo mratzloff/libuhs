@@ -82,6 +82,12 @@ Element::Element(ElementType t, int index, int length)
 	, _length {length}
 {}
 
+Element::Element(ElementType t, const std::string title)
+	: Node(NodeElement)
+	, Traits::Title(title)
+	, _elementType {t}
+{}
+
 ElementType Element::elementType() const {
 	return _elementType;
 }
