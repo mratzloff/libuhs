@@ -190,18 +190,6 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 	int firstHintTextIndex = 0;
 	int lastHintTextIndex = 0;
 
-	// Find credit node, if any
-	const Element* credit = nullptr;
-	for (const auto& n : d) {
-		if (n.nodeType() == NodeElement) {
-			const auto& e = dynamic_cast<const Element&>(n);
-			if (e.elementType() == ElementCredit) {
-				credit = &e;
-				break;
-			}
-		}
-	}
-
 	// Traverse tree, breadth first
 	queue.push(&d);
 	std::ostringstream buf;
@@ -262,9 +250,6 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 		}
 
 		numPrevChildren = n->numChildren();
-		if (n->nodeType() == NodeDocument && credit != nullptr) {
-			--numPrevChildren; // Don't count credits for indexing purposes
-		}
 
 		if (n->hasFirstChild()) {
 			auto child = n->firstChild();
@@ -286,9 +271,10 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 	out << lastHintTextIndex << EOL;
 	out << buf.str();
 
-	if (credit != nullptr) {
+	auto credit = d.attr("notice");
+	if (! credit.empty()) {
 		out << Token::CreditSep << EOL;
-		out << Strings::wrap(credit->body(), EOL, LineLen) << EOL;
+		out << Strings::wrap(credit, EOL, LineLen) << EOL;
 	}
 
 	return true;
@@ -324,7 +310,7 @@ bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
 			{
 				int len = 0;
 				const auto& child = dynamic_cast<const Element&>(*n);
-				ok = this->serializeElement(child, out, len);
+				ok = this->serializeElement(d, child, out, len);
 				if (! ok) {
 					return false;
 				}
@@ -340,35 +326,37 @@ bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
 	out << Token::DataSep;
 
 	// TODO: Add data
+	// TODO: Update data addresses
+	// TODO: Update length=0000000
 
 	this->serializeCRC(out);
 
 	return true;
 }
 
-bool UHSWriter::serializeElement(const Element& e, std::ostream& out, int& len) {
+bool UHSWriter::serializeElement(const Document& d, const Element& e, std::ostream& out, int& len) {
 	bool ok = false;
 	std::ostringstream buf;
 
 	int childLen = 0;
 
 	switch (e.elementType()) {
-	case ElementUnknown:   /* No further processing required */                  break;
-	case ElementBlank:     /* No further processing required */                  break;
-	case ElementComment:   ok = this->serializeCommentElement(e, buf, childLen); break;
-	case ElementCredit:    ok = this->serializeCommentElement(e, buf, childLen); break;
-	case ElementGifa:      /* TODO */                                            break;
-	case ElementHint:      ok = this->serializeHintElement(e, buf, childLen);    break;
-	case ElementHyperpng:  /* TODO */                                            break;
-	case ElementIncentive: /* TODO */                                            break;
-	case ElementInfo:      /* TODO */                                            break;
-	case ElementLink:      /* TODO */                                            break;
-	case ElementNesthint:  /* TODO */                                            break;
-	case ElementOverlay:   /* TODO */                                            break;
-	case ElementSound:     /* TODO */                                            break;
-	case ElementSubject:   ok = this->serializeSubjectElement(e, buf, childLen); break;
-	case ElementText:      /* TODO */                                            break;
-	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen); break;
+	case ElementUnknown:   /* No further processing required */                     break;
+	case ElementBlank:     /* No further processing required */                     break;
+	case ElementComment:   ok = this->serializeCommentElement(e, buf, childLen);    break;
+	case ElementCredit:    ok = this->serializeCommentElement(e, buf, childLen);    break;
+	case ElementGifa:      /* TODO */                                               break;
+	case ElementHint:      ok = this->serializeHintElement(e, buf, childLen);       break;
+	case ElementHyperpng:  /* TODO */                                               break;
+	case ElementIncentive: /* TODO */                                               break;
+	case ElementInfo:      ok = this->serializeInfoElement(d, buf, childLen);       break;
+	case ElementLink:      /* TODO */                                               break;
+	case ElementNesthint:  /* TODO */                                               break;
+	case ElementOverlay:   /* TODO */                                               break;
+	case ElementSound:     /* TODO */                                               break;
+	case ElementSubject:   ok = this->serializeSubjectElement(d, e, buf, childLen); break;
+	case ElementText:      /* TODO */                                               break;
+	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen);    break;
 	}
 
 	childLen += 2; // Include descriptor and title in length
@@ -420,7 +408,38 @@ bool UHSWriter::serializeHintElement(const Element& e, std::ostream& out, int& l
 	return true;
 }
 
-bool UHSWriter::serializeSubjectElement(const Element& e, std::ostream& out, int& len) {
+bool UHSWriter::serializeInfoElement(const Document& d, std::ostream& out, int& len) {
+	out << "length=0000000" << EOL;
+	++len;
+
+	const auto now = std::time(nullptr);
+	const auto tm = std::localtime(&now);
+	char buf[10];
+
+	auto bufLen = std::strftime(buf, 10, "%d-%b-%y", tm);
+	out << "date=" << std::string(buf, bufLen) << EOL;;
+	++len;
+
+	bufLen = std::strftime(buf, 9, "%H:%M:%S", tm);
+	out << "time=" << std::string(buf, bufLen) << EOL;;
+	++len;
+
+	for (const auto& [k, v] : d.attrs()) {
+		if (k == "length" || k == "date" || k == "time" || k == "notice") {
+			continue;
+		}
+		out << Strings::wrap(v, EOL, LineLen, len, k + "=") << EOL;
+	}
+
+	auto notice = d.attr("notice");
+	if (! notice.empty()) {
+		out << Strings::wrap(notice, EOL, LineLen, len, ">") << EOL;
+	}
+
+	return true;
+}
+
+bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std::ostream& out, int& len) {
 	bool ok = false;
 
 	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
@@ -429,7 +448,7 @@ bool UHSWriter::serializeSubjectElement(const Element& e, std::ostream& out, int
 			return false;
 		}
 		const auto& child = dynamic_cast<const Element&>(*n);
-		ok = this->serializeElement(child, out, len);
+		ok = this->serializeElement(d, child, out, len);
 		if (! ok) {
 			return false;
 		}
@@ -452,7 +471,7 @@ void UHSWriter::serializeCRC(std::ostringstream& out) {
 }
 
 bool UHSWriter::convertTo96a(Document& d) {
-	// auto info = std::make_unique<Element>(ElementInfo);
+	auto info = std::make_unique<Element>(ElementInfo);
 
 	// Re-parent under subject node
 	auto container = std::make_unique<Element>(ElementSubject);
@@ -462,13 +481,7 @@ bool UHSWriter::convertTo96a(Document& d) {
 			// TODO: Create error
 			return false;
 		}
-		// const auto& e = dynamic_cast<const Element&>(*n);
-		// if (e.elementType() == ElementCredit) {
-		// 	info->attr("notice", e.body());
-		// 	d.removeChild(n).reset();
-		// } else {
-			container->appendChild(d.removeChild(n));
-		// }
+		container->appendChild(d.removeChild(n));
 	}
 	d.appendChild(std::move(container));
 
@@ -487,7 +500,8 @@ bool UHSWriter::convertTo96a(Document& d) {
 	version->title("96a");
 	d.appendChild(std::move(version));
 
-	// d.appendChild(std::move(info));
+	// Add info
+	d.appendChild(std::move(info));
 
 	return true;
 }

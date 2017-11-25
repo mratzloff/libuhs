@@ -5,7 +5,13 @@
 
 namespace UHS {
 
-Parser::Parser(const ParserOptions opt) : _opt {opt} {}
+Parser::Parser(const ParserOptions opt) : _opt {opt} {	
+	// TODO: Guard these by platform
+	setenv("TZ", "", 1);
+	tzset();
+	// _putenv_s("TZ", ""); // MSVC
+	// _tzset(); // MSVC
+}
 
 Parser::NodeRange::NodeRange(Node& n, int min, int max)
 	: node {n}, min {min}, max {max} {}
@@ -195,7 +201,7 @@ bool Parser::parse88a() {
 	case TokenCreditSep: // This is informal but common
 		// Fall through
 	case TokenString:
-		ok = this->parse88aCreditElement(std::move(t));
+		ok = this->parse88aCredits(std::move(t));
 		if (! ok) {
 			this->unexpected(tokenType, line, column);
 		}
@@ -323,31 +329,25 @@ bool Parser::parse88aTextNodes(int lastHintTextIndex, NodeMap& parents) {
 	return true;
 }
 
-bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
-	auto e = std::make_unique<Element>(ElementCredit, t->line());
-	e->title("Credits");
-
+bool Parser::parse88aCredits(std::unique_ptr<const Token> t) {
 	// Body
 	std::string s;
 	bool continuation = false;
-	bool ok = false;
 
 	while (true) {
 		switch (t->type()) {
 		case TokenEOF:
 			if (! s.empty()) {
-				e->body(s);
+				_document->attr("notice", s);
 			}
 			_done = true;
-			ok = true;
-			goto exit;
+			return true;
 		case TokenHeaderSep:
 			if (! s.empty()) {
-				e->body(s);
+				_document->attr("notice", s);
 			}
 			this->parseHeaderSep(std::move(t));
-			ok = true;
-			goto exit;
+			return true;
 		case TokenCreditSep:
 			// Ignore
 			break;
@@ -360,20 +360,14 @@ bool Parser::parse88aCreditElement(std::unique_ptr<const Token> t) {
 			break;
 		default:
 			this->unexpected(t->type(), t->line(), t->column());
-			ok = false;
-			goto exit;
+			return false;
 		}
 
 		t = this->next();
 		if (_err != nullptr) {
-			ok = false;
-			goto exit;
+			return false;
 		}
 	}
-
-exit:
-	_document->appendChild(std::move(e));
-	return ok;
 }
 
 //--------------------------------- UHS 96a ---------------------------------//
@@ -900,11 +894,6 @@ bool Parser::parseInfoElement(Element* const e) {
 			bool ok = this->parseTime(val, tm);
 			if (! ok) {
 				this->expected("valid time", t->value(), t->line(), t->column());
-				return false;
-			}
-			auto time = mktime(&tm);
-			if (time == -1) {
-				this->expected("valid timestamp", t->value(), t->line(), t->column());
 				return false;
 			}
 			char buf[20];

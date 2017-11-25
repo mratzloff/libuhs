@@ -166,10 +166,13 @@ std::string wrap(const std::string& s, const std::string sep, std::size_t width)
 	return wrap(s, sep, width, numLines);
 }
 
-std::string wrap(const std::string& s, const std::string sep, std::size_t width, int& numLines) {
+std::string wrap(const std::string& s, const std::string sep, std::size_t width,
+		int& numLines, const std::string prefix) {
+
 	std::string lines;
 	std::size_t i = 0;
 	auto length = s.length();
+	width -= prefix.length();
 
 	while (i < length) {
 		std::size_t len = 0;
@@ -190,7 +193,7 @@ std::string wrap(const std::string& s, const std::string sep, std::size_t width,
 		if (i > 0) {
 			lines += sep;
 		}
-		lines += s.substr(i, len);
+		lines += prefix + s.substr(i, len);
 		++numLines;
 		i += len + 1;
 	}

@@ -119,7 +119,8 @@ std::string rtrim(const std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string sep, int n = 0);
 std::string join(const std::vector<std::string>& s, const std::string sep);
 std::string wrap(const std::string& s, const std::string sep, std::size_t width);
-std::string wrap(const std::string& s, const std::string sep, std::size_t width, int& numLines);
+std::string wrap(const std::string& s, const std::string sep, std::size_t width,
+	int& numLines, const std::string prefix = "");
 const std::string hex(const std::string& s);
 const std::string hex(char s);
 
@@ -602,7 +603,7 @@ private:
 	bool parse88a();
 	bool parse88aElements(int firstHintTextIndex, NodeMap& parents);
 	bool parse88aTextNodes(int lastHintTextIndex, NodeMap& parents);
-	bool parse88aCreditElement(std::unique_ptr<const Token> t);
+	bool parse88aCredits(std::unique_ptr<const Token> t);
 	void parseHeaderSep(std::unique_ptr<const Token> t);
 
 	// 96a
@@ -689,12 +690,13 @@ public:
 private:
 	bool serialize88a(const Document& d, std::ostream& out);
 	bool serialize96a(Document& d, std::ostringstream& out); // TODO: Make this const again
-	bool serializeElement(const Element& e, std::ostream& out, int& len);
+	bool serializeElement(const Document& d, const Element& e, std::ostream& out, int& len);
 	bool serializeCommentElement(const Element& e, std::ostream& out, int& len);
 	bool serializeHintElement(const Element& e, std::ostream& out, int& len);
-	bool serializeSubjectElement(const Element& e, std::ostream& out, int& len);
+	bool serializeInfoElement(const Document& d, std::ostream& out, int& len);
+	bool serializeSubjectElement(const Document& d, const Element& e, std::ostream& out, int& len);
 	void serializeCRC(std::ostringstream& out);
-	bool convertTo96a(Document& d);
+	bool convertTo96a(Document& d); // TODO: Deep copy
 
 	Codec _codec;
 	CRC _crc;
