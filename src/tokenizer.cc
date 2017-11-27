@@ -67,7 +67,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 		auto eofColumn = column + _buf.length();
 
 		if (! _beforeHeaderSep) {
-			auto crcColumn = eofColumn - CRC::ByteSize;
+			auto crcColumn = eofColumn - CRC::ByteLen;
 			auto dataLen = crcColumn - column;
 			auto data = _buf.substr(0, dataLen);
 			this->tokenizeData(data, column);
@@ -77,7 +77,7 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 			auto crc = _buf.substr(dataLen);
 			this->tokenizeCRC(crc, column);
 
-			_offset += CRC::ByteSize;
+			_offset += CRC::ByteLen;
 		}
 		this->tokenizeEOF(eofColumn);
 		return;

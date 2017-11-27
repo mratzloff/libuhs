@@ -214,15 +214,15 @@ private:
 
 class CRC {
 public:
-	static const int ByteSize = 2;
+	static const int ByteLen = 2;
 
 	CRC();
 	virtual ~CRC() = default;
 	void upstream(Pipe& p);
 	void calculate(const char* buf, std::streamsize n, bool bufferChecksum);
 	void calculate(const char* buf, std::streamsize n);
-	void finalize();
-	void checksum(std::vector<char>& out);
+	uint16_t result();
+	void result(std::vector<char>& out);
 	bool valid();
 
 private:
@@ -237,9 +237,11 @@ private:
 	char _buf[2]; // Checksum buffer
 	int _bufLen = 0;
 	uint16_t _rem = 0x0000;
+	bool _finalized = false;
 
 	void createTable();
 	uint8_t reflectByte(uint8_t byte);
+	void finalize();
 	uint16_t checksum();
 };
 
@@ -653,7 +655,7 @@ public:
 	virtual ~Writer() = default;
 	std::unique_ptr<Error> error();
 	virtual bool write(Document& d) = 0; // TODO: Make this const again
-	void reset();
+	virtual void reset();
 
 protected:
 	std::ostream& _out;
@@ -684,20 +686,32 @@ public:
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
 	virtual ~UHSWriter() = default;
 	bool write(Document& d) override; // TODO: Make this const again
+	void reset() override;
 
 private:
-	bool serialize88a(const Document& d, std::ostream& out);
-	bool serialize96a(Document& d, std::ostringstream& out); // TODO: Make this const again
-	bool serializeElement(const Document& d, const Element& e, std::ostream& out, int& len);
-	bool serializeCommentElement(const Element& e, std::ostream& out, int& len);
-	bool serializeHintElement(const Element& e, std::ostream& out, int& len);
-	bool serializeInfoElement(const Document& d, std::ostream& out, int& len);
-	bool serializeSubjectElement(const Document& d, const Element& e, std::ostream& out, int& len);
-	void serializeCRC(std::ostringstream& out);
+	typedef std::queue<std::pair<ElementType, std::string>> DataQueue;
+
+	static const std::size_t InitialBufferLen = 204800; // 200 KiB
+	static const std::size_t MediaSizeLen = 6; // Up to 999,999 bytes (~1 MB) per media file
+	static const std::size_t FileSizeLen = 7; // Up to 9,999,999 bytes (~10 MB) per document
+	static constexpr const char* DataAddressMarker = "000000 0000000";
+	static constexpr const char* InfoLengthMarker = "length=";
+
+	bool serialize88a(const Document& d, std::string& out);
+	bool serialize96a(Document& d, std::string& out); // TODO: Make this const again
+	bool serializeElement(const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeCommentElement(const Element& e, std::string& out, int& len);
+	bool serializeDataElement(const Element& e, std::string& out, int& len);
+	bool serializeHintElement(const Element& e, std::string& out, int& len);
+	bool serializeInfoElement(const Document& d, std::string& out, int& len);
+	bool serializeSubjectElement(const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeData(std::string& out);
+	void serializeCRC(std::string& out);
 	bool convertTo96a(Document& d); // TODO: Deep copy
 
 	Codec _codec;
 	CRC _crc;
+	DataQueue _data;
 };
 
 }

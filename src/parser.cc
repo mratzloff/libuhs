@@ -811,12 +811,12 @@ bool Parser::parseIncentiveElement(Element* const e) {
 			this->expected("incentive instruction", marker, t->line(), t->column());
 			return false;
 		}
-		auto indexString = marker.substr(0, markerLen-1);
+		auto indexStr = marker.substr(0, markerLen-1);
 		auto instruction = marker.substr(markerLen-1, 1);
 
-		int index = Strings::toInt(indexString);
+		int index = Strings::toInt(indexStr);
 		if (index < 0) {
-			this->expected("valid incentive index", indexString, t->line(), t->column());
+			this->expected("valid incentive index", indexStr, t->line(), t->column());
 			return false;
 		}
 
@@ -1081,10 +1081,10 @@ bool Parser::parseVersionElement(Element* const e) {
 	e->visibility(VisibilityNone);
 	this->parseCommentElement(e);
 
-	auto versionString = e->title();
-	if (versionString == "91a") {
+	auto versionStr = e->title();
+	if (versionStr == "91a") {
 		v = Version91a;
-	} else if (versionString == "95a") {
+	} else if (versionStr == "95a") {
 		v = Version95a;
 	}
 	_document->version(v);
@@ -1200,7 +1200,6 @@ void Parser::parseData(std::unique_ptr<const Token> t) {
 }
 
 void Parser::checkCRC() {
-	_crc->finalize();
 	_document->validChecksum(_crc->valid());
 }
 

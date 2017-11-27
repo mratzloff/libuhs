@@ -16,15 +16,14 @@ void printHelp() {
 	std::cout
 		<< "uhs " << UHS::Version << "\n\n"
 		<< "Usage: uhs -f <fmt> [options] <file>\n"
-		<< "-f <fmt>\t\t* Output format (\"json\", \"uhs\")\n"
+		<< "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
 		<< "-o <file>\t\tOutput file\n"
 		<< "-m <dir>\t\tMedia directory\n"
 		<< "    --88a\t\tForce 88a mode for reading and writing\n"
 		<< "    --unregistered\tRead in unregistered mode\n"
 		<< "    --debug\t\tPrint debugging statements\n"
 		<< "-v, --version\t\tPrint the version\n"
-		<< "-h, --help\t\tPrint this help statement\n\n"
-		<< "* = required"
+		<< "-h, --help\t\tPrint this help statement"
 		<< std::endl;
 }
 

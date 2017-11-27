@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include "uhs.h"
 
@@ -169,20 +170,32 @@ UHSWriter::UHSWriter(std::ostream& out, const WriterOptions opt)
 
 bool UHSWriter::write(Document& d) {
 	bool ok = false;
-	std::ostringstream buf;
+	std::string buf;
+	buf.reserve(InitialBufferLen);
 	
 	if (_opt.force88aMode) {
 		ok = this->serialize88a(d, buf);
 	} else {
 		ok = this->serialize96a(d, buf);
 	}
-	_out << buf.str();
+	if (! ok) {
+		return false;
+	}
+
+	_out << buf;
 	std::flush(_out);
 
 	return ok;
 }
 
-bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
+void UHSWriter::reset() {
+	Writer::reset();
+	while (! _data.empty()) {
+		_data.pop();
+	}
+}
+
+bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 	std::queue<const Node*> queue;
 	auto prevType = ElementUnknown;
 	int index = 1;
@@ -192,7 +205,7 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 
 	// Traverse tree, breadth first
 	queue.push(&d);
-	std::ostringstream buf;
+	std::string buf;
 
 	while (! queue.empty()) {
 		const auto n = queue.front();
@@ -202,7 +215,7 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 		case NodeText:
 			{
 				const auto& tn = dynamic_cast<const TextNode&>(*n);
-				buf << _codec.encode88a(tn.body()) << EOL;
+				buf += _codec.encode88a(tn.body()) + EOL;
 			}
 			index += numPrevChildren - 1; // Simplifies to index -= 1 after first pass
 
@@ -238,8 +251,8 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 	 				return false;
 				}
 
-				buf << _codec.encode88a(title) << EOL;
-				buf << index << EOL;
+				buf += _codec.encode88a(title) + EOL;
+				buf += std::to_string(index) + EOL;
 
 				prevType = elementType;
 			}
@@ -265,22 +278,24 @@ bool UHSWriter::serialize88a(const Document& d, std::ostream& out) {
 		}
 	}
 
-	out << Token::Signature << EOL;
-	out << d.title() << EOL;
-	out << firstHintTextIndex << EOL;
-	out << lastHintTextIndex << EOL;
-	out << buf.str();
+	out += Token::Signature;
+	out += EOL;
+	out += d.title() + EOL;
+	out += std::to_string(firstHintTextIndex) + EOL;
+	out += std::to_string(lastHintTextIndex) + EOL;
+	out += buf;
 
-	auto credit = d.attr("notice");
+	const auto credit = d.attr("notice");
 	if (! credit.empty()) {
-		out << Token::CreditSep << EOL;
-		out << Strings::wrap(credit, EOL, LineLen) << EOL;
+		out += Token::CreditSep;
+		out += EOL;
+		out += Strings::wrap(credit, EOL, LineLen) + EOL;
 	}
 
 	return true;
 }
 
-bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
+bool UHSWriter::serialize96a(Document& d, std::string& out) {
 	bool ok = false;
 
 	if (d.version() == Version88a) {
@@ -303,7 +318,8 @@ bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
 					return false;
 				}
 			}
-			out << Token::HeaderSep << EOL;
+			out += Token::HeaderSep;
+			out += EOL;
 			break;
 
 		case NodeElement:
@@ -323,21 +339,21 @@ bool UHSWriter::serialize96a(Document& d, std::ostringstream& out) {
 		}
 	}
 
-	out << Token::DataSep;
+	out += Token::DataSep;
 
-	// TODO: Add data
-	// TODO: Update data addresses
-	// TODO: Update length=0000000
+	ok = this->serializeData(out);
+	if (! ok) {
+		return false;
+	}
 
 	this->serializeCRC(out);
 
 	return true;
 }
 
-bool UHSWriter::serializeElement(const Document& d, const Element& e, std::ostream& out, int& len) {
+bool UHSWriter::serializeElement(const Document& d, const Element& e, std::string& out, int& len) {
 	bool ok = false;
-	std::ostringstream buf;
-
+	std::string buf;
 	int childLen = 0;
 
 	switch (e.elementType()) {
@@ -345,7 +361,7 @@ bool UHSWriter::serializeElement(const Document& d, const Element& e, std::ostre
 	case ElementBlank:     /* No further processing required */                     break;
 	case ElementComment:   ok = this->serializeCommentElement(e, buf, childLen);    break;
 	case ElementCredit:    ok = this->serializeCommentElement(e, buf, childLen);    break;
-	case ElementGifa:      /* TODO */                                               break;
+	case ElementGifa:      ok = this->serializeDataElement(e, buf, childLen);       break;
 	case ElementHint:      ok = this->serializeHintElement(e, buf, childLen);       break;
 	case ElementHyperpng:  /* TODO */                                               break;
 	case ElementIncentive: /* TODO */                                               break;
@@ -353,45 +369,67 @@ bool UHSWriter::serializeElement(const Document& d, const Element& e, std::ostre
 	case ElementLink:      /* TODO */                                               break;
 	case ElementNesthint:  /* TODO */                                               break;
 	case ElementOverlay:   /* TODO */                                               break;
-	case ElementSound:     /* TODO */                                               break;
+	case ElementSound:     ok = this->serializeDataElement(e, buf, childLen);       break;
 	case ElementSubject:   ok = this->serializeSubjectElement(d, e, buf, childLen); break;
 	case ElementText:      /* TODO */                                               break;
 	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen);    break;
 	}
 
 	childLen += 2; // Include descriptor and title in length
-	out << childLen << ' ' << e.elementTypeString() << EOL;
 
-	auto title = e.title();
+	out += std::to_string(childLen);
+	out += ' ';
+	out += e.elementTypeString();
+	out += EOL;
+
+	const auto& title = e.title();
 	if (title.length() == 0) {
-		title = '-';
+		out += '-';
+	} else {
+		out += title;
 	}
-	out << title << EOL;
+	out += EOL;
 
 	if (! ok) {
 		return false;
 	}
 
-	out << buf.str();
+	out += buf;
 	len += childLen;
 
 	return true;
 }
 
-bool UHSWriter::serializeCommentElement(const Element& e, std::ostream& out, int& len) {
+bool UHSWriter::serializeCommentElement(const Element& e, std::string& out, int& len) {
 	const auto& body = e.body();
 	if (! body.empty()) {
-		out << Strings::wrap(body, EOL, LineLen, len) << EOL;
+		out += Strings::wrap(body, EOL, LineLen, len) + EOL;
 	}
 	return true;
 }
 
-bool UHSWriter::serializeHintElement(const Element& e, std::ostream& out, int& len) {
+// Gifa nodes don't appear to be supported by the official reader any longer.
+bool UHSWriter::serializeDataElement(const Element& e, std::string& out, int& len) {
+	out += "000000 0000000 ";
+
+	const auto& body = e.body();
+	std::ostringstream ss;
+	ss << std::setfill('0') << std::setw(6) << body.length();
+	out += ss.str();
+	out += EOL;
+	++len;
+	_data.emplace(std::make_pair(e.elementType(), body));
+
+	return true;
+}
+
+bool UHSWriter::serializeHintElement(const Element& e, std::string& out, int& len) {
 	bool continuation = false;
 
 	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
 		if (continuation) {
-			out << Token::NestedTextSep << EOL;
+			out += Token::NestedTextSep;
+			out += EOL;
 			++len;
 		}
 		if (n->nodeType() != NodeText) {
@@ -399,8 +437,8 @@ bool UHSWriter::serializeHintElement(const Element& e, std::ostream& out, int& l
 			return false;
 		}
 		const auto& tn = dynamic_cast<const TextNode&>(*n);
-		auto body = tn.body();
-		out << _codec.encode88a(Strings::wrap(body, EOL, LineLen, len)) << EOL;
+		const auto& body = tn.body();
+		out += _codec.encode88a(Strings::wrap(body, EOL, LineLen, len)) + EOL;
 
 		continuation = true;
 	}
@@ -408,38 +446,39 @@ bool UHSWriter::serializeHintElement(const Element& e, std::ostream& out, int& l
 	return true;
 }
 
-bool UHSWriter::serializeInfoElement(const Document& d, std::ostream& out, int& len) {
-	out << "length=0000000" << EOL;
+bool UHSWriter::serializeInfoElement(const Document& d, std::string& out, int& len) {
+	out += "length=0000000";
+	out += EOL;
 	++len;
 
 	const auto now = std::time(nullptr);
 	const auto tm = std::localtime(&now);
-	char buf[10];
 
-	auto bufLen = std::strftime(buf, 10, "%d-%b-%y", tm);
-	out << "date=" << std::string(buf, bufLen) << EOL;;
+	char buf[10];
+	const auto dateLen = std::strftime(buf, 10, "%d-%b-%y", tm);
+	out += "date=" + std::string(buf, dateLen) + EOL;
 	++len;
 
-	bufLen = std::strftime(buf, 9, "%H:%M:%S", tm);
-	out << "time=" << std::string(buf, bufLen) << EOL;;
+	const auto timeLen = std::strftime(buf, 9, "%H:%M:%S", tm);
+	out += "time=" + std::string(buf, timeLen) + EOL;
 	++len;
 
 	for (const auto& [k, v] : d.attrs()) {
 		if (k == "length" || k == "date" || k == "time" || k == "notice") {
 			continue;
 		}
-		out << Strings::wrap(v, EOL, LineLen, len, k + "=") << EOL;
+		out += Strings::wrap(v, EOL, LineLen, len, k + "=") + EOL;
 	}
 
-	auto notice = d.attr("notice");
+	const auto notice = d.attr("notice");
 	if (! notice.empty()) {
-		out << Strings::wrap(notice, EOL, LineLen, len, ">") << EOL;
+		out += Strings::wrap(notice, EOL, LineLen, len, ">") + EOL;
 	}
 
 	return true;
 }
 
-bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std::ostream& out, int& len) {
+bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std::string& out, int& len) {
 	bool ok = false;
 
 	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
@@ -457,17 +496,67 @@ bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std
 	return true;
 }
 
-void UHSWriter::serializeCRC(std::ostringstream& out) {
+bool UHSWriter::serializeData(std::string& out) {
+	// Add data and replace data addresses
+	auto dataOffset = out.length();
+
+	while (! _data.empty()) {
+		const auto& pair = _data.front();
+
+		// Find data address offset
+		const auto marker = std::string(EOL) + DataAddressMarker;
+		const auto pos = out.find(marker);
+		if (pos == std::string::npos) {
+			// TODO: Create error
+			return false;
+		}
+		const auto dataAddress = std::to_string(dataOffset);
+		const auto dataAddressLen = dataAddress.length();
+		auto dataAddressOffset = pos + marker.length() - dataAddressLen;
+
+		const auto elementType = pair.first;
+		if (elementType == ElementText) {
+			dataAddressOffset += 2; // Skip text format value
+			continue; // TODO: Remove this once text nodes are handled
+		}
+
+		// Replace data address
+		out.replace(dataAddressOffset, dataAddressLen, dataAddress);
+
+		// Add data
+		const auto& data = pair.second;
+		out += data;
+		dataOffset += data.length();
+
+		_data.pop();
+	}
+
+	// Find length attribute
+	const auto pos = out.find(InfoLengthMarker);
+	if (pos == std::string::npos) {
+		// No info node present
+		return true;
+	}
+	const auto fileLen = out.length() + CRC::ByteLen;
+	const auto fileLenStr = std::to_string(fileLen);
+	const auto fileLenStrLen = fileLenStr.length();
+	const auto infoLengthOffset = pos + FileSizeLen - fileLenStrLen;
+
+	// Replace length attribute
+	out.replace(infoLengthOffset, fileLenStrLen, fileLenStr);
+
+	return true;
+}
+
+void UHSWriter::serializeCRC(std::string& out) {
 	// Calculate
-	auto buf = out.str();
-	_crc.calculate(buf.data(), buf.length());
-	_crc.finalize();
+	_crc.calculate(out.data(), out.length());
 
 	// Write checksum
 	std::vector<char> checksum;
-	_crc.checksum(checksum);
-	out.put(checksum[0]); // Ensure that 0x00 will be written (to a file)
-	out.put(checksum[1]);
+	_crc.result(checksum);
+	out.push_back(checksum[0]);
+	out.push_back(checksum[1]);
 }
 
 bool UHSWriter::convertTo96a(Document& d) {

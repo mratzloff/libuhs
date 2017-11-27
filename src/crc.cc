@@ -65,19 +65,19 @@ void CRC::calculate(const char* buf, std::streamsize n,
 	}
 }
 
-void CRC::finalize() {
-	if (_rem > Polynomial) {
-		_rem = (_rem + FinalXOR) & CastMask;
-	}
+uint16_t CRC::result() {
+	this->finalize();
+	return _rem;
 }
 
-void CRC::checksum(std::vector<char>& out) {
+void CRC::result(std::vector<char>& out) {
+	this->finalize();
 	out.push_back(_rem & 0xFF); // low
 	out.push_back(_rem >> 8);   // high
 }
 
 bool CRC::valid() {
-	return _rem == this->checksum();
+	return this->result() == this->checksum();
 }
 
 void CRC::createTable() {
@@ -104,6 +104,13 @@ uint8_t CRC::reflectByte(uint8_t byte) {
 		}
 	}
 	return etyb;
+}
+
+void CRC::finalize() {
+	if (! _finalized && _rem > Polynomial) {
+		_rem = (_rem + FinalXOR) & CastMask;
+	}
+	_finalized = true;
 }
 
 uint16_t CRC::checksum() {
