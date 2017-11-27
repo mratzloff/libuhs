@@ -1,8 +1,6 @@
 #ifndef UHS_H
 #define UHS_H
 
-#define UHS_VERSION "1.0.0-alpha"
-
 #include <cstdint>
 #include <ctime>
 #include <fstream>
