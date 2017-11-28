@@ -1026,7 +1026,9 @@ bool Parser::parseTextElement(Element* const e) {
 		return false;
 	}
 	if (format == TextFormatMonospace || format == TextFormatMonospaceAlt) {
-		e->attr("preformatted", "true");
+		e->attr("typeface", "monospace");
+	} else {
+		e->attr("typeface", "proportional");
 	}
 
 	// Offset

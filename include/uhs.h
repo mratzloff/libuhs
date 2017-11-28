@@ -644,6 +644,7 @@ private:
 };
 
 struct WriterOptions {
+	bool debug = false;
 	bool force88aMode = false;
 	std::string mediaDir;
 	bool registered = true; // JSONWriter only
@@ -708,6 +709,11 @@ private:
 	bool serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	bool convertTo96a(Document& d); // TODO: Deep copy
+
+	// Debug helpers
+	void debug(const Document& d);
+	void debug(const Element& e);
+	void debugScaffold(const Node& n);
 
 	Codec _codec;
 	CRC _crc;

@@ -172,6 +172,11 @@ bool UHSWriter::write(Document& d) {
 	bool ok = false;
 	std::string buf;
 	buf.reserve(InitialBufferLen);
+
+	if (_opt.debug) {
+		std::cout << std::string(LineLen, '-') << std::endl;
+		this->debug(d);
+	}
 	
 	if (_opt.force88aMode) {
 		ok = this->serialize88a(d, buf);
@@ -228,6 +233,11 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 		case NodeElement:
 			{
 				const auto& e = dynamic_cast<const Element&>(*n);
+
+				if (_opt.debug) {
+					this->debug(e);
+				}
+
 				ElementType elementType = e.elementType();
 				std::string title;
 
@@ -310,9 +320,14 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 		case NodeDocument:
 			{
 				const auto& child = dynamic_cast<const Document&>(*n);
+				if (_opt.debug) {
+					this->debug(child);
+				}
+
 				if (child.version() != Version88a) {
 					continue;
 				}
+
 				ok = this->serialize88a(child, out);
 				if (! ok) {
 					return false;
@@ -326,6 +341,7 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 			{
 				int len = 0;
 				const auto& child = dynamic_cast<const Element&>(*n);
+
 				ok = this->serializeElement(d, child, out, len);
 				if (! ok) {
 					return false;
@@ -333,9 +349,18 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 			}
 			break;
 
-		default:
-			// TODO: Create error; no text nodes should be at this level
+		case NodeText:
+			{
+				const auto& tn = dynamic_cast<const TextNode&>(*n);
+				_err = std::make_unique<Error>(ErrorValue);
+				_err->messagef("unexpected text node: %s", tn.body().data());
+			}
+			_err->finalize();
 			return false;
+
+		default:
+			// Not handled
+			break;
 		}
 	}
 
@@ -352,9 +377,13 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 }
 
 bool UHSWriter::serializeElement(const Document& d, const Element& e, std::string& out, int& len) {
-	bool ok = false;
+	bool ok = true;
 	std::string buf;
 	int childLen = 0;
+
+	if (_opt.debug) {
+		this->debug(e);
+	}
 
 	switch (e.elementType()) {
 	case ElementUnknown:   /* No further processing required */                     break;
@@ -371,8 +400,12 @@ bool UHSWriter::serializeElement(const Document& d, const Element& e, std::strin
 	case ElementOverlay:   /* TODO */                                               break;
 	case ElementSound:     ok = this->serializeDataElement(e, buf, childLen);       break;
 	case ElementSubject:   ok = this->serializeSubjectElement(d, e, buf, childLen); break;
-	case ElementText:      /* TODO */                                               break;
+	case ElementText:      ok = this->serializeDataElement(e, buf, childLen);       break;
 	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen);    break;
+	}
+
+	if (! ok) {
+		return false;
 	}
 
 	childLen += 2; // Include descriptor and title in length
@@ -390,10 +423,6 @@ bool UHSWriter::serializeElement(const Document& d, const Element& e, std::strin
 	}
 	out += EOL;
 
-	if (! ok) {
-		return false;
-	}
-
 	out += buf;
 	len += childLen;
 
@@ -410,7 +439,12 @@ bool UHSWriter::serializeCommentElement(const Element& e, std::string& out, int&
 
 // Gifa nodes don't appear to be supported by the official reader any longer.
 bool UHSWriter::serializeDataElement(const Element& e, std::string& out, int& len) {
-	out += "000000 0000000 ";
+	out += "000000";
+
+	if (e.elementType() == ElementText) {
+		out += (e.attr("typeface") == "monospace") ? "1" : "0";
+	}
+	out += " 0000000 ";
 
 	const auto& body = e.body();
 	std::ostringstream ss;
@@ -433,7 +467,10 @@ bool UHSWriter::serializeHintElement(const Element& e, std::string& out, int& le
 			++len;
 		}
 		if (n->nodeType() != NodeText) {
-			// TODO: Create error, hint should only contain text nodes at this point
+			// Hint should only contain text nodes at this point
+			_err = std::make_unique<Error>(ErrorValue);
+			_err->messagef("unexpected node type: %s", n->nodeTypeString().data());
+			_err->finalize();
 			return false;
 		}
 		const auto& tn = dynamic_cast<const TextNode&>(*n);
@@ -483,7 +520,9 @@ bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std
 
 	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
 		if (n->nodeType() != NodeElement) {
-			// TODO: Create error, subject should only contain elements
+			_err = std::make_unique<Error>(ErrorValue);
+			_err->messagef("unexpected node type: %s", n->nodeTypeString().data());
+			_err->finalize();
 			return false;
 		}
 		const auto& child = dynamic_cast<const Element&>(*n);
@@ -502,29 +541,31 @@ bool UHSWriter::serializeData(std::string& out) {
 
 	while (! _data.empty()) {
 		const auto& pair = _data.front();
+		const auto elementType = pair.first;
+		const auto& data = pair.second;
 
 		// Find data address offset
 		const auto marker = std::string(EOL) + DataAddressMarker;
 		const auto pos = out.find(marker);
 		if (pos == std::string::npos) {
-			// TODO: Create error
+			_err = std::make_unique<Error>(ErrorValue);
+			_err->messagef("could not find data address offset for data with length %d bytes",
+				std::to_string(data.length()).data());
+			_err->finalize();
 			return false;
 		}
 		const auto dataAddress = std::to_string(dataOffset);
 		const auto dataAddressLen = dataAddress.length();
 		auto dataAddressOffset = pos + marker.length() - dataAddressLen;
 
-		const auto elementType = pair.first;
 		if (elementType == ElementText) {
 			dataAddressOffset += 2; // Skip text format value
-			continue; // TODO: Remove this once text nodes are handled
 		}
 
 		// Replace data address
 		out.replace(dataAddressOffset, dataAddressLen, dataAddress);
 
 		// Add data
-		const auto& data = pair.second;
 		out += data;
 		dataOffset += data.length();
 
@@ -567,7 +608,9 @@ bool UHSWriter::convertTo96a(Document& d) {
 	container->title(d.title());
 	for (Node* n = d.firstChild(); n != nullptr; n = d.firstChild()) {
 		if (n->nodeType() != NodeElement) {
-			// TODO: Create error
+			_err = std::make_unique<Error>(ErrorValue);
+			_err->messagef("expected element, found %s node", n->nodeTypeString().data());
+			_err->finalize();
 			return false;
 		}
 		container->appendChild(d.removeChild(n));
@@ -593,6 +636,49 @@ bool UHSWriter::convertTo96a(Document& d) {
 	d.appendChild(std::move(info));
 
 	return true;
+}
+
+void UHSWriter::debug(const Document& d) {
+	this->debugScaffold(d);
+	std::cout << "[" << d.nodeTypeString() << "] \"" << d.title() << "\"" << std::endl;
+}
+
+void UHSWriter::debug(const Element& e) {
+	this->debugScaffold(e);
+	std::cout << "[" << e.elementTypeString() << "] \"" << e.title() << "\"" << std::endl;
+}
+
+void UHSWriter::debugScaffold(const Node& n) {
+	const int depth = n.depth();
+
+	std::string s;
+	auto p = n.parent();
+	if (p == nullptr) {
+		return;
+	}
+
+	for (int i = depth; i > 0; --i) {
+		if (p == nullptr) {
+			break;
+		}
+		auto gp = p->parent();
+
+		if (gp != nullptr) {
+			if (p == gp->lastChild()) {
+				s = "    " + s;
+			} else {
+				s = "┃   " + s;
+			}
+		}
+		p = gp;
+	}
+	std::cout << s;
+
+	if (&n == n.parent()->lastChild()) {
+		std::cout << "┗━━━";
+	} else {
+		std::cout << "┣━━━";
+	}
 }
 
 }

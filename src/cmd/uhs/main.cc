@@ -80,6 +80,7 @@ int main(int argc, const char* argv[]) {
 					break;
 				} else if (std::strncmp("--debug", argv[i], 7) == 0) {
 					parserOpt.debug = true;
+					writerOpt.debug = true;
 					break;
 				} else if (std::strncmp("--help", argv[i], 6) == 0) {
 					printHelp();
