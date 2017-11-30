@@ -139,17 +139,17 @@ void Tokenizer::tokenizeLine() {
 	} else {
 		// Check for line match patterns
 		std::smatch matches;
-		if (std::regex_match(s, matches, _descriptorRegex)) {
+		if (std::regex_match(s, matches, Regex::Descriptor)) {
 			ElementType elementType = this->tokenizeDescriptor(matches);
 			if (elementType == ElementLink) {
 				_expectedIndexLine = _line + 2;
 			}
 			_expectedStringLine = _line + 1;
-		} else if (std::regex_match(s, matches, _dataAddressRegex)) {
+		} else if (std::regex_match(s, matches, Regex::DataAddress)) {
 			this->tokenizeDataAddress(matches);
-		} else if (std::regex_match(s, matches, _hyperpngRegionRegex)) {
+		} else if (std::regex_match(s, matches, Regex::HyperpngRegion)) {
 			this->tokenizeHyperpngRegion(matches);
-		} else if (std::regex_match(s, matches, _overlayAddressRegex)) {
+		} else if (std::regex_match(s, matches, Regex::OverlayAddress)) {
 			this->tokenizeOverlayAddress(matches);
 		} else {
 			_out.send({TokenString, _offset, _line, 0, s});

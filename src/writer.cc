@@ -195,9 +195,11 @@ bool UHSWriter::write(Document& d) {
 
 void UHSWriter::reset() {
 	Writer::reset();
+
 	while (! _data.empty()) {
 		_data.pop();
 	}
+	_key.clear();
 }
 
 bool UHSWriter::serialize88a(const Document& d, std::string& out) {
@@ -315,6 +317,8 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 		}
 	}
 
+	_key = _codec.createKey(d.title());
+
 	for (Node* n = d.firstChild(); n != nullptr; n = n->nextSibling()) {
 		switch (n->nodeType()) {
 		case NodeDocument:
@@ -400,7 +404,7 @@ bool UHSWriter::serializeElement(const Document& d, const Element& e, std::strin
 	case ElementOverlay:   /* TODO */                                               break;
 	case ElementSound:     ok = this->serializeDataElement(e, buf, childLen);       break;
 	case ElementSubject:   ok = this->serializeSubjectElement(d, e, buf, childLen); break;
-	case ElementText:      ok = this->serializeDataElement(e, buf, childLen);       break;
+	case ElementText:      ok = this->serializeTextElement(e, buf, childLen);       break;
 	case ElementVersion:   ok = this->serializeCommentElement(e, buf, childLen);    break;
 	}
 
@@ -437,22 +441,14 @@ bool UHSWriter::serializeCommentElement(const Element& e, std::string& out, int&
 	return true;
 }
 
-// Gifa nodes don't appear to be supported by the official reader any longer.
+// GIFs don't appear to be displayed by the official reader any longer
 bool UHSWriter::serializeDataElement(const Element& e, std::string& out, int& len) {
-	out += "000000";
-
-	if (e.elementType() == ElementText) {
-		out += (e.attr("typeface") == "monospace") ? "1" : "0";
-	}
-	out += " 0000000 ";
-
+	const auto elementType = e.elementType();
 	const auto& body = e.body();
-	std::ostringstream ss;
-	ss << std::setfill('0') << std::setw(6) << body.length();
-	out += ss.str();
-	out += EOL;
+
+	out += this->createDataAddress(body.length());
 	++len;
-	_data.emplace(std::make_pair(e.elementType(), body));
+	_data.emplace(std::make_pair(elementType, body));
 
 	return true;
 }
@@ -484,7 +480,7 @@ bool UHSWriter::serializeHintElement(const Element& e, std::string& out, int& le
 }
 
 bool UHSWriter::serializeInfoElement(const Document& d, std::string& out, int& len) {
-	out += "length=0000000";
+	out += InfoLengthMarker;
 	out += EOL;
 	++len;
 
@@ -535,35 +531,60 @@ bool UHSWriter::serializeSubjectElement(const Document& d, const Element& e, std
 	return true;
 }
 
+bool UHSWriter::serializeTextElement(const Element& e, std::string& out, int& len) {
+	const auto elementType = e.elementType();
+	const auto& body = e.body();
+
+	const auto textFormat = ((e.attr("typeface") == "monospace") ? "1 " : "0 ");
+	out += this->createDataAddress(body.length(), textFormat);
+	++len;
+
+	auto lines = Strings::split(body, "\n");
+	for (auto& line : lines) {
+		if (line == "") {
+			line = Token::ParagraphSep;
+		}
+		line = _codec.encode96a(line, _key, true);
+	}
+	_data.emplace(std::make_pair(elementType, Strings::join(lines, EOL) + EOL));
+
+	return true;
+}
+
 bool UHSWriter::serializeData(std::string& out) {
 	// Add data and replace data addresses
 	auto dataOffset = out.length();
+	auto searchEnd = out.cend();
+	int offset = 0;
 
 	while (! _data.empty()) {
 		const auto& pair = _data.front();
 		const auto elementType = pair.first;
 		const auto& data = pair.second;
 
-		// Find data address offset
-		const auto marker = std::string(EOL) + DataAddressMarker;
-		const auto pos = out.find(marker);
-		if (pos == std::string::npos) {
+		std::smatch matches;
+		const auto& regex = (elementType == ElementOverlay)
+			? Regex::OverlayAddress
+			: Regex::DataAddress;
+		if (! std::regex_search(out.cbegin() + offset, searchEnd, matches, regex)) {
 			_err = std::make_unique<Error>(ErrorValue);
-			_err->messagef("could not find data address offset for data with length %d bytes",
-				std::to_string(data.length()).data());
+			_err->messagef("could not find address offset for %s element data (%d bytes)",
+				Element::typeString(elementType).data(), data.length());
 			_err->finalize();
 			return false;
 		}
+
+		const auto& matchNumber = (elementType == ElementOverlay) ? 1 : 2;
+		const auto pos = static_cast<std::size_t>(matches.position(matchNumber));
 		const auto dataAddress = std::to_string(dataOffset);
 		const auto dataAddressLen = dataAddress.length();
-		auto dataAddressOffset = pos + marker.length() - dataAddressLen;
-
-		if (elementType == ElementText) {
-			dataAddressOffset += 2; // Skip text format value
-		}
+		const auto dataAddressOffset = offset + pos + FileSizeLen - dataAddressLen;
 
 		// Replace data address
 		out.replace(dataAddressOffset, dataAddressLen, dataAddress);
+
+		// Advance search position
+		offset += pos;
 
 		// Add data
 		out += data;
@@ -581,7 +602,7 @@ bool UHSWriter::serializeData(std::string& out) {
 	const auto fileLen = out.length() + CRC::ByteLen;
 	const auto fileLenStr = std::to_string(fileLen);
 	const auto fileLenStrLen = fileLenStr.length();
-	const auto infoLengthOffset = pos + FileSizeLen - fileLenStrLen;
+	const auto infoLengthOffset = pos + strlen(InfoLengthMarker) - fileLenStrLen;
 
 	// Replace length attribute
 	out.replace(infoLengthOffset, fileLenStrLen, fileLenStr);
@@ -598,6 +619,22 @@ void UHSWriter::serializeCRC(std::string& out) {
 	_crc.result(checksum);
 	out.push_back(checksum[0]);
 	out.push_back(checksum[1]);
+}
+
+std::string UHSWriter::createDataAddress(std::size_t bodyLen, std::string textFormat) {
+	std::ostringstream buf;
+	buf << std::setfill('0') << std::setw(MediaSizeLen) << bodyLen;
+	
+	std::string out;
+	out += DataAddressMarker;
+	out += ' ';
+	out += textFormat;
+	out += std::string(FileSizeLen, '0');
+	out += ' ';
+	out += buf.str();
+	out += EOL;
+
+	return out;
 }
 
 bool UHSWriter::convertTo96a(Document& d) {

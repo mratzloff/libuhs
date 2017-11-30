@@ -121,7 +121,7 @@ std::string rtrim(const std::string& s, char c) {
 	return s;
 }
 
-std::vector<std::string> split(const std::string& s, const std::string sep, int n) {
+std::vector<std::string> split(const std::string& s, const std::string& sep, int n) {
 	std::vector<std::string> items;
 	std::size_t from = 0;
 	std::size_t to;
@@ -136,7 +136,7 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 			break;
 		}
 		to = s.find(sep, from);
-		items.push_back(s.substr(from, to - from));
+		items.emplace_back(s.substr(from, to - from));
 		if (to == std::string::npos) {
 			break;
 		}
@@ -147,26 +147,26 @@ std::vector<std::string> split(const std::string& s, const std::string sep, int 
 	return items;
 }
 
-std::string join(const std::vector<std::string>& items, const std::string sep) {
+std::string join(const std::vector<std::string>& items, const std::string& sep) {
 	std::string s;
 	int i = 0;
 
 	for (const auto& item : items) {
 		if (i > 0) {
-			s.append(sep);
+			s += sep;
 		}
-		s.append(item);
+		s += item;
 		++i;
 	}
 	return s;
 }
 
-std::string wrap(const std::string& s, const std::string sep, std::size_t width) {
+std::string wrap(const std::string& s, const std::string& sep, std::size_t width) {
 	int numLines = 0;
 	return wrap(s, sep, width, numLines);
 }
 
-std::string wrap(const std::string& s, const std::string sep, std::size_t width,
+std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
 		int& numLines, const std::string prefix) {
 
 	std::string lines;

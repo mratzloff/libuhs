@@ -4,8 +4,8 @@ namespace UHS {
 
 const std::string Codec::decode88a(std::string encoded) const {
 	std::string& decoded = encoded;
+	const std::size_t len = encoded.length();
 
-	std::size_t len = encoded.length();
 	for (std::size_t i = 0; i < len; ++i) {
 		char c = encoded[i];
 		if (this->isPrintable(c)) {
@@ -20,8 +20,8 @@ const std::string Codec::decode88a(std::string encoded) const {
 
 const std::string Codec::encode88a(std::string decoded) const {
 	std::string& encoded = decoded;
+	const std::size_t len = encoded.length();
 
-	std::size_t len = encoded.length();
 	for (std::size_t i = 0; i < len; ++i) {
 		char c = decoded[i];
 		if (this->isPrintable(c)) {
@@ -32,32 +32,37 @@ const std::string Codec::encode88a(std::string decoded) const {
 	return encoded;
 }
 
-const std::string Codec::decode96a(std::string encoded, std::string key, bool isTextElement, bool createKey) const {
+const std::string Codec::decode96a(std::string encoded, std::string key, bool isTextElement) const {
 	std::string& decoded = encoded;
-	std::size_t len = encoded.length();
-	std::size_t keyLen = key.length();
-	int keystream;
-	int c;
+	const std::size_t len = encoded.length();
+	const std::size_t keyLen = key.length();
 
 	for (std::size_t i = 0; i < len; ++i) {
-		keystream = this->keystream(key, keyLen, i, isTextElement);
-		if (createKey) {
-			c = encoded[i] + keystream;
-		} else {
-			c = encoded[i] - keystream;
-		}
-		decoded[i] = this->toPrintable(c);
+		auto keystream = this->keystream(key, keyLen, i, isTextElement);
+		decoded[i] = this->toPrintable(encoded[i] - keystream);
 	}
 	return decoded;
 }
 
+const std::string Codec::encode96a(std::string decoded, std::string key, bool isTextElement) const {
+	std::string& encoded = decoded;
+	const std::size_t len = decoded.length();
+	const std::size_t keyLen = key.length();
+
+	for (std::size_t i = 0; i < len; ++i) {
+		auto keystream = this->keystream(key, keyLen, i, isTextElement);
+		encoded[i] = this->toPrintable(decoded[i] + keystream);
+	}
+	return encoded;
+}
+
 const std::string Codec::createKey(std::string secret) const {
-	return this->decode96a(secret, KeySeed, false, true);
+	return this->encode96a(secret, KeySeed, false);
 }
 
 int Codec::keystream(std::string key, std::size_t keyLen, std::size_t index, bool isTextElement) const {
-	int intIndex = static_cast<int>(index); // Guarantee signedness
-	int offset = intIndex % keyLen;
+	const int intIndex = static_cast<int>(index); // Guarantee signedness
+	const int offset = intIndex % keyLen;
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);
 }
 
@@ -66,7 +71,7 @@ bool Codec::isPrintable(int c) const {
 }
 
 char Codec::toPrintable(int c) const {
-	int step = AsciiEnd - AsciiStart + 1;
+	const int step = AsciiEnd - AsciiStart + 1;
 
 	while (! this->isPrintable(c)) {
 		if (c < AsciiStart) {

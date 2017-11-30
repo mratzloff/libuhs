@@ -114,14 +114,26 @@ bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
-std::vector<std::string> split(const std::string& s, const std::string sep, int n = 0);
-std::string join(const std::vector<std::string>& s, const std::string sep);
-std::string wrap(const std::string& s, const std::string sep, std::size_t width);
-std::string wrap(const std::string& s, const std::string sep, std::size_t width,
+std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
+std::string join(const std::vector<std::string>& s, const std::string& sep);
+std::string wrap(const std::string& s, const std::string& sep, std::size_t width);
+std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
 	int& numLines, const std::string prefix = "");
 const std::string hex(const std::string& s);
 const std::string hex(char s);
 
+}
+
+namespace Regex {
+
+const std::regex Descriptor
+	{"([0-9]+) ([a-z]{4,})"};
+const std::regex DataAddress
+	{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
+const std::regex HyperpngRegion
+	{"(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+const std::regex OverlayAddress
+	{"0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 }
 
 namespace Traits {
@@ -329,15 +341,6 @@ private:
 		bool _open = true;
 	};
 
-	const std::regex _descriptorRegex
-		{"^([0-9]+) ([a-z]{4,})$"};
-	const std::regex _dataAddressRegex
-		{"^0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})$"};
-	const std::regex _hyperpngRegionRegex
-		{"^(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
-	const std::regex _overlayAddressRegex
-		{"^0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})$"};
-
 	Pipe& _pipe;
 	std::unique_ptr<Error> _err = nullptr;
 	std::string _buf;
@@ -509,8 +512,8 @@ public:
 	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
 	const std::string encode88a(std::string decoded) const;
-	const std::string decode96a(std::string encoded, std::string key, 
-		bool isTextElement, bool createKey = false) const;
+	const std::string decode96a(std::string encoded, std::string key, bool isTextElement) const;
+	const std::string encode96a(std::string encoded, std::string key, bool isTextElement) const;
 	const std::string createKey(std::string secret) const;
 
 private:
@@ -690,13 +693,13 @@ public:
 	void reset() override;
 
 private:
-	typedef std::queue<std::pair<ElementType, std::string>> DataQueue;
+	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
 
 	static const std::size_t InitialBufferLen = 204800; // 200 KiB
 	static const std::size_t MediaSizeLen = 6; // Up to 999,999 bytes (~1 MB) per media file
 	static const std::size_t FileSizeLen = 7; // Up to 9,999,999 bytes (~10 MB) per document
-	static constexpr const char* DataAddressMarker = "000000 0000000";
-	static constexpr const char* InfoLengthMarker = "length=";
+	static constexpr const char* DataAddressMarker = "000000";
+	static constexpr const char* InfoLengthMarker = "length=0000000";
 
 	bool serialize88a(const Document& d, std::string& out);
 	bool serialize96a(Document& d, std::string& out); // TODO: Make this const again
@@ -706,8 +709,10 @@ private:
 	bool serializeHintElement(const Element& e, std::string& out, int& len);
 	bool serializeInfoElement(const Document& d, std::string& out, int& len);
 	bool serializeSubjectElement(const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeTextElement(const Element& e, std::string& out, int& len);
 	bool serializeData(std::string& out);
 	void serializeCRC(std::string& out);
+	std::string createDataAddress(std::size_t bodyLen, std::string textFormat = "");
 	bool convertTo96a(Document& d); // TODO: Deep copy
 
 	// Debug helpers
@@ -718,6 +723,7 @@ private:
 	Codec _codec;
 	CRC _crc;
 	DataQueue _data;
+	std::string _key;
 };
 
 }
