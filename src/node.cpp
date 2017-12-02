@@ -4,11 +4,11 @@ namespace UHS {
 
 const std::string Node::typeString(NodeType t) {
 	switch (t) {
-	case NodeDocument:
+	case NodeType::Document:
 		return "document";
-	case NodeElement:
+	case NodeType::Element:
 		return "element";
-	case NodeText:
+	case NodeType::Text:
 		return "text";
 	default:
 		return "";
@@ -16,14 +16,14 @@ const std::string Node::typeString(NodeType t) {
 }
 
 bool Node::isElementOfType(const Node& n, ElementType t) {
-	if (n.nodeType() == NodeElement) {
+	if (n.nodeType() == NodeType::Element) {
 		const auto& e = dynamic_cast<const Element&>(n);
 		return (e.elementType() == t);
 	}
 	return false;
 }
 
-Node::Node(NodeType t) : _nodeType {t} {}
+Node::Node(NodeType t) : _nodeType{t} {}
 
 NodeType Node::nodeType() const {
 	return _nodeType;
@@ -49,9 +49,8 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 		return detachedNode;
 	} else {
 		Node* previous = nullptr;
-		for (Node* child = this->firstChild()
-				; child != nullptr
-				; child = child->nextSibling()) {
+		for (Node* child = this->firstChild(); child != nullptr;
+		     child = child->nextSibling()) {
 			if (n == child) {
 				auto detachedNode = std::move(previous->_nextSibling);
 				previous->_nextSibling = std::move(n->_nextSibling);
@@ -94,7 +93,8 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 
 	Node* previousChild = nullptr;
 
-	for (Node* child = this->firstChild(); child != nullptr; child = child->nextSibling()) {
+	for (Node* child = this->firstChild(); child != nullptr;
+	     child = child->nextSibling()) {
 		if (child != ref) {
 			continue;
 		}
@@ -103,6 +103,7 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 			n->_nextSibling = std::move(_firstChild);
 			_firstChild = std::move(n);
 		} else {
+			assert(previousChild != nullptr);
 			n->_nextSibling = std::move(previousChild->_nextSibling);
 			previousChild->_nextSibling = std::move(n);
 		}
@@ -111,6 +112,7 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 		for (auto& child : *ptr) {
 			child._depth = child._parent->_depth + 1;
 		}
+		previousChild = child;
 		++_numChildren;
 	}
 }
@@ -177,30 +179,30 @@ Node::const_iterator Node::cend() const {
 
 //------------------------------ NodeIterator -------------------------------//
 
-template <typename T>
+template<typename T>
 NodeIterator<T>::NodeIterator(NodeIterator<T>::pointer n) {
 	_initial = n;
 	_current = n;
 }
 
-template <typename T>
+template<typename T>
 typename NodeIterator<T>::reference NodeIterator<T>::operator*() const {
 	return *_current;
 }
 
-template <typename T>
+template<typename T>
 typename NodeIterator<T>::pointer NodeIterator<T>::operator->() const {
 	return _current;
 }
 
 // ++it
-template <typename T>
+template<typename T>
 NodeIterator<T>& NodeIterator<T>::operator++() {
 	do {
 		if (_current == nullptr) {
 			break;
 		}
-		if (_current->hasFirstChild() && ! _visited) { // Down
+		if (_current->hasFirstChild() && !_visited) { // Down
 			_current = _current->firstChild();
 			_visited = false;
 		} else if (_current->hasNextSibling()) { // Next
@@ -220,19 +222,19 @@ NodeIterator<T>& NodeIterator<T>::operator++() {
 }
 
 // it++
-template <typename T>
+template<typename T>
 NodeIterator<T> NodeIterator<T>::operator++(int) {
 	auto tmp = *this;
 	++(*this);
 	return tmp;
 }
 
-template <typename T>
+template<typename T>
 bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) {
 	return _current == rhs._current;
 }
 
-template <typename T>
+template<typename T>
 bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) {
 	return !(*this == rhs);
 }
@@ -242,12 +244,9 @@ template class NodeIterator<const Node>;
 
 //-------------------------------- TextNode --------------------------------//
 
-TextNode::TextNode() : Node(NodeText) {}
+TextNode::TextNode() : Node(NodeType::Text) {}
 
-TextNode::TextNode(const std::string body)
-	: Node(NodeText)
-	, Body(body)
-{}
+TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 
 const std::string& TextNode::string() const {
 	return this->body();
@@ -269,4 +268,4 @@ Format TextNode::format() const {
 	return _fmt;
 }
 
-}
+} // namespace UHS

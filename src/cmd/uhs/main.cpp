@@ -1,11 +1,11 @@
+#include "uhs.h"
 #include <cstring>
 #include <fstream>
 #include <iostream>
-#include "uhs.h"
 
 enum Status {
 	Err = -1,
-	OK  = 0,
+	OK = 0,
 };
 
 void printVersion() {
@@ -13,18 +13,16 @@ void printVersion() {
 }
 
 void printHelp() {
-	std::cout
-		<< "uhs " << UHS::Version << "\n\n"
-		<< "Usage: uhs -f <fmt> [options] <file>\n"
-		<< "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
-		<< "-o <file>\t\tOutput file\n"
-		<< "-m <dir>\t\tMedia directory\n"
-		<< "    --88a\t\tForce 88a mode for reading and writing\n"
-		<< "    --unregistered\tRead in unregistered mode\n"
-		<< "    --debug\t\tPrint debugging statements\n"
-		<< "-v, --version\t\tPrint the version\n"
-		<< "-h, --help\t\tPrint this help statement"
-		<< std::endl;
+	std::cout << "uhs " << UHS::Version << "\n\n"
+	          << "Usage: uhs -f <fmt> [options] <file>\n"
+	          << "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
+	          << "-o <file>\t\tOutput file\n"
+	          << "-m <dir>\t\tMedia directory\n"
+	          << "    --88a\t\tForce 88a mode for reading and writing\n"
+	          << "    --unregistered\tRead in unregistered mode\n"
+	          << "    --debug\t\tPrint debugging statements\n"
+	          << "-v, --version\t\tPrint the version\n"
+	          << "-h, --help\t\tPrint this help statement" << std::endl;
 }
 
 int main(int argc, const char* argv[]) {
@@ -97,11 +95,11 @@ int main(int argc, const char* argv[]) {
 				return Err;
 			}
 		} else { // Parse filename (required)
-			if (i != argc-1) {
+			if (i != argc - 1) {
 				printHelp();
 				return Err;
 			}
-			infile = argv[argc-1];
+			infile = argv[argc - 1];
 		}
 	}
 
@@ -118,8 +116,8 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	UHS::Parser p {parserOpt};
-	std::ifstream in {infile, std::ios::in | std::ios::binary};
+	UHS::Parser p{parserOpt};
+	std::ifstream in{infile, std::ios::in | std::ios::binary};
 	auto document = p.parse(in);
 
 	auto err = p.error();
@@ -129,17 +127,17 @@ int main(int argc, const char* argv[]) {
 	}
 
 	std::ofstream fout;
-	if (! outfile.empty()) {
+	if (!outfile.empty()) {
 		fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
 	}
 	std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
 	if (format == "json") {
-		UHS::JSONWriter w {out, writerOpt};
+		UHS::JSONWriter w{out, writerOpt};
 		w.write(*document);
 		err = w.error();
 	} else if (format == "uhs") {
-		UHS::UHSWriter w {out, writerOpt};
+		UHS::UHSWriter w{out, writerOpt};
 		w.write(*document);
 		err = w.error();
 	}

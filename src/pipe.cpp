@@ -2,9 +2,9 @@
 
 namespace UHS {
 
-Pipe::Pipe(std::ifstream& in) : _in {in} {
-	if (! _in.is_open()) {
-		_err = std::make_unique<Error>(ErrorRead, "could not open file");
+Pipe::Pipe(std::ifstream& in) : _in{in} {
+	if (!_in.is_open()) {
+		_err = std::make_unique<Error>(ErrorType::Read, "could not open file");
 		_err->finalize();
 	}
 }
@@ -43,4 +43,4 @@ bool Pipe::eof() {
 	return _in.eof();
 }
 
-}
+} // namespace UHS

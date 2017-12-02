@@ -4,71 +4,71 @@ namespace UHS {
 
 ElementType Element::elementType(const std::string& typeString) {
 	if (typeString == "blank") {
-		return ElementBlank;
+		return ElementType::Blank;
 	} else if (typeString == "comment") {
-		return ElementComment;
+		return ElementType::Comment;
 	} else if (typeString == "credit") {
-		return ElementCredit;
+		return ElementType::Credit;
 	} else if (typeString == "gifa") {
-		return ElementGifa;
+		return ElementType::Gifa;
 	} else if (typeString == "hint") {
-		return ElementHint;
+		return ElementType::Hint;
 	} else if (typeString == "hyperpng") {
-		return ElementHyperpng;
+		return ElementType::Hyperpng;
 	} else if (typeString == "incentive") {
-		return ElementIncentive;
+		return ElementType::Incentive;
 	} else if (typeString == "info") {
-		return ElementInfo;
+		return ElementType::Info;
 	} else if (typeString == "link") {
-		return ElementLink;
+		return ElementType::Link;
 	} else if (typeString == "nesthint") {
-		return ElementNesthint;
+		return ElementType::Nesthint;
 	} else if (typeString == "overlay") {
-		return ElementOverlay;
+		return ElementType::Overlay;
 	} else if (typeString == "sound") {
-		return ElementSound;
+		return ElementType::Sound;
 	} else if (typeString == "subject") {
-		return ElementSubject;
+		return ElementType::Subject;
 	} else if (typeString == "text") {
-		return ElementText;
+		return ElementType::Text;
 	} else if (typeString == "version") {
-		return ElementVersion;
+		return ElementType::Version;
 	} else {
-		return ElementUnknown;
+		return ElementType::Unknown;
 	}
 }
 
 const std::string Element::typeString(ElementType t) {
 	switch (t) {
-	case ElementBlank:
+	case ElementType::Blank:
 		return "blank";
-	case ElementComment:
+	case ElementType::Comment:
 		return "comment";
-	case ElementCredit:
+	case ElementType::Credit:
 		return "credit";
-	case ElementGifa:
+	case ElementType::Gifa:
 		return "gifa";
-	case ElementHint:
+	case ElementType::Hint:
 		return "hint";
-	case ElementHyperpng:
+	case ElementType::Hyperpng:
 		return "hyperpng";
-	case ElementIncentive:
+	case ElementType::Incentive:
 		return "incentive";
-	case ElementInfo:
+	case ElementType::Info:
 		return "info";
-	case ElementLink:
+	case ElementType::Link:
 		return "link";
-	case ElementNesthint:
+	case ElementType::Nesthint:
 		return "nesthint";
-	case ElementOverlay:
+	case ElementType::Overlay:
 		return "overlay";
-	case ElementSound:
+	case ElementType::Sound:
 		return "sound";
-	case ElementSubject:
+	case ElementType::Subject:
 		return "subject";
-	case ElementText:
+	case ElementType::Text:
 		return "text";
-	case ElementVersion:
+	case ElementType::Version:
 		return "version";
 	default:
 		return "unknown";
@@ -76,17 +76,10 @@ const std::string Element::typeString(ElementType t) {
 }
 
 Element::Element(ElementType t, int index, int length)
-	: Node(NodeElement)
-	, _elementType {t}
-	, _index {index}
-	, _length {length}
-{}
+    : Node(NodeType::Element), _elementType{t}, _index{index}, _length{length} {}
 
 Element::Element(ElementType t, const std::string title)
-	: Node(NodeElement)
-	, Traits::Title(title)
-	, _elementType {t}
-{}
+    : Node(NodeType::Element), Traits::Title(title), _elementType{t} {}
 
 ElementType Element::elementType() const {
 	return _elementType;
@@ -118,20 +111,24 @@ void Element::ref(const Element* ref) {
 }
 
 bool Element::isMedia() const {
-	return (_elementType == ElementGifa
-			|| _elementType == ElementHyperpng
-			|| _elementType == ElementOverlay
-			|| _elementType == ElementSound);
+	return (_elementType == ElementType::Gifa || _elementType == ElementType::Hyperpng
+	        || _elementType == ElementType::Overlay
+	        || _elementType == ElementType::Sound);
 }
 
 const std::string Element::mediaExt() const {
 	switch (_elementType) {
-	case ElementGifa:     return "gif";
-	case ElementHyperpng: return "png";
-	case ElementOverlay:  return "png";
-	case ElementSound:    return "wav";
-	default:              return "";
+	case ElementType::Gifa:
+		return "gif";
+	case ElementType::Hyperpng:
+		return "png";
+	case ElementType::Overlay:
+		return "png";
+	case ElementType::Sound:
+		return "wav";
+	default:
+		return "";
 	}
 }
 
-}
+} // namespace UHS

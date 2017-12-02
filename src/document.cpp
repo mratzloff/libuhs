@@ -2,13 +2,10 @@
 
 namespace UHS {
 
-Document::Document() : Node(NodeDocument), _version {Version88a} {}
+Document::Document() : Node(NodeType::Document), _version{VersionType::Version88a} {}
 
 Document::Document(VersionType version, const std::string title)
-	: Node(NodeDocument)
-	, Traits::Title(title)
-	, _version {version}
-{};
+    : Node(NodeType::Document), Traits::Title(title), _version{version} {}
 
 void Document::version(VersionType v) {
 	_version = v;
@@ -20,10 +17,14 @@ VersionType Document::version() const {
 
 const std::string Document::versionString() const {
 	switch (_version) {
-	case Version88a: return "88a";
-	case Version91a: return "91a";
-	case Version95a: return "95a";
-	default:         return "96a";
+	case VersionType::Version88a:
+		return "88a";
+	case VersionType::Version91a:
+		return "91a";
+	case VersionType::Version95a:
+		return "95a";
+	case VersionType::Version96a:
+		return "96a";
 	}
 }
 
@@ -35,4 +36,4 @@ bool Document::validChecksum() const {
 	return _validChecksum;
 }
 
-}
+} // namespace UHS

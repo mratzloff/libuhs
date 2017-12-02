@@ -2,11 +2,11 @@
 
 namespace UHS {
 
-Error::Error(ErrorType t) : _type {t} {}
+Error::Error(ErrorType t) : _type{t} {}
 
-Error::Error(ErrorType t, std::string s) : _type {t}, _message {s} {}
+Error::Error(ErrorType t, std::string s) : _type{t}, _message{s} {}
 
-int Error::type() const {
+ErrorType Error::type() const {
 	return _type;
 }
 
@@ -41,4 +41,4 @@ void Error::finalize(int line, int column) {
 	_message = out.str();
 }
 
-}
+} // namespace UHS

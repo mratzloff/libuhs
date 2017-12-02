@@ -24,7 +24,7 @@ void Attributes::attr(const std::string key, const std::string value) {
 
 //---------------------------------- Body -----------------------------------//
 
-Body::Body(const std::string s) : _body {s} {}
+Body::Body(const std::string s) : _body{s} {}
 
 const std::string& Body::body() const {
 	return _body;
@@ -36,7 +36,7 @@ void Body::body(const std::string s) {
 
 //---------------------------------- Title ----------------------------------//
 
-Title::Title(const std::string s) : _title {s} {}
+Title::Title(const std::string s) : _title{s} {}
 
 const std::string& Title::title() const {
 	return _title;
@@ -49,9 +49,9 @@ void Title::title(std::string s) {
 //-------------------------------- Visibility -------------------------------//
 
 bool Visibility::visible(bool registered) const {
-	return (_visibility == VisibilityAll
-		|| (! registered && _visibility == VisibilityUnregistered)
-		|| (registered && _visibility == VisibilityRegistered));
+	return (_visibility == VisibilityType::All
+	        || (!registered && _visibility == VisibilityType::Unregistered)
+	        || (registered && _visibility == VisibilityType::Registered));
 }
 
 VisibilityType Visibility::visibility() const {
@@ -62,4 +62,4 @@ void Visibility::visibility(VisibilityType v) {
 	_visibility = v;
 }
 
-}
+} // namespace UHS::Traits

@@ -32,7 +32,8 @@ const std::string Codec::encode88a(std::string decoded) const {
 	return encoded;
 }
 
-const std::string Codec::decode96a(std::string encoded, std::string key, bool isTextElement) const {
+const std::string Codec::decode96a(
+    std::string encoded, std::string key, bool isTextElement) const {
 	std::string& decoded = encoded;
 	const std::size_t len = encoded.length();
 	const std::size_t keyLen = key.length();
@@ -44,7 +45,8 @@ const std::string Codec::decode96a(std::string encoded, std::string key, bool is
 	return decoded;
 }
 
-const std::string Codec::encode96a(std::string decoded, std::string key, bool isTextElement) const {
+const std::string Codec::encode96a(
+    std::string decoded, std::string key, bool isTextElement) const {
 	std::string& encoded = decoded;
 	const std::size_t len = decoded.length();
 	const std::size_t keyLen = key.length();
@@ -60,7 +62,8 @@ const std::string Codec::createKey(std::string secret) const {
 	return this->encode96a(secret, KeySeed, false);
 }
 
-int Codec::keystream(std::string key, std::size_t keyLen, std::size_t index, bool isTextElement) const {
+int Codec::keystream(
+    std::string key, std::size_t keyLen, std::size_t index, bool isTextElement) const {
 	const int intIndex = static_cast<int>(index); // Guarantee signedness
 	const int offset = intIndex % keyLen;
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);
@@ -73,7 +76,7 @@ bool Codec::isPrintable(int c) const {
 char Codec::toPrintable(int c) const {
 	const int step = AsciiEnd - AsciiStart + 1;
 
-	while (! this->isPrintable(c)) {
+	while (!this->isPrintable(c)) {
 		if (c < AsciiStart) {
 			c += step;
 		} else if (c > AsciiEnd) {
@@ -85,4 +88,4 @@ char Codec::toPrintable(int c) const {
 	return char(c);
 }
 
-}
+} // namespace UHS

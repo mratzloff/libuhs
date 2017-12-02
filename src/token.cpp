@@ -4,53 +4,48 @@ namespace UHS {
 
 const std::string Token::typeString(TokenType t) {
 	switch (t) {
-	case TokenCRC:
+	case TokenType::CRC:
 		return "CRC";
-	case TokenCoordX:
+	case TokenType::CoordX:
 		return "CoordX";
-	case TokenCoordY:
+	case TokenType::CoordY:
 		return "CoordY";
-	case TokenCreditSep:
+	case TokenType::CreditSep:
 		return "CreditSep";
-	case TokenData:
+	case TokenType::Data:
 		return "Data";
-	case TokenDataLength:
+	case TokenType::DataLength:
 		return "DataLength";
-	case TokenDataOffset:
+	case TokenType::DataOffset:
 		return "DataOffset";
-	case TokenEOF:
-		return "EOF";
-	case TokenHeaderSep:
+	case TokenType::FileEnd:
+		return "FileEnd";
+	case TokenType::HeaderSep:
 		return "HeaderSep";
-	case TokenIdent:
+	case TokenType::Ident:
 		return "Ident";
-	case TokenIndex:
+	case TokenType::Index:
 		return "Index";
-	case TokenLength:
+	case TokenType::Length:
 		return "Length";
-	case TokenNestedElementSep:
+	case TokenType::NestedElementSep:
 		return "NestedElementSep";
-	case TokenNestedTextSep:
+	case TokenType::NestedTextSep:
 		return "NestedTextSep";
-	case TokenParagraphSep:
+	case TokenType::NestedParagraphSep:
 		return "ParagraphSep";
-	case TokenSignature:
+	case TokenType::Signature:
 		return "Signature";
-	case TokenString:
+	case TokenType::String:
 		return "String";
-	case TokenTextFormat:
+	case TokenType::TextFormat:
 		return "TextFormat";
 	}
 }
 
-Token::Token(const TokenType tokenType, std::size_t offset, int line,
-		std::size_t column, std::string value)
-	: _type {tokenType}
-	, _line {line}
-	, _column {column}
-	, _offset {offset}
-	, _value {value}
-{}
+Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
+    std::string value)
+    : _type{tokenType}, _line{line}, _column{column}, _offset{offset}, _value{value} {}
 
 TokenType Token::type() const {
 	return _type;
@@ -77,33 +72,33 @@ const std::string Token::typeString() const {
 }
 
 const std::string Token::string() const {
-	std::string buf {"("};
+	auto buf = "("s;
 	buf += this->formatToken();
 
 	switch (_type) {
-	case TokenCRC:
+	case TokenType::CRC:
 		// Fall through
-	case TokenData:
+	case TokenType::Data:
 		buf += this->formatByteValue();
 		break;
-	case TokenIdent:
+	case TokenType::Ident:
 		// Fall through
-	case TokenString:
+	case TokenType::String:
 		buf += this->formatStringValue();
 		break;
-	case TokenDataLength:
+	case TokenType::DataLength:
 		// Fall through
-	case TokenDataOffset:
+	case TokenType::DataOffset:
 		// Fall through
-	case TokenIndex:
+	case TokenType::Index:
 		// Fall through
-	case TokenLength:
+	case TokenType::Length:
 		// Fall through
-	case TokenCoordX:
+	case TokenType::CoordX:
 		// Fall through
-	case TokenCoordY:
+	case TokenType::CoordY:
 		// Fall through
-	case TokenTextFormat:
+	case TokenType::TextFormat:
 		buf += this->formatIntValue();
 		break;
 	default:
@@ -120,7 +115,7 @@ std::ostream& operator<<(std::ostream& out, const Token& t) {
 }
 
 const std::string Token::formatToken() const {
-	std::string buf {typeString()};
+	std::string buf{typeString()};
 	buf += ' ';
 	buf += std::to_string(_line);
 	buf += ':';
@@ -132,9 +127,9 @@ const std::string Token::formatToken() const {
 }
 
 const std::string Token::formatIntValue() const {
-	std::string buf {" ["};
+	auto buf = " ["s;
 	buf += _value;
-	int intVal {Strings::toInt(_value)};
+	int intVal{Strings::toInt(_value)};
 	if (intVal == -1) {
 		buf += '?';
 	}
@@ -144,7 +139,7 @@ const std::string Token::formatIntValue() const {
 }
 
 const std::string Token::formatStringValue() const {
-	std::string buf {" ["};
+	auto buf = " ["s;
 	buf += _value;
 	buf += ']';
 
@@ -152,11 +147,11 @@ const std::string Token::formatStringValue() const {
 }
 
 const std::string Token::formatByteValue() const {
-	std::string buf {" ["};
+	auto buf = " ["s;
 	buf += Strings::hex(_value);
 	buf += ']';
 
 	return buf;
 }
 
-}
+} // namespace UHS

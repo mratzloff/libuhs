@@ -3,11 +3,11 @@
 namespace UHS {
 
 // There are two files with a bad checksum.
-// 
+//
 // The first is phantom.uhs. It was (inexplicably) modified after compilation
 // to pad the end with NUL characters to an even multiple of 1024 bytes. The
 // checksum preceding the NUL characters is correct for the original file.
-// 
+//
 // The second is tfc.uhs, which contains a stray CRLF at the end. If removed,
 // the checksum is also correct.
 CRC::CRC() {
@@ -16,9 +16,8 @@ CRC::CRC() {
 
 void CRC::upstream(Pipe& p) {
 	_pipe = &p;
-	_pipe->addHandler([=](const char* s, std::streamsize n) {
-		this->calculate(s, n, true);
-	});
+	_pipe->addHandler(
+	    [=](const char* s, std::streamsize n) { this->calculate(s, n, true); });
 }
 
 void CRC::calculate(const char* buf, std::streamsize n) {
@@ -31,9 +30,8 @@ void CRC::calculate(const char* buf, std::streamsize n) {
 	}
 }
 
-void CRC::calculate(const char* buf, std::streamsize n,
-		bool bufferChecksum __attribute__((unused))) {
-
+void CRC::calculate(
+    const char* buf, std::streamsize n, bool bufferChecksum __attribute__((unused))) {
 	switch (n) {
 	case 0:
 		return;
@@ -58,8 +56,8 @@ void CRC::calculate(const char* buf, std::streamsize n,
 		if (_bufLen > 0) {
 			this->calculate(_buf, _bufLen);
 		}
-		_buf[0] = buf[n-2];
-		_buf[1] = buf[n-1];
+		_buf[0] = buf[n - 2];
+		_buf[1] = buf[n - 1];
 		_bufLen = 2;
 		this->calculate(buf, n - _bufLen);
 	}
@@ -107,7 +105,7 @@ uint8_t CRC::reflectByte(uint8_t byte) {
 }
 
 void CRC::finalize() {
-	if (! _finalized && _rem > Polynomial) {
+	if (!_finalized && _rem > Polynomial) {
 		_rem = (_rem + FinalXOR) & CastMask;
 	}
 	_finalized = true;
@@ -117,4 +115,4 @@ uint16_t CRC::checksum() {
 	return (static_cast<uint8_t>(_buf[1]) << 8) | static_cast<uint8_t>(_buf[0]);
 }
 
-}
+} // namespace UHS

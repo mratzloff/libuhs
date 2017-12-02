@@ -1,6 +1,8 @@
 #ifndef UHS_H
 #define UHS_H
 
+#include "json.h"
+#include <cassert>
 #include <cstdint>
 #include <ctime>
 #include <fstream>
@@ -15,89 +17,90 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#include "json.h"
 
 namespace UHS {
 
-enum ElementType {
-	ElementUnknown,
-	ElementBlank,
-	ElementComment,
-	ElementCredit,
-	ElementGifa,
-	ElementHint,
-	ElementHyperpng,
-	ElementIncentive,
-	ElementInfo,
-	ElementLink,
-	ElementNesthint,
-	ElementOverlay,
-	ElementSound,
-	ElementSubject,
-	ElementText,
-	ElementVersion,
+using std::string_literals::operator""s;
+
+enum class ElementType {
+	Unknown,
+	Blank,
+	Comment,
+	Credit,
+	Gifa,
+	Hint,
+	Hyperpng,
+	Incentive,
+	Info,
+	Link,
+	Nesthint,
+	Overlay,
+	Sound,
+	Subject,
+	Text,
+	Version,
 };
 
-enum ErrorType {
-	ErrorUnknown,
-	ErrorEOF,
-	ErrorRead,
-	ErrorWrite,
-	ErrorValue,
-	ErrorToken,
+enum class ErrorType {
+	Unknown,
+	FileEnd,
+	Read,
+	Write,
+	Value,
+	Token,
 };
 
-enum TextFormatType {
-	TextFormatNone,         // Also used for binary data
-	TextFormatMonospace,
-	TextFormatNoneAlt,
-	TextFormatMonospaceAlt,
+enum class TextFormatType {
+	None, // Also used for binary data
+	Monospace,
+	NoneAlt,
+	MonospaceAlt,
 };
 
-enum TypefaceType {
-	TypefaceProportional,
-	TypefaceMonospace,
+enum class TypefaceType {
+	Proportional,
+	Monospace,
 };
 
-enum NodeType {
-	NodeDocument,
-	NodeElement,
-	NodeText,
+enum class NodeType {
+	Document,
+	Element,
+	Text,
 };
 
-enum TokenType {
-	TokenCRC,
-	TokenCoordX,
-	TokenCoordY,
-	TokenCreditSep,
-	TokenData,
-	TokenDataLength,
-	TokenDataOffset,
-	TokenEOF,
-	TokenHeaderSep,
-	TokenIdent,
-	TokenIndex,
-	TokenLength,
-	TokenNestedElementSep,
-	TokenNestedTextSep,
-	TokenParagraphSep,
-	TokenSignature,
-	TokenString,
-	TokenTextFormat,
+enum class TokenType {
+	CRC,
+	CoordX,
+	CoordY,
+	CreditSep,
+	Data,
+	DataLength,
+	DataOffset,
+	FileEnd,
+	HeaderSep,
+	Ident,
+	Index,
+	Length,
+	NestedElementSep,
+	NestedTextSep,
+	NestedParagraphSep,
+	Signature,
+	String,
+	TextFormat,
 };
 
-enum VersionType {
+enum class VersionType {
 	Version88a,
 	Version91a,
 	Version95a,
 	Version96a,
 };
 
-enum VisibilityType {
-	VisibilityAll,          // Visible to every user
-	VisibilityUnregistered, // Visible only to unregistered users
-	VisibilityRegistered,   // Visible only to registered users
-	VisibilityNone,         // Visible to no one
+enum class VisibilityType {
+	All,          // Visible to every user
+	Unregistered, // Visible only to unregistered users
+	Registered,   // Visible only to registered users
+	None,         // Visible to no one
 };
 
 static constexpr const char* EOL = "\r\n";
@@ -118,23 +121,21 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 std::string join(const std::vector<std::string>& s, const std::string& sep);
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width);
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
-	int& numLines, const std::string prefix = "");
+    int& numLines, const std::string prefix = "");
 const std::string hex(const std::string& s);
 const std::string hex(char s);
 
-}
+} // namespace Strings
 
 namespace Regex {
 
-const std::regex Descriptor
-	{"([0-9]+) ([a-z]{4,})"};
-const std::regex DataAddress
-	{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
-const std::regex HyperpngRegion
-	{"(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
-const std::regex OverlayAddress
-	{"0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
-}
+const std::regex Descriptor{"([0-9]+) ([a-z]{4,})"};
+const std::regex DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
+const std::regex HyperpngRegion{
+    "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+const std::regex OverlayAddress{
+    "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+} // namespace Regex
 
 namespace Traits {
 
@@ -179,18 +180,17 @@ public:
 	void visibility(VisibilityType v);
 
 private:
-	VisibilityType _visibility = VisibilityAll;
+	VisibilityType _visibility = VisibilityType::All;
 };
 
-}
+} // namespace Traits
 
 class Error {
 public:
 	Error() = default;
-	Error(ErrorType t);
+	explicit Error(ErrorType t);
 	Error(ErrorType t, std::string s);
-	virtual ~Error() = default;
-	int type() const;
+	ErrorType type() const;
 	void type(ErrorType t);
 	const std::string& message() const;
 	void message(const std::string s);
@@ -199,7 +199,7 @@ public:
 	void finalize(int line, int column);
 
 private:
-	int _type = ErrorUnknown;
+	ErrorType _type = ErrorType::Unknown;
 	std::string _message;
 };
 
@@ -207,8 +207,7 @@ class Pipe {
 public:
 	typedef std::function<void(const char*, std::streamsize n)> Handler;
 
-	Pipe(std::ifstream& in);
-	virtual ~Pipe() = default;
+	explicit Pipe(std::ifstream& in);
 	std::unique_ptr<Error> error();
 	void addHandler(Handler func);
 	void read();
@@ -229,7 +228,6 @@ public:
 	static const int ByteLen = 2;
 
 	CRC();
-	virtual ~CRC() = default;
 	void upstream(Pipe& p);
 	void calculate(const char* buf, std::streamsize n, bool bufferChecksum);
 	void calculate(const char* buf, std::streamsize n);
@@ -284,10 +282,9 @@ public:
 	static constexpr const char* WordWrapEndAlt = "#w.";
 
 	static const std::string typeString(TokenType t);
-	
+
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
-		std::size_t column = 0, std::string value = "");
-	virtual ~Token() = default;
+	    std::size_t column = 0, std::string value = "");
 	TokenType type() const;
 	int line() const;
 	std::size_t column() const;
@@ -314,8 +311,7 @@ private:
 
 class Tokenizer {
 public:
-	Tokenizer(Pipe& p);
-	virtual ~Tokenizer() = default;
+	explicit Tokenizer(Pipe& p);
 	std::unique_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
@@ -324,8 +320,7 @@ public:
 private:
 	class TokenChannel {
 	public:
-		TokenChannel(Pipe& p);
-		virtual ~TokenChannel() = default;
+		explicit TokenChannel(Pipe& p);
 		std::unique_ptr<Error> error();
 		bool send(const Token&& t);
 		std::unique_ptr<const Token> receive();
@@ -363,7 +358,7 @@ private:
 	void tokenizeEOF(std::size_t column);
 };
 
-template <typename T>
+template<typename T>
 class NodeIterator;
 
 class Node {
@@ -374,7 +369,7 @@ public:
 	static const std::string typeString(NodeType t);
 	static bool isElementOfType(const Node& n, ElementType t);
 
-	Node(NodeType t);
+	explicit Node(NodeType t);
 	virtual ~Node() = default;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
@@ -409,7 +404,7 @@ private:
 	int _depth = 0;
 };
 
-template <typename T>
+template<typename T>
 class NodeIterator {
 public:
 	using value_type = T;
@@ -419,7 +414,7 @@ public:
 	using iterator_category = std::forward_iterator_tag;
 
 	NodeIterator() = default;
-	NodeIterator(pointer n);
+	explicit NodeIterator(pointer n);
 	reference operator*() const;
 	pointer operator->() const;
 	NodeIterator<T>& operator++();
@@ -436,13 +431,11 @@ private:
 typedef uint8_t Format;
 
 class TextNode
-	: public Node
-	, public Traits::Body
-{
+    : public Node
+    , public Traits::Body {
 public:
 	TextNode();
-	TextNode(const std::string body);
-	virtual ~TextNode() = default;
+	explicit TextNode(const std::string body);
 	const std::string& string() const;
 	void addFormat(Format f);
 	void removeFormat(Format f);
@@ -454,19 +447,17 @@ private:
 };
 
 class Element
-	: public Node
-	, public Traits::Attributes
-	, public Traits::Body
-	, public Traits::Title
-	, public Traits::Visibility
-{
+    : public Node
+    , public Traits::Attributes
+    , public Traits::Body
+    , public Traits::Title
+    , public Traits::Visibility {
 public:
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
 	Element(ElementType t, int index = 0, int length = 0);
 	Element(ElementType t, const std::string title);
-	virtual ~Element() = default;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
@@ -486,15 +477,13 @@ private:
 };
 
 class Document
-	: public Node
-	, public Traits::Attributes
-	, public Traits::Title
-	, public Traits::Visibility
-{
+    : public Node
+    , public Traits::Attributes
+    , public Traits::Title
+    , public Traits::Visibility {
 public:
 	Document();
 	Document(VersionType version, const std::string title = "");
-	virtual ~Document() = default;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
@@ -508,12 +497,12 @@ private:
 
 class Codec {
 public:
-	Codec() = default;
-	virtual ~Codec() = default;
 	const std::string decode88a(std::string encoded) const;
 	const std::string encode88a(std::string decoded) const;
-	const std::string decode96a(std::string encoded, std::string key, bool isTextElement) const;
-	const std::string encode96a(std::string encoded, std::string key, bool isTextElement) const;
+	const std::string decode96a(
+	    std::string encoded, std::string key, bool isTextElement) const;
+	const std::string encode96a(
+	    std::string encoded, std::string key, bool isTextElement) const;
 	const std::string createKey(std::string secret) const;
 
 private:
@@ -521,7 +510,8 @@ private:
 	static const char AsciiEnd = 0x7F;
 	static constexpr const char* KeySeed = "key";
 
-	int keystream(std::string key, std::size_t keyLen, std::size_t index, bool isText) const;
+	int keystream(
+	    std::string key, std::size_t keyLen, std::size_t index, bool isText) const;
 	bool isPrintable(int c) const;
 	char toPrintable(int c) const;
 };
@@ -533,8 +523,7 @@ struct ParserOptions {
 
 class Parser {
 public:
-	Parser(const ParserOptions opt = {});
-	virtual ~Parser() = default;
+	explicit Parser(const ParserOptions opt = {});
 	std::unique_ptr<Error> error();
 	std::unique_ptr<Document> parse(std::ifstream& in);
 	void reset();
@@ -549,17 +538,14 @@ private:
 		int min;
 		int max;
 
-		NodeRange(Node& n, int min, int max);
-		virtual ~NodeRange() = default;
+		NodeRange(Node& n, const int min, const int max);
 	};
 
 	struct NodeRangeList {
-		std::vector<const NodeRange> data;
+		std::vector<NodeRange> data = {};
 
-		NodeRangeList();
-		virtual ~NodeRangeList() = default;
-		Node* find(int min, int max);
-		void add(Node& n, int min, int max);
+		Node* find(const int min, const int max);
+		void add(Node& n, const int min, const int max);
 		void clear();
 	};
 
@@ -570,8 +556,8 @@ private:
 		int column;
 
 		LinkData() = default;
-		LinkData(Element* fromElement, int toIndex, int line, int column);
-		virtual ~LinkData() = default;
+		LinkData(
+		    Element* fromElement, const int toIndex, const int line, const int column);
 	};
 
 	struct DataHandler {
@@ -580,7 +566,6 @@ private:
 		DataCallback func;
 
 		DataHandler(std::size_t offset, std::size_t length, DataCallback func);
-		virtual ~DataHandler() = default;
 	};
 
 	static const int HeaderLen = 4;
@@ -628,8 +613,10 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
-	bool linkOrDefer(Element* const fromElement, int toIndex, int line, int column);
-	bool link(Element* const fromElement, int toIndex, int line, int column);
+	bool linkOrDefer(
+	    Element* const fromElement, const int toIndex, const int line, const int column);
+	bool link(
+	    Element* const fromElement, const int toIndex, const int line, const int column);
 	bool handleDeferredLink(int index);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
@@ -670,7 +657,6 @@ protected:
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
-	virtual ~JSONWriter() = default;
 	bool write(Document& d) override; // TODO: Make this const again
 
 private:
@@ -682,33 +668,34 @@ private:
 
 class UHSWriter : public Writer {
 public:
-	// The official readers work with lines longer than 76 characters, but 
+	// The official readers work with lines longer than 76 characters, but
 	// lines were capped at 76 so that DOS readers would display correctly
 	// within the standard 80-character window (with border and padding).
 	static const std::size_t LineLen = 76;
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
-	virtual ~UHSWriter() = default;
 	bool write(Document& d) override; // TODO: Make this const again
 	void reset() override;
 
 private:
 	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
 
-	static const std::size_t InitialBufferLen = 204800; // 200 KiB
-	static const std::size_t MediaSizeLen = 6; // Up to 999,999 bytes (~1 MB) per media file
-	static const std::size_t FileSizeLen = 7; // Up to 9,999,999 bytes (~10 MB) per document
+	static const std::size_t InitialBufferLen = 204'800; // 200 KiB
+	static const std::size_t MediaSizeLen = 6; // Up to 999,999 bytes per media file
+	static const std::size_t FileSizeLen = 7;  // Up to 9,999,999 bytes per document
 	static constexpr const char* DataAddressMarker = "000000";
 	static constexpr const char* InfoLengthMarker = "length=0000000";
 
 	bool serialize88a(const Document& d, std::string& out);
 	bool serialize96a(Document& d, std::string& out); // TODO: Make this const again
-	bool serializeElement(const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeElement(
+	    const Document& d, const Element& e, std::string& out, int& len);
 	bool serializeCommentElement(const Element& e, std::string& out, int& len);
 	bool serializeDataElement(const Element& e, std::string& out, int& len);
 	bool serializeHintElement(const Element& e, std::string& out, int& len);
 	bool serializeInfoElement(const Document& d, std::string& out, int& len);
-	bool serializeSubjectElement(const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeSubjectElement(
+	    const Document& d, const Element& e, std::string& out, int& len);
 	bool serializeTextElement(const Element& e, std::string& out, int& len);
 	bool serializeData(std::string& out);
 	void serializeCRC(std::string& out);
@@ -726,6 +713,6 @@ private:
 	std::string _key;
 };
 
-}
+} // namespace UHS
 
 #endif
