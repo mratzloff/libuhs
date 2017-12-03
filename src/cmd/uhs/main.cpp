@@ -15,7 +15,7 @@ void printVersion() {
 void printHelp() {
 	std::cout << "uhs " << UHS::Version << "\n\n"
 	          << "Usage: uhs -f <fmt> [options] <file>\n"
-	          << "-f <fmt>\t\tOutput format (\"json\", \"uhs\")\n"
+	          << "-f <fmt>\t\tOutput format (json, tree, uhs)\n"
 	          << "-o <file>\t\tOutput file\n"
 	          << "-m <dir>\t\tMedia directory\n"
 	          << "    --88a\t\tForce 88a mode for reading and writing\n"
@@ -111,7 +111,7 @@ int main(int argc, const char* argv[]) {
 		std::cerr << "uhs: error: no output format specified" << std::endl;
 		return Err;
 	}
-	if (format != "json" && format != "uhs") {
+	if (format != "json" && format != "tree" && format != "uhs") {
 		std::cerr << "uhs: error: unknown output format: " << format << std::endl;
 		return Err;
 	}
@@ -136,6 +136,9 @@ int main(int argc, const char* argv[]) {
 		UHS::JSONWriter w{out, writerOpt};
 		w.write(*document);
 		err = w.error();
+	} else if (format == "tree") {
+		UHS::TreeWriter w{out, writerOpt};
+		w.write(*document);
 	} else if (format == "uhs") {
 		UHS::UHSWriter w{out, writerOpt};
 		w.write(*document);

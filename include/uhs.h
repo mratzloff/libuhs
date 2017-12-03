@@ -234,6 +234,7 @@ public:
 	uint16_t result();
 	void result(std::vector<char>& out);
 	bool valid();
+	void reset();
 
 private:
 	static const int TableLen = 256;
@@ -269,7 +270,7 @@ public:
 	static constexpr const char* InfoKeyValueSep = "=";
 	static constexpr const char* NestedElementSep = "=";
 	static constexpr const char* NestedTextSep = "-";
-	static constexpr const char* Notice = ">";
+	static constexpr const char* NoticePrefix = ">";
 	static constexpr const char* NumberSign = "##";
 	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
 	static constexpr const char* ProportionalStart = "#p+";
@@ -370,7 +371,9 @@ public:
 	static bool isElementOfType(const Node& n, ElementType t);
 
 	explicit Node(NodeType t);
+	Node(const Node& other);
 	virtual ~Node() = default;
+	virtual std::unique_ptr<Node> clone() const;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
 	std::unique_ptr<Node> removeChild(Node* n);
@@ -436,6 +439,9 @@ class TextNode
 public:
 	TextNode();
 	explicit TextNode(const std::string body);
+	TextNode(const TextNode& other);
+	std::unique_ptr<Node> clone() const override;
+	std::unique_ptr<TextNode> cloneTextNode() const;
 	const std::string& string() const;
 	void addFormat(Format f);
 	void removeFormat(Format f);
@@ -458,6 +464,9 @@ public:
 
 	Element(ElementType t, int index = 0, int length = 0);
 	Element(ElementType t, const std::string title);
+	Element(const Element& other);
+	std::unique_ptr<Node> clone() const override;
+	std::unique_ptr<Element> cloneElement() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
@@ -484,6 +493,9 @@ class Document
 public:
 	Document();
 	Document(VersionType version, const std::string title = "");
+	Document(const Document& other);
+	std::unique_ptr<Node> clone() const override;
+	std::unique_ptr<Document> cloneDocument() const;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
@@ -645,7 +657,7 @@ public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
 	std::unique_ptr<Error> error();
-	virtual bool write(Document& d) = 0; // TODO: Make this const again
+	virtual bool write(const Document& d) = 0;
 	virtual void reset();
 
 protected:
@@ -654,10 +666,21 @@ protected:
 	std::unique_ptr<Error> _err = nullptr;
 };
 
+class TreeWriter : public Writer {
+public:
+	TreeWriter(std::ostream& out, const WriterOptions opt = {});
+	bool write(const Document& d) override;
+
+private:
+	void draw(const Document& d);
+	void draw(const Element& e);
+	void drawScaffold(const Node& n);
+};
+
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
-	bool write(Document& d) override; // TODO: Make this const again
+	bool write(const Document& d) override;
 
 private:
 	Json::Value serialize(const Document& d, Json::Value& root) const;
@@ -674,7 +697,7 @@ public:
 	static const std::size_t LineLen = 76;
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
-	bool write(Document& d) override; // TODO: Make this const again
+	bool write(const Document& d) override;
 	void reset() override;
 
 private:
@@ -687,30 +710,24 @@ private:
 	static constexpr const char* InfoLengthMarker = "length=0000000";
 
 	bool serialize88a(const Document& d, std::string& out);
-	bool serialize96a(Document& d, std::string& out); // TODO: Make this const again
-	bool serializeElement(
-	    const Document& d, const Element& e, std::string& out, int& len);
+	bool serialize96a(std::string& out);
+	bool serializeElement(const Element& e, std::string& out, int& len);
 	bool serializeCommentElement(const Element& e, std::string& out, int& len);
 	bool serializeDataElement(const Element& e, std::string& out, int& len);
 	bool serializeHintElement(const Element& e, std::string& out, int& len);
-	bool serializeInfoElement(const Document& d, std::string& out, int& len);
-	bool serializeSubjectElement(
-	    const Document& d, const Element& e, std::string& out, int& len);
+	bool serializeInfoElement(std::string& out, int& len);
+	bool serializeSubjectElement(const Element& e, std::string& out, int& len);
 	bool serializeTextElement(const Element& e, std::string& out, int& len);
 	bool serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	std::string createDataAddress(std::size_t bodyLen, std::string textFormat = "");
-	bool convertTo96a(Document& d); // TODO: Deep copy
-
-	// Debug helpers
-	void debug(const Document& d);
-	void debug(const Element& e);
-	void debugScaffold(const Node& n);
+	bool convertTo91a();
 
 	Codec _codec;
 	CRC _crc;
-	DataQueue _data;
+	std::unique_ptr<Document> _document = nullptr;
 	std::string _key;
+	DataQueue _data;
 };
 
 } // namespace UHS

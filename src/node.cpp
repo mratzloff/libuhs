@@ -17,13 +17,23 @@ const std::string Node::typeString(NodeType t) {
 
 bool Node::isElementOfType(const Node& n, ElementType t) {
 	if (n.nodeType() == NodeType::Element) {
-		const auto& e = dynamic_cast<const Element&>(n);
+		const auto& e = static_cast<const Element&>(n);
 		return (e.elementType() == t);
 	}
 	return false;
 }
 
 Node::Node(NodeType t) : _nodeType{t} {}
+
+Node::Node(const Node& other) : _nodeType{other._nodeType}, _parent{other._parent} {
+	for (Node* n = other.firstChild(); n != nullptr; n = n->nextSibling()) {
+		this->appendChild(n->clone());
+	}
+}
+
+std::unique_ptr<Node> Node::clone() const {
+	return std::make_unique<Node>(*this);
+}
 
 NodeType Node::nodeType() const {
 	return _nodeType;
@@ -43,7 +53,9 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 
 	if (n == this->firstChild()) {
 		auto detachedNode = std::move(_firstChild);
-		if (n->_nextSibling != nullptr) {
+		if (n->_nextSibling == nullptr) {
+			_lastChild = nullptr;
+		} else {
 			_firstChild = std::move(n->_nextSibling);
 		}
 		return detachedNode;
@@ -53,7 +65,11 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 		     child = child->nextSibling()) {
 			if (n == child) {
 				auto detachedNode = std::move(previous->_nextSibling);
-				previous->_nextSibling = std::move(n->_nextSibling);
+				if (n->_nextSibling == nullptr) {
+					_lastChild = nullptr;
+				} else {
+					previous->_nextSibling = std::move(n->_nextSibling);
+				}
 				return detachedNode;
 			} else {
 				previous = child;
@@ -69,7 +85,7 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 void Node::appendChild(std::unique_ptr<Node> n) {
 	auto ptr = n.get();
 
-	if (_firstChild == nullptr) {
+	if (_lastChild == nullptr) { // No children
 		_firstChild = std::move(n);
 		_lastChild = ptr;
 	} else {
@@ -247,6 +263,17 @@ template class NodeIterator<const Node>;
 TextNode::TextNode() : Node(NodeType::Text) {}
 
 TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
+
+TextNode::TextNode(const TextNode& other)
+    : Node(other), Traits::Body(other), _fmt{other._fmt} {}
+
+std::unique_ptr<Node> TextNode::clone() const {
+	return this->cloneTextNode();
+}
+
+std::unique_ptr<TextNode> TextNode::cloneTextNode() const {
+	return std::make_unique<TextNode>(*this);
+}
 
 const std::string& TextNode::string() const {
 	return this->body();

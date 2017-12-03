@@ -81,6 +81,26 @@ Element::Element(ElementType t, int index, int length)
 Element::Element(ElementType t, const std::string title)
     : Node(NodeType::Element), Traits::Title(title), _elementType{t} {}
 
+// TODO: _ref does not repoint Element--and can't, if it's not in the same tree!
+Element::Element(const Element& other)
+    : Node(other)
+    , Traits::Attributes(other)
+    , Traits::Body(other)
+    , Traits::Title(other)
+    , Traits::Visibility(other)
+    , _elementType{other._elementType}
+    , _index{other._index}
+    , _length{other._length}
+    , _ref{other._ref} {}
+
+std::unique_ptr<Node> Element::clone() const {
+	return this->cloneElement();
+}
+
+std::unique_ptr<Element> Element::cloneElement() const {
+	return std::make_unique<Element>(*this);
+}
+
 ElementType Element::elementType() const {
 	return _elementType;
 }

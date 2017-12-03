@@ -7,6 +7,22 @@ Document::Document() : Node(NodeType::Document), _version{VersionType::Version88
 Document::Document(VersionType version, const std::string title)
     : Node(NodeType::Document), Traits::Title(title), _version{version} {}
 
+Document::Document(const Document& other)
+    : Node(other)
+    , Traits::Attributes(other)
+    , Traits::Title(other)
+    , Traits::Visibility(other)
+    , _version{other._version}
+    , _validChecksum{other._validChecksum} {}
+
+std::unique_ptr<Node> Document::clone() const {
+	return this->cloneDocument();
+}
+
+std::unique_ptr<Document> Document::cloneDocument() const {
+	return std::make_unique<Document>(*this);
+}
+
 void Document::version(VersionType v) {
 	_version = v;
 }

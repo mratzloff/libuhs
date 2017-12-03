@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-// There are two files with a bad checksum.
+// There are two files with bad checksums.
 //
 // The first is phantom.uhs. It was (inexplicably) modified after compilation
 // to pad the end with NUL characters to an even multiple of 1024 bytes. The
@@ -76,6 +76,14 @@ void CRC::result(std::vector<char>& out) {
 
 bool CRC::valid() {
 	return this->result() == this->checksum();
+}
+
+void CRC::reset() {
+	_pipe = nullptr;
+	std::fill(_buf, _buf + 2, 0);
+	_bufLen = 0;
+	_rem = 0x0000;
+	_finalized = false;
 }
 
 void CRC::createTable() {

@@ -884,7 +884,7 @@ bool Parser::parseInfoElement(Element* const e) {
 		}
 		s = t->value();
 
-		if (s.substr(0, 1) == Token::Notice) {
+		if (s.substr(0, 1) == Token::NoticePrefix) {
 			key = "notice";
 			val = s.substr(1);
 		} else {

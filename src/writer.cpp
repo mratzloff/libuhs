@@ -15,11 +15,77 @@ void Writer::reset() {
 	_err = nullptr;
 }
 
+TreeWriter::TreeWriter(std::ostream& out, const WriterOptions opt) : Writer(out, opt) {}
+
+bool TreeWriter::write(const Document& d) {
+	for (const auto& n : d) {
+		switch (n.nodeType()) {
+		case NodeType::Document: {
+			const auto& doc = static_cast<const Document&>(n);
+			this->draw(doc);
+			break;
+		}
+		case NodeType::Element: {
+			const auto& e = static_cast<const Element&>(n);
+			this->draw(e);
+			break;
+		}
+		default:
+			// Ignore
+			break;
+		}
+	}
+	return true;
+}
+
+void TreeWriter::draw(const Document& d) {
+	this->drawScaffold(d);
+	_out << "[" << d.nodeTypeString() << "] \"" << d.title() << "\"" << std::endl;
+}
+
+void TreeWriter::draw(const Element& e) {
+	this->drawScaffold(e);
+	_out << "[" << e.elementTypeString() << "] \"" << e.title() << "\"" << std::endl;
+}
+
+void TreeWriter::drawScaffold(const Node& n) {
+	const int depth = n.depth();
+
+	std::string s;
+	auto p = n.parent();
+	if (p == nullptr) {
+		return;
+	}
+
+	for (int i = depth; i > 0; --i) {
+		if (p == nullptr) {
+			break;
+		}
+		auto gp = p->parent();
+
+		if (gp != nullptr) {
+			if (p == gp->lastChild()) {
+				s = "    " + s;
+			} else {
+				s = "│   " + s;
+			}
+		}
+		p = gp;
+	}
+	_out << s;
+
+	if (&n == n.parent()->lastChild()) {
+		_out << "└───";
+	} else {
+		_out << "├───";
+	}
+}
+
 //------------------------------- JSONWriter --------------------------------//
 
 JSONWriter::JSONWriter(std::ostream& out, const WriterOptions opt) : Writer(out, opt) {}
 
-bool JSONWriter::write(Document& d) {
+bool JSONWriter::write(const Document& d) {
 	Json::Value root{Json::objectValue};
 
 	this->serialize(d, root);
@@ -57,18 +123,18 @@ Json::Value JSONWriter::serialize(const Document& d, Json::Value& root) const {
 
 		switch (n.nodeType()) {
 		case NodeType::Text: {
-			const auto& tn = dynamic_cast<const TextNode&>(n);
+			const auto& tn = static_cast<const TextNode&>(n);
 			(*parent)["children"].append(tn.body());
 			break;
 		}
 		case NodeType::Element: {
-			const auto& e = dynamic_cast<const Element&>(n);
+			const auto& e = static_cast<const Element&>(n);
 			this->serializeElement(e, obj);
 			(*parent)["children"].append(obj);
 			break;
 		}
 		case NodeType::Document: {
-			const auto& doc = dynamic_cast<const Document&>(n);
+			const auto& doc = static_cast<const Document&>(n);
 			if (nodeDepth > 0) {
 				this->serializeDocument(doc, obj);
 				(*parent)["children"].append(obj);
@@ -161,20 +227,16 @@ void JSONWriter::serializeMap(
 
 UHSWriter::UHSWriter(std::ostream& out, const WriterOptions opt) : Writer(out, opt) {}
 
-bool UHSWriter::write(Document& d) {
+bool UHSWriter::write(const Document& d) {
 	bool ok = false;
 	std::string buf;
 	buf.reserve(InitialBufferLen);
 
-	if (_opt.debug) {
-		std::cout << std::string(LineLen, '-') << std::endl;
-		this->debug(d);
-	}
-
 	if (_opt.force88aMode) {
 		ok = this->serialize88a(d, buf);
 	} else {
-		ok = this->serialize96a(d, buf);
+		_document = d.cloneDocument();
+		ok = this->serialize96a(buf);
 	}
 	if (!ok) {
 		return false;
@@ -189,10 +251,13 @@ bool UHSWriter::write(Document& d) {
 void UHSWriter::reset() {
 	Writer::reset();
 
+	_crc.reset();
+	_document.reset();
+	_key.clear();
+
 	while (!_data.empty()) {
 		_data.pop();
 	}
-	_key.clear();
 }
 
 bool UHSWriter::serialize88a(const Document& d, std::string& out) {
@@ -213,7 +278,7 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 
 		switch (n->nodeType()) {
 		case NodeType::Text: {
-			const auto& tn = dynamic_cast<const TextNode&>(*n);
+			const auto& tn = static_cast<const TextNode&>(*n);
 			buf += _codec.encode88a(tn.body()) + EOL;
 
 			index += numPrevChildren - 1; // Simplifies to index -= 1 after first pass
@@ -227,11 +292,11 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 		}
 
 		case NodeType::Element: {
-			const auto& e = dynamic_cast<const Element&>(*n);
+			const auto& e = static_cast<const Element&>(*n);
 
-			if (_opt.debug) {
-				this->debug(e);
-			}
+			// if (_opt.debug) {
+			// 	this->debug(e);
+			// }
 
 			const auto elementType = e.elementType();
 			std::string title;
@@ -302,26 +367,22 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 	return true;
 }
 
-bool UHSWriter::serialize96a(Document& d, std::string& out) {
+bool UHSWriter::serialize96a(std::string& out) {
 	bool ok = false;
 
-	if (d.version() == VersionType::Version88a) {
-		ok = this->convertTo96a(d);
+	if (_document->version() == VersionType::Version88a) {
+		ok = this->convertTo91a();
 		if (!ok) {
 			return false;
 		}
 	}
 
-	_key = _codec.createKey(d.title());
+	_key = _codec.createKey(_document->title());
 
-	for (Node* n = d.firstChild(); n != nullptr; n = n->nextSibling()) {
+	for (Node* n = _document->firstChild(); n != nullptr; n = n->nextSibling()) {
 		switch (n->nodeType()) {
 		case NodeType::Document: {
-			const auto& child = dynamic_cast<const Document&>(*n);
-			if (_opt.debug) {
-				this->debug(child);
-			}
-
+			const auto& child = static_cast<const Document&>(*n);
 			if (child.version() != VersionType::Version88a) {
 				continue;
 			}
@@ -338,9 +399,9 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 
 		case NodeType::Element: {
 			int len = 0;
-			const auto& child = dynamic_cast<const Element&>(*n);
+			const auto& child = static_cast<const Element&>(*n);
 
-			ok = this->serializeElement(d, child, out, len);
+			ok = this->serializeElement(child, out, len);
 			if (!ok) {
 				return false;
 			}
@@ -348,7 +409,7 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 		}
 
 		case NodeType::Text: {
-			const auto& tn = dynamic_cast<const TextNode&>(*n);
+			const auto& tn = static_cast<const TextNode&>(*n);
 			_err = std::make_unique<Error>(ErrorType::Value);
 			_err->messagef("unexpected text node: %s", tn.body().data());
 			_err->finalize();
@@ -373,15 +434,10 @@ bool UHSWriter::serialize96a(Document& d, std::string& out) {
 	return true;
 }
 
-bool UHSWriter::serializeElement(
-    const Document& d, const Element& e, std::string& out, int& len) {
+bool UHSWriter::serializeElement(const Element& e, std::string& out, int& len) {
 	bool ok = true;
 	std::string buf;
 	int childLen = 0;
-
-	if (_opt.debug) {
-		this->debug(e);
-	}
 
 	switch (e.elementType()) {
 	case ElementType::Unknown: /* No further processing required */
@@ -405,7 +461,7 @@ bool UHSWriter::serializeElement(
 	case ElementType::Incentive: /* TODO 3 */
 		break;
 	case ElementType::Info:
-		ok = this->serializeInfoElement(d, buf, childLen);
+		ok = this->serializeInfoElement(buf, childLen);
 		break;
 	case ElementType::Link: /* TODO 1 */
 		break;
@@ -417,7 +473,7 @@ bool UHSWriter::serializeElement(
 		ok = this->serializeDataElement(e, buf, childLen);
 		break;
 	case ElementType::Subject:
-		ok = this->serializeSubjectElement(d, e, buf, childLen);
+		ok = this->serializeSubjectElement(e, buf, childLen);
 		break;
 	case ElementType::Text:
 		ok = this->serializeTextElement(e, buf, childLen);
@@ -488,7 +544,7 @@ bool UHSWriter::serializeHintElement(const Element& e, std::string& out, int& le
 			_err->finalize();
 			return false;
 		}
-		const auto& tn = dynamic_cast<const TextNode&>(*n);
+		const auto& tn = static_cast<const TextNode&>(*n);
 		const auto& body = tn.body();
 		out += _codec.encode88a(Strings::wrap(body, EOL, LineLen, len)) + EOL;
 
@@ -498,7 +554,7 @@ bool UHSWriter::serializeHintElement(const Element& e, std::string& out, int& le
 	return true;
 }
 
-bool UHSWriter::serializeInfoElement(const Document& d, std::string& out, int& len) {
+bool UHSWriter::serializeInfoElement(std::string& out, int& len) {
 	out += InfoLengthMarker;
 	out += EOL;
 	++len;
@@ -515,23 +571,22 @@ bool UHSWriter::serializeInfoElement(const Document& d, std::string& out, int& l
 	out += "time=" + std::string(buf, timeLen) + EOL;
 	++len;
 
-	for (const auto& [k, v] : d.attrs()) {
+	for (const auto& [k, v] : _document->attrs()) {
 		if (k == "length" || k == "date" || k == "time" || k == "notice") {
 			continue;
 		}
 		out += Strings::wrap(v, EOL, LineLen, len, k + "=") + EOL;
 	}
 
-	const auto notice = d.attr("notice");
+	const auto notice = _document->attr("notice");
 	if (!notice.empty()) {
-		out += Strings::wrap(notice, EOL, LineLen, len, ">") + EOL;
+		out += Strings::wrap(notice, EOL, LineLen, len, Token::NoticePrefix) + EOL;
 	}
 
 	return true;
 }
 
-bool UHSWriter::serializeSubjectElement(
-    const Document& d, const Element& e, std::string& out, int& len) {
+bool UHSWriter::serializeSubjectElement(const Element& e, std::string& out, int& len) {
 	bool ok = false;
 
 	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
@@ -541,8 +596,8 @@ bool UHSWriter::serializeSubjectElement(
 			_err->finalize();
 			return false;
 		}
-		const auto& child = dynamic_cast<const Element&>(*n);
-		ok = this->serializeElement(d, child, out, len);
+		const auto& child = static_cast<const Element&>(*n);
+		ok = this->serializeElement(child, out, len);
 		if (!ok) {
 			return false;
 		}
@@ -657,22 +712,20 @@ std::string UHSWriter::createDataAddress(std::size_t bodyLen, std::string textFo
 	return out;
 }
 
-bool UHSWriter::convertTo96a(Document& d) {
-	auto info = std::make_unique<Element>(ElementType::Info);
-
+bool UHSWriter::convertTo91a() {
 	// Re-parent under subject node
 	auto container = std::make_unique<Element>(ElementType::Subject);
-	container->title(d.title());
-	for (Node* n = d.firstChild(); n != nullptr; n = d.firstChild()) {
+	container->title(_document->title());
+	for (Node* n = _document->firstChild(); n != nullptr; n = _document->firstChild()) {
 		if (n->nodeType() != NodeType::Element) {
 			_err = std::make_unique<Error>(ErrorType::Value);
 			_err->messagef("expected element, found %s node", n->nodeTypeString().data());
 			_err->finalize();
 			return false;
 		}
-		container->appendChild(d.removeChild(n));
+		container->appendChild(_document->removeChild(n));
 	}
-	d.appendChild(std::move(container));
+	_document->appendChild(std::move(container));
 
 	// Prepend minimal 88a header
 	auto header = std::make_unique<Document>(VersionType::Version88a, "-");
@@ -681,61 +734,16 @@ bool UHSWriter::convertTo96a(Document& d) {
 	hint->appendChild(std::make_unique<TextNode>(_codec.decode88a("-")));
 	subject->appendChild(std::move(hint));
 	header->appendChild(std::move(subject));
-	d.insertBefore(std::move(header), d.firstChild());
+	_document->insertBefore(std::move(header), _document->firstChild());
 
 	// Set version to 96a
-	d.version(VersionType::Version96a);
+	_document->version(VersionType::Version91a);
 	auto version = std::make_unique<Element>(ElementType::Version);
-	version->title("96a");
-	d.appendChild(std::move(version));
-
-	// Add info
-	d.appendChild(std::move(info));
+	version->title("91a");
+	version->body(_document->attr("notice"));
+	_document->appendChild(std::move(version));
 
 	return true;
-}
-
-void UHSWriter::debug(const Document& d) {
-	this->debugScaffold(d);
-	std::cout << "[" << d.nodeTypeString() << "] \"" << d.title() << "\"" << std::endl;
-}
-
-void UHSWriter::debug(const Element& e) {
-	this->debugScaffold(e);
-	std::cout << "[" << e.elementTypeString() << "] \"" << e.title() << "\"" << std::endl;
-}
-
-void UHSWriter::debugScaffold(const Node& n) {
-	const int depth = n.depth();
-
-	std::string s;
-	auto p = n.parent();
-	if (p == nullptr) {
-		return;
-	}
-
-	for (int i = depth; i > 0; --i) {
-		if (p == nullptr) {
-			break;
-		}
-		auto gp = p->parent();
-
-		if (gp != nullptr) {
-			if (p == gp->lastChild()) {
-				s = "    " + s;
-			} else {
-				s = "┃   " + s;
-			}
-		}
-		p = gp;
-	}
-	std::cout << s;
-
-	if (&n == n.parent()->lastChild()) {
-		std::cout << "┗━━━";
-	} else {
-		std::cout << "┣━━━";
-	}
 }
 
 } // namespace UHS
