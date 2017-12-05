@@ -159,7 +159,7 @@ void JSONWriter::serializeElement(const Element& e, Json::Value& obj) const {
 
 	if (e.isMedia() && !_opt.mediaDir.empty()) {
 		// TODO: Do something about how lazy this is
-		fname = _opt.mediaDir + "/" + std::to_string(e.index()) + "." + e.mediaExt();
+		fname = _opt.mediaDir + "/" + std::to_string(e.line()) + "." + e.mediaExt();
 		fout.open(fname, std::ios::out | std::ios::binary);
 		fout << e.body();
 		fout.close();
@@ -263,10 +263,10 @@ void UHSWriter::reset() {
 bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 	std::queue<const Node*> queue;
 	auto prevType = ElementType::Unknown;
-	int index = 1;
+	int line = 1;
 	int numPrevChildren = 0;
-	int firstHintTextIndex = 0;
-	int lastHintTextIndex = 0;
+	int firstHintTextLine = 0;
+	int lastHintTextLine = 0;
 
 	// Traverse tree, breadth first
 	queue.push(&d);
@@ -281,12 +281,12 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 			const auto& tn = static_cast<const TextNode&>(*n);
 			buf += _codec.encode88a(tn.body()) + EOL;
 
-			index += numPrevChildren - 1; // Simplifies to index -= 1 after first pass
+			line += numPrevChildren - 1; // Simplifies to line -= 1 after first pass
 
-			if (lastHintTextIndex == 0) {
-				lastHintTextIndex = index;
+			if (lastHintTextLine == 0) {
+				lastHintTextLine = line;
 			}
-			firstHintTextIndex = index; // Work backwards from last
+			firstHintTextLine = line; // Work backwards from last
 
 			break;
 		}
@@ -303,14 +303,14 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 
 			switch (elementType) {
 			case ElementType::Subject:
-				index += numPrevChildren * 2;
+				line += numPrevChildren * 2;
 				title = e.title();
 				break;
 			case ElementType::Hint:
 				if (prevType == ElementType::Subject) {
-					index += numPrevChildren * 2;
+					line += numPrevChildren * 2;
 				} else {
-					index += numPrevChildren;
+					line += numPrevChildren;
 				}
 				title = Strings::rtrim(e.title(), '?');
 				break;
@@ -323,7 +323,7 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 			}
 
 			buf += _codec.encode88a(title) + EOL;
-			buf += std::to_string(index) + EOL;
+			buf += std::to_string(line) + EOL;
 
 			prevType = elementType;
 
@@ -353,8 +353,8 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 	out += Token::Signature;
 	out += EOL;
 	out += d.title() + EOL;
-	out += std::to_string(firstHintTextIndex) + EOL;
-	out += std::to_string(lastHintTextIndex) + EOL;
+	out += std::to_string(firstHintTextLine) + EOL;
+	out += std::to_string(lastHintTextLine) + EOL;
 	out += buf;
 
 	const auto credit = d.attr("notice");

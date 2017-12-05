@@ -44,8 +44,8 @@ Parser::DataHandler::DataHandler(
     : offset{offset}, length{length}, func{func} {}
 
 Parser::LinkData::LinkData(
-    Element* fromElement, const int toIndex, const int line, const int column)
-    : fromElement{fromElement}, toIndex{toIndex}, line{line}, column{column} {}
+    Element* sourceElement, const int targetLine, const int line, const int column)
+    : sourceElement{sourceElement}, targetLine{targetLine}, line{line}, column{column} {}
 
 std::unique_ptr<Error> Parser::error() {
 	return std::move(_err);
@@ -97,7 +97,7 @@ void Parser::reset() {
 	_deferredLinks.clear();
 	_dataHandlers.clear();
 	_key.clear();
-	_indexOffset = 0;
+	_lineOffset = 0;
 	_isTitleSet = false;
 	_done = false;
 }
@@ -126,39 +126,39 @@ bool Parser::parse88a() {
 	}
 	_document->title(t->value());
 
-	// First hint index
-	t = this->expect(TokenType::Index);
+	// First hint line
+	t = this->expect(TokenType::Line);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorType::FileEnd) {
 			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
-	int firstHintTextIndex = Strings::toInt(t->value());
-	if (firstHintTextIndex < 0) {
+	int firstHintTextLine = Strings::toInt(t->value());
+	if (firstHintTextLine < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
-	firstHintTextIndex += HeaderLen;
+	firstHintTextLine += HeaderLen;
 
-	// Last hint index
-	t = this->expect(TokenType::Index);
+	// Last hint line
+	t = this->expect(TokenType::Line);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorType::FileEnd) {
 			this->unexpected(t->type(), t->line(), t->column());
 		}
 		return false;
 	}
-	int lastHintTextIndex = Strings::toInt(t->value());
-	if (lastHintTextIndex < 0) {
+	int lastHintTextLine = Strings::toInt(t->value());
+	if (lastHintTextLine < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
-	lastHintTextIndex += HeaderLen;
+	lastHintTextLine += HeaderLen;
 
 	// Subject and hint elements
 	NodeMap parents{{0, _document.get()}};
-	bool ok = this->parse88aElements(firstHintTextIndex, parents);
+	bool ok = this->parse88aElements(firstHintTextLine, parents);
 	if (!ok) {
 		if (_err->type() == ErrorType::FileEnd) {
 			this->unexpected(t->type(), t->line(), t->column());
@@ -167,7 +167,7 @@ bool Parser::parse88a() {
 	}
 
 	// Hint text nodes
-	ok = this->parse88aTextNodes(lastHintTextIndex, parents);
+	ok = this->parse88aTextNodes(lastHintTextLine, parents);
 	if (!ok) {
 		if (_err->type() == ErrorType::FileEnd) {
 			this->unexpected(t->type(), t->line(), t->column());
@@ -213,7 +213,7 @@ bool Parser::parse88a() {
 // from the original 88a precompile format. The official Windows reader
 // doesn't support it, and as far as I can tell no one bothered to ever check
 // it. It mostly works in the DOS reader, but it looks glitchy.
-bool Parser::parse88aElements(int firstHintTextIndex, NodeMap& parents) {
+bool Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
 	auto elementType = ElementType::Subject;
 
@@ -226,28 +226,28 @@ bool Parser::parse88aElements(int firstHintTextIndex, NodeMap& parents) {
 			return false;
 		}
 		std::string encodedTitle{t->value()};
-		int index = t->line();
+		int line = t->line();
 
-		t = this->expect(TokenType::Index);
+		t = this->expect(TokenType::Line);
 		if (_err != nullptr) {
 			if (_err->type() == ErrorType::FileEnd) {
 				this->unexpected(t->type(), t->line(), t->column());
 			}
 			return false;
 		}
-		int firstChildIndex = Strings::toInt(t->value());
-		if (firstChildIndex < 0) {
+		int firstChildLine = Strings::toInt(t->value());
+		if (firstChildLine < 0) {
 			this->expectedInt(t->value(), t->line(), t->column());
 			return false;
 		}
-		firstChildIndex += HeaderLen;
+		firstChildLine += HeaderLen;
 
-		if (firstChildIndex == firstHintTextIndex) {
+		if (firstChildLine == firstHintTextLine) {
 			elementType = ElementType::Hint;
 		}
 
 		Node* parent = nullptr;
-		for (int i = index; parent == nullptr; --i) {
+		for (int i = line; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
@@ -261,7 +261,7 @@ bool Parser::parse88aElements(int firstHintTextIndex, NodeMap& parents) {
 			return false;
 		}
 
-		auto e = std::make_unique<Element>(elementType, index);
+		auto e = std::make_unique<Element>(elementType, line);
 		auto ptr = e.get();
 		parent->appendChild(std::move(e));
 
@@ -274,17 +274,17 @@ bool Parser::parse88aElements(int firstHintTextIndex, NodeMap& parents) {
 		}
 		ptr->title(title);
 
-		if (index < firstHintTextIndex) {
-			parents[firstChildIndex] = ptr;
+		if (line < firstHintTextLine) {
+			parents[firstChildLine] = ptr;
 		}
-		if (index + 2 == firstHintTextIndex) {
+		if (line + 2 == firstHintTextLine) {
 			break; // Done parsing subjects
 		}
 	}
 	return true;
 }
 
-bool Parser::parse88aTextNodes(int lastHintTextIndex, NodeMap& parents) {
+bool Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
 
 	while (true) {
@@ -295,10 +295,10 @@ bool Parser::parse88aTextNodes(int lastHintTextIndex, NodeMap& parents) {
 			}
 			return false;
 		}
-		int index = t->line();
+		int line = t->line();
 
 		Node* parent = nullptr;
-		for (int i = index; parent == nullptr; --i) {
+		for (int i = line; parent == nullptr; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
@@ -315,7 +315,7 @@ bool Parser::parse88aTextNodes(int lastHintTextIndex, NodeMap& parents) {
 		n->body(_codec.decode88a(t->value()));
 		parent->appendChild(std::move(n));
 
-		if (index == lastHintTextIndex) {
+		if (line == lastHintTextLine) {
 			break; // Done parsing hints
 		}
 	}
@@ -370,8 +370,8 @@ void Parser::parseHeaderSep(std::unique_ptr<const Token> t) {
 		_done = true;
 		return;
 	}
-	// 96a element indexes don't include compatibility header
-	_indexOffset = t->line();
+	// 96a element line numbers don't include compatibility header
+	_lineOffset = t->line();
 }
 
 bool Parser::parse96a() {
@@ -433,16 +433,16 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion
 
 	// Create element
 	auto elementType = Element::elementType(ident);
-	int index = this->offsetIndex(t->line());
-	auto e = std::make_unique<Element>(elementType, index, len);
+	int line = this->offsetLine(t->line());
+	auto e = std::make_unique<Element>(elementType, line, len);
 	auto ptr = e.get();
 
 	// Store a reference for Link and Incentive elements
-	_elements[index] = ptr;
+	_elements[line] = ptr;
 
-	// Internal hyperpng links refer to region index instead of element index
+	// Internal hyperpng links refer to region line instead of element line
 	if (indexByRegion) {
-		_elements[index - 1] = ptr;
+		_elements[line - 1] = ptr;
 	}
 
 	ok = this->findParentAndAppend(std::move(e), std::move(t));
@@ -450,7 +450,7 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion
 		return nullptr;
 	}
 
-	ok = handleDeferredLink(index);
+	ok = handleDeferredLink(line);
 	if (!ok) {
 		return nullptr;
 	}
@@ -788,7 +788,7 @@ bool Parser::parseHyperpngElement(Element* const e) {
 
 // A bad instruction ("12") is found at the beginning or end of the incentive
 // list for four files, so we skip bad instructions of that form. Fourteen
-// other files have indexes pointing to nowhere, so we skip those, too.
+// other files have lines pointing to nowhere, so we skip those, too.
 bool Parser::parseIncentiveElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 	std::string s;
@@ -831,19 +831,19 @@ bool Parser::parseIncentiveElement(Element* const e) {
 			this->expected("incentive instruction", marker, t->line(), t->column());
 			return false;
 		}
-		auto indexStr = marker.substr(0, markerLen - 1);
+		auto lineStr = marker.substr(0, markerLen - 1);
 		auto instruction = marker.substr(markerLen - 1, 1);
 
-		int index = Strings::toInt(indexStr);
-		if (index < 0) {
-			this->expected("valid incentive index", indexStr, t->line(), t->column());
+		int line = Strings::toInt(lineStr);
+		if (line < 0) {
+			this->expected("valid incentive reference", lineStr, t->line(), t->column());
 			return false;
 		}
 
 		// Look up referenced element
 		Element* ref = nullptr;
 		try {
-			ref = _elements.at(index);
+			ref = _elements.at(line);
 		} catch (const std::out_of_range& ex) {
 			// Skip bad instructions
 			continue;
@@ -936,8 +936,8 @@ bool Parser::parseInfoElement(Element* const e) {
 bool Parser::parseLinkElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
-	// Ref index
-	t = this->expect(TokenType::Index);
+	// Ref line
+	t = this->expect(TokenType::Line);
 	if (_err != nullptr) {
 		if (_err->type() == ErrorType::FileEnd) {
 			this->unexpected(t->type(), t->line(), t->column());
@@ -945,14 +945,14 @@ bool Parser::parseLinkElement(Element* const e) {
 		return false;
 	}
 	auto body = t->value();
-	const int refIndex = Strings::toInt(body);
-	if (refIndex < 0) {
+	const int targetLine = Strings::toInt(body);
+	if (targetLine < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	e->body(body);
 
-	return this->linkOrDefer(e, refIndex, t->line(), t->column());
+	return this->linkOrDefer(e, targetLine, t->line(), t->column());
 }
 
 bool Parser::parseOverlayElement(Element* const e) {
@@ -1164,7 +1164,7 @@ bool Parser::findParentAndAppend(
 		return false;
 	}
 
-	int min = e->index();
+	int min = e->line();
 	int max = min + e->length();
 	auto parent = _parents.find(min, max);
 	_parents.add(*e, min, max);
@@ -1180,45 +1180,45 @@ bool Parser::findParentAndAppend(
 }
 
 bool Parser::linkOrDefer(
-    Element* fromElement, const int toIndex, const int line, const int column) {
-	if (fromElement == nullptr) {
+    Element* sourceElement, const int targetLine, const int line, const int column) {
+	if (sourceElement == nullptr) {
 		return false;
 	}
 
-	if (fromElement->index() > toIndex) {
-		return this->link(fromElement, toIndex, line, column);
+	if (sourceElement->line() > targetLine) {
+		return this->link(sourceElement, targetLine, line, column);
 	} else {
 		_deferredLinks.emplace(std::piecewise_construct,
-		    std::make_tuple(toIndex),
-		    std::make_tuple(fromElement, toIndex, line, column));
+		    std::make_tuple(targetLine),
+		    std::make_tuple(sourceElement, targetLine, line, column));
 	}
 	return true;
 }
 
 bool Parser::link(
-    Element* fromElement, const int toIndex, const int line, const int column) {
-	if (fromElement == nullptr) {
+    Element* sourceElement, const int targetLine, const int line, const int column) {
+	if (sourceElement == nullptr) {
 		return false;
 	}
 
 	Element* ref = nullptr;
 	try {
-		ref = _elements.at(toIndex);
+		ref = _elements.at(targetLine);
 	} catch (const std::out_of_range& ex) {
-		this->indexNotFound(toIndex, line, column);
+		this->lineNotFound(targetLine, line, column);
 		return false;
 	}
-	fromElement->ref(ref);
+	sourceElement->ref(ref);
 
 	return true;
 }
 
-bool Parser::handleDeferredLink(int index) {
-	if (_deferredLinks.count(index) == 0) {
+bool Parser::handleDeferredLink(int line) {
+	if (_deferredLinks.count(line) == 0) {
 		return true;
 	}
-	const auto& ld = _deferredLinks[index];
-	return this->link(ld.fromElement, ld.toIndex, ld.line, ld.column);
+	const auto& ld = _deferredLinks[line];
+	return this->link(ld.sourceElement, ld.targetLine, ld.line, ld.column);
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
@@ -1321,13 +1321,13 @@ bool Parser::isPunctuation(char c) {
 	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
 }
 
-int Parser::offsetIndex(int index) {
-	return index - _indexOffset;
+int Parser::offsetLine(int line) {
+	return line - _lineOffset;
 }
 
-void Parser::indexNotFound(int index, int line, int column) {
+void Parser::lineNotFound(int targetLine, int line, int column) {
 	_err = std::make_unique<Error>(ErrorType::Value);
-	_err->messagef("index not found: %d", index);
+	_err->messagef("line not found: %d", targetLine);
 	_err->finalize(line, column);
 }
 

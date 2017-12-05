@@ -75,8 +75,8 @@ const std::string Element::typeString(ElementType t) {
 	}
 }
 
-Element::Element(ElementType t, int index, int length)
-    : Node(NodeType::Element), _elementType{t}, _index{index}, _length{length} {}
+Element::Element(ElementType t, int line, int length)
+    : Node(NodeType::Element), _elementType{t}, _line{line}, _length{length} {}
 
 Element::Element(ElementType t, const std::string title)
     : Node(NodeType::Element), Traits::Title(title), _elementType{t} {}
@@ -89,7 +89,7 @@ Element::Element(const Element& other)
     , Traits::Title(other)
     , Traits::Visibility(other)
     , _elementType{other._elementType}
-    , _index{other._index}
+    , _line{other._line}
     , _length{other._length}
     , _ref{other._ref} {}
 
@@ -113,8 +113,8 @@ void Element::appendString(const std::string s) {
 	this->appendChild(std::make_unique<TextNode>(s));
 }
 
-int Element::index() const {
-	return _index;
+int Element::line() const {
+	return _line;
 }
 
 // Used only for bookkeeping while parsing

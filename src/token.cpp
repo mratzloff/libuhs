@@ -24,8 +24,8 @@ const std::string Token::typeString(TokenType t) {
 		return "HeaderSep";
 	case TokenType::Ident:
 		return "Ident";
-	case TokenType::Index:
-		return "Index";
+	case TokenType::Line:
+		return "Line";
 	case TokenType::Length:
 		return "Length";
 	case TokenType::NestedElementSep:
@@ -90,7 +90,7 @@ const std::string Token::string() const {
 		// Fall through
 	case TokenType::DataOffset:
 		// Fall through
-	case TokenType::Index:
+	case TokenType::Line:
 		// Fall through
 	case TokenType::Length:
 		// Fall through

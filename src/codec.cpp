@@ -63,8 +63,8 @@ const std::string Codec::createKey(std::string secret) const {
 }
 
 int Codec::keystream(
-    std::string key, std::size_t keyLen, std::size_t index, bool isTextElement) const {
-	const int intIndex = static_cast<int>(index); // Guarantee signedness
+    std::string key, std::size_t keyLen, std::size_t line, bool isTextElement) const {
+	const int intIndex = static_cast<int>(line); // Guarantee signedness
 	const int offset = intIndex % keyLen;
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);
 }

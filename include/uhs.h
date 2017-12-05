@@ -79,7 +79,7 @@ enum class TokenType {
 	FileEnd,
 	HeaderSep,
 	Ident,
-	Index,
+	Line,
 	Length,
 	NestedElementSep,
 	NestedTextSep,
@@ -344,8 +344,8 @@ private:
 	std::size_t _offset = 0;
 	bool _beforeHeaderSep = true;
 	bool _binaryMode = false;
-	int _expectedIndexLine = 0;
-	int _expectedStringLine = 0;
+	int _expectedLineTokenLine = 0;
+	int _expectedStringTokenLine = 0;
 	TokenChannel _out;
 
 	void tokenizeLine();
@@ -462,7 +462,7 @@ public:
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
-	Element(ElementType t, int index = 0, int length = 0);
+	Element(ElementType t, int line = 0, int length = 0);
 	Element(ElementType t, const std::string title);
 	Element(const Element& other);
 	std::unique_ptr<Node> clone() const override;
@@ -470,7 +470,7 @@ public:
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
-	int index() const;
+	int line() const;
 	int length() const;
 	void length(int len); // Used by UHSWriter
 	const Element* ref() const;
@@ -480,7 +480,7 @@ public:
 
 private:
 	ElementType _elementType;
-	int _index = 0;
+	int _line = 0;
 	int _length = 0;
 	const Element* _ref = nullptr;
 };
@@ -523,7 +523,7 @@ private:
 	static constexpr const char* KeySeed = "key";
 
 	int keystream(
-	    std::string key, std::size_t keyLen, std::size_t index, bool isText) const;
+	    std::string key, std::size_t keyLen, std::size_t line, bool isText) const;
 	bool isPrintable(int c) const;
 	char toPrintable(int c) const;
 };
@@ -562,14 +562,14 @@ private:
 	};
 
 	struct LinkData {
-		Element* fromElement = nullptr;
-		int toIndex;
+		Element* sourceElement = nullptr;
+		int targetLine;
 		int line;
 		int column;
 
 		LinkData() = default;
-		LinkData(
-		    Element* fromElement, const int toIndex, const int line, const int column);
+		LinkData(Element* sourceElement, const int targetLine, const int line,
+		    const int column);
 	};
 
 	struct DataHandler {
@@ -595,14 +595,14 @@ private:
 	std::map<int, LinkData> _deferredLinks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
-	int _indexOffset = 0;
+	int _lineOffset = 0;
 	bool _isTitleSet = false;
 	bool _done = false;
 
 	// 88a
 	bool parse88a();
-	bool parse88aElements(int firstHintTextIndex, NodeMap& parents);
-	bool parse88aTextNodes(int lastHintTextIndex, NodeMap& parents);
+	bool parse88aElements(int firstHintTextLine, NodeMap& parents);
+	bool parse88aTextNodes(int lastHintTextLine, NodeMap& parents);
 	bool parse88aCredits(std::unique_ptr<const Token> t);
 	void parseHeaderSep(std::unique_ptr<const Token> t);
 
@@ -625,21 +625,21 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
-	bool linkOrDefer(
-	    Element* const fromElement, const int toIndex, const int line, const int column);
-	bool link(
-	    Element* const fromElement, const int toIndex, const int line, const int column);
-	bool handleDeferredLink(int index);
+	bool linkOrDefer(Element* const sourceElement, const int targetLine, const int line,
+	    const int column);
+	bool link(Element* const sourceElement, const int targetLine, const int line,
+	    const int column);
+	bool handleDeferredLink(int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
 	void checkCRC();
 	bool parseDate(const std::string& s, std::tm& tm) const;
 	bool parseTime(const std::string& s, std::tm& tm) const;
 	bool isPunctuation(char c);
-	int offsetIndex(int index);
+	int offsetLine(int line);
 
 	// Error helpers
-	void indexNotFound(int index, int line, int column);
+	void lineNotFound(int targetLine, int line, int column);
 	void expected(std::string expected, std::string found, int line, int column);
 	void expectedInt(std::string found, int line, int column);
 	void unexpected(TokenType type, int line, int column);

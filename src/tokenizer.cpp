@@ -105,17 +105,17 @@ void Tokenizer::tokenizeLine() {
 		return;
 	}
 
-	// All numbers are indexes in 88a, and link elements contain an index
-	if (Strings::isInt(s) && (_beforeHeaderSep || _line == _expectedIndexLine)) {
-		_out.send({TokenType::Index, _offset, _line, 0, Strings::ltrim(s, '0')});
-		_expectedIndexLine = -1;
+	// All numbers are line numbers in 88a, and link elements contain a line number
+	if (Strings::isInt(s) && (_beforeHeaderSep || _line == _expectedLineTokenLine)) {
+		_out.send({TokenType::Line, _offset, _line, 0, Strings::ltrim(s, '0')});
+		_expectedLineTokenLine = -1;
 		return;
 	}
 
 	// All descriptors are immediately followed by a string title
-	if (_line == _expectedStringLine) {
+	if (_line == _expectedStringTokenLine) {
 		_out.send({TokenType::String, _offset, _line, 0, s});
-		_expectedStringLine = -1;
+		_expectedStringTokenLine = -1;
 		return;
 	}
 
@@ -139,9 +139,9 @@ void Tokenizer::tokenizeLine() {
 		if (std::regex_match(s, matches, Regex::Descriptor)) {
 			ElementType elementType = this->tokenizeDescriptor(matches);
 			if (elementType == ElementType::Link) {
-				_expectedIndexLine = _line + 2;
+				_expectedLineTokenLine = _line + 2;
 			}
-			_expectedStringLine = _line + 1;
+			_expectedStringTokenLine = _line + 1;
 		} else if (std::regex_match(s, matches, Regex::DataAddress)) {
 			this->tokenizeDataAddress(matches);
 		} else if (std::regex_match(s, matches, Regex::HyperpngRegion)) {
