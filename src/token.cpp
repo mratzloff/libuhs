@@ -24,10 +24,10 @@ const std::string Token::typeString(TokenType t) {
 		return "HeaderSep";
 	case TokenType::Ident:
 		return "Ident";
-	case TokenType::Line:
-		return "Line";
 	case TokenType::Length:
 		return "Length";
+	case TokenType::Line:
+		return "Line";
 	case TokenType::NestedElementSep:
 		return "NestedElementSep";
 	case TokenType::NestedTextSep:
@@ -77,27 +77,27 @@ const std::string Token::string() const {
 
 	switch (_type) {
 	case TokenType::CRC:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::Data:
 		buf += this->formatByteValue();
 		break;
 	case TokenType::Ident:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::String:
 		buf += this->formatStringValue();
 		break;
 	case TokenType::DataLength:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::DataOffset:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::Line:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::Length:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::CoordX:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::CoordY:
-		// Fall through
+		[[fallthrough]];
 	case TokenType::TextFormat:
 		buf += this->formatIntValue();
 		break;

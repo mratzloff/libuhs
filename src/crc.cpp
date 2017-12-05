@@ -22,7 +22,7 @@ void CRC::upstream(Pipe& p) {
 
 void CRC::calculate(const char* buf, std::streamsize n) {
 	for (int i = 0; i < n; ++i) {
-		uint8_t byte = this->reflectByte(buf[i] & 0xFF);
+		auto byte = this->reflectByte(buf[i] & 0xFF);
 		_rem = (_rem ^ (byte << 8)) & CastMask;
 		int pos = (_rem >> 8) & 0xFF;
 		_rem = (_rem << 8) & CastMask;

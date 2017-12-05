@@ -190,7 +190,7 @@ bool Parser::parse88a() {
 
 	switch (t->type()) {
 	case TokenType::CreditSep: // This is informal but common
-	                           // Fall through
+		[[fallthrough]];
 	case TokenType::String:
 		ok = this->parse88aCredits(std::move(t));
 		if (!ok) {
@@ -542,7 +542,7 @@ bool Parser::parseCommentElement(Element* const e) {
 			continuation = true;
 			break;
 		case TokenType::NestedTextSep:
-			// Fall through
+			[[fallthrough]];
 		case TokenType::NestedParagraphSep:
 			s += "\n\n";
 			continuation = false;
