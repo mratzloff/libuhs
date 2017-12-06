@@ -261,7 +261,7 @@ bool Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			return false;
 		}
 
-		auto e = Element::create(elementType);
+		auto e = Element::create(elementType, std::to_string(line));
 		e->line(line);
 		auto ptr = e.get();
 		parent->appendChild(std::move(e));
@@ -417,7 +417,7 @@ bool Parser::parse96a() {
 }
 
 // Elements are automatically appended to their parents
-Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion) {
+Element* Parser::parseElement(std::unique_ptr<const Token> t) {
 	bool ok = false;
 
 	// Length
@@ -440,18 +440,13 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion
 	// Create element
 	auto elementType = Element::elementType(ident);
 	int line = this->offsetLine(t->line());
-	auto e = Element::create(elementType);
+	auto e = Element::create(elementType, std::to_string(line));
 	e->line(line);
 	e->length(len);
 	auto ptr = e.get();
 
 	// Store a reference for link and incentive elements
 	_elements[line] = ptr;
-
-	// Internal hyperpng links refer to region line instead of element line
-	if (indexByRegion) {
-		_elements[line - 1] = ptr;
-	}
 
 	ok = this->findParentAndAppend(std::move(e), std::move(t));
 	if (!ok) {
@@ -778,7 +773,7 @@ bool Parser::parseHyperpngElement(Element* const e) {
 			}
 			return false;
 		}
-		const auto child = this->parseElement(std::move(t), true);
+		const auto child = this->parseElement(std::move(t));
 		if (child == nullptr) {
 			return false;
 		}
@@ -836,34 +831,28 @@ bool Parser::parseIncentiveElement(Element* const e) {
 
 		// Split instruction (e.g., "3Z")
 		if (markerLen < 2) {
-			this->expected("incentive instruction", marker, t->line(), t->column());
-			return false;
+			continue; // Skip bad instructions
 		}
 		auto lineStr = marker.substr(0, markerLen - 1);
 		auto instruction = marker.substr(markerLen - 1, 1);
 
-		int line = Strings::toInt(lineStr);
-		if (line < 0) {
-			this->expected("valid incentive reference", lineStr, t->line(), t->column());
-			return false;
+		int targetLine = Strings::toInt(lineStr);
+		if (targetLine < 0) {
+			continue; // Skip bad instructions
 		}
 
-		// Look up referenced element
-		Element* ref = nullptr;
-		try {
-			ref = _elements.at(line);
-		} catch (const std::out_of_range& ex) {
-			// Skip bad instructions
-			continue;
+		auto target = this->findTarget(targetLine);
+		if (target == nullptr) {
+			continue; // Skip bad instructions
 		}
 
 		// Set visibility
 		if (instruction == Token::Registered) {
-			ref->visibility(VisibilityType::Registered);
+			target->visibility(VisibilityType::Registered);
 		} else if (instruction == Token::Unregistered) {
-			ref->visibility(VisibilityType::Unregistered);
+			target->visibility(VisibilityType::Unregistered);
 		} else {
-			// Skip bad instructions
+			continue; // Skip bad instructions
 		}
 	}
 
@@ -953,7 +942,7 @@ bool Parser::parseLinkElement(Element* const e) {
 		return false;
 	}
 	auto body = t->value();
-	const int targetLine = Strings::toInt(body);
+	int targetLine = Strings::toInt(body);
 	if (targetLine < 0) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
@@ -1187,8 +1176,33 @@ bool Parser::findParentAndAppend(
 	return true;
 }
 
+// A link pointing to the child of a hyperpng element is a special case. Instead of
+// referencing the descriptor line, it points to the region, even if it doesn't
+// share a parent hyperpng. A link outside of a hyperpng pointing to a child of
+// a hyperpng references the descriptor line, as usual.
+Element* Parser::findTarget(int line) {
+	Element* target = nullptr;
+
+	try {
+		target = _elements.at(line);
+	} catch (const std::out_of_range& ex) {
+		try {
+			target = _elements.at(line + 1);
+			if (const auto parent = target->parent(); parent != nullptr) {
+				const auto& parentElement = static_cast<Element&>(*parent);
+				if (parentElement.elementType() != ElementType::Hyperpng) {
+					throw ex; // We found an element, but shouldn't have
+				}
+			}
+		} catch (const std::out_of_range& ex) {
+			return nullptr;
+		}
+	}
+	return target;
+}
+
 bool Parser::linkOrDefer(
-    Element* sourceElement, const int targetLine, const int line, const int column) {
+    Element* sourceElement, int targetLine, const int line, const int column) {
 	if (sourceElement == nullptr) {
 		return false;
 	}
@@ -1204,19 +1218,17 @@ bool Parser::linkOrDefer(
 }
 
 bool Parser::link(
-    Element* sourceElement, const int targetLine, const int line, const int column) {
+    Element* sourceElement, int targetLine, const int line, const int column) {
 	if (sourceElement == nullptr) {
 		return false;
 	}
 
-	Element* ref = nullptr;
-	try {
-		ref = _elements.at(targetLine);
-	} catch (const std::out_of_range& ex) {
+	auto target = this->findTarget(targetLine);
+	if (target == nullptr) {
 		this->lineNotFound(targetLine, line, column);
 		return false;
 	}
-	sourceElement->ref(ref);
+	sourceElement->target(target);
 
 	return true;
 }

@@ -442,7 +442,6 @@ class TextNode
 public:
 	static std::unique_ptr<TextNode> create(const std::string body);
 
-	TextNode();
 	explicit TextNode(const std::string body);
 	TextNode(const TextNode& other);
 	std::unique_ptr<TextNode> clone() const;
@@ -467,30 +466,32 @@ class Element
 public:
 	using Node::appendChild;
 
-	static std::unique_ptr<Element> create(ElementType type);
+	static std::unique_ptr<Element> create(ElementType type, const std::string id = "");
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
-	Element(ElementType type);
+	Element(ElementType type, const std::string id = "");
 	Element(const Element& other);
 	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendChild(const std::string s);
+	const std::string& id() const;
 	int line() const;
 	void line(int line);
 	int length() const;
 	void length(int len); // Used by UHSWriter
-	const Element* ref() const;
-	void ref(const Element* ref);
+	const Element* target() const;
+	void target(const Element* target);
 	bool isMedia() const;
 	const std::string mediaExt() const;
 
 private:
 	ElementType _elementType;
+	const std::string _id;
 	int _line = 0;
 	int _length = 0;
-	const Element* _ref = nullptr;
+	const Element* _target = nullptr;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -582,8 +583,8 @@ private:
 		int column;
 
 		LinkData() = default;
-		LinkData(Element* sourceElement, const int targetLine, const int line,
-		    const int column);
+		LinkData(
+		    Element* sourceElement, int targetLine, const int line, const int column);
 	};
 
 	struct DataHandler {
@@ -622,7 +623,7 @@ private:
 
 	// 96a
 	bool parse96a();
-	Element* parseElement(std::unique_ptr<const Token> t, bool indexByRegion = false);
+	Element* parseElement(std::unique_ptr<const Token> t);
 	bool parseCommentElement(Element* const e);
 	bool parseDataElement(Element* const e);
 	bool parseHintElement(Element* const e);
@@ -639,10 +640,11 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
-	bool linkOrDefer(Element* const sourceElement, const int targetLine, const int line,
-	    const int column);
-	bool link(Element* const sourceElement, const int targetLine, const int line,
-	    const int column);
+	Element* findTarget(int line);
+	bool linkOrDefer(
+	    Element* const sourceElement, int targetLine, const int line, const int column);
+	bool link(
+	    Element* const sourceElement, int targetLine, const int line, const int column);
 	bool handleDeferredLink(int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);

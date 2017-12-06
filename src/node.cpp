@@ -268,8 +268,6 @@ std::unique_ptr<TextNode> TextNode::create(const std::string body) {
 	return std::make_unique<TextNode>(body);
 }
 
-TextNode::TextNode() : Node(NodeType::Text) {}
-
 TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 
 TextNode::TextNode(const TextNode& other)

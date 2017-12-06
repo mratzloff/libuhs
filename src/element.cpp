@@ -2,8 +2,8 @@
 
 namespace UHS {
 
-std::unique_ptr<Element> Element::create(ElementType type) {
-	return std::make_unique<Element>(type);
+std::unique_ptr<Element> Element::create(ElementType type, const std::string id) {
+	return std::make_unique<Element>(type, id);
 }
 
 ElementType Element::elementType(const std::string& typeString) {
@@ -79,9 +79,10 @@ const std::string Element::typeString(ElementType t) {
 	}
 }
 
-Element::Element(ElementType type) : Node(NodeType::Element), _elementType{type} {}
+Element::Element(ElementType type, const std::string id)
+    : Node(NodeType::Element), _elementType{type}, _id{id} {}
 
-// TODO: _ref does not repoint Element--and can't, if it's not in the same tree!
+// TODO: _target does not repoint Element--and can't, if it's not in the same tree!
 Element::Element(const Element& other)
     : Node(other)
     , Traits::Attributes(other)
@@ -89,9 +90,10 @@ Element::Element(const Element& other)
     , Traits::Title(other)
     , Traits::Visibility(other)
     , _elementType{other._elementType}
+    , _id{other._id}
     , _line{other._line}
     , _length{other._length}
-    , _ref{other._ref} {}
+    , _target{other._target} {}
 
 // Copies and returns a detached element with its children.
 std::unique_ptr<Element> Element::clone() const {
@@ -129,12 +131,12 @@ void Element::length(const int length) {
 	_length = length;
 }
 
-const Element* Element::ref() const {
-	return _ref;
+const Element* Element::target() const {
+	return _target;
 }
 
-void Element::ref(const Element* ref) {
-	_ref = ref;
+void Element::target(const Element* target) {
+	_target = target;
 }
 
 bool Element::isMedia() const {
