@@ -235,7 +235,7 @@ bool UHSWriter::write(const Document& d) {
 	if (_opt.force88aMode) {
 		ok = this->serialize88a(d, buf);
 	} else {
-		_document = d.cloneDocument();
+		_document = d.clone();
 		ok = this->serialize96a(buf);
 	}
 	if (!ok) {

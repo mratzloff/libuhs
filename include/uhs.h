@@ -259,6 +259,8 @@ private:
 class Tokenizer;
 
 class Token {
+	friend class Tokenizer;
+
 public:
 	static constexpr const char* AsciiEncStart = "#a+";
 	static constexpr const char* AsciiEncEnd = "#a-";
@@ -296,8 +298,6 @@ public:
 	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 
 private:
-	friend class Tokenizer;
-
 	const TokenType _type;
 	int _line = 0;
 	std::size_t _column = 0;
@@ -373,9 +373,9 @@ public:
 	explicit Node(NodeType t);
 	Node(const Node& other);
 	virtual ~Node() = default;
-	virtual std::unique_ptr<Node> clone() const;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
+	void detachParent();
 	std::unique_ptr<Node> removeChild(Node* n);
 	void appendChild(std::unique_ptr<Node> n);
 	void insertBefore(std::unique_ptr<Node> n, Node* ref);
@@ -396,6 +396,9 @@ public:
 	const_iterator end() const;
 	const_iterator cbegin() const;
 	const_iterator cend() const;
+
+protected:
+	virtual std::unique_ptr<Node> cloneInternal() const;
 
 private:
 	NodeType _nodeType;
@@ -440,8 +443,7 @@ public:
 	TextNode();
 	explicit TextNode(const std::string body);
 	TextNode(const TextNode& other);
-	std::unique_ptr<Node> clone() const override;
-	std::unique_ptr<TextNode> cloneTextNode() const;
+	std::unique_ptr<TextNode> clone() const;
 	const std::string& string() const;
 	void addFormat(Format f);
 	void removeFormat(Format f);
@@ -450,6 +452,8 @@ public:
 
 private:
 	Format _fmt;
+
+	std::unique_ptr<Node> cloneInternal() const override;
 };
 
 class Element
@@ -465,8 +469,7 @@ public:
 	Element(ElementType t, int line = 0, int length = 0);
 	Element(ElementType t, const std::string title);
 	Element(const Element& other);
-	std::unique_ptr<Node> clone() const override;
-	std::unique_ptr<Element> cloneElement() const;
+	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendString(const std::string s);
@@ -483,6 +486,8 @@ private:
 	int _line = 0;
 	int _length = 0;
 	const Element* _ref = nullptr;
+
+	std::unique_ptr<Node> cloneInternal() const override;
 };
 
 class Document
@@ -494,8 +499,7 @@ public:
 	Document();
 	Document(VersionType version, const std::string title = "");
 	Document(const Document& other);
-	std::unique_ptr<Node> clone() const override;
-	std::unique_ptr<Document> cloneDocument() const;
+	std::unique_ptr<Document> clone() const;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
@@ -505,6 +509,8 @@ public:
 private:
 	VersionType _version;
 	bool _validChecksum = false;
+
+	std::unique_ptr<Node> cloneInternal() const override;
 };
 
 class Codec {

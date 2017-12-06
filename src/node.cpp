@@ -27,12 +27,8 @@ Node::Node(NodeType t) : _nodeType{t} {}
 
 Node::Node(const Node& other) : _nodeType{other._nodeType}, _parent{other._parent} {
 	for (Node* n = other.firstChild(); n != nullptr; n = n->nextSibling()) {
-		this->appendChild(n->clone());
+		this->appendChild(n->cloneInternal());
 	}
-}
-
-std::unique_ptr<Node> Node::clone() const {
-	return std::make_unique<Node>(*this);
 }
 
 NodeType Node::nodeType() const {
@@ -41,6 +37,10 @@ NodeType Node::nodeType() const {
 
 const std::string Node::nodeTypeString() const {
 	return Node::typeString(_nodeType);
+}
+
+void Node::detachParent() {
+	_parent = nullptr;
 }
 
 std::unique_ptr<Node> Node::removeChild(Node* n) {
@@ -193,6 +193,10 @@ Node::const_iterator Node::cend() const {
 	return Node::end();
 }
 
+std::unique_ptr<Node> Node::cloneInternal() const {
+	return std::make_unique<Node>(*this);
+}
+
 //------------------------------ NodeIterator -------------------------------//
 
 template<typename T>
@@ -267,12 +271,11 @@ TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 TextNode::TextNode(const TextNode& other)
     : Node(other), Traits::Body(other), _fmt{other._fmt} {}
 
-std::unique_ptr<Node> TextNode::clone() const {
-	return this->cloneTextNode();
-}
-
-std::unique_ptr<TextNode> TextNode::cloneTextNode() const {
-	return std::make_unique<TextNode>(*this);
+// Copies and returns a detached text node.
+std::unique_ptr<TextNode> TextNode::clone() const {
+	auto textNode = std::make_unique<TextNode>(*this);
+	textNode->detachParent();
+	return textNode;
 }
 
 const std::string& TextNode::string() const {
@@ -293,6 +296,10 @@ bool TextNode::hasFormat(Format f) const {
 
 Format TextNode::format() const {
 	return _fmt;
+}
+
+std::unique_ptr<Node> TextNode::cloneInternal() const {
+	return this->clone();
 }
 
 } // namespace UHS

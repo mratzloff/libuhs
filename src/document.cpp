@@ -15,12 +15,11 @@ Document::Document(const Document& other)
     , _version{other._version}
     , _validChecksum{other._validChecksum} {}
 
-std::unique_ptr<Node> Document::clone() const {
-	return this->cloneDocument();
-}
-
-std::unique_ptr<Document> Document::cloneDocument() const {
-	return std::make_unique<Document>(*this);
+// Copies and returns a detached document with its children.
+std::unique_ptr<Document> Document::clone() const {
+	auto document = std::make_unique<Document>(*this);
+	document->detachParent();
+	return document;
 }
 
 void Document::version(VersionType v) {
@@ -50,6 +49,10 @@ void Document::validChecksum(bool value) {
 
 bool Document::validChecksum() const {
 	return _validChecksum;
+}
+
+std::unique_ptr<Node> Document::cloneInternal() const {
+	return this->clone();
 }
 
 } // namespace UHS

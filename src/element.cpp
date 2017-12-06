@@ -93,12 +93,11 @@ Element::Element(const Element& other)
     , _length{other._length}
     , _ref{other._ref} {}
 
-std::unique_ptr<Node> Element::clone() const {
-	return this->cloneElement();
-}
-
-std::unique_ptr<Element> Element::cloneElement() const {
-	return std::make_unique<Element>(*this);
+// Copies and returns a detached element with its children.
+std::unique_ptr<Element> Element::clone() const {
+	auto element = std::make_unique<Element>(*this);
+	element->detachParent();
+	return element;
 }
 
 ElementType Element::elementType() const {
@@ -149,6 +148,10 @@ const std::string Element::mediaExt() const {
 	default:
 		return "";
 	}
+}
+
+std::unique_ptr<Node> Element::cloneInternal() const {
+	return this->clone();
 }
 
 } // namespace UHS
