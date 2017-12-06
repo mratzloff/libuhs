@@ -61,7 +61,7 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 	std::thread thread{[&] { _pipe->read(); }};
 
 	// Meanwhile, build out document by parsing emitted tokens in parallel
-	_document = std::make_unique<Document>(VersionType::Version88a);
+	_document = Document::create(VersionType::Version88a);
 	bool ok = this->parse88a();
 	if (!ok || _done) {
 		goto exit;
@@ -71,7 +71,7 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 		// Set 88a header as first (hidden) child of 96a document
 		_document->visibility(VisibilityType::None);
 
-		auto d = std::make_unique<Document>(VersionType::Version96a);
+		auto d = Document::create(VersionType::Version96a);
 		_document.swap(d);
 		_document->appendChild(std::move(d));
 
@@ -261,7 +261,8 @@ bool Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			return false;
 		}
 
-		auto e = std::make_unique<Element>(elementType, line);
+		auto e = Element::create(elementType);
+		e->line(line);
 		auto ptr = e.get();
 		parent->appendChild(std::move(e));
 
@@ -305,15 +306,20 @@ bool Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 			}
 		}
 		if (parent == nullptr) {
-			_err =
-			    std::make_unique<Error>(ErrorType::Value, "could not find parent node");
+			_err = std::make_unique<Error>(ErrorType::Value);
+			_err->message("could not find parent node");
+			_err->finalize(t->line(), t->column());
+			return false;
+		}
+		if (parent->nodeType() != NodeType::Element) {
+			_err = std::make_unique<Error>(ErrorType::Value);
+			_err->messagef("unexpected parent type: %s", parent->nodeType());
 			_err->finalize(t->line(), t->column());
 			return false;
 		}
 
-		auto n = std::make_unique<TextNode>();
-		n->body(_codec.decode88a(t->value()));
-		parent->appendChild(std::move(n));
+		auto& element = static_cast<Element&>(*parent);
+		element.appendChild(_codec.decode88a(t->value()));
 
 		if (line == lastHintTextLine) {
 			break; // Done parsing hints
@@ -434,10 +440,12 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t, bool indexByRegion
 	// Create element
 	auto elementType = Element::elementType(ident);
 	int line = this->offsetLine(t->line());
-	auto e = std::make_unique<Element>(elementType, line, len);
+	auto e = Element::create(elementType);
+	e->line(line);
+	e->length(len);
 	auto ptr = e.get();
 
-	// Store a reference for Link and Incentive elements
+	// Store a reference for link and incentive elements
 	_elements[line] = ptr;
 
 	// Internal hyperpng links refer to region line instead of element line
@@ -640,7 +648,7 @@ bool Parser::parseHintElement(Element* const e) {
 			break;
 		case TokenType::NestedTextSep:
 			if (!s.empty()) {
-				e->appendString(s);
+				e->appendChild(s);
 				s.clear();
 			}
 			continuation = false;
@@ -657,7 +665,7 @@ bool Parser::parseHintElement(Element* const e) {
 
 			// Append current text node
 			if (!s.empty()) {
-				e->appendString(s);
+				e->appendChild(s);
 				s.clear();
 			}
 			continuation = false;
@@ -687,7 +695,7 @@ bool Parser::parseHintElement(Element* const e) {
 
 	// Append current text node
 	if (!s.empty()) {
-		e->appendString(s);
+		e->appendChild(s);
 	}
 
 	return true;

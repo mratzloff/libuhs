@@ -440,6 +440,8 @@ class TextNode
     : public Node
     , public Traits::Body {
 public:
+	static std::unique_ptr<TextNode> create(const std::string body);
+
 	TextNode();
 	explicit TextNode(const std::string body);
 	TextNode(const TextNode& other);
@@ -463,17 +465,20 @@ class Element
     , public Traits::Title
     , public Traits::Visibility {
 public:
+	using Node::appendChild;
+
+	static std::unique_ptr<Element> create(ElementType type);
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
-	Element(ElementType t, int line = 0, int length = 0);
-	Element(ElementType t, const std::string title);
+	Element(ElementType type);
 	Element(const Element& other);
 	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
-	void appendString(const std::string s);
+	void appendChild(const std::string s);
 	int line() const;
+	void line(int line);
 	int length() const;
 	void length(int len); // Used by UHSWriter
 	const Element* ref() const;
@@ -496,10 +501,13 @@ class Document
     , public Traits::Title
     , public Traits::Visibility {
 public:
+	static std::unique_ptr<Document> create(VersionType version);
+
 	Document();
 	Document(VersionType version, const std::string title = "");
 	Document(const Document& other);
 	std::unique_ptr<Document> clone() const;
+	Element* find(const int id) const;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;

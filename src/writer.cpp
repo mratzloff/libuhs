@@ -714,7 +714,7 @@ std::string UHSWriter::createDataAddress(std::size_t bodyLen, std::string textFo
 
 bool UHSWriter::convertTo91a() {
 	// Re-parent under subject node
-	auto container = std::make_unique<Element>(ElementType::Subject);
+	auto container = Element::create(ElementType::Subject);
 	container->title(_document->title());
 	for (Node* n = _document->firstChild(); n != nullptr; n = _document->firstChild()) {
 		if (n->nodeType() != NodeType::Element) {
@@ -728,17 +728,20 @@ bool UHSWriter::convertTo91a() {
 	_document->appendChild(std::move(container));
 
 	// Prepend minimal 88a header
-	auto header = std::make_unique<Document>(VersionType::Version88a, "-");
-	auto subject = std::make_unique<Element>(ElementType::Subject, _codec.decode88a("-"));
-	auto hint = std::make_unique<UHS::Element>(ElementType::Hint, _codec.decode88a("-"));
-	hint->appendChild(std::make_unique<TextNode>(_codec.decode88a("-")));
+	auto header = Document::create(VersionType::Version88a);
+	header->title("-");
+	auto subject = Element::create(ElementType::Subject);
+	subject->title(_codec.decode88a("-"));
+	auto hint = Element::create(ElementType::Hint);
+	hint->title(_codec.decode88a("-"));
+	hint->appendChild(_codec.decode88a("-"));
 	subject->appendChild(std::move(hint));
 	header->appendChild(std::move(subject));
 	_document->insertBefore(std::move(header), _document->firstChild());
 
 	// Set version to 96a
 	_document->version(VersionType::Version91a);
-	auto version = std::make_unique<Element>(ElementType::Version);
+	auto version = Element::create(ElementType::Version);
 	version->title("91a");
 	version->body(_document->attr("notice"));
 	_document->appendChild(std::move(version));

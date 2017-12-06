@@ -2,6 +2,10 @@
 
 namespace UHS {
 
+std::unique_ptr<Document> Document::create(VersionType version) {
+	return std::make_unique<Document>(version);
+}
+
 Document::Document() : Node(NodeType::Document), _version{VersionType::Version88a} {}
 
 Document::Document(VersionType version, const std::string title)

@@ -2,6 +2,10 @@
 
 namespace UHS {
 
+std::unique_ptr<Element> Element::create(ElementType type) {
+	return std::make_unique<Element>(type);
+}
+
 ElementType Element::elementType(const std::string& typeString) {
 	if (typeString == "blank") {
 		return ElementType::Blank;
@@ -75,11 +79,7 @@ const std::string Element::typeString(ElementType t) {
 	}
 }
 
-Element::Element(ElementType t, int line, int length)
-    : Node(NodeType::Element), _elementType{t}, _line{line}, _length{length} {}
-
-Element::Element(ElementType t, const std::string title)
-    : Node(NodeType::Element), Traits::Title(title), _elementType{t} {}
+Element::Element(ElementType type) : Node(NodeType::Element), _elementType{type} {}
 
 // TODO: _ref does not repoint Element--and can't, if it's not in the same tree!
 Element::Element(const Element& other)
@@ -108,17 +108,25 @@ const std::string Element::elementTypeString() const {
 	return Element::typeString(_elementType);
 }
 
-void Element::appendString(const std::string s) {
-	this->appendChild(std::make_unique<TextNode>(s));
+void Element::appendChild(const std::string s) {
+	Node::appendChild(TextNode::create(s));
 }
 
 int Element::line() const {
 	return _line;
 }
 
+void Element::line(const int line) {
+	_line = line;
+}
+
 // Used only for bookkeeping while parsing
 int Element::length() const {
 	return _length;
+}
+
+void Element::length(const int length) {
+	_length = length;
 }
 
 const Element* Element::ref() const {
