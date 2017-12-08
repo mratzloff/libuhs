@@ -93,7 +93,6 @@ void Parser::reset() {
 	_crc.reset();
 	_document.reset();
 	_parents.clear();
-	_elements.clear();
 	_deferredLinks.clear();
 	_dataHandlers.clear();
 	_key.clear();
@@ -261,7 +260,7 @@ bool Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			return false;
 		}
 
-		auto e = Element::create(elementType, std::to_string(line));
+		auto e = Element::create(elementType, line);
 		e->line(line);
 		auto ptr = e.get();
 		parent->appendChild(std::move(e));
@@ -435,18 +434,15 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t) {
 		}
 		return nullptr;
 	}
-	std::string ident{t->value()};
+	const auto& ident = t->value();
 
 	// Create element
 	auto elementType = Element::elementType(ident);
 	int line = this->offsetLine(t->line());
-	auto e = Element::create(elementType, std::to_string(line));
+	auto e = Element::create(elementType, line);
 	e->line(line);
 	e->length(len);
 	auto ptr = e.get();
-
-	// Store a reference for link and incentive elements
-	_elements[line] = ptr;
 
 	ok = this->findParentAndAppend(std::move(e), std::move(t));
 	if (!ok) {
@@ -1180,22 +1176,18 @@ bool Parser::findParentAndAppend(
 // referencing the descriptor line, it points to the region, even if it doesn't
 // share a parent hyperpng. A link outside of a hyperpng pointing to a child of
 // a hyperpng references the descriptor line, as usual.
-Element* Parser::findTarget(int line) {
-	Element* target = nullptr;
-
-	try {
-		target = _elements.at(line);
-	} catch (const std::out_of_range& ex) {
-		try {
-			target = _elements.at(line + 1);
-			if (const auto parent = target->parent(); parent != nullptr) {
-				const auto& parentElement = static_cast<Element&>(*parent);
-				if (parentElement.elementType() != ElementType::Hyperpng) {
-					throw ex; // We found an element, but shouldn't have
-				}
-			}
-		} catch (const std::out_of_range& ex) {
+Element* Parser::findTarget(const int line) {
+	auto target = _document->find(line);
+	if (target == nullptr) {
+		target = _document->find(line + 1);
+		if (target == nullptr) {
 			return nullptr;
+		}
+		if (const auto parent = target->parent(); parent != nullptr) {
+			const auto& parentElement = static_cast<Element&>(*parent);
+			if (parentElement.elementType() != ElementType::Hyperpng) {
+				return nullptr; // We found an element, but shouldn't have
+			}
 		}
 	}
 	return target;

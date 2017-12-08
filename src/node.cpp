@@ -26,9 +26,20 @@ bool Node::isElementOfType(const Node& n, ElementType t) {
 Node::Node(NodeType t) : _nodeType{t} {}
 
 Node::Node(const Node& other) : _nodeType{other._nodeType}, _parent{other._parent} {
-	for (Node* n = other.firstChild(); n != nullptr; n = n->nextSibling()) {
-		this->appendChild(n->cloneInternal());
-	}
+	this->cloneChildren(other);
+}
+
+Node& Node::operator=(Node other) {
+	swap(*this, other);
+	return *this;
+}
+
+void swap(Node& lhs, Node& rhs) {
+	using std::swap;
+
+	swap(lhs._nodeType, rhs._nodeType);
+	swap(lhs._parent, rhs._parent);
+	lhs.cloneChildren(rhs);
 }
 
 NodeType Node::nodeType() const {
@@ -58,6 +69,8 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 		} else {
 			_firstChild = std::move(n->_nextSibling);
 		}
+		n->didRemove();
+
 		return detachedNode;
 	} else {
 		Node* previous = nullptr;
@@ -70,6 +83,8 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 				} else {
 					previous->_nextSibling = std::move(n->_nextSibling);
 				}
+				n->didRemove();
+
 				return detachedNode;
 			} else {
 				previous = child;
@@ -82,9 +97,12 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 
 // Note that this node must be attached to a document tree in order to
 // correctly set the _depth property when appending its own children.
-void Node::appendChild(std::unique_ptr<Node> n) {
-	auto ptr = n.get();
+void Node::appendChild(std::unique_ptr<Node> n, bool fireEvent) {
+	if (n == nullptr) {
+		return;
+	}
 
+	auto ptr = n.get();
 	if (_lastChild == nullptr) { // No children
 		_firstChild = std::move(n);
 		_lastChild = ptr;
@@ -98,39 +116,51 @@ void Node::appendChild(std::unique_ptr<Node> n) {
 		child._depth = child._parent->_depth + 1;
 	}
 	++_numChildren;
+
+	if (fireEvent) {
+		ptr->didAdd();
+	}
 }
 
 // See note for appendChild() regarding depth.
 void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
+	if (n == nullptr) {
+		return;
+	}
 	if (ref == nullptr) {
 		this->appendChild(std::move(n));
 		return;
 	}
 
-	Node* previousChild = nullptr;
+	auto ptr = n.get();
 
-	for (Node* child = this->firstChild(); child != nullptr;
-	     child = child->nextSibling()) {
-		if (child != ref) {
-			continue;
-		}
-		auto ptr = n.get();
-		if (child == this->firstChild()) {
-			n->_nextSibling = std::move(_firstChild);
-			_firstChild = std::move(n);
-		} else {
-			assert(previousChild != nullptr);
-			n->_nextSibling = std::move(previousChild->_nextSibling);
-			previousChild->_nextSibling = std::move(n);
-		}
-		ptr->_parent = this;
+	if (ref == this->firstChild()) {
+		n->_nextSibling = std::move(_firstChild);
+		_firstChild = std::move(n);
+	} else {
+		Node* previous = nullptr;
 
-		for (auto& child : *ptr) {
-			child._depth = child._parent->_depth + 1;
+		for (Node* sibling = this->firstChild(); sibling != nullptr;
+		     sibling = sibling->nextSibling()) {
+			if (sibling == ref) {
+				break;
+			}
+			previous = sibling;
 		}
-		previousChild = child;
-		++_numChildren;
+		if (previous == nullptr) {
+			return; // Not found; no action to take
+		}
+		n->_nextSibling = std::move(previous->_nextSibling);
+		previous->_nextSibling = std::move(n);
 	}
+	ptr->_parent = this;
+
+	for (auto& child : *ptr) {
+		child._depth = child._parent->_depth + 1;
+	}
+	++_numChildren;
+
+	ptr->didAdd();
 }
 
 Node* Node::parent() const {
@@ -195,6 +225,51 @@ Node::const_iterator Node::cend() const {
 
 std::unique_ptr<Node> Node::cloneInternal() const {
 	return std::make_unique<Node>(*this);
+}
+
+void Node::cloneChildren(const Node& other) {
+	for (Node* node = other.firstChild(); node != nullptr; node = node->nextSibling()) {
+		switch (node->nodeType()) {
+		case NodeType::Document:
+			this->appendChild(static_cast<Document&>(*node).cloneInternal(), false);
+			break;
+		case NodeType::Element:
+			this->appendChild(static_cast<Element&>(*node).cloneInternal(), false);
+			break;
+		case NodeType::Text:
+			this->appendChild(static_cast<TextNode&>(*node).cloneInternal(), false);
+			break;
+		}
+	}
+}
+
+void Node::didRemove() {
+	if (_nodeType != NodeType::Element) {
+		return;
+	}
+	auto& element = static_cast<Element&>(*this);
+	if (auto document = this->findDocument(); document != nullptr) {
+		document->elementRemoved(element);
+	}
+}
+
+void Node::didAdd() {
+	if (_nodeType != NodeType::Element) {
+		return;
+	}
+	auto& element = static_cast<Element&>(*this);
+	if (auto document = this->findDocument(); document != nullptr) {
+		document->elementAdded(element);
+	}
+}
+
+Document* Node::findDocument() const {
+	for (Node* node = _parent; node != nullptr; node = node->parent()) {
+		if (node->nodeType() == NodeType::Document) {
+			return static_cast<Document*>(node);
+		}
+	}
+	return nullptr; // Orphaned element
 }
 
 //------------------------------ NodeIterator -------------------------------//
@@ -273,6 +348,19 @@ TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 TextNode::TextNode(const TextNode& other)
     : Node(other), Traits::Body(other), _fmt{other._fmt} {}
 
+TextNode& TextNode::operator=(TextNode other) {
+	swap(*this, other);
+	return *this;
+}
+
+void swap(TextNode& lhs, TextNode& rhs) {
+	using std::swap;
+
+	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
+	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
+	swap(lhs._fmt, rhs._fmt);
+}
+
 // Copies and returns a detached text node.
 std::unique_ptr<TextNode> TextNode::clone() const {
 	auto textNode = std::make_unique<TextNode>(*this);
@@ -301,7 +389,7 @@ Format TextNode::format() const {
 }
 
 std::unique_ptr<Node> TextNode::cloneInternal() const {
-	return this->clone();
+	return std::make_unique<TextNode>(*this);
 }
 
 } // namespace UHS

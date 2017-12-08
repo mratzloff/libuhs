@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-std::unique_ptr<Element> Element::create(ElementType type, const std::string id) {
+std::unique_ptr<Element> Element::create(ElementType type, const int id) {
 	return std::make_unique<Element>(type, id);
 }
 
@@ -79,7 +79,7 @@ const std::string Element::typeString(ElementType t) {
 	}
 }
 
-Element::Element(ElementType type, const std::string id)
+Element::Element(ElementType type, const int id)
     : Node(NodeType::Element), _elementType{type}, _id{id} {}
 
 // TODO: _target does not repoint Element--and can't, if it's not in the same tree!
@@ -94,6 +94,26 @@ Element::Element(const Element& other)
     , _line{other._line}
     , _length{other._length}
     , _target{other._target} {}
+
+Element& Element::operator=(Element other) {
+	swap(*this, other);
+	return *this;
+}
+
+void swap(Element& lhs, Element& rhs) {
+	using std::swap;
+
+	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
+	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
+	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
+	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
+	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
+	swap(lhs._elementType, rhs._elementType);
+	swap(lhs._id, rhs._id);
+	swap(lhs._line, rhs._line);
+	swap(lhs._length, rhs._length);
+	swap(lhs._target, rhs._target);
+}
 
 // Copies and returns a detached element with its children.
 std::unique_ptr<Element> Element::clone() const {
@@ -112,6 +132,10 @@ const std::string Element::elementTypeString() const {
 
 void Element::appendChild(const std::string s) {
 	Node::appendChild(TextNode::create(s));
+}
+
+int Element::id() const {
+	return _id;
 }
 
 int Element::line() const {
@@ -161,7 +185,7 @@ const std::string Element::mediaExt() const {
 }
 
 std::unique_ptr<Node> Element::cloneInternal() const {
-	return this->clone();
+	return std::make_unique<Element>(*this);
 }
 
 } // namespace UHS

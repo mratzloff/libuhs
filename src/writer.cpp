@@ -293,11 +293,6 @@ bool UHSWriter::serialize88a(const Document& d, std::string& out) {
 
 		case NodeType::Element: {
 			const auto& e = static_cast<const Element&>(*n);
-
-			// if (_opt.debug) {
-			// 	this->debug(e);
-			// }
-
 			const auto elementType = e.elementType();
 			std::string title;
 

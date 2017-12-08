@@ -288,6 +288,7 @@ public:
 
 	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
 	    std::size_t column = 0, std::string value = "");
+	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 	TokenType type() const;
 	int line() const;
 	std::size_t column() const;
@@ -295,7 +296,6 @@ public:
 	const std::string& value() const;
 	const std::string typeString() const;
 	const std::string string() const;
-	friend std::ostream& operator<<(std::ostream& out, const Token& t);
 
 private:
 	const TokenType _type;
@@ -362,6 +362,8 @@ private:
 template<typename T>
 class NodeIterator;
 
+class Document;
+
 class Node {
 public:
 	using iterator = NodeIterator<Node>;
@@ -372,12 +374,14 @@ public:
 
 	explicit Node(NodeType t);
 	Node(const Node& other);
+	Node& operator=(Node other);
+	friend void swap(Node& lhs, Node& rhs);
 	virtual ~Node() = default;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
 	void detachParent();
 	std::unique_ptr<Node> removeChild(Node* n);
-	void appendChild(std::unique_ptr<Node> n);
+	void appendChild(std::unique_ptr<Node> n, bool fireEvent = true);
 	void insertBefore(std::unique_ptr<Node> n, Node* ref);
 	Node* parent() const;
 	bool hasNextSibling() const;
@@ -399,6 +403,9 @@ public:
 
 protected:
 	virtual std::unique_ptr<Node> cloneInternal() const;
+	void cloneChildren(const Node& node);
+	virtual void didRemove();
+	virtual void didAdd();
 
 private:
 	NodeType _nodeType;
@@ -408,6 +415,8 @@ private:
 	Node* _lastChild = nullptr;
 	int _numChildren = 0;
 	int _depth = 0;
+
+	Document* findDocument() const;
 };
 
 template<typename T>
@@ -440,10 +449,14 @@ class TextNode
     : public Node
     , public Traits::Body {
 public:
+	friend class Node;
+
 	static std::unique_ptr<TextNode> create(const std::string body);
 
 	explicit TextNode(const std::string body);
 	TextNode(const TextNode& other);
+	TextNode& operator=(TextNode other);
+	friend void swap(TextNode& lhs, TextNode& rhs);
 	std::unique_ptr<TextNode> clone() const;
 	const std::string& string() const;
 	void addFormat(Format f);
@@ -464,19 +477,23 @@ class Element
     , public Traits::Title
     , public Traits::Visibility {
 public:
+	friend class Node;
+
 	using Node::appendChild;
 
-	static std::unique_ptr<Element> create(ElementType type, const std::string id = "");
+	static std::unique_ptr<Element> create(ElementType type, const int id = 0);
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType t);
 
-	Element(ElementType type, const std::string id = "");
+	Element(ElementType type, const int id = 0);
 	Element(const Element& other);
+	Element& operator=(Element other);
+	friend void swap(Element& lhs, Element& rhs);
 	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendChild(const std::string s);
-	const std::string& id() const;
+	int id() const;
 	int line() const;
 	void line(int line);
 	int length() const;
@@ -488,7 +505,7 @@ public:
 
 private:
 	ElementType _elementType;
-	const std::string _id;
+	int _id;
 	int _line = 0;
 	int _length = 0;
 	const Element* _target = nullptr;
@@ -502,22 +519,30 @@ class Document
     , public Traits::Title
     , public Traits::Visibility {
 public:
+	friend class Node;
+
 	static std::unique_ptr<Document> create(VersionType version);
 
-	Document();
-	Document(VersionType version, const std::string title = "");
+	Document(VersionType version);
 	Document(const Document& other);
+	Document& operator=(Document other);
+	friend void swap(Document& lhs, Document& rhs);
+	Element* find(const int id);
 	std::unique_ptr<Document> clone() const;
-	Element* find(const int id) const;
 	void version(VersionType v);
 	VersionType version() const;
 	const std::string versionString() const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
+	void elementRemoved(Element& element);
+	void elementAdded(Element& element);
+	void reindex();
 
 private:
 	VersionType _version;
 	bool _validChecksum = false;
+	std::map<const int, Element*> _index;
+	bool _indexed = true;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -557,7 +582,6 @@ public:
 
 private:
 	typedef std::map<const int, Node*> NodeMap;
-	typedef std::map<const int, Element*> ElementMap;
 	typedef std::function<void(std::string)> DataCallback;
 
 	struct NodeRange {
@@ -606,7 +630,6 @@ private:
 	Codec _codec;
 	std::unique_ptr<Document> _document = nullptr;
 	NodeRangeList _parents;
-	ElementMap _elements;
 	std::map<int, LinkData> _deferredLinks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
@@ -640,7 +663,7 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
-	Element* findTarget(int line);
+	Element* findTarget(const int line);
 	bool linkOrDefer(
 	    Element* const sourceElement, int targetLine, const int line, const int column);
 	bool link(

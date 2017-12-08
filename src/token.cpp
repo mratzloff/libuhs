@@ -47,6 +47,11 @@ Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_
     std::string value)
     : _type{tokenType}, _line{line}, _column{column}, _offset{offset}, _value{value} {}
 
+std::ostream& operator<<(std::ostream& out, const Token& t) {
+	out << t.string();
+	return out;
+}
+
 TokenType Token::type() const {
 	return _type;
 }
@@ -107,11 +112,6 @@ const std::string Token::string() const {
 	buf += ')';
 
 	return buf;
-}
-
-std::ostream& operator<<(std::ostream& out, const Token& t) {
-	out << t.string();
-	return out;
 }
 
 const std::string Token::formatToken() const {
