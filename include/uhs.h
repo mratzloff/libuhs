@@ -498,8 +498,6 @@ public:
 	void line(int line);
 	int length() const;
 	void length(int len); // Used by UHSWriter
-	const Element* target() const;
-	void target(const Element* target);
 	bool isMedia() const;
 	const std::string mediaExt() const;
 
@@ -508,7 +506,6 @@ private:
 	int _id;
 	int _line = 0;
 	int _length = 0;
-	const Element* _target = nullptr;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -601,14 +598,12 @@ private:
 	};
 
 	struct LinkData {
-		Element* sourceElement = nullptr;
 		int targetLine;
 		int line;
 		int column;
 
 		LinkData() = default;
-		LinkData(
-		    Element* sourceElement, int targetLine, const int line, const int column);
+		LinkData(int targetLine, const int line, const int column);
 	};
 
 	struct DataHandler {
@@ -630,7 +625,7 @@ private:
 	Codec _codec;
 	std::unique_ptr<Document> _document = nullptr;
 	NodeRangeList _parents;
-	std::map<int, LinkData> _deferredLinks;
+	std::vector<LinkData> _deferredLinkChecks;
 	std::vector<DataHandler> _dataHandlers;
 	std::string _key;
 	int _lineOffset = 0;
@@ -663,12 +658,9 @@ private:
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
 	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
+	void deferLinkCheck(int targetLine, const int line, const int column);
+	void checkLinks();
 	Element* findTarget(const int line);
-	bool linkOrDefer(
-	    Element* const sourceElement, int targetLine, const int line, const int column);
-	bool link(
-	    Element* const sourceElement, int targetLine, const int line, const int column);
-	bool handleDeferredLink(int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
 	void checkCRC();

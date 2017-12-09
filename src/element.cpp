@@ -82,7 +82,6 @@ const std::string Element::typeString(ElementType t) {
 Element::Element(ElementType type, const int id)
     : Node(NodeType::Element), _elementType{type}, _id{id} {}
 
-// TODO: _target does not repoint Element--and can't, if it's not in the same tree!
 Element::Element(const Element& other)
     : Node(other)
     , Traits::Attributes(other)
@@ -92,8 +91,7 @@ Element::Element(const Element& other)
     , _elementType{other._elementType}
     , _id{other._id}
     , _line{other._line}
-    , _length{other._length}
-    , _target{other._target} {}
+    , _length{other._length} {}
 
 Element& Element::operator=(Element other) {
 	swap(*this, other);
@@ -112,7 +110,6 @@ void swap(Element& lhs, Element& rhs) {
 	swap(lhs._id, rhs._id);
 	swap(lhs._line, rhs._line);
 	swap(lhs._length, rhs._length);
-	swap(lhs._target, rhs._target);
 }
 
 // Copies and returns a detached element with its children.
@@ -153,14 +150,6 @@ int Element::length() const {
 
 void Element::length(const int length) {
 	_length = length;
-}
-
-const Element* Element::target() const {
-	return _target;
-}
-
-void Element::target(const Element* target) {
-	_target = target;
 }
 
 bool Element::isMedia() const {

@@ -156,6 +156,9 @@ void JSONWriter::serializeElement(const Element& e, Json::Value& obj) const {
 	std::ofstream fout;
 
 	obj["title"] = e.title();
+	if (const auto id = e.id(); id > 0) {
+		obj["id"] = id;
+	}
 
 	if (e.isMedia() && !_opt.mediaDir.empty()) {
 		// TODO: Do something about how lazy this is

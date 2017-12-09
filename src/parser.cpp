@@ -43,9 +43,8 @@ Parser::DataHandler::DataHandler(
     std::size_t offset, std::size_t length, DataCallback func)
     : offset{offset}, length{length}, func{func} {}
 
-Parser::LinkData::LinkData(
-    Element* sourceElement, const int targetLine, const int line, const int column)
-    : sourceElement{sourceElement}, targetLine{targetLine}, line{line}, column{column} {}
+Parser::LinkData::LinkData(const int targetLine, const int line, const int column)
+    : targetLine{targetLine}, line{line}, column{column} {}
 
 std::unique_ptr<Error> Parser::error() {
 	return std::move(_err);
@@ -93,7 +92,7 @@ void Parser::reset() {
 	_crc.reset();
 	_document.reset();
 	_parents.clear();
-	_deferredLinks.clear();
+	_deferredLinkChecks.clear();
 	_dataHandlers.clear();
 	_key.clear();
 	_lineOffset = 0;
@@ -412,6 +411,9 @@ bool Parser::parse96a() {
 			return false;
 		}
 	}
+
+	this->checkLinks();
+
 	return true;
 }
 
@@ -445,11 +447,6 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t) {
 	auto ptr = e.get();
 
 	ok = this->findParentAndAppend(std::move(e), std::move(t));
-	if (!ok) {
-		return nullptr;
-	}
-
-	ok = handleDeferredLink(line);
 	if (!ok) {
 		return nullptr;
 	}
@@ -939,13 +936,15 @@ bool Parser::parseLinkElement(Element* const e) {
 	}
 	auto body = t->value();
 	int targetLine = Strings::toInt(body);
-	if (targetLine < 0) {
+	if (targetLine == Strings::NaN) {
 		this->expectedInt(t->value(), t->line(), t->column());
 		return false;
 	}
 	e->body(body);
 
-	return this->linkOrDefer(e, targetLine, t->line(), t->column());
+	this->deferLinkCheck(targetLine, t->line(), t->column());
+
+	return true;
 }
 
 bool Parser::parseOverlayElement(Element* const e) {
@@ -1172,6 +1171,18 @@ bool Parser::findParentAndAppend(
 	return true;
 }
 
+void Parser::deferLinkCheck(int targetLine, const int line, const int column) {
+	_deferredLinkChecks.emplace_back(targetLine, line, column);
+}
+
+void Parser::checkLinks() {
+	for (const auto [targetLine, line, column] : _deferredLinkChecks) {
+		if (const auto target = this->findTarget(targetLine); target == nullptr) {
+			// TODO: Warning using ld.line and ld.column
+		}
+	}
+}
+
 // A link pointing to the child of a hyperpng element is a special case. Instead of
 // referencing the descriptor line, it points to the region, even if it doesn't
 // share a parent hyperpng. A link outside of a hyperpng pointing to a child of
@@ -1191,46 +1202,6 @@ Element* Parser::findTarget(const int line) {
 		}
 	}
 	return target;
-}
-
-bool Parser::linkOrDefer(
-    Element* sourceElement, int targetLine, const int line, const int column) {
-	if (sourceElement == nullptr) {
-		return false;
-	}
-
-	if (sourceElement->line() > targetLine) {
-		return this->link(sourceElement, targetLine, line, column);
-	} else {
-		_deferredLinks.emplace(std::piecewise_construct,
-		    std::make_tuple(targetLine),
-		    std::make_tuple(sourceElement, targetLine, line, column));
-	}
-	return true;
-}
-
-bool Parser::link(
-    Element* sourceElement, int targetLine, const int line, const int column) {
-	if (sourceElement == nullptr) {
-		return false;
-	}
-
-	auto target = this->findTarget(targetLine);
-	if (target == nullptr) {
-		this->lineNotFound(targetLine, line, column);
-		return false;
-	}
-	sourceElement->target(target);
-
-	return true;
-}
-
-bool Parser::handleDeferredLink(int line) {
-	if (_deferredLinks.count(line) == 0) {
-		return true;
-	}
-	const auto& ld = _deferredLinks[line];
-	return this->link(ld.sourceElement, ld.targetLine, ld.line, ld.column);
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
