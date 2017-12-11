@@ -1,38 +1,42 @@
 #include "uhs.h"
+#include <iostream>
 
 namespace UHS {
 
 Pipe::Pipe(std::ifstream& in) : _in{in} {
-	if (!_in.is_open()) {
-		_err = std::make_unique<Error>(ErrorType::Read, "could not open file");
-		_err->finalize();
+	if (!in.is_open()) {
+		throw ReadError("could not open input file");
 	}
-}
-
-std::unique_ptr<Error> Pipe::error() {
-	return std::move(_err);
 }
 
 void Pipe::addHandler(Pipe::Handler func) {
 	_handlers.push_back(func);
 }
 
-void Pipe::read() {
-	std::streamsize n = ReadLen;
-	char buf[ReadLen] = {0};
+std::exception_ptr Pipe::error() {
+	return _err;
+}
 
-	while (_in.read(buf, n)) {
+void Pipe::read() {
+	try {
+		std::streamsize n = ReadLen;
+		char buf[ReadLen] = {0};
+
+		while (_in.read(buf, n)) {
+			for (const auto& func : _handlers) {
+				func(buf, n);
+			}
+			_offset += n;
+		}
+		n = _in.gcount();
 		for (const auto& func : _handlers) {
 			func(buf, n);
 		}
 		_offset += n;
+		_in.close();
+	} catch (const std::exception& err) {
+		_err = std::current_exception();
 	}
-	n = _in.gcount();
-	for (const auto& func : _handlers) {
-		func(buf, n);
-	}
-	_offset += n;
-	_in.close();
 }
 
 bool Pipe::good() {

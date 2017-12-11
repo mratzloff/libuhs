@@ -30,8 +30,7 @@ void CRC::calculate(const char* buf, std::streamsize n) {
 	}
 }
 
-void CRC::calculate(
-    const char* buf, std::streamsize n, bool bufferChecksum __attribute__((unused))) {
+void CRC::calculate(const char* buf, std::streamsize n, bool) {
 	switch (n) {
 	case 0:
 		return;

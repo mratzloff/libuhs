@@ -116,37 +116,32 @@ int main(int argc, const char* argv[]) {
 		return Err;
 	}
 
-	UHS::Parser p{parserOpt};
-	std::ifstream in{infile, std::ios::in | std::ios::binary};
-	auto document = p.parse(in);
+	try {
+		UHS::Parser p{parserOpt};
+		std::ifstream in{infile, std::ios::in | std::ios::binary};
+		auto document = p.parse(in);
 
-	auto err = p.error();
-	if (err != nullptr) {
-		std::cerr << "uhs: " << err->message() << std::endl;
+		std::ofstream fout;
+		if (!outfile.empty()) {
+			fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
+		}
+		std::ostream& out = (outfile.empty()) ? std::cout : fout;
+
+		if (format == "json") {
+			UHS::JSONWriter w{out, writerOpt};
+			w.write(*document);
+		} else if (format == "tree") {
+			UHS::TreeWriter w{out, writerOpt};
+			w.write(*document);
+		} else if (format == "uhs") {
+			UHS::UHSWriter w{out, writerOpt};
+			w.write(*document);
+		}
+	} catch (const UHS::Error& err) {
+		std::cerr << "uhs: " << err << std::endl;
 		return Err;
-	}
-
-	std::ofstream fout;
-	if (!outfile.empty()) {
-		fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
-	}
-	std::ostream& out = (outfile.empty()) ? std::cout : fout;
-
-	if (format == "json") {
-		UHS::JSONWriter w{out, writerOpt};
-		w.write(*document);
-		err = w.error();
-	} else if (format == "tree") {
-		UHS::TreeWriter w{out, writerOpt};
-		w.write(*document);
-	} else if (format == "uhs") {
-		UHS::UHSWriter w{out, writerOpt};
-		w.write(*document);
-		err = w.error();
-	}
-
-	if (err != nullptr) {
-		std::cerr << "uhs: " << err->message() << std::endl;
+	} catch (const std::exception& err) {
+		std::cerr << "uhs: unexpected error: " << err.what() << std::endl;
 		return Err;
 	}
 

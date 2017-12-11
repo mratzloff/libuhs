@@ -98,7 +98,7 @@ Element& Element::operator=(Element other) {
 	return *this;
 }
 
-void swap(Element& lhs, Element& rhs) {
+void swap(Element& lhs, Element& rhs) noexcept {
 	using std::swap;
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));

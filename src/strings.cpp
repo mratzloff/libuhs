@@ -94,11 +94,10 @@ int toInt(const std::string& s) {
 	try {
 		intVal = std::stoi(s, &idx);
 		if (idx != s.length()) {
-			intVal = NaN;
+			throw std::invalid_argument("");
 		}
 	} catch (const std::invalid_argument& e) {
-		// Return value must be checked by callers
-		intVal = NaN;
+		std::throw_with_nested(Error("invalid integer: %s", s));
 	}
 	return intVal;
 }

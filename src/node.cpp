@@ -34,7 +34,7 @@ Node& Node::operator=(Node other) {
 	return *this;
 }
 
-void swap(Node& lhs, Node& rhs) {
+void swap(Node& lhs, Node& rhs) noexcept {
 	using std::swap;
 
 	swap(lhs._nodeType, rhs._nodeType);
@@ -55,9 +55,7 @@ void Node::detachParent() {
 }
 
 std::unique_ptr<Node> Node::removeChild(Node* n) {
-	if (n == nullptr) {
-		return nullptr;
-	}
+	assert(n != nullptr);
 
 	n->_parent = nullptr;
 	--_numChildren;
@@ -95,12 +93,18 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 	return nullptr;
 }
 
+void Node::appendChild(std::unique_ptr<Node> n) {
+	assert(n != nullptr);
+
+	auto ptr = n.get();
+	this->appendChild(std::move(n), true);
+	ptr->didAdd();
+}
+
 // Note that this node must be attached to a document tree in order to
 // correctly set the _depth property when appending its own children.
-void Node::appendChild(std::unique_ptr<Node> n, bool fireEvent) {
-	if (n == nullptr) {
-		return;
-	}
+void Node::appendChild(std::unique_ptr<Node> n, bool) {
+	assert(n != nullptr);
 
 	auto ptr = n.get();
 	if (_lastChild == nullptr) { // No children
@@ -113,20 +117,16 @@ void Node::appendChild(std::unique_ptr<Node> n, bool fireEvent) {
 	ptr->_parent = this;
 
 	for (auto& child : *ptr) {
+		assert(child._parent != nullptr);
 		child._depth = child._parent->_depth + 1;
 	}
 	++_numChildren;
-
-	if (fireEvent) {
-		ptr->didAdd();
-	}
 }
 
 // See note for appendChild() regarding depth.
 void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
-	if (n == nullptr) {
-		return;
-	}
+	assert(n != nullptr);
+
 	if (ref == nullptr) {
 		this->appendChild(std::move(n));
 		return;
@@ -231,13 +231,13 @@ void Node::cloneChildren(const Node& other) {
 	for (Node* node = other.firstChild(); node != nullptr; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Document:
-			this->appendChild(static_cast<Document&>(*node).cloneInternal(), false);
+			this->appendChild(static_cast<Document&>(*node).cloneInternal(), true);
 			break;
 		case NodeType::Element:
-			this->appendChild(static_cast<Element&>(*node).cloneInternal(), false);
+			this->appendChild(static_cast<Element&>(*node).cloneInternal(), true);
 			break;
 		case NodeType::Text:
-			this->appendChild(static_cast<TextNode&>(*node).cloneInternal(), false);
+			this->appendChild(static_cast<TextNode&>(*node).cloneInternal(), true);
 			break;
 		}
 	}
@@ -353,7 +353,7 @@ TextNode& TextNode::operator=(TextNode other) {
 	return *this;
 }
 
-void swap(TextNode& lhs, TextNode& rhs) {
+void swap(TextNode& lhs, TextNode& rhs) noexcept {
 	using std::swap;
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));

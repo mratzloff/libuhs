@@ -24,7 +24,7 @@ Document& Document::operator=(Document other) {
 	return *this;
 }
 
-void swap(Document& lhs, Document& rhs) {
+void swap(Document& lhs, Document& rhs) noexcept {
 	using std::swap;
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
@@ -44,7 +44,7 @@ Element* Document::find(const int id) {
 	}
 	try {
 		return _index.at(id);
-	} catch (const std::out_of_range& ex) {
+	} catch (const std::out_of_range& err) {
 		return nullptr;
 	}
 }

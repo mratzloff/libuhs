@@ -2,9 +2,11 @@
 #define UHS_H
 
 #include "json.h"
+#include "tinyformat.h"
 #include <cassert>
 #include <cstdint>
 #include <ctime>
+#include <exception>
 #include <fstream>
 #include <istream>
 #include <iterator>
@@ -15,6 +17,7 @@
 #include <queue>
 #include <regex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -39,15 +42,6 @@ enum class ElementType {
 	Subject,
 	Text,
 	Version,
-};
-
-enum class ErrorType {
-	Unknown,
-	FileEnd,
-	Read,
-	Write,
-	Value,
-	Token,
 };
 
 enum class TextFormatType {
@@ -106,6 +100,67 @@ enum class VisibilityType {
 static constexpr const char* EOL = "\r\n";
 static const int MaxDepth = 16;
 static constexpr const char* Version = UHS_VERSION;
+
+class Error : public std::runtime_error {
+public:
+	Error();
+	Error(const std::string& message);
+	Error(const char* message);
+
+	template<typename... Args>
+	Error(const char* format, Args... args) : Error() {
+		auto message = tfm::format(format, args...);
+		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
+	}
+};
+
+std::ostream& operator<<(std::ostream& out, const Error& err);
+
+class LogicError : public Error {
+	using Error::Error;
+};
+
+class ReadError : public Error {
+	using Error::Error;
+};
+
+class ParseError : public Error {
+public:
+	enum ValueType {
+		Uint,
+		Int,
+		String,
+		Date,
+		Time,
+	};
+
+	static ParseError badLine(int line, int column, int targetLine);
+	static ParseError badValue(
+	    int line, int column, ValueType expectedType, std::string found);
+	static ParseError badValue(
+	    int line, int column, std::string expected, std::string found);
+	static ParseError badToken(int line, int column, TokenType type);
+	static ParseError badToken(int line, int column, TokenType expected, TokenType found);
+
+	ParseError(int line, int column, const std::string& message);
+	ParseError(int line, int column, const char* message);
+
+	template<typename... Args>
+	ParseError(int line, int column, const char* format, Args... args) : Error() {
+		static_cast<Error&>(*this) = Error(this->format(format, line, column, args...));
+	}
+
+private:
+	template<typename... Args>
+	const std::string format(const char* format, int line, int column, Args... args) {
+		auto fmt = "parse error at line %d, column %d: "s + format;
+		return tfm::format(fmt.data(), line, column, args...);
+	}
+};
+
+class WriteError : public Error {
+	using Error::Error;
+};
 
 namespace Strings {
 
@@ -185,31 +240,13 @@ private:
 
 } // namespace Traits
 
-class Error {
-public:
-	Error() = default;
-	explicit Error(ErrorType t);
-	Error(ErrorType t, std::string s);
-	ErrorType type() const;
-	void type(ErrorType t);
-	const std::string& message() const;
-	void message(const std::string s);
-	void messagef(const char* format, ...);
-	void finalize();
-	void finalize(int line, int column);
-
-private:
-	ErrorType _type = ErrorType::Unknown;
-	std::string _message;
-};
-
 class Pipe {
 public:
 	typedef std::function<void(const char*, std::streamsize n)> Handler;
 
 	explicit Pipe(std::ifstream& in);
-	std::unique_ptr<Error> error();
 	void addHandler(Handler func);
+	std::exception_ptr error();
 	void read();
 	bool good();
 	bool eof();
@@ -218,9 +255,9 @@ private:
 	static const std::size_t ReadLen = 1024;
 
 	std::ifstream& _in;
-	std::unique_ptr<Error> _err = nullptr;
 	std::size_t _offset = 0;
 	std::vector<Handler> _handlers;
+	std::exception_ptr _err = nullptr;
 };
 
 class CRC {
@@ -313,7 +350,6 @@ private:
 class Tokenizer {
 public:
 	explicit Tokenizer(Pipe& p);
-	std::unique_ptr<Error> error();
 	void tokenize(const char* buf, std::streamsize n);
 	bool hasNext();
 	std::unique_ptr<const Token> next();
@@ -322,23 +358,20 @@ private:
 	class TokenChannel {
 	public:
 		explicit TokenChannel(Pipe& p);
-		std::unique_ptr<Error> error();
-		bool send(const Token&& t);
+		void send(const Token&& t);
 		std::unique_ptr<const Token> receive();
 		bool empty() const;
 		bool ok() const;
 		void close();
 
 	private:
-		Pipe& _pipe; // For errors
-		std::unique_ptr<Error> _err = nullptr;
 		std::queue<const Token> _queue;
 		mutable std::mutex _mutex;
 		bool _open = true;
+		Pipe& _pipe; // For exceptions
 	};
 
 	Pipe& _pipe;
-	std::unique_ptr<Error> _err = nullptr;
 	std::string _buf;
 	int _line = 1;
 	std::size_t _offset = 0;
@@ -375,13 +408,14 @@ public:
 	explicit Node(NodeType t);
 	Node(const Node& other);
 	Node& operator=(Node other);
-	friend void swap(Node& lhs, Node& rhs);
+	friend void swap(Node& lhs, Node& rhs) noexcept;
 	virtual ~Node() = default;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
 	void detachParent();
 	std::unique_ptr<Node> removeChild(Node* n);
-	void appendChild(std::unique_ptr<Node> n, bool fireEvent = true);
+	void appendChild(std::unique_ptr<Node> n);
+	void appendChild(std::unique_ptr<Node> n, bool silenceEvent);
 	void insertBefore(std::unique_ptr<Node> n, Node* ref);
 	Node* parent() const;
 	bool hasNextSibling() const;
@@ -456,7 +490,7 @@ public:
 	explicit TextNode(const std::string body);
 	TextNode(const TextNode& other);
 	TextNode& operator=(TextNode other);
-	friend void swap(TextNode& lhs, TextNode& rhs);
+	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
 	std::unique_ptr<TextNode> clone() const;
 	const std::string& string() const;
 	void addFormat(Format f);
@@ -488,7 +522,7 @@ public:
 	Element(ElementType type, const int id = 0);
 	Element(const Element& other);
 	Element& operator=(Element other);
-	friend void swap(Element& lhs, Element& rhs);
+	friend void swap(Element& lhs, Element& rhs) noexcept;
 	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
@@ -523,7 +557,7 @@ public:
 	Document(VersionType version);
 	Document(const Document& other);
 	Document& operator=(Document other);
-	friend void swap(Document& lhs, Document& rhs);
+	friend void swap(Document& lhs, Document& rhs) noexcept;
 	Element* find(const int id);
 	std::unique_ptr<Document> clone() const;
 	void version(VersionType v);
@@ -573,7 +607,6 @@ struct ParserOptions {
 class Parser {
 public:
 	explicit Parser(const ParserOptions opt = {});
-	std::unique_ptr<Error> error();
 	std::unique_ptr<Document> parse(std::ifstream& in);
 	void reset();
 
@@ -618,8 +651,6 @@ private:
 	static const int FormatTokenLen = 3;
 
 	const ParserOptions _opt;
-	std::unique_ptr<Error> _err = nullptr;
-	std::unique_ptr<Pipe> _pipe = nullptr;
 	std::unique_ptr<Tokenizer> _tokenizer = nullptr;
 	std::unique_ptr<CRC> _crc = nullptr;
 	Codec _codec;
@@ -633,47 +664,41 @@ private:
 	bool _done = false;
 
 	// 88a
-	bool parse88a();
-	bool parse88aElements(int firstHintTextLine, NodeMap& parents);
-	bool parse88aTextNodes(int lastHintTextLine, NodeMap& parents);
-	bool parse88aCredits(std::unique_ptr<const Token> t);
+	void parse88a();
+	void parse88aElements(int firstHintTextLine, NodeMap& parents);
+	void parse88aTextNodes(int lastHintTextLine, NodeMap& parents);
+	void parse88aCredits(std::unique_ptr<const Token> t);
 	void parseHeaderSep(std::unique_ptr<const Token> t);
 
 	// 96a
-	bool parse96a();
+	void parse96a();
 	Element* parseElement(std::unique_ptr<const Token> t);
-	bool parseCommentElement(Element* const e);
-	bool parseDataElement(Element* const e);
-	bool parseHintElement(Element* const e);
-	bool parseHyperpngElement(Element* const e);
-	bool parseInfoElement(Element* const e);
-	bool parseIncentiveElement(Element* const e);
-	bool parseLinkElement(Element* const e);
-	bool parseOverlayElement(Element* const e);
-	bool parseSubjectElement(Element* const e);
-	bool parseTextElement(Element* const e);
-	bool parseVersionElement(Element* const e);
+	void parseCommentElement(Element* const e);
+	void parseDataElement(Element* const e);
+	void parseHintElement(Element* const e);
+	void parseHyperpngElement(Element* const e);
+	void parseInfoElement(Element* const e);
+	void parseIncentiveElement(Element* const e);
+	void parseLinkElement(Element* const e);
+	void parseOverlayElement(Element* const e);
+	void parseSubjectElement(Element* const e);
+	void parseTextElement(Element* const e);
+	void parseVersionElement(Element* const e);
 
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	bool findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
+	void findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
 	void deferLinkCheck(int targetLine, const int line, const int column);
 	void checkLinks();
 	Element* findTarget(const int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
 	void parseData(std::unique_ptr<const Token> t);
 	void checkCRC();
-	bool parseDate(const std::string& s, std::tm& tm) const;
-	bool parseTime(const std::string& s, std::tm& tm) const;
+	void parseDate(const std::string& s, std::tm& tm) const;
+	void parseTime(const std::string& s, std::tm& tm) const;
 	bool isPunctuation(char c);
 	int offsetLine(int line);
-
-	// Error helpers
-	void lineNotFound(int targetLine, int line, int column);
-	void expected(std::string expected, std::string found, int line, int column);
-	void expectedInt(std::string found, int line, int column);
-	void unexpected(TokenType type, int line, int column);
 };
 
 struct WriterOptions {
@@ -687,20 +712,18 @@ class Writer {
 public:
 	Writer(std::ostream& out, const WriterOptions opt = {});
 	virtual ~Writer() = default;
-	std::unique_ptr<Error> error();
-	virtual bool write(const Document& d) = 0;
+	virtual void write(const Document& d) = 0;
 	virtual void reset();
 
 protected:
 	std::ostream& _out;
 	const WriterOptions _opt;
-	std::unique_ptr<Error> _err = nullptr;
 };
 
 class TreeWriter : public Writer {
 public:
 	TreeWriter(std::ostream& out, const WriterOptions opt = {});
-	bool write(const Document& d) override;
+	void write(const Document& d) override;
 
 private:
 	void draw(const Document& d);
@@ -711,7 +734,7 @@ private:
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const WriterOptions opt = {});
-	bool write(const Document& d) override;
+	void write(const Document& d) override;
 
 private:
 	Json::Value serialize(const Document& d, Json::Value& root) const;
@@ -728,7 +751,7 @@ public:
 	static const std::size_t LineLen = 76;
 
 	UHSWriter(std::ostream& out, const WriterOptions opt = {});
-	bool write(const Document& d) override;
+	void write(const Document& d) override;
 	void reset() override;
 
 private:
@@ -740,19 +763,19 @@ private:
 	static constexpr const char* DataAddressMarker = "000000";
 	static constexpr const char* InfoLengthMarker = "length=0000000";
 
-	bool serialize88a(const Document& d, std::string& out);
-	bool serialize96a(std::string& out);
-	bool serializeElement(const Element& e, std::string& out, int& len);
-	bool serializeCommentElement(const Element& e, std::string& out, int& len);
-	bool serializeDataElement(const Element& e, std::string& out, int& len);
-	bool serializeHintElement(const Element& e, std::string& out, int& len);
-	bool serializeInfoElement(std::string& out, int& len);
-	bool serializeSubjectElement(const Element& e, std::string& out, int& len);
-	bool serializeTextElement(const Element& e, std::string& out, int& len);
-	bool serializeData(std::string& out);
+	void serialize88a(const Document& d, std::string& out);
+	void serialize96a(std::string& out);
+	void serializeElement(const Element& e, std::string& out, int& len);
+	void serializeCommentElement(const Element& e, std::string& out, int& len);
+	void serializeDataElement(const Element& e, std::string& out, int& len);
+	void serializeHintElement(const Element& e, std::string& out, int& len);
+	void serializeInfoElement(std::string& out, int& len);
+	void serializeSubjectElement(const Element& e, std::string& out, int& len);
+	void serializeTextElement(const Element& e, std::string& out, int& len);
+	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	std::string createDataAddress(std::size_t bodyLen, std::string textFormat = "");
-	bool convertTo91a();
+	void convertTo91a();
 
 	Codec _codec;
 	CRC _crc;

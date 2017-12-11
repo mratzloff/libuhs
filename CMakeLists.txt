@@ -9,6 +9,7 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
 set (json_includes ${PROJECT_SOURCE_DIR}/contrib/jsoncpp/json)
+set (tinyformat_includes ${PROJECT_SOURCE_DIR}/contrib/tinyformat)
 set (uhs_includes ${PROJECT_SOURCE_DIR}/include)
 
 set (uhs_sources
@@ -34,7 +35,7 @@ target_include_directories (json PUBLIC ${json_includes})
 
 # lib/libuhs.a
 add_library (uhs STATIC $<TARGET_OBJECTS:json> ${uhs_sources})
-target_include_directories (uhs PUBLIC ${json_includes} ${uhs_includes})
+target_include_directories (uhs PUBLIC ${json_includes} ${tinyformat_includes} ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -Wall -Wextra)
 add_definitions (-DUHS_VERSION="${version}")
 
@@ -46,7 +47,9 @@ target_link_libraries (uhs-bin PUBLIC uhs)
 # clang-format
 add_custom_target (format
 	COMMAND clang-format -style=file -i -verbose
-		${uhs_includes}/uhs.h ${uhs_sources} ${uhs_bin_sources})
+		${PROJECT_SOURCE_DIR}/include/uhs.h
+		${uhs_sources}
+		${uhs_bin_sources})
 
 # clang --analyze
 add_custom_target (lint
@@ -55,6 +58,7 @@ add_custom_target (lint
 		-Xanalyzer
 		-analyzer-output=text
 		-I${json_includes}
+		-I${tinyformat_includes}
 		-I${uhs_includes}
 		-std=c++1z
 		-DUHS_VERSION=0 # Unused in source code

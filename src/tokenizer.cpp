@@ -8,16 +8,6 @@ Tokenizer::Tokenizer(Pipe& p) : _pipe{p}, _out{p} {
 	_pipe.addHandler([=](const char* s, std::streamsize n) { this->tokenize(s, n); });
 }
 
-std::unique_ptr<Error> Tokenizer::error() {
-	if (_err == nullptr) {
-		return nullptr;
-	}
-	if (_err->type() == ErrorType::FileEnd) {
-		return nullptr;
-	}
-	return std::move(_err);
-}
-
 void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 	std::size_t len = n;
 	std::string s{buf, len};
@@ -76,7 +66,9 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 
 			_offset += CRC::ByteLen;
 		}
+
 		this->tokenizeEOF(eofColumn);
+		_out.close();
 		return;
 	}
 }
@@ -86,14 +78,7 @@ bool Tokenizer::hasNext() {
 }
 
 std::unique_ptr<const Token> Tokenizer::next() {
-	auto t = _out.receive();
-	if (t == nullptr) {
-		auto err = _out.error();
-		if (err != nullptr) {
-			_err = std::move(err);
-		}
-	}
-	return t;
+	return _out.receive();
 }
 
 void Tokenizer::tokenizeLine() {
@@ -196,8 +181,8 @@ void Tokenizer::tokenizeMatches(
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (m[i + 1].length() > 0) {
 			auto column = static_cast<std::size_t>(m.position(i + 1));
-			_out.send(
-			    {tokens[i], _offset, _line, column, Strings::ltrim(m[i + 1].str(), '0')});
+			auto value = Strings::ltrim(m[i + 1].str(), '0');
+			_out.send({tokens[i], _offset, _line, column, value});
 		}
 	}
 }
@@ -216,30 +201,23 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 
 Tokenizer::TokenChannel::TokenChannel(Pipe& p) : _pipe{p} {}
 
-std::unique_ptr<Error> Tokenizer::TokenChannel::error() {
-	return std::move(_err);
-}
-
-bool Tokenizer::TokenChannel::send(const Token&& t) {
-	if (!_open) {
-		return false;
-	}
+void Tokenizer::TokenChannel::send(const Token&& t) {
 	std::lock_guard<std::mutex> m{_mutex};
+	assert(_open);
 	_queue.push(t);
-
-	return true;
 }
 
 std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
-	while (this->empty()) { // Unlikely
-		if (!this->ok()) {
-			auto err = _pipe.error();
-			if (err != nullptr) {
-				_err = std::move(err);
-			}
-			return nullptr;
+	if (auto err = _pipe.error(); err != nullptr) {
+		std::rethrow_exception(err);
+	}
+	while (this->empty()) { // Uncommon
+		assert(this->ok());
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));\
+		
+		if (auto err = _pipe.error(); err != nullptr) {
+			std::rethrow_exception(err);
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	std::lock_guard<std::mutex> m{_mutex};
 	auto t = std::make_unique<const Token>(_queue.front());
@@ -255,10 +233,6 @@ bool Tokenizer::TokenChannel::empty() const {
 
 bool Tokenizer::TokenChannel::ok() const {
 	std::lock_guard<std::mutex> m{_mutex};
-
-	if (_pipe.error() != nullptr) {
-		return false;
-	}
 	return _open || !_queue.empty();
 }
 
