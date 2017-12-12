@@ -45,7 +45,7 @@ const std::string Token::typeString(TokenType t) {
 
 Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
     std::string value)
-    : _type{tokenType}, _line{line}, _column{column}, _offset{offset}, _value{value} {}
+    : type_{tokenType}, line_{line}, column_{column}, offset_{offset}, value_{value} {}
 
 std::ostream& operator<<(std::ostream& out, const Token& t) {
 	out << t.string();
@@ -53,34 +53,34 @@ std::ostream& operator<<(std::ostream& out, const Token& t) {
 }
 
 TokenType Token::type() const {
-	return _type;
+	return type_;
 }
 
 int Token::line() const {
-	return _line;
+	return line_;
 }
 
 std::size_t Token::column() const {
-	return _column;
+	return column_;
 }
 
 std::size_t Token::offset() const {
-	return _offset;
+	return offset_;
 }
 
 const std::string& Token::value() const {
-	return _value;
+	return value_;
 }
 
 const std::string Token::typeString() const {
-	return Token::typeString(_type);
+	return Token::typeString(type_);
 }
 
 const std::string Token::string() const {
 	auto buf = "("s;
 	buf += this->formatToken();
 
-	switch (_type) {
+	switch (type_) {
 	case TokenType::CRC:
 		[[fallthrough]];
 	case TokenType::Data:
@@ -117,19 +117,19 @@ const std::string Token::string() const {
 const std::string Token::formatToken() const {
 	std::string buf{typeString()};
 	buf += ' ';
-	buf += std::to_string(_line);
+	buf += std::to_string(line_);
 	buf += ':';
-	buf += std::to_string(_column);
+	buf += std::to_string(column_);
 	buf += ':';
-	buf += std::to_string(_offset);
+	buf += std::to_string(offset_);
 
 	return buf;
 }
 
 const std::string Token::formatIntValue() const {
 	auto buf = " ["s;
-	buf += _value;
-	int intVal{Strings::toInt(_value)};
+	buf += value_;
+	int intVal{Strings::toInt(value_)};
 	if (intVal == -1) {
 		buf += '?';
 	}
@@ -140,7 +140,7 @@ const std::string Token::formatIntValue() const {
 
 const std::string Token::formatStringValue() const {
 	auto buf = " ["s;
-	buf += _value;
+	buf += value_;
 	buf += ']';
 
 	return buf;
@@ -148,7 +148,7 @@ const std::string Token::formatStringValue() const {
 
 const std::string Token::formatByteValue() const {
 	auto buf = " ["s;
-	buf += Strings::hex(_value);
+	buf += Strings::hex(value_);
 	buf += ']';
 
 	return buf;

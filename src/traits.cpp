@@ -5,13 +5,13 @@ namespace UHS::Traits {
 //-------------------------------- Attributes -------------------------------//
 
 const Attributes::Type& Attributes::attrs() const {
-	return _attrs;
+	return attrs_;
 }
 
 optional<const std::string> Attributes::attr(const std::string key) const {
 	std::string s;
 	try {
-		s = _attrs.at(key);
+		s = attrs_.at(key);
 	} catch (const std::out_of_range& ex) {
 		return nullopt;
 	}
@@ -19,47 +19,47 @@ optional<const std::string> Attributes::attr(const std::string key) const {
 }
 
 void Attributes::attr(const std::string key, const std::string value) {
-	_attrs[key] = value;
+	attrs_[key] = value;
 }
 
 //---------------------------------- Body -----------------------------------//
 
-Body::Body(const std::string s) : _body{s} {}
+Body::Body(const std::string s) : body_{s} {}
 
 const std::string& Body::body() const {
-	return _body;
+	return body_;
 }
 
 void Body::body(const std::string s) {
-	_body = s;
+	body_ = s;
 }
 
 //---------------------------------- Title ----------------------------------//
 
-Title::Title(const std::string s) : _title{s} {}
+Title::Title(const std::string s) : title_{s} {}
 
 const std::string& Title::title() const {
-	return _title;
+	return title_;
 }
 
 void Title::title(std::string s) {
-	_title = s;
+	title_ = s;
 }
 
 //-------------------------------- Visibility -------------------------------//
 
 bool Visibility::visible(bool registered) const {
-	return (_visibility == VisibilityType::All
-	        || (!registered && _visibility == VisibilityType::Unregistered)
-	        || (registered && _visibility == VisibilityType::Registered));
+	return (visibility_ == VisibilityType::All
+	        || (!registered && visibility_ == VisibilityType::Unregistered)
+	        || (registered && visibility_ == VisibilityType::Registered));
 }
 
 VisibilityType Visibility::visibility() const {
-	return _visibility;
+	return visibility_;
 }
 
 void Visibility::visibility(VisibilityType v) {
-	_visibility = v;
+	visibility_ = v;
 }
 
 } // namespace UHS::Traits

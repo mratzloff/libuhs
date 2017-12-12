@@ -204,7 +204,7 @@ public:
 	void attr(const std::string key, const std::string value);
 
 private:
-	Type _attrs;
+	Type attrs_;
 };
 
 class Body {
@@ -215,7 +215,7 @@ public:
 	void body(const std::string s);
 
 private:
-	std::string _body;
+	std::string body_;
 };
 
 class Title {
@@ -226,7 +226,7 @@ public:
 	void title(const std::string s);
 
 private:
-	std::string _title;
+	std::string title_;
 };
 
 class Visibility {
@@ -236,7 +236,7 @@ public:
 	void visibility(VisibilityType v);
 
 private:
-	VisibilityType _visibility = VisibilityType::All;
+	VisibilityType visibility_ = VisibilityType::All;
 };
 
 } // namespace Traits
@@ -255,10 +255,10 @@ public:
 private:
 	static const std::size_t ReadLen = 1024;
 
-	std::ifstream& _in;
-	std::size_t _offset = 0;
-	std::vector<Handler> _handlers;
-	std::exception_ptr _err = nullptr;
+	std::ifstream& in_;
+	std::size_t offset_ = 0;
+	std::vector<Handler> handlers_;
+	std::exception_ptr err_ = nullptr;
 };
 
 class CRC {
@@ -281,12 +281,12 @@ private:
 	static const uint16_t MSBMask = 0x8000;
 	static const uint16_t FinalXOR = 0x0100;
 
-	Pipe* _pipe = nullptr;
-	uint16_t _table[TableLen];
-	char _buf[2]; // Checksum buffer
-	int _bufLen = 0;
-	uint16_t _rem = 0x0000;
-	bool _finalized = false;
+	Pipe* pipe_ = nullptr;
+	uint16_t table_[TableLen];
+	char buf_[2]; // Checksum buffer
+	int bufLen_ = 0;
+	uint16_t rem_ = 0x0000;
+	bool finalized_ = false;
 
 	void createTable();
 	uint8_t reflectByte(uint8_t byte);
@@ -336,11 +336,11 @@ public:
 	const std::string string() const;
 
 private:
-	const TokenType _type;
-	int _line = 0;
-	std::size_t _column = 0;
-	std::size_t _offset = 0;
-	std::string _value;
+	const TokenType type_;
+	int line_ = 0;
+	std::size_t column_ = 0;
+	std::size_t offset_ = 0;
+	std::string value_;
 
 	const std::string formatToken() const;
 	const std::string formatIntValue() const;
@@ -366,21 +366,21 @@ private:
 		void close();
 
 	private:
-		std::queue<const Token> _queue;
-		mutable std::mutex _mutex;
-		bool _open = true;
-		Pipe& _pipe; // For exceptions
+		std::queue<const Token> queue_;
+		mutable std::mutex mutex_;
+		bool open_ = true;
+		Pipe& pipe_; // For exceptions
 	};
 
-	Pipe& _pipe;
-	std::string _buf;
-	int _line = 1;
-	std::size_t _offset = 0;
-	bool _beforeHeaderSep = true;
-	bool _binaryMode = false;
-	int _expectedLineTokenLine = 0;
-	int _expectedStringTokenLine = 0;
-	TokenChannel _out;
+	Pipe& pipe_;
+	std::string buf_;
+	int line_ = 1;
+	std::size_t offset_ = 0;
+	bool beforeHeaderSep_ = true;
+	bool binaryMode_ = false;
+	int expectedLineTokenLine_ = 0;
+	int expectedStringTokenLine_ = 0;
+	TokenChannel out_;
 
 	void tokenizeLine();
 	ElementType tokenizeDescriptor(const std::smatch& m);
@@ -444,13 +444,13 @@ protected:
 	virtual void didAdd();
 
 private:
-	NodeType _nodeType;
-	Node* _parent = nullptr;
-	std::unique_ptr<Node> _nextSibling = nullptr;
-	std::unique_ptr<Node> _firstChild = nullptr;
-	Node* _lastChild = nullptr;
-	int _numChildren = 0;
-	int _depth = 0;
+	NodeType nodeType_;
+	Node* parent_ = nullptr;
+	std::unique_ptr<Node> nextSibling_ = nullptr;
+	std::unique_ptr<Node> firstChild_ = nullptr;
+	Node* lastChild_ = nullptr;
+	int numChildren_ = 0;
+	int depth_ = 0;
 
 	Document* findDocument() const;
 };
@@ -474,9 +474,9 @@ public:
 	bool operator!=(const NodeIterator<T>& rhs);
 
 private:
-	pointer _initial = nullptr;
-	pointer _current = nullptr;
-	bool _visited = false;
+	pointer initial_ = nullptr;
+	pointer current_ = nullptr;
+	bool visited_ = false;
 };
 
 typedef uint8_t Format;
@@ -501,7 +501,7 @@ public:
 	Format format() const;
 
 private:
-	Format _fmt;
+	Format fmt_;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -545,16 +545,16 @@ private:
 		ElementType findByString(const std::string& string) const;
 
 	private:
-		std::map<const ElementType, const std::string> _byType;
-		std::map<const std::string, const ElementType> _byString;
+		std::map<const ElementType, const std::string> byType_;
+		std::map<const std::string, const ElementType> byString_;
 	};
 
-	static Element::TypeAtlas _typeAtlas;
+	static Element::TypeAtlas typeAtlas_;
 
-	ElementType _elementType;
-	int _id;
-	int _line = 0;
-	int _length = 0;
+	ElementType elementType_;
+	int id_;
+	int line_ = 0;
+	int length_ = 0;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -585,10 +585,10 @@ public:
 	void reindex();
 
 private:
-	VersionType _version;
-	bool _validChecksum = false;
-	std::map<const int, Element*> _index;
-	bool _indexed = true;
+	VersionType version_;
+	bool validChecksum_ = false;
+	std::map<const int, Element*> index_;
+	bool indexed_ = true;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -665,18 +665,18 @@ private:
 	static const int HeaderLen = 4;
 	static const int FormatTokenLen = 3;
 
-	const ParserOptions _opt;
-	std::unique_ptr<Tokenizer> _tokenizer = nullptr;
-	std::unique_ptr<CRC> _crc = nullptr;
-	Codec _codec;
-	std::unique_ptr<Document> _document = nullptr;
-	NodeRangeList _parents;
-	std::vector<LinkData> _deferredLinkChecks;
-	std::vector<DataHandler> _dataHandlers;
-	std::string _key;
-	int _lineOffset = 0;
-	bool _isTitleSet = false;
-	bool _done = false;
+	const ParserOptions opt_;
+	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
+	std::unique_ptr<CRC> crc_ = nullptr;
+	Codec codec_;
+	std::unique_ptr<Document> document_ = nullptr;
+	NodeRangeList parents_;
+	std::vector<LinkData> deferredLinkChecks_;
+	std::vector<DataHandler> dataHandlers_;
+	std::string key_;
+	int lineOffset_ = 0;
+	bool isTitleSet_ = false;
+	bool done_ = false;
 
 	// 88a
 	void parse88a();
@@ -731,8 +731,8 @@ public:
 	virtual void reset();
 
 protected:
-	std::ostream& _out;
-	const WriterOptions _opt;
+	std::ostream& out_;
+	const WriterOptions opt_;
 };
 
 class TreeWriter : public Writer {
@@ -792,11 +792,11 @@ private:
 	std::string createDataAddress(std::size_t bodyLen, std::string textFormat = "");
 	void convertTo91a();
 
-	Codec _codec;
-	CRC _crc;
-	std::unique_ptr<Document> _document = nullptr;
-	std::string _key;
-	DataQueue _data;
+	Codec codec_;
+	CRC crc_;
+	std::unique_ptr<Document> document_ = nullptr;
+	std::string key_;
+	DataQueue data_;
 };
 
 } // namespace UHS

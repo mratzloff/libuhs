@@ -2,22 +2,22 @@
 
 namespace UHS {
 
-Element::TypeAtlas Element::_typeAtlas;
+Element::TypeAtlas Element::typeAtlas_;
 
 std::unique_ptr<Element> Element::create(ElementType type, const int id) {
 	return std::make_unique<Element>(type, id);
 }
 
 ElementType Element::elementType(const std::string& typeString) {
-	return Element::_typeAtlas.findByString(typeString);
+	return Element::typeAtlas_.findByString(typeString);
 }
 
 const std::string Element::typeString(ElementType type) {
-	return Element::_typeAtlas.findByType(type);
+	return Element::typeAtlas_.findByType(type);
 }
 
 Element::Element(ElementType type, const int id)
-    : Node(NodeType::Element), _elementType{type}, _id{id} {}
+    : Node(NodeType::Element), elementType_{type}, id_{id} {}
 
 Element::Element(const Element& other)
     : Node(other)
@@ -25,10 +25,10 @@ Element::Element(const Element& other)
     , Traits::Body(other)
     , Traits::Title(other)
     , Traits::Visibility(other)
-    , _elementType{other._elementType}
-    , _id{other._id}
-    , _line{other._line}
-    , _length{other._length} {}
+    , elementType_{other.elementType_}
+    , id_{other.id_}
+    , line_{other.line_}
+    , length_{other.length_} {}
 
 Element& Element::operator=(Element other) {
 	swap(*this, other);
@@ -43,10 +43,10 @@ void swap(Element& lhs, Element& rhs) noexcept {
 	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
 	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
 	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
-	swap(lhs._elementType, rhs._elementType);
-	swap(lhs._id, rhs._id);
-	swap(lhs._line, rhs._line);
-	swap(lhs._length, rhs._length);
+	swap(lhs.elementType_, rhs.elementType_);
+	swap(lhs.id_, rhs.id_);
+	swap(lhs.line_, rhs.line_);
+	swap(lhs.length_, rhs.length_);
 }
 
 // Copies and returns a detached element with its children.
@@ -57,11 +57,11 @@ std::unique_ptr<Element> Element::clone() const {
 }
 
 ElementType Element::elementType() const {
-	return _elementType;
+	return elementType_;
 }
 
 const std::string Element::elementTypeString() const {
-	return Element::typeString(_elementType);
+	return Element::typeString(elementType_);
 }
 
 void Element::appendChild(const std::string s) {
@@ -69,34 +69,34 @@ void Element::appendChild(const std::string s) {
 }
 
 int Element::id() const {
-	return _id;
+	return id_;
 }
 
 int Element::line() const {
-	return _line;
+	return line_;
 }
 
 void Element::line(const int line) {
-	_line = line;
+	line_ = line;
 }
 
 // Used only for bookkeeping while parsing
 int Element::length() const {
-	return _length;
+	return length_;
 }
 
 void Element::length(const int length) {
-	_length = length;
+	length_ = length;
 }
 
 bool Element::isMedia() const {
-	return (_elementType == ElementType::Gifa || _elementType == ElementType::Hyperpng
-	        || _elementType == ElementType::Overlay
-	        || _elementType == ElementType::Sound);
+	return (elementType_ == ElementType::Gifa || elementType_ == ElementType::Hyperpng
+	        || elementType_ == ElementType::Overlay
+	        || elementType_ == ElementType::Sound);
 }
 
 const std::string Element::mediaExt() const {
-	switch (_elementType) {
+	switch (elementType_) {
 	case ElementType::Gifa:
 		return "gif";
 	case ElementType::Hyperpng:
@@ -135,18 +135,18 @@ Element::TypeAtlas::TypeAtlas() {
 	};
 
 	for (const auto& pair : list) {
-		_byType.emplace(pair);
-		_byString.emplace(std::make_pair(pair.second, pair.first));
+		byType_.emplace(pair);
+		byString_.emplace(std::make_pair(pair.second, pair.first));
 	}
 }
 
 const std::string Element::TypeAtlas::findByType(const ElementType type) const {
-	return _byType.at(type);
+	return byType_.at(type);
 }
 
 ElementType Element::TypeAtlas::findByString(const std::string& string) const {
 	try {
-		return _byString.at(string);
+		return byString_.at(string);
 	} catch (const std::out_of_range& ex) {
 		return ElementType::Unknown;
 	}

@@ -5,7 +5,7 @@
 
 namespace UHS {
 
-Parser::Parser(const ParserOptions opt) : _opt{opt} {
+Parser::Parser(const ParserOptions opt) : opt_{opt} {
 	// TODO: Guard these by platform
 	setenv("TZ", "", 1);
 	tzset();
@@ -15,32 +15,32 @@ Parser::Parser(const ParserOptions opt) : _opt{opt} {
 
 std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 	auto pipe = std::make_unique<Pipe>(in);
-	_tokenizer = std::make_unique<Tokenizer>(*pipe);
-	_crc = std::make_unique<CRC>();
-	_crc->upstream(*pipe);
+	tokenizer_ = std::make_unique<Tokenizer>(*pipe);
+	crc_ = std::make_unique<CRC>();
+	crc_->upstream(*pipe);
 
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread{[&pipe] { pipe->read(); }};
 
 	try {
 		// Meanwhile, build out document by parsing emitted tokens in parallel
-		_document = Document::create(VersionType::Version88a);
+		document_ = Document::create(VersionType::Version88a);
 
 		this->parse88a();
 
-		if (!_done && !_opt.force88aMode) {
+		if (!done_ && !opt_.force88aMode) {
 			// Set 88a header as first (hidden) child of 96a document
-			_document->visibility(VisibilityType::None);
+			document_->visibility(VisibilityType::None);
 
 			auto d = Document::create(VersionType::Version96a);
-			_document.swap(d);
-			_document->appendChild(std::move(d));
+			document_.swap(d);
+			document_->appendChild(std::move(d));
 
 			this->parse96a();
 		}
 
 		thread.join();
-		return std::move(_document);
+		return std::move(document_);
 	} catch (const Error& err) {
 		thread.join();
 		throw;
@@ -48,16 +48,16 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 }
 
 void Parser::reset() {
-	_tokenizer.reset();
-	_crc.reset();
-	_document.reset();
-	_parents.clear();
-	_deferredLinkChecks.clear();
-	_dataHandlers.clear();
-	_key.clear();
-	_lineOffset = 0;
-	_isTitleSet = false;
-	_done = false;
+	tokenizer_.reset();
+	crc_.reset();
+	document_.reset();
+	parents_.clear();
+	deferredLinkChecks_.clear();
+	dataHandlers_.clear();
+	key_.clear();
+	lineOffset_ = 0;
+	isTitleSet_ = false;
+	done_ = false;
 }
 
 //--------------------------------- UHS 88a ---------------------------------//
@@ -70,7 +70,7 @@ void Parser::parse88a() {
 
 	// Title
 	t = this->expect(TokenType::String);
-	_document->title(t->value());
+	document_->title(t->value());
 
 	// First hint line
 	t = this->expect(TokenType::Line);
@@ -99,7 +99,7 @@ void Parser::parse88a() {
 	lastHintTextLine += HeaderLen;
 
 	// Subject and hint elements
-	NodeMap parents{{0, _document.get()}};
+	NodeMap parents{{0, document_.get()}};
 	this->parse88aElements(firstHintTextLine, parents);
 
 	// Hint text nodes
@@ -125,7 +125,7 @@ void Parser::parse88a() {
 		this->parseHeaderSep(std::move(t));
 		return;
 	case TokenType::FileEnd:
-		_done = true;
+		done_ = true;
 		return;
 	default:
 		throw ParseError::badToken(line, column, tokenType);
@@ -178,7 +178,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		auto ptr = e.get();
 		parent->appendChild(std::move(e));
 
-		std::string title{_codec.decode88a(encodedTitle)};
+		std::string title{codec_.decode88a(encodedTitle)};
 		if (parent->nodeType() != NodeType::Document) {
 			char finalChar = title[title.length() - 1];
 			if (!this->isPunctuation(finalChar)) {
@@ -222,7 +222,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		}
 
 		auto& element = static_cast<Element&>(*parent);
-		element.appendChild(_codec.decode88a(t->value()));
+		element.appendChild(codec_.decode88a(t->value()));
 	} while (line < lastHintTextLine);
 }
 
@@ -234,13 +234,13 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> t) {
 		switch (t->type()) {
 		case TokenType::FileEnd:
 			if (!s.empty()) {
-				_document->attr("notice", s);
+				document_->attr("notice", s);
 			}
-			_done = true;
+			done_ = true;
 			return;
 		case TokenType::HeaderSep:
 			if (!s.empty()) {
-				_document->attr("notice", s);
+				document_->attr("notice", s);
 			}
 			this->parseHeaderSep(std::move(t));
 			return;
@@ -264,17 +264,17 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> t) {
 //--------------------------------- UHS 96a ---------------------------------//
 
 void Parser::parseHeaderSep(std::unique_ptr<const Token> t) {
-	if (_opt.force88aMode) {
-		_done = true;
+	if (opt_.force88aMode) {
+		done_ = true;
 		return;
 	}
 	// 96a element line numbers don't include compatibility header
-	_lineOffset = t->line();
+	lineOffset_ = t->line();
 }
 
 void Parser::parse96a() {
 	std::unique_ptr<const Token> t;
-	_parents.add(*_document, 0, INT_MAX);
+	parents_.add(*document_, 0, INT_MAX);
 
 	// Parse elements
 	for (;;) {
@@ -292,7 +292,7 @@ void Parser::parse96a() {
 			this->checkCRC();
 			break;
 		case TokenType::FileEnd:
-			_done = true;
+			done_ = true;
 			return;
 		default:
 			throw ParseError::badToken(t->line(), t->column(), t->type());
@@ -487,9 +487,9 @@ void Parser::parseHintElement(Element* const e) {
 				s += ' ';
 			}
 			if (e->elementType() == ElementType::Nesthint) {
-				s += _codec.decode96a(t->value(), _key, false);
+				s += codec_.decode96a(t->value(), key_, false);
 			} else {
-				s += _codec.decode88a(t->value());
+				s += codec_.decode88a(t->value());
 			}
 			continuation = true;
 			break;
@@ -613,7 +613,7 @@ void Parser::parseIncentiveElement(Element* const e) {
 		if (continuation) {
 			s += ' ';
 		}
-		s += _codec.decode96a(t->value(), _key, false);
+		s += codec_.decode96a(t->value(), key_, false);
 		continuation = true;
 	}
 	e->body(s);
@@ -696,7 +696,7 @@ void Parser::parseInfoElement(Element* const e) {
 			} catch (const Error& err) {
 				throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, val);
 			}
-			_document->attr("length", std::to_string(intVal));
+			document_->attr("length", std::to_string(intVal));
 		} else if (key == "date") {
 			try {
 				this->parseDate(val, tm);
@@ -713,12 +713,12 @@ void Parser::parseInfoElement(Element* const e) {
 			}
 			char buf[20];
 			auto len = std::strftime(buf, 20, "%Y-%m-%dT%H:%M:%S", &tm);
-			_document->attr("timestamp", std::string(buf, len));
+			document_->attr("timestamp", std::string(buf, len));
 		} else {
-			if (auto currentValue = _document->attr(key)) {
-				_document->attr(key, *currentValue + " " + val);
+			if (auto currentValue = document_->attr(key)) {
+				document_->attr(key, *currentValue + " " + val);
 			} else {
-				_document->attr(key, val);
+				document_->attr(key, val);
 			}
 		}
 	}
@@ -773,10 +773,10 @@ void Parser::parseOverlayElement(Element* const e) {
 void Parser::parseSubjectElement(Element* const e) {
 	std::unique_ptr<const Token> t;
 
-	if (!_isTitleSet) {
-		_document->title(e->title());
-		_key = _codec.createKey(_document->title());
-		_isTitleSet = true;
+	if (!isTitleSet_) {
+		document_->title(e->title());
+		key_ = codec_.createKey(document_->title());
+		isTitleSet_ = true;
 	}
 
 	const int len = e->length();
@@ -851,7 +851,7 @@ void Parser::parseTextElement(Element* const e) {
 	this->addDataCallback(offset, len, [=](std::string data) {
 		auto lines = Strings::split(data, UHS::EOL);
 		for (auto& line : lines) {
-			line = _codec.decode96a(line, _key, true);
+			line = codec_.decode96a(line, key_, true);
 			if (line == Token::ParagraphSep) {
 				line = "";
 			}
@@ -873,13 +873,13 @@ void Parser::parseVersionElement(Element* const e) {
 	} else if (versionStr == "95a") {
 		v = VersionType::Version95a;
 	}
-	_document->version(v);
+	document_->version(v);
 }
 
 std::unique_ptr<const Token> Parser::next() {
-	auto token = _tokenizer->next();
+	auto token = tokenizer_->next();
 
-	if (_opt.debug) {
+	if (opt_.debug) {
 		std::cout << token->string() << std::endl;
 	}
 	return token;
@@ -905,8 +905,8 @@ void Parser::findParentAndAppend(
 
 	int min = e->line();
 	int max = min + e->length();
-	auto parent = _parents.find(min, max);
-	_parents.add(*e, min, max);
+	auto parent = parents_.find(min, max);
+	parents_.add(*e, min, max);
 
 	if (!parent) {
 		throw ParseError(t->line(), t->column(), "orphaned element");
@@ -915,11 +915,11 @@ void Parser::findParentAndAppend(
 }
 
 void Parser::deferLinkCheck(int targetLine, const int line, const int column) {
-	_deferredLinkChecks.emplace_back(targetLine, line, column);
+	deferredLinkChecks_.emplace_back(targetLine, line, column);
 }
 
 void Parser::checkLinks() {
-	for (const auto [targetLine, line, column] : _deferredLinkChecks) {
+	for (const auto [targetLine, line, column] : deferredLinkChecks_) {
 		if (const auto target = this->findTarget(targetLine); !target) {
 			// TODO: Warning using ld.line and ld.column
 		}
@@ -931,9 +931,9 @@ void Parser::checkLinks() {
 // share a parent hyperpng. A link outside of a hyperpng pointing to a child of
 // a hyperpng references the descriptor line, as usual.
 Element* Parser::findTarget(const int line) {
-	auto target = _document->find(line);
+	auto target = document_->find(line);
 	if (!target) {
-		target = _document->find(line + 1);
+		target = document_->find(line + 1);
 		if (!target) {
 			return nullptr;
 		}
@@ -948,20 +948,20 @@ Element* Parser::findTarget(const int line) {
 }
 
 void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
-	_dataHandlers.push_back(DataHandler(offset, length, func));
+	dataHandlers_.push_back(DataHandler(offset, length, func));
 }
 
 void Parser::parseData(std::unique_ptr<const Token> t) {
 	std::size_t offset;
 
-	for (const auto& handler : _dataHandlers) {
+	for (const auto& handler : dataHandlers_) {
 		offset = handler.offset - t->offset();
 		handler.func(t->value().substr(offset, handler.length));
 	}
 }
 
 void Parser::checkCRC() {
-	_document->validChecksum(_crc->valid());
+	document_->validChecksum(crc_->valid());
 }
 
 // Format: DD-Mon-YY
@@ -1069,7 +1069,7 @@ bool Parser::isPunctuation(char c) {
 }
 
 int Parser::offsetLine(int line) {
-	return line - _lineOffset;
+	return line - lineOffset_;
 }
 
 Parser::NodeRange::NodeRange(Node& n, const int min, const int max)

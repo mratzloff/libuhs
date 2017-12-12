@@ -3,18 +3,18 @@
 
 namespace UHS {
 
-Pipe::Pipe(std::ifstream& in) : _in{in} {
+Pipe::Pipe(std::ifstream& in) : in_{in} {
 	if (!in.is_open()) {
 		throw ReadError("could not open input file");
 	}
 }
 
 void Pipe::addHandler(Pipe::Handler func) {
-	_handlers.push_back(func);
+	handlers_.push_back(func);
 }
 
 std::exception_ptr Pipe::error() {
-	return _err;
+	return err_;
 }
 
 void Pipe::read() {
@@ -22,29 +22,29 @@ void Pipe::read() {
 		std::streamsize n = ReadLen;
 		char buf[ReadLen] = {0};
 
-		while (_in.read(buf, n)) {
-			for (const auto& func : _handlers) {
+		while (in_.read(buf, n)) {
+			for (const auto& func : handlers_) {
 				func(buf, n);
 			}
-			_offset += n;
+			offset_ += n;
 		}
-		n = _in.gcount();
-		for (const auto& func : _handlers) {
+		n = in_.gcount();
+		for (const auto& func : handlers_) {
 			func(buf, n);
 		}
-		_offset += n;
-		_in.close();
+		offset_ += n;
+		in_.close();
 	} catch (const std::exception& err) {
-		_err = std::current_exception();
+		err_ = std::current_exception();
 	}
 }
 
 bool Pipe::good() {
-	return _in.good();
+	return in_.good();
 }
 
 bool Pipe::eof() {
-	return _in.eof();
+	return in_.eof();
 }
 
 } // namespace UHS

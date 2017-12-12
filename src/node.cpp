@@ -21,9 +21,9 @@ bool Node::isElementOfType(const Node& n, ElementType t) {
 	return false;
 }
 
-Node::Node(NodeType t) : _nodeType{t} {}
+Node::Node(NodeType t) : nodeType_{t} {}
 
-Node::Node(const Node& other) : _nodeType{other._nodeType}, _parent{other._parent} {
+Node::Node(const Node& other) : nodeType_{other.nodeType_}, parent_{other.parent_} {
 	this->cloneChildren(other);
 }
 
@@ -35,35 +35,35 @@ Node& Node::operator=(Node other) {
 void swap(Node& lhs, Node& rhs) noexcept {
 	using std::swap;
 
-	swap(lhs._nodeType, rhs._nodeType);
-	swap(lhs._parent, rhs._parent);
+	swap(lhs.nodeType_, rhs.nodeType_);
+	swap(lhs.parent_, rhs.parent_);
 	lhs.cloneChildren(rhs);
 }
 
 NodeType Node::nodeType() const {
-	return _nodeType;
+	return nodeType_;
 }
 
 const std::string Node::nodeTypeString() const {
-	return Node::typeString(_nodeType);
+	return Node::typeString(nodeType_);
 }
 
 void Node::detachParent() {
-	_parent = nullptr;
+	parent_ = nullptr;
 }
 
 std::unique_ptr<Node> Node::removeChild(Node* n) {
 	assert(n);
 
-	n->_parent = nullptr;
-	--_numChildren;
+	n->parent_ = nullptr;
+	--numChildren_;
 
 	if (n == this->firstChild()) {
-		auto detachedNode = std::move(_firstChild);
+		auto detachedNode = std::move(firstChild_);
 		if (n->hasNextSibling()) {
-			_firstChild = std::move(n->_nextSibling);
+			firstChild_ = std::move(n->nextSibling_);
 		} else {
-			_lastChild = nullptr;
+			lastChild_ = nullptr;
 		}
 		n->didRemove();
 
@@ -72,11 +72,11 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 		Node* previous = nullptr;
 		for (Node* child = this->firstChild(); child; child = child->nextSibling()) {
 			if (previous && n == child) {
-				auto detachedNode = std::move(previous->_nextSibling);
+				auto detachedNode = std::move(previous->nextSibling_);
 				if (n->hasNextSibling()) {
-					previous->_nextSibling = std::move(n->_nextSibling);
+					previous->nextSibling_ = std::move(n->nextSibling_);
 				} else {
-					_lastChild = nullptr;
+					lastChild_ = nullptr;
 				}
 				n->didRemove();
 
@@ -99,24 +99,24 @@ void Node::appendChild(std::unique_ptr<Node> n) {
 }
 
 // Note that this node must be attached to a document tree in order to
-// correctly set the _depth property when appending its own children.
+// correctly set the depth_ property when appending its own children.
 void Node::appendChild(std::unique_ptr<Node> n, bool) {
 	assert(n);
 
 	auto ptr = n.get();
 	if (this->hasLastChild()) { // No children
-		_lastChild->_nextSibling = std::move(n);
+		lastChild_->nextSibling_ = std::move(n);
 	} else {
-		_firstChild = std::move(n);
+		firstChild_ = std::move(n);
 	}
-	_lastChild = ptr;
-	ptr->_parent = this;
+	lastChild_ = ptr;
+	ptr->parent_ = this;
 
 	for (auto& child : *ptr) {
-		assert(child._parent);
-		child._depth = child._parent->_depth + 1;
+		assert(child.parent_);
+		child.depth_ = child.parent_->depth_ + 1;
 	}
-	++_numChildren;
+	++numChildren_;
 }
 
 // See note for appendChild() regarding depth.
@@ -131,8 +131,8 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 	auto ptr = n.get();
 
 	if (ref == this->firstChild()) {
-		n->_nextSibling = std::move(_firstChild);
-		_firstChild = std::move(n);
+		n->nextSibling_ = std::move(firstChild_);
+		firstChild_ = std::move(n);
 	} else {
 		Node* previous = nullptr;
 
@@ -146,57 +146,57 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 		if (!previous) {
 			return; // Not found; no action to take
 		}
-		n->_nextSibling = std::move(previous->_nextSibling);
-		previous->_nextSibling = std::move(n);
+		n->nextSibling_ = std::move(previous->nextSibling_);
+		previous->nextSibling_ = std::move(n);
 	}
-	ptr->_parent = this;
+	ptr->parent_ = this;
 
 	for (auto& child : *ptr) {
-		child._depth = child._parent->_depth + 1;
+		child.depth_ = child.parent_->depth_ + 1;
 	}
-	++_numChildren;
+	++numChildren_;
 
 	ptr->didAdd();
 }
 
 bool Node::hasParent() const {
-	return _parent != nullptr;
+	return parent_ != nullptr;
 }
 
 Node* Node::parent() const {
-	return _parent;
+	return parent_;
 }
 
 bool Node::hasNextSibling() const {
-	return _nextSibling != nullptr;
+	return nextSibling_ != nullptr;
 }
 
 Node* Node::nextSibling() const {
-	return _nextSibling.get();
+	return nextSibling_.get();
 }
 
 bool Node::hasFirstChild() const {
-	return _firstChild != nullptr;
+	return firstChild_ != nullptr;
 }
 
 Node* Node::firstChild() const {
-	return _firstChild.get();
+	return firstChild_.get();
 }
 
 bool Node::hasLastChild() const {
-	return _lastChild != nullptr;
+	return lastChild_ != nullptr;
 }
 
 Node* Node::lastChild() const {
-	return _lastChild;
+	return lastChild_;
 }
 
 int Node::numChildren() const {
-	return _numChildren;
+	return numChildren_;
 }
 
 int Node::depth() const {
-	return _depth;
+	return depth_;
 }
 
 Node::iterator Node::begin() {
@@ -244,7 +244,7 @@ void Node::cloneChildren(const Node& other) {
 }
 
 void Node::didRemove() {
-	if (_nodeType != NodeType::Element) {
+	if (nodeType_ != NodeType::Element) {
 		return;
 	}
 	if (auto document = this->findDocument()) {
@@ -254,7 +254,7 @@ void Node::didRemove() {
 }
 
 void Node::didAdd() {
-	if (_nodeType != NodeType::Element) {
+	if (nodeType_ != NodeType::Element) {
 		return;
 	}
 	if (auto document = this->findDocument()) {
@@ -264,7 +264,7 @@ void Node::didAdd() {
 }
 
 Document* Node::findDocument() const {
-	for (Node* node = _parent; node; node = node->parent()) {
+	for (Node* node = parent_; node; node = node->parent()) {
 		if (node->nodeType() == NodeType::Document) {
 			return static_cast<Document*>(node);
 		}
@@ -276,42 +276,42 @@ Document* Node::findDocument() const {
 
 template<typename T>
 NodeIterator<T>::NodeIterator(NodeIterator<T>::pointer n) {
-	_initial = n;
-	_current = n;
+	initial_ = n;
+	current_ = n;
 }
 
 template<typename T>
 typename NodeIterator<T>::reference NodeIterator<T>::operator*() const {
-	return *_current;
+	return *current_;
 }
 
 template<typename T>
 typename NodeIterator<T>::pointer NodeIterator<T>::operator->() const {
-	return _current;
+	return current_;
 }
 
 // ++it
 template<typename T>
 NodeIterator<T>& NodeIterator<T>::operator++() {
 	do {
-		if (!_current) {
+		if (!current_) {
 			break;
 		}
-		if (_current->hasFirstChild() && !_visited) { // Down
-			_current = _current->firstChild();
-			_visited = false;
-		} else if (_current->hasNextSibling()) { // Next
-			_current = _current->nextSibling();
-			_visited = false;
+		if (current_->hasFirstChild() && !visited_) { // Down
+			current_ = current_->firstChild();
+			visited_ = false;
+		} else if (current_->hasNextSibling()) { // Next
+			current_ = current_->nextSibling();
+			visited_ = false;
 		} else { // Up
-			_current = _current->parent();
-			if (_current == _initial) {
-				_current = nullptr;
+			current_ = current_->parent();
+			if (current_ == initial_) {
+				current_ = nullptr;
 				break;
 			}
-			_visited = true;
+			visited_ = true;
 		}
-	} while (_visited);
+	} while (visited_);
 
 	return *this;
 }
@@ -326,7 +326,7 @@ NodeIterator<T> NodeIterator<T>::operator++(int) {
 
 template<typename T>
 bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) {
-	return _current == rhs._current;
+	return current_ == rhs.current_;
 }
 
 template<typename T>
@@ -346,7 +346,7 @@ std::unique_ptr<TextNode> TextNode::create(const std::string body) {
 TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 
 TextNode::TextNode(const TextNode& other)
-    : Node(other), Traits::Body(other), _fmt{other._fmt} {}
+    : Node(other), Traits::Body(other), fmt_{other.fmt_} {}
 
 TextNode& TextNode::operator=(TextNode other) {
 	swap(*this, other);
@@ -358,7 +358,7 @@ void swap(TextNode& lhs, TextNode& rhs) noexcept {
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
 	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
-	swap(lhs._fmt, rhs._fmt);
+	swap(lhs.fmt_, rhs.fmt_);
 }
 
 // Copies and returns a detached text node.
@@ -373,19 +373,19 @@ const std::string& TextNode::string() const {
 }
 
 void TextNode::addFormat(Format f) {
-	_fmt |= f;
+	fmt_ |= f;
 }
 
 void TextNode::removeFormat(Format f) {
-	_fmt &= ~f;
+	fmt_ &= ~f;
 }
 
 bool TextNode::hasFormat(Format f) const {
-	return (_fmt & f) != 0;
+	return (fmt_ & f) != 0;
 }
 
 Format TextNode::format() const {
-	return _fmt;
+	return fmt_;
 }
 
 std::unique_ptr<Node> TextNode::cloneInternal() const {

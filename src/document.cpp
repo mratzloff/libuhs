@@ -6,16 +6,16 @@ std::unique_ptr<Document> Document::create(VersionType version) {
 	return std::make_unique<Document>(version);
 }
 
-Document::Document(VersionType version) : Node(NodeType::Document), _version{version} {}
+Document::Document(VersionType version) : Node(NodeType::Document), version_{version} {}
 
 Document::Document(const Document& other)
     : Node(other)
     , Traits::Attributes(other)
     , Traits::Title(other)
     , Traits::Visibility(other)
-    , _version{other._version}
-    , _validChecksum{other._validChecksum}
-    , _indexed{false} {
+    , version_{other.version_}
+    , validChecksum_{other.validChecksum_}
+    , indexed_{false} {
 	this->reindex();
 }
 
@@ -31,19 +31,19 @@ void swap(Document& lhs, Document& rhs) noexcept {
 	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
 	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
 	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
-	swap(lhs._version, rhs._version);
-	swap(lhs._validChecksum, rhs._validChecksum);
-	lhs._indexed = false;
+	swap(lhs.version_, rhs.version_);
+	swap(lhs.validChecksum_, rhs.validChecksum_);
+	lhs.indexed_ = false;
 
 	lhs.reindex();
 }
 
 Element* Document::find(const int id) {
-	if (!_indexed) {
+	if (!indexed_) {
 		this->reindex();
 	}
 	try {
-		return _index.at(id);
+		return index_.at(id);
 	} catch (const std::out_of_range& err) {
 		return nullptr;
 	}
@@ -57,15 +57,15 @@ std::unique_ptr<Document> Document::clone() const {
 }
 
 void Document::version(VersionType v) {
-	_version = v;
+	version_ = v;
 }
 
 VersionType Document::version() const {
-	return _version;
+	return version_;
 }
 
 const std::string Document::versionString() const {
-	switch (_version) {
+	switch (version_) {
 	case VersionType::Version88a:
 		return "88a";
 	case VersionType::Version91a:
@@ -78,34 +78,34 @@ const std::string Document::versionString() const {
 }
 
 void Document::validChecksum(bool value) {
-	_validChecksum = value;
+	validChecksum_ = value;
 }
 
 bool Document::validChecksum() const {
-	return _validChecksum;
+	return validChecksum_;
 }
 
 void Document::elementRemoved(Element& element) {
 	if (const auto id = element.id(); id > 0) {
-		_index.erase(id);
+		index_.erase(id);
 	}
 }
 
 void Document::elementAdded(Element& element) {
 	if (const auto id = element.id(); id > 0) {
-		_index[id] = &element;
+		index_[id] = &element;
 	}
 }
 
 void Document::reindex() {
-	_index.clear();
+	index_.clear();
 
 	for (auto& node : *this) {
 		if (node.nodeType() == NodeType::Element) {
 			this->elementAdded(static_cast<Element&>(node));
 		}
 	}
-	_indexed = true;
+	indexed_ = true;
 }
 
 std::unique_ptr<Node> Document::cloneInternal() const {

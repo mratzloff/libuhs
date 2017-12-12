@@ -15,17 +15,17 @@ CRC::CRC() {
 }
 
 void CRC::upstream(Pipe& p) {
-	_pipe = &p;
+	pipe_ = &p;
 	p.addHandler([=](const char* s, std::streamsize n) { this->calculate(s, n, true); });
 }
 
 void CRC::calculate(const char* buf, std::streamsize n) {
 	for (int i = 0; i < n; ++i) {
 		auto byte = this->reflectByte(buf[i] & 0xFF);
-		_rem = (_rem ^ (byte << 8)) & CastMask;
-		int pos = (_rem >> 8) & 0xFF;
-		_rem = (_rem << 8) & CastMask;
-		_rem = (_rem ^ _table[pos]) & CastMask;
+		rem_ = (rem_ ^ (byte << 8)) & CastMask;
+		int pos = (rem_ >> 8) & 0xFF;
+		rem_ = (rem_ << 8) & CastMask;
+		rem_ = (rem_ ^ table_[pos]) & CastMask;
 	}
 }
 
@@ -34,42 +34,42 @@ void CRC::calculate(const char* buf, std::streamsize n, bool) {
 	case 0:
 		return;
 	case 1:
-		switch (_bufLen) {
+		switch (bufLen_) {
 		case 0:
-			_buf[0] = buf[0];
-			_bufLen = 1;
+			buf_[0] = buf[0];
+			bufLen_ = 1;
 			break;
 		case 1:
-			_buf[1] = buf[1];
-			_bufLen = 2;
+			buf_[1] = buf[1];
+			bufLen_ = 2;
 			break;
 		default:
-			this->calculate(_buf, 1);
-			_buf[0] = _buf[1];
-			_buf[1] = buf[0];
-			_bufLen = 2;
+			this->calculate(buf_, 1);
+			buf_[0] = buf_[1];
+			buf_[1] = buf[0];
+			bufLen_ = 2;
 			return;
 		}
 	default:
-		if (_bufLen > 0) {
-			this->calculate(_buf, _bufLen);
+		if (bufLen_ > 0) {
+			this->calculate(buf_, bufLen_);
 		}
-		_buf[0] = buf[n - 2];
-		_buf[1] = buf[n - 1];
-		_bufLen = 2;
-		this->calculate(buf, n - _bufLen);
+		buf_[0] = buf[n - 2];
+		buf_[1] = buf[n - 1];
+		bufLen_ = 2;
+		this->calculate(buf, n - bufLen_);
 	}
 }
 
 uint16_t CRC::result() {
 	this->finalize();
-	return _rem;
+	return rem_;
 }
 
 void CRC::result(std::vector<char>& out) {
 	this->finalize();
-	out.push_back(_rem & 0xFF); // low
-	out.push_back(_rem >> 8);   // high
+	out.push_back(rem_ & 0xFF); // low
+	out.push_back(rem_ >> 8);   // high
 }
 
 bool CRC::valid() {
@@ -77,11 +77,11 @@ bool CRC::valid() {
 }
 
 void CRC::reset() {
-	_pipe = nullptr;
-	std::fill(_buf, _buf + 2, 0);
-	_bufLen = 0;
-	_rem = 0x0000;
-	_finalized = false;
+	pipe_ = nullptr;
+	std::fill(buf_, buf_ + 2, 0);
+	bufLen_ = 0;
+	rem_ = 0x0000;
+	finalized_ = false;
 }
 
 void CRC::createTable() {
@@ -95,7 +95,7 @@ void CRC::createTable() {
 				byte <<= 1;
 			}
 		}
-		_table[i] = byte & CastMask;
+		table_[i] = byte & CastMask;
 	}
 }
 
@@ -111,14 +111,14 @@ uint8_t CRC::reflectByte(uint8_t byte) {
 }
 
 void CRC::finalize() {
-	if (!_finalized && _rem > Polynomial) {
-		_rem = (_rem + FinalXOR) & CastMask;
+	if (!finalized_ && rem_ > Polynomial) {
+		rem_ = (rem_ + FinalXOR) & CastMask;
 	}
-	_finalized = true;
+	finalized_ = true;
 }
 
 uint16_t CRC::checksum() {
-	return (static_cast<uint8_t>(_buf[1]) << 8) | static_cast<uint8_t>(_buf[0]);
+	return (static_cast<uint8_t>(buf_[1]) << 8) | static_cast<uint8_t>(buf_[0]);
 }
 
 } // namespace UHS
