@@ -3,17 +3,19 @@
 #include <fstream>
 #include <iostream>
 
+using namespace UHS;
+
 enum Status {
 	Err = -1,
 	OK = 0,
 };
 
 void printVersion() {
-	std::cout << UHS::Version << std::endl;
+	std::cout << Version << std::endl;
 }
 
 void printHelp() {
-	std::cout << "uhs " << UHS::Version << "\n\n"
+	std::cout << "uhs " << Version << "\n\n"
 	          << "Usage: uhs -f <fmt> [options] <file>\n"
 	          << "-f <fmt>\t\tOutput format (json, tree, uhs)\n"
 	          << "-o <file>\t\tOutput file\n"
@@ -26,9 +28,12 @@ void printHelp() {
 }
 
 int main(int argc, const char* argv[]) {
-	std::string format, infile, outfile, dir;
-	UHS::ParserOptions parserOpt;
-	UHS::WriterOptions writerOpt;
+	std::string format;
+	std::string infile;
+	std::string outfile;
+	std::string dir;
+	ParserOptions parserOpt;
+	WriterOptions writerOpt;
 
 	if (argc == 1) {
 		printHelp();
@@ -36,8 +41,10 @@ int main(int argc, const char* argv[]) {
 	}
 
 	for (int i = 1; i < argc; ++i) {
-		if (argv[i][0] == '-') { // Parse options
-			switch (argv[i][1]) {
+		auto arg = std::string(argv[i]);
+
+		if (arg[0] == '-') { // Parse options
+			switch (arg[1]) {
 			case 'f':
 				++i;
 				if (i >= argc) {
@@ -69,29 +76,29 @@ int main(int argc, const char* argv[]) {
 				printHelp();
 				return OK;
 			case '-':
-				if (std::strncmp("--88a", argv[i], 5) == 0) {
+				if (arg == "--88a") {
 					parserOpt.force88aMode = true;
 					writerOpt.force88aMode = true;
 					break;
-				} else if (std::strncmp("--unregistered", argv[i], 14) == 0) {
+				} else if (arg == "--unregistered") {
 					writerOpt.registered = false;
 					break;
-				} else if (std::strncmp("--debug", argv[i], 7) == 0) {
+				} else if (arg == "--debug") {
 					parserOpt.debug = true;
 					writerOpt.debug = true;
 					break;
-				} else if (std::strncmp("--help", argv[i], 6) == 0) {
+				} else if (arg == "--help") {
 					printHelp();
 					return OK;
-				} else if (std::strncmp("--version", argv[i], 9) == 0) {
+				} else if (arg == "--version") {
 					printVersion();
 					return OK;
 				} else {
-					std::cerr << "uhs: unknown option: " << argv[i] << std::endl;
+					std::cerr << "uhs: unknown option: " << arg << std::endl;
 					return Err;
 				}
 			default:
-				std::cerr << "uhs: unknown option: " << argv[i] << std::endl;
+				std::cerr << "uhs: unknown option: " << arg << std::endl;
 				return Err;
 			}
 		} else { // Parse filename (required)
@@ -107,7 +114,7 @@ int main(int argc, const char* argv[]) {
 		std::cerr << "uhs: error: no input file" << std::endl;
 		return Err;
 	}
-	if (format.length() == 0) {
+	if (format.empty()) {
 		std::cerr << "uhs: error: no output format specified" << std::endl;
 		return Err;
 	}
@@ -117,7 +124,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	try {
-		UHS::Parser p{parserOpt};
+		Parser p{parserOpt};
 		std::ifstream in{infile, std::ios::in | std::ios::binary};
 		auto document = p.parse(in);
 
@@ -128,16 +135,16 @@ int main(int argc, const char* argv[]) {
 		std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
 		if (format == "json") {
-			UHS::JSONWriter w{out, writerOpt};
+			JSONWriter w{out, writerOpt};
 			w.write(*document);
 		} else if (format == "tree") {
-			UHS::TreeWriter w{out, writerOpt};
+			TreeWriter w{out, writerOpt};
 			w.write(*document);
 		} else if (format == "uhs") {
-			UHS::UHSWriter w{out, writerOpt};
+			UHSWriter w{out, writerOpt};
 			w.write(*document);
 		}
-	} catch (const UHS::Error& err) {
+	} catch (const Error& err) {
 		std::cerr << "uhs: " << err << std::endl;
 		return Err;
 	} catch (const std::exception& err) {

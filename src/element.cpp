@@ -2,81 +2,18 @@
 
 namespace UHS {
 
+Element::TypeAtlas Element::_typeAtlas;
+
 std::unique_ptr<Element> Element::create(ElementType type, const int id) {
 	return std::make_unique<Element>(type, id);
 }
 
 ElementType Element::elementType(const std::string& typeString) {
-	if (typeString == "blank") {
-		return ElementType::Blank;
-	} else if (typeString == "comment") {
-		return ElementType::Comment;
-	} else if (typeString == "credit") {
-		return ElementType::Credit;
-	} else if (typeString == "gifa") {
-		return ElementType::Gifa;
-	} else if (typeString == "hint") {
-		return ElementType::Hint;
-	} else if (typeString == "hyperpng") {
-		return ElementType::Hyperpng;
-	} else if (typeString == "incentive") {
-		return ElementType::Incentive;
-	} else if (typeString == "info") {
-		return ElementType::Info;
-	} else if (typeString == "link") {
-		return ElementType::Link;
-	} else if (typeString == "nesthint") {
-		return ElementType::Nesthint;
-	} else if (typeString == "overlay") {
-		return ElementType::Overlay;
-	} else if (typeString == "sound") {
-		return ElementType::Sound;
-	} else if (typeString == "subject") {
-		return ElementType::Subject;
-	} else if (typeString == "text") {
-		return ElementType::Text;
-	} else if (typeString == "version") {
-		return ElementType::Version;
-	} else {
-		return ElementType::Unknown;
-	}
+	return Element::_typeAtlas.findByString(typeString);
 }
 
-const std::string Element::typeString(ElementType t) {
-	switch (t) {
-	case ElementType::Blank:
-		return "blank";
-	case ElementType::Comment:
-		return "comment";
-	case ElementType::Credit:
-		return "credit";
-	case ElementType::Gifa:
-		return "gifa";
-	case ElementType::Hint:
-		return "hint";
-	case ElementType::Hyperpng:
-		return "hyperpng";
-	case ElementType::Incentive:
-		return "incentive";
-	case ElementType::Info:
-		return "info";
-	case ElementType::Link:
-		return "link";
-	case ElementType::Nesthint:
-		return "nesthint";
-	case ElementType::Overlay:
-		return "overlay";
-	case ElementType::Sound:
-		return "sound";
-	case ElementType::Subject:
-		return "subject";
-	case ElementType::Text:
-		return "text";
-	case ElementType::Version:
-		return "version";
-	default:
-		return "unknown";
-	}
+const std::string Element::typeString(ElementType type) {
+	return Element::_typeAtlas.findByType(type);
 }
 
 Element::Element(ElementType type, const int id)
@@ -175,6 +112,44 @@ const std::string Element::mediaExt() const {
 
 std::unique_ptr<Node> Element::cloneInternal() const {
 	return std::make_unique<Element>(*this);
+}
+
+Element::TypeAtlas::TypeAtlas() {
+	const std::vector<std::pair<const ElementType, const std::string>> list = {
+	    std::make_pair(ElementType::Unknown, "unknown"),
+	    std::make_pair(ElementType::Blank, "blank"),
+	    std::make_pair(ElementType::Comment, "comment"),
+	    std::make_pair(ElementType::Credit, "credit"),
+	    std::make_pair(ElementType::Gifa, "gifa"),
+	    std::make_pair(ElementType::Hint, "hint"),
+	    std::make_pair(ElementType::Hyperpng, "hyperpng"),
+	    std::make_pair(ElementType::Incentive, "incentive"),
+	    std::make_pair(ElementType::Info, "info"),
+	    std::make_pair(ElementType::Link, "link"),
+	    std::make_pair(ElementType::Nesthint, "nesthint"),
+	    std::make_pair(ElementType::Overlay, "overlay"),
+	    std::make_pair(ElementType::Sound, "sound"),
+	    std::make_pair(ElementType::Subject, "subject"),
+	    std::make_pair(ElementType::Text, "text"),
+	    std::make_pair(ElementType::Version, "version"),
+	};
+
+	for (const auto& pair : list) {
+		_byType.emplace(pair);
+		_byString.emplace(std::make_pair(pair.second, pair.first));
+	}
+}
+
+const std::string Element::TypeAtlas::findByType(const ElementType type) const {
+	return _byType.at(type);
+}
+
+ElementType Element::TypeAtlas::findByString(const std::string& string) const {
+	try {
+		return _byString.at(string);
+	} catch (const std::out_of_range& ex) {
+		return ElementType::Unknown;
+	}
 }
 
 } // namespace UHS

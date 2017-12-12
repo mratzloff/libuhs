@@ -519,7 +519,7 @@ public:
 
 	static std::unique_ptr<Element> create(ElementType type, const int id = 0);
 	static ElementType elementType(const std::string& typeString);
-	static const std::string typeString(ElementType t);
+	static const std::string typeString(ElementType type);
 
 	Element(ElementType type, const int id = 0);
 	Element(const Element& other);
@@ -538,6 +538,19 @@ public:
 	const std::string mediaExt() const;
 
 private:
+	class TypeAtlas {
+	public:
+		TypeAtlas();
+		const std::string findByType(const ElementType type) const;
+		ElementType findByString(const std::string& string) const;
+
+	private:
+		std::map<const ElementType, const std::string> _byType;
+		std::map<const std::string, const ElementType> _byString;
+	};
+
+	static Element::TypeAtlas _typeAtlas;
+
 	ElementType _elementType;
 	int _id;
 	int _line = 0;

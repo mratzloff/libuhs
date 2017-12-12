@@ -13,39 +13,6 @@ Parser::Parser(const ParserOptions opt) : _opt{opt} {
 	// _tzset(); // MSVC
 }
 
-Parser::NodeRange::NodeRange(Node& n, const int min, const int max)
-    : node{n}, min{min}, max{max} {}
-
-Node* Parser::NodeRangeList::find(const int min, const int max) {
-	Node* n = nullptr;
-
-	for (const auto& nr : data) {
-		if (min > nr.min) {
-			if (max <= nr.max) {
-				n = &nr.node;
-			}
-		} else {
-			break;
-		}
-	}
-	return n;
-}
-
-void Parser::NodeRangeList::add(Node& n, const int min, const int max) {
-	data.emplace_back(n, min, max);
-}
-
-void Parser::NodeRangeList::clear() {
-	data.clear();
-}
-
-Parser::DataHandler::DataHandler(
-    std::size_t offset, std::size_t length, DataCallback func)
-    : offset{offset}, length{length}, func{func} {}
-
-Parser::LinkData::LinkData(const int targetLine, const int line, const int column)
-    : targetLine{targetLine}, line{line}, column{column} {}
-
 std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 	auto pipe = std::make_unique<Pipe>(in);
 	_tokenizer = std::make_unique<Tokenizer>(*pipe);
@@ -1104,5 +1071,38 @@ bool Parser::isPunctuation(char c) {
 int Parser::offsetLine(int line) {
 	return line - _lineOffset;
 }
+
+Parser::NodeRange::NodeRange(Node& n, const int min, const int max)
+    : node{n}, min{min}, max{max} {}
+
+Node* Parser::NodeRangeList::find(const int min, const int max) {
+	Node* n = nullptr;
+
+	for (const auto& nr : data) {
+		if (min > nr.min) {
+			if (max <= nr.max) {
+				n = &nr.node;
+			}
+		} else {
+			break;
+		}
+	}
+	return n;
+}
+
+void Parser::NodeRangeList::add(Node& n, const int min, const int max) {
+	data.emplace_back(n, min, max);
+}
+
+void Parser::NodeRangeList::clear() {
+	data.clear();
+}
+
+Parser::DataHandler::DataHandler(
+    std::size_t offset, std::size_t length, DataCallback func)
+    : offset{offset}, length{length}, func{func} {}
+
+Parser::LinkData::LinkData(const int targetLine, const int line, const int column)
+    : targetLine{targetLine}, line{line}, column{column} {}
 
 } // namespace UHS
