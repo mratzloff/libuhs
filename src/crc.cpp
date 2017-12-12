@@ -16,8 +16,7 @@ CRC::CRC() {
 
 void CRC::upstream(Pipe& p) {
 	_pipe = &p;
-	_pipe->addHandler(
-	    [=](const char* s, std::streamsize n) { this->calculate(s, n, true); });
+	p.addHandler([=](const char* s, std::streamsize n) { this->calculate(s, n, true); });
 }
 
 void CRC::calculate(const char* buf, std::streamsize n) {

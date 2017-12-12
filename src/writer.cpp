@@ -25,8 +25,7 @@ void TreeWriter::write(const Document& d) {
 			break;
 		}
 		default:
-			// Ignore
-			break;
+			break; // Ignore
 		}
 	}
 }
@@ -609,15 +608,15 @@ void UHSWriter::serializeCRC(std::string& out) {
 }
 
 std::string UHSWriter::createDataAddress(std::size_t bodyLen, std::string textFormat) {
-	std::ostringstream buf;
-	buf << std::setfill('0') << std::setw(MediaSizeLen) << bodyLen;
-
 	std::string out;
+
 	out += DataAddressMarker;
 	out += ' ';
 	out += textFormat;
 	out += std::string(FileSizeLen, '0');
 	out += ' ';
+	std::ostringstream buf;
+	buf << std::setfill('0') << std::setw(MediaSizeLen) << bodyLen;
 	out += buf.str();
 	out += EOL;
 

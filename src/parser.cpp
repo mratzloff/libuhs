@@ -114,8 +114,7 @@ void Parser::parse88a() {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	firstHintTextLine += HeaderLen;
 
@@ -128,8 +127,7 @@ void Parser::parse88a() {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	lastHintTextLine += HeaderLen;
 
@@ -175,7 +173,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
 	auto elementType = ElementType::Subject;
 
-	while (true) {
+	for (;;) {
 		t = this->expect(TokenType::String);
 		std::string encodedTitle{t->value()};
 		int line = t->line();
@@ -188,8 +186,8 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 				throw Error();
 			}
 		} catch (const Error& err) {
-			std::throw_with_nested(ParseError::badValue(
-			    t->line(), t->column(), ParseError::Uint, t->value()));
+			throw ParseError::badValue(
+			    t->line(), t->column(), ParseError::Uint, t->value());
 		}
 		firstChildLine += HeaderLen;
 
@@ -233,10 +231,11 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 
 void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 	std::unique_ptr<const Token> t;
+	int line = 0;
 
-	while (true) {
+	do {
 		t = this->expect(TokenType::String);
-		int line = t->line();
+		line = t->line();
 
 		Node* parent = nullptr;
 		for (int i = line; !parent; --i) {
@@ -257,19 +256,14 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 
 		auto& element = static_cast<Element&>(*parent);
 		element.appendChild(_codec.decode88a(t->value()));
-
-		if (line == lastHintTextLine) {
-			break; // Done parsing hints
-		}
-	}
+	} while (line < lastHintTextLine);
 }
 
 void Parser::parse88aCredits(std::unique_ptr<const Token> t) {
-	// Body
 	std::string s;
 	bool continuation = false;
 
-	while (true) {
+	for (;;) {
 		switch (t->type()) {
 		case TokenType::FileEnd:
 			if (!s.empty()) {
@@ -284,8 +278,7 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> t) {
 			this->parseHeaderSep(std::move(t));
 			return;
 		case TokenType::CreditSep:
-			// Ignore
-			break;
+			break; // Ignore
 		case TokenType::String:
 			if (continuation) {
 				s += ' ';
@@ -317,7 +310,7 @@ void Parser::parse96a() {
 	_parents.add(*_document, 0, INT_MAX);
 
 	// Parse elements
-	while (true) {
+	for (;;) {
 		t = this->next();
 
 		switch (t->type()) {
@@ -344,6 +337,8 @@ void Parser::parse96a() {
 
 // Elements are automatically appended to their parents
 Element* Parser::parseElement(std::unique_ptr<const Token> t) {
+	Element* ptr;
+
 	// Length
 	int len;
 	try {
@@ -352,8 +347,7 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 
 	// Ident
@@ -366,7 +360,7 @@ Element* Parser::parseElement(std::unique_ptr<const Token> t) {
 	auto e = Element::create(elementType, line);
 	e->line(line);
 	e->length(len);
-	auto ptr = e.get();
+	ptr = e.get();
 
 	this->findParentAndAppend(std::move(e), std::move(t));
 
@@ -464,7 +458,7 @@ void Parser::parseDataElement(Element* const e) {
 	// Offset
 	std::size_t offset;
 
-	while (true) {
+	for (;;) {
 		auto t = this->next();
 
 		switch (t->type()) {
@@ -476,8 +470,8 @@ void Parser::parseDataElement(Element* const e) {
 					throw Error();
 				}
 			} catch (const Error& err) {
-				std::throw_with_nested(ParseError::badValue(
-				    t->line(), t->column(), ParseError::Uint, t->value()));
+				throw ParseError::badValue(
+				    t->line(), t->column(), ParseError::Uint, t->value());
 			}
 			offset = intOffset;
 			goto expectDataLength;
@@ -498,8 +492,7 @@ expectDataLength:
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	std::size_t len = intLen;
 
@@ -592,8 +585,7 @@ void Parser::parseHyperpngElement(Element* const e) {
 		try {
 			Strings::toInt(x1);
 		} catch (const Error& err) {
-			std::throw_with_nested(
-			    ParseError::badValue(t->line(), t->column(), ParseError::Int, x1));
+			throw ParseError::badValue(t->line(), t->column(), ParseError::Int, x1);
 		}
 
 		// Interactive region top-left Y coordinate
@@ -602,8 +594,7 @@ void Parser::parseHyperpngElement(Element* const e) {
 		try {
 			Strings::toInt(y1);
 		} catch (const Error& err) {
-			std::throw_with_nested(
-			    ParseError::badValue(t->line(), t->column(), ParseError::Int, y1));
+			throw ParseError::badValue(t->line(), t->column(), ParseError::Int, y1);
 		}
 
 		// Interactive region bottom-right X coordinate
@@ -612,8 +603,7 @@ void Parser::parseHyperpngElement(Element* const e) {
 		try {
 			Strings::toInt(x2);
 		} catch (const Error& err) {
-			std::throw_with_nested(
-			    ParseError::badValue(t->line(), t->column(), ParseError::Int, x2));
+			throw ParseError::badValue(t->line(), t->column(), ParseError::Int, x2);
 		}
 
 		// Interactive region bottom-right Y coordinate
@@ -622,8 +612,7 @@ void Parser::parseHyperpngElement(Element* const e) {
 		try {
 			Strings::toInt(y2);
 		} catch (const Error& err) {
-			std::throw_with_nested(
-			    ParseError::badValue(t->line(), t->column(), ParseError::Int, y2));
+			throw ParseError::badValue(t->line(), t->column(), ParseError::Int, y2);
 		}
 
 		// Child element (overlay or link)
@@ -738,8 +727,7 @@ void Parser::parseInfoElement(Element* const e) {
 					throw Error();
 				}
 			} catch (const Error& err) {
-				std::throw_with_nested(
-				    ParseError::badValue(t->line(), t->column(), ParseError::Uint, val));
+				throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, val);
 			}
 			_document->attr("length", std::to_string(intVal));
 		} else if (key == "date") {
@@ -782,8 +770,7 @@ void Parser::parseLinkElement(Element* const e) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, body));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, body);
 	}
 	e->body(body);
 
@@ -801,8 +788,7 @@ void Parser::parseOverlayElement(Element* const e) {
 	try {
 		Strings::toInt(x);
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Int, x));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Int, x);
 	}
 	e->attr("image:x", x);
 
@@ -812,8 +798,7 @@ void Parser::parseOverlayElement(Element* const e) {
 	try {
 		Strings::toInt(y);
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Int, y));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Int, y);
 	}
 	e->attr("image:y", y);
 }
@@ -852,8 +837,7 @@ void Parser::parseTextElement(Element* const e) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	if (format > 3) {
 		throw ParseError(t->line(),
@@ -879,8 +863,7 @@ void Parser::parseTextElement(Element* const e) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	std::size_t offset = intOffset;
 
@@ -893,8 +876,7 @@ void Parser::parseTextElement(Element* const e) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(
-		    ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value()));
+		throw ParseError::badValue(t->line(), t->column(), ParseError::Uint, t->value());
 	}
 	std::size_t len = intLen;
 
@@ -1026,7 +1008,7 @@ void Parser::parseDate(const std::string& s, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(Error("invalid year: %d", year));
+		throw Error("invalid year: %d", year);
 	}
 	if (year < 95) { // Info elements were introduced in 1995
 		year += 100;
@@ -1068,7 +1050,7 @@ void Parser::parseDate(const std::string& s, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(Error("invalid day: %d", day));
+		throw Error("invalid day: %d", day);
 	}
 
 	tm.tm_year = year;
@@ -1087,7 +1069,7 @@ void Parser::parseTime(const std::string& s, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(Error("invalid hour: %d", hour));
+		throw Error("invalid hour: %d", hour);
 	}
 
 	int min;
@@ -1097,7 +1079,7 @@ void Parser::parseTime(const std::string& s, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(Error("invalid minute: %d", min));
+		throw Error("invalid minute: %d", min);
 	}
 
 	int sec;
@@ -1107,7 +1089,7 @@ void Parser::parseTime(const std::string& s, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		std::throw_with_nested(Error("invalid second: %d", sec));
+		throw Error("invalid second: %d", sec);
 	}
 
 	tm.tm_hour = hour;

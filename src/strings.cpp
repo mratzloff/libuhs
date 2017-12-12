@@ -128,7 +128,7 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 	}
 
 	int i = 0;
-	while (true) {
+	for (;;) {
 		if (n > 0 && i >= n) {
 			break;
 		}

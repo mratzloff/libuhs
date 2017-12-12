@@ -10,8 +10,6 @@ const std::string Node::typeString(NodeType t) {
 		return "element";
 	case NodeType::Text:
 		return "text";
-	default:
-		return "";
 	}
 }
 
@@ -73,7 +71,7 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 	} else {
 		Node* previous = nullptr;
 		for (Node* child = this->firstChild(); child; child = child->nextSibling()) {
-			if (n == child) {
+			if (previous && n == child) {
 				auto detachedNode = std::move(previous->_nextSibling);
 				if (n->hasNextSibling()) {
 					previous->_nextSibling = std::move(n->_nextSibling);

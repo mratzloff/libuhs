@@ -24,8 +24,8 @@
 
 namespace UHS {
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 using std::string_literals::operator""s;
 
 enum class ElementType {
