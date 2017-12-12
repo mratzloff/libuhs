@@ -46,17 +46,13 @@ void TreeWriter::drawScaffold(const Node& n) {
 
 	std::string s;
 	auto p = n.parent();
-	if (p == nullptr) {
+	if (!p) {
 		return;
 	}
 
-	for (int i = depth; i > 0; --i) {
-		if (p == nullptr) {
-			break;
-		}
+	for (int i = depth; i > 0 && p; --i) {
 		auto gp = p->parent();
-
-		if (gp != nullptr) {
+		if (gp) {
 			if (p == gp->lastChild()) {
 				s = "    " + s;
 			} else {
@@ -317,13 +313,11 @@ void UHSWriter::serialize88a(const Document& d, std::string& out) {
 
 		numPrevChildren = n->numChildren();
 
-		if (n->hasFirstChild()) {
-			auto child = n->firstChild();
+		if (auto child = n->firstChild()) {
 			if (!Node::isElementOfType(*child, ElementType::Credit)) {
 				queue.push(child);
 			}
-			while (child->hasNextSibling()) {
-				child = child->nextSibling();
+			while ((child = child->nextSibling())) {
 				if (!Node::isElementOfType(*child, ElementType::Credit)) {
 					queue.push(child);
 				}
@@ -353,7 +347,7 @@ void UHSWriter::serialize96a(std::string& out) {
 
 	_key = _codec.createKey(_document->title());
 
-	for (Node* n = _document->firstChild(); n != nullptr; n = n->nextSibling()) {
+	for (Node* n = _document->firstChild(); n; n = n->nextSibling()) {
 		switch (n->nodeType()) {
 		case NodeType::Document: {
 			const auto& child = static_cast<const Document&>(*n);
@@ -475,7 +469,7 @@ void UHSWriter::serializeDataElement(const Element& e, std::string& out, int& le
 void UHSWriter::serializeHintElement(const Element& e, std::string& out, int& len) {
 	bool continuation = false;
 
-	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
+	for (Node* n = e.firstChild(); n; n = n->nextSibling()) {
 		if (continuation) {
 			out += Token::NestedTextSep;
 			out += EOL;
@@ -524,7 +518,7 @@ void UHSWriter::serializeInfoElement(std::string& out, int& len) {
 }
 
 void UHSWriter::serializeSubjectElement(const Element& e, std::string& out, int& len) {
-	for (Node* n = e.firstChild(); n != nullptr; n = n->nextSibling()) {
+	for (Node* n = e.firstChild(); n; n = n->nextSibling()) {
 		if (n->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", n->nodeTypeString().data());
 		}
@@ -636,7 +630,7 @@ void UHSWriter::convertTo91a() {
 	// Re-parent under subject node
 	auto container = Element::create(ElementType::Subject);
 	container->title(_document->title());
-	for (Node* n = _document->firstChild(); n != nullptr; n = _document->firstChild()) {
+	for (Node* n = _document->firstChild(); n; n = _document->firstChild()) {
 		if (n->nodeType() != NodeType::Element) {
 			throw WriteError(
 			    "expected element, found %s node", n->nodeTypeString().data());

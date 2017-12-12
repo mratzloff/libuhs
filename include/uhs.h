@@ -417,6 +417,7 @@ public:
 	void appendChild(std::unique_ptr<Node> n);
 	void appendChild(std::unique_ptr<Node> n, bool silenceEvent);
 	void insertBefore(std::unique_ptr<Node> n, Node* ref);
+	bool hasParent() const;
 	Node* parent() const;
 	bool hasNextSibling() const;
 	Node* nextSibling() const;

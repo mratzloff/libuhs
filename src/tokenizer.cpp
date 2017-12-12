@@ -208,14 +208,14 @@ void Tokenizer::TokenChannel::send(const Token&& t) {
 }
 
 std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
-	if (auto err = _pipe.error(); err != nullptr) {
+	if (auto err = _pipe.error()) {
 		std::rethrow_exception(err);
 	}
 	while (this->empty()) { // Uncommon
 		assert(this->ok());
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));\
-		
-		if (auto err = _pipe.error(); err != nullptr) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+		if (auto err = _pipe.error()) {
 			std::rethrow_exception(err);
 		}
 	}

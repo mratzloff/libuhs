@@ -198,13 +198,13 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		}
 
 		Node* parent = nullptr;
-		for (int i = line; parent == nullptr; --i) {
+		for (int i = line; !parent; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
 			}
 		}
-		if (parent == nullptr) {
+		if (!parent) {
 			throw ParseError(t->line(), t->column(), "could not find parent node");
 		}
 
@@ -239,13 +239,13 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		int line = t->line();
 
 		Node* parent = nullptr;
-		for (int i = line; parent == nullptr; --i) {
+		for (int i = line; !parent; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
 			}
 		}
-		if (parent == nullptr) {
+		if (!parent) {
 			throw ParseError(t->line(), t->column(), "could not find parent node");
 		}
 		if (parent->nodeType() != NodeType::Element) {
@@ -690,18 +690,13 @@ void Parser::parseIncentiveElement(Element* const e) {
 			continue; // TODO: Warn
 		}
 
-		auto target = this->findTarget(targetLine);
-		if (target == nullptr) {
-			continue; // TODO: Warn
-		}
-
 		// Set visibility
-		if (instruction == Token::Registered) {
-			target->visibility(VisibilityType::Registered);
-		} else if (instruction == Token::Unregistered) {
-			target->visibility(VisibilityType::Unregistered);
-		} else {
-			continue; // TODO: Warn
+		if (auto target = this->findTarget(targetLine)) {
+			if (instruction == Token::Registered) {
+				target->visibility(VisibilityType::Registered);
+			} else if (instruction == Token::Unregistered) {
+				target->visibility(VisibilityType::Unregistered);
+			}
 		}
 	}
 }
@@ -957,15 +952,15 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 
 void Parser::findParentAndAppend(
     std::unique_ptr<Element> e, std::unique_ptr<const Token> t) {
-	assert(e != nullptr);
-	assert(t != nullptr);
+	assert(e);
+	assert(t);
 
 	int min = e->line();
 	int max = min + e->length();
 	auto parent = _parents.find(min, max);
 	_parents.add(*e, min, max);
 
-	if (parent == nullptr) {
+	if (!parent) {
 		throw ParseError(t->line(), t->column(), "orphaned element");
 	}
 	parent->appendChild(std::move(e));
@@ -977,7 +972,7 @@ void Parser::deferLinkCheck(int targetLine, const int line, const int column) {
 
 void Parser::checkLinks() {
 	for (const auto [targetLine, line, column] : _deferredLinkChecks) {
-		if (const auto target = this->findTarget(targetLine); target == nullptr) {
+		if (const auto target = this->findTarget(targetLine); !target) {
 			// TODO: Warning using ld.line and ld.column
 		}
 	}
@@ -989,12 +984,12 @@ void Parser::checkLinks() {
 // a hyperpng references the descriptor line, as usual.
 Element* Parser::findTarget(const int line) {
 	auto target = _document->find(line);
-	if (target == nullptr) {
+	if (!target) {
 		target = _document->find(line + 1);
-		if (target == nullptr) {
+		if (!target) {
 			return nullptr;
 		}
-		if (const auto parent = target->parent(); parent != nullptr) {
+		if (const auto parent = target->parent()) {
 			const auto& parentElement = static_cast<Element&>(*parent);
 			if (parentElement.elementType() != ElementType::Hyperpng) {
 				return nullptr; // We found an element, but shouldn't have

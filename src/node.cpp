@@ -55,31 +55,30 @@ void Node::detachParent() {
 }
 
 std::unique_ptr<Node> Node::removeChild(Node* n) {
-	assert(n != nullptr);
+	assert(n);
 
 	n->_parent = nullptr;
 	--_numChildren;
 
 	if (n == this->firstChild()) {
 		auto detachedNode = std::move(_firstChild);
-		if (n->_nextSibling == nullptr) {
-			_lastChild = nullptr;
-		} else {
+		if (n->hasNextSibling()) {
 			_firstChild = std::move(n->_nextSibling);
+		} else {
+			_lastChild = nullptr;
 		}
 		n->didRemove();
 
 		return detachedNode;
 	} else {
 		Node* previous = nullptr;
-		for (Node* child = this->firstChild(); child != nullptr;
-		     child = child->nextSibling()) {
+		for (Node* child = this->firstChild(); child; child = child->nextSibling()) {
 			if (n == child) {
 				auto detachedNode = std::move(previous->_nextSibling);
-				if (n->_nextSibling == nullptr) {
-					_lastChild = nullptr;
-				} else {
+				if (n->hasNextSibling()) {
 					previous->_nextSibling = std::move(n->_nextSibling);
+				} else {
+					_lastChild = nullptr;
 				}
 				n->didRemove();
 
@@ -94,7 +93,7 @@ std::unique_ptr<Node> Node::removeChild(Node* n) {
 }
 
 void Node::appendChild(std::unique_ptr<Node> n) {
-	assert(n != nullptr);
+	assert(n);
 
 	auto ptr = n.get();
 	this->appendChild(std::move(n), true);
@@ -104,20 +103,19 @@ void Node::appendChild(std::unique_ptr<Node> n) {
 // Note that this node must be attached to a document tree in order to
 // correctly set the _depth property when appending its own children.
 void Node::appendChild(std::unique_ptr<Node> n, bool) {
-	assert(n != nullptr);
+	assert(n);
 
 	auto ptr = n.get();
-	if (_lastChild == nullptr) { // No children
-		_firstChild = std::move(n);
-		_lastChild = ptr;
-	} else {
+	if (this->hasLastChild()) { // No children
 		_lastChild->_nextSibling = std::move(n);
-		_lastChild = ptr;
+	} else {
+		_firstChild = std::move(n);
 	}
+	_lastChild = ptr;
 	ptr->_parent = this;
 
 	for (auto& child : *ptr) {
-		assert(child._parent != nullptr);
+		assert(child._parent);
 		child._depth = child._parent->_depth + 1;
 	}
 	++_numChildren;
@@ -125,9 +123,9 @@ void Node::appendChild(std::unique_ptr<Node> n, bool) {
 
 // See note for appendChild() regarding depth.
 void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
-	assert(n != nullptr);
+	assert(n);
 
-	if (ref == nullptr) {
+	if (!ref) {
 		this->appendChild(std::move(n));
 		return;
 	}
@@ -140,14 +138,14 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 	} else {
 		Node* previous = nullptr;
 
-		for (Node* sibling = this->firstChild(); sibling != nullptr;
+		for (Node* sibling = this->firstChild(); sibling;
 		     sibling = sibling->nextSibling()) {
 			if (sibling == ref) {
 				break;
 			}
 			previous = sibling;
 		}
-		if (previous == nullptr) {
+		if (!previous) {
 			return; // Not found; no action to take
 		}
 		n->_nextSibling = std::move(previous->_nextSibling);
@@ -161,6 +159,10 @@ void Node::insertBefore(std::unique_ptr<Node> n, Node* ref) {
 	++_numChildren;
 
 	ptr->didAdd();
+}
+
+bool Node::hasParent() const {
+	return _parent != nullptr;
 }
 
 Node* Node::parent() const {
@@ -228,7 +230,7 @@ std::unique_ptr<Node> Node::cloneInternal() const {
 }
 
 void Node::cloneChildren(const Node& other) {
-	for (Node* node = other.firstChild(); node != nullptr; node = node->nextSibling()) {
+	for (Node* node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Document:
 			this->appendChild(static_cast<Document&>(*node).cloneInternal(), true);
@@ -247,8 +249,8 @@ void Node::didRemove() {
 	if (_nodeType != NodeType::Element) {
 		return;
 	}
-	auto& element = static_cast<Element&>(*this);
-	if (auto document = this->findDocument(); document != nullptr) {
+	if (auto document = this->findDocument()) {
+		auto& element = static_cast<Element&>(*this);
 		document->elementRemoved(element);
 	}
 }
@@ -257,14 +259,14 @@ void Node::didAdd() {
 	if (_nodeType != NodeType::Element) {
 		return;
 	}
-	auto& element = static_cast<Element&>(*this);
-	if (auto document = this->findDocument(); document != nullptr) {
+	if (auto document = this->findDocument()) {
+		auto& element = static_cast<Element&>(*this);
 		document->elementAdded(element);
 	}
 }
 
 Document* Node::findDocument() const {
-	for (Node* node = _parent; node != nullptr; node = node->parent()) {
+	for (Node* node = _parent; node; node = node->parent()) {
 		if (node->nodeType() == NodeType::Document) {
 			return static_cast<Document*>(node);
 		}
@@ -294,7 +296,7 @@ typename NodeIterator<T>::pointer NodeIterator<T>::operator->() const {
 template<typename T>
 NodeIterator<T>& NodeIterator<T>::operator++() {
 	do {
-		if (_current == nullptr) {
+		if (!_current) {
 			break;
 		}
 		if (_current->hasFirstChild() && !_visited) { // Down
