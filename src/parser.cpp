@@ -760,12 +760,11 @@ void Parser::parseInfoElement(Element* const e) {
 			auto len = std::strftime(buf, 20, "%Y-%m-%dT%H:%M:%S", &tm);
 			_document->attr("timestamp", std::string(buf, len));
 		} else {
-			auto v = _document->attr(key);
-			if (!v.empty()) {
-				v += ' ';
+			if (auto currentValue = _document->attr(key)) {
+				_document->attr(key, *currentValue + " " + val);
+			} else {
+				_document->attr(key, val);
 			}
-			v += val;
-			_document->attr(key, v);
 		}
 	}
 }

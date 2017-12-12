@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <ctime>
 #include <exception>
+#include <experimental/optional>
 #include <fstream>
 #include <istream>
 #include <iterator>
@@ -23,6 +24,8 @@
 
 namespace UHS {
 
+using std::experimental::optional;
+using std::experimental::nullopt;
 using std::string_literals::operator""s;
 
 enum class ElementType {
@@ -166,8 +169,6 @@ namespace Strings {
 
 typedef std::map<const std::string, const std::string> CharacterMap;
 
-constexpr int NaN = INT_MIN;
-
 bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
@@ -199,7 +200,7 @@ public:
 	typedef std::map<std::string, std::string> Type;
 
 	const Type& attrs() const;
-	const std::string attr(const std::string& key) const;
+	optional<const std::string> attr(const std::string key) const;
 	void attr(const std::string key, const std::string value);
 
 private:

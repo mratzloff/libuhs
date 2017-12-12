@@ -332,11 +332,10 @@ void UHSWriter::serialize88a(const Document& d, std::string& out) {
 	out += std::to_string(lastHintTextLine) + EOL;
 	out += buf;
 
-	const auto credit = d.attr("notice");
-	if (!credit.empty()) {
+	if (auto credit = d.attr("notice")) {
 		out += Token::CreditSep;
 		out += EOL;
-		out += Strings::wrap(credit, EOL, LineLen) + EOL;
+		out += Strings::wrap(*credit, EOL, LineLen) + EOL;
 	}
 }
 
@@ -511,9 +510,8 @@ void UHSWriter::serializeInfoElement(std::string& out, int& len) {
 		out += Strings::wrap(v, EOL, LineLen, len, k + "=") + EOL;
 	}
 
-	const auto notice = _document->attr("notice");
-	if (!notice.empty()) {
-		out += Strings::wrap(notice, EOL, LineLen, len, Token::NoticePrefix) + EOL;
+	if (auto notice = _document->attr("notice")) {
+		out += Strings::wrap(*notice, EOL, LineLen, len, Token::NoticePrefix) + EOL;
 	}
 }
 
@@ -531,7 +529,7 @@ void UHSWriter::serializeTextElement(const Element& e, std::string& out, int& le
 	const auto elementType = e.elementType();
 	const auto& body = e.body();
 
-	const auto textFormat = ((e.attr("typeface") == "monospace") ? "1 " : "0 ");
+	const auto textFormat = ((*e.attr("typeface") == "monospace") ? "1 " : "0 ");
 	out += this->createDataAddress(body.length(), textFormat);
 	++len;
 
@@ -655,7 +653,9 @@ void UHSWriter::convertTo91a() {
 	_document->version(VersionType::Version91a);
 	auto version = Element::create(ElementType::Version);
 	version->title("91a");
-	version->body(_document->attr("notice"));
+	if (auto notice = _document->attr("notice")) {
+		version->body(*notice);
+	}
 	_document->appendChild(std::move(version));
 }
 
