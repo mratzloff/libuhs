@@ -19,20 +19,20 @@ std::exception_ptr Pipe::error() {
 
 void Pipe::read() {
 	try {
-		std::streamsize n = ReadLen;
-		char buf[ReadLen] = {0};
+		std::streamsize length = ReadLength;
+		char buffer[ReadLength] = {0};
 
-		while (in_.read(buf, n)) {
+		while (in_.read(buffer, length)) {
 			for (const auto& func : handlers_) {
-				func(buf, n);
+				func(buffer, length);
 			}
-			offset_ += n;
+			offset_ += length;
 		}
-		n = in_.gcount();
+		length = in_.gcount();
 		for (const auto& func : handlers_) {
-			func(buf, n);
+			func(buffer, length);
 		}
-		offset_ += n;
+		offset_ += length;
 		in_.close();
 	} catch (const std::exception& err) {
 		err_ = std::current_exception();

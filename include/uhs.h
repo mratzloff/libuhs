@@ -100,9 +100,9 @@ enum class VisibilityType {
 	None,         // Visible to no one
 };
 
-static constexpr const char* EOL = "\r\n";
-static const int MaxDepth = 16;
-static constexpr const char* Version = UHS_VERSION;
+static constexpr auto EOL = "\r\n";
+static const auto MaxDepth = 16;
+static constexpr auto Version = UHS_VERSION;
 
 class Error : public std::runtime_error {
 public:
@@ -210,9 +210,9 @@ private:
 class Body {
 public:
 	Body() = default;
-	explicit Body(const std::string s);
+	explicit Body(const std::string body);
 	const std::string& body() const;
-	void body(const std::string s);
+	void body(const std::string body);
 
 private:
 	std::string body_;
@@ -221,9 +221,9 @@ private:
 class Title {
 public:
 	Title() = default;
-	explicit Title(const std::string s);
+	explicit Title(const std::string title);
 	const std::string& title() const;
-	void title(const std::string s);
+	void title(const std::string title);
 
 private:
 	std::string title_;
@@ -233,7 +233,7 @@ class Visibility {
 public:
 	bool visible(bool registered) const;
 	VisibilityType visibility() const;
-	void visibility(VisibilityType v);
+	void visibility(VisibilityType visibility);
 
 private:
 	VisibilityType visibility_ = VisibilityType::All;
@@ -253,7 +253,7 @@ public:
 	bool eof();
 
 private:
-	static const std::size_t ReadLen = 1024;
+	static const std::size_t ReadLength = 1024;
 
 	std::ifstream& in_;
 	std::size_t offset_ = 0;
@@ -263,29 +263,29 @@ private:
 
 class CRC {
 public:
-	static const int ByteLen = 2;
+	static const auto ByteLength = 2;
 
 	CRC();
-	void upstream(Pipe& p);
-	void calculate(const char* buf, std::streamsize n, bool bufferChecksum);
-	void calculate(const char* buf, std::streamsize n);
+	void upstream(Pipe& pipe);
+	void calculate(const char* buffer, std::streamsize length, bool bufferChecksum);
+	void calculate(const char* buffer, std::streamsize length);
 	uint16_t result();
 	void result(std::vector<char>& out);
 	bool valid();
 	void reset();
 
 private:
-	static const int TableLen = 256;
+	static const auto TableLength = 256;
 	static const uint16_t Polynomial = 0x8005;
 	static const uint16_t CastMask = 0xFFFF;
 	static const uint16_t MSBMask = 0x8000;
 	static const uint16_t FinalXOR = 0x0100;
 
 	Pipe* pipe_ = nullptr;
-	uint16_t table_[TableLen];
-	char buf_[2]; // Checksum buffer
-	int bufLen_ = 0;
-	uint16_t rem_ = 0x0000;
+	uint16_t table_[TableLength];
+	char checksum_[2];
+	int checksumLength_ = 0;
+	uint16_t remainder_ = 0x0000;
 	bool finalized_ = false;
 
 	void createTable();
@@ -300,27 +300,27 @@ class Token {
 	friend class Tokenizer;
 
 public:
-	static constexpr const char* AsciiEncStart = "#a+";
-	static constexpr const char* AsciiEncEnd = "#a-";
-	static constexpr const char* CreditSep = "CREDITS:";
-	static const char DataSep = '\x1A';
-	static constexpr const char* HyperlinkStart = "#h+";
-	static constexpr const char* HyperlinkEnd = "#h-";
-	static constexpr const char* HeaderSep = "** END OF 88A FORMAT **";
-	static constexpr const char* InfoKeyValueSep = "=";
-	static constexpr const char* NestedElementSep = "=";
-	static constexpr const char* NestedTextSep = "-";
-	static constexpr const char* NoticePrefix = ">";
-	static constexpr const char* NumberSign = "##";
-	static constexpr const char* ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
-	static constexpr const char* ProportionalStart = "#p+";
-	static constexpr const char* ProportionalEnd = "#p-";
-	static constexpr const char* Registered = "A";
-	static constexpr const char* Signature = "UHS";
-	static constexpr const char* Unregistered = "Z";
-	static constexpr const char* WordWrapStart = "#w+";
-	static constexpr const char* WordWrapEnd = "#w-";
-	static constexpr const char* WordWrapEndAlt = "#w.";
+	static constexpr auto AsciiEncStart = "#a+";
+	static constexpr auto AsciiEncEnd = "#a-";
+	static constexpr auto CreditSep = "CREDITS:";
+	static const auto DataSep = '\x1A';
+	static constexpr auto HyperlinkStart = "#h+";
+	static constexpr auto HyperlinkEnd = "#h-";
+	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";
+	static constexpr auto InfoKeyValueSep = "=";
+	static constexpr auto NestedElementSep = "=";
+	static constexpr auto NestedTextSep = "-";
+	static constexpr auto NoticePrefix = ">";
+	static constexpr auto NumberSign = "##";
+	static constexpr auto ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
+	static constexpr auto ProportionalStart = "#p+";
+	static constexpr auto ProportionalEnd = "#p-";
+	static constexpr auto Registered = "A";
+	static constexpr auto Signature = "UHS";
+	static constexpr auto Unregistered = "Z";
+	static constexpr auto WordWrapStart = "#w+";
+	static constexpr auto WordWrapEnd = "#w-";
+	static constexpr auto WordWrapEndAlt = "#w.";
 
 	static const std::string typeString(TokenType t);
 
@@ -350,16 +350,16 @@ private:
 
 class Tokenizer {
 public:
-	explicit Tokenizer(Pipe& p);
-	void tokenize(const char* buf, std::streamsize n);
+	explicit Tokenizer(Pipe& pipe);
+	void tokenize(const char* buffer, std::streamsize length);
 	bool hasNext();
 	std::unique_ptr<const Token> next();
 
 private:
 	class TokenChannel {
 	public:
-		explicit TokenChannel(Pipe& p);
-		void send(const Token&& t);
+		explicit TokenChannel(Pipe& pipe);
+		void send(const Token&& token);
 		std::unique_ptr<const Token> receive();
 		bool empty() const;
 		bool ok() const;
@@ -373,7 +373,7 @@ private:
 	};
 
 	Pipe& pipe_;
-	std::string buf_;
+	std::string buffer_;
 	int line_ = 1;
 	std::size_t offset_ = 0;
 	bool beforeHeaderSep_ = true;
@@ -383,11 +383,12 @@ private:
 	TokenChannel out_;
 
 	void tokenizeLine();
-	ElementType tokenizeDescriptor(const std::smatch& m);
-	void tokenizeDataAddress(const std::smatch& m);
-	void tokenizeHyperpngRegion(const std::smatch& m);
-	void tokenizeOverlayAddress(const std::smatch& m);
-	void tokenizeMatches(const std::smatch& m, const std::vector<TokenType>&& tokens);
+	ElementType tokenizeDescriptor(const std::smatch& matches);
+	void tokenizeDataAddress(const std::smatch& matches);
+	void tokenizeHyperpngRegion(const std::smatch& matches);
+	void tokenizeOverlayAddress(const std::smatch& matches);
+	void tokenizeMatches(
+	    const std::smatch& matches, const std::vector<TokenType>&& tokens);
 	void tokenizeData(const std::string& data, std::size_t column);
 	void tokenizeCRC(const std::string& crc, std::size_t column);
 	void tokenizeEOF(std::size_t column);
@@ -403,10 +404,10 @@ public:
 	using iterator = NodeIterator<Node>;
 	using const_iterator = NodeIterator<const Node>;
 
-	static const std::string typeString(NodeType t);
-	static bool isElementOfType(const Node& n, ElementType t);
+	static const std::string typeString(NodeType type);
+	static bool isElementOfType(const Node& node, ElementType type);
 
-	explicit Node(NodeType t);
+	explicit Node(NodeType type);
 	Node(const Node& other);
 	Node& operator=(Node other);
 	friend void swap(Node& lhs, Node& rhs) noexcept;
@@ -414,10 +415,10 @@ public:
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
 	void detachParent();
-	std::unique_ptr<Node> removeChild(Node* n);
-	void appendChild(std::unique_ptr<Node> n);
-	void appendChild(std::unique_ptr<Node> n, bool silenceEvent);
-	void insertBefore(std::unique_ptr<Node> n, Node* ref);
+	std::unique_ptr<Node> removeChild(Node* node);
+	void appendChild(std::unique_ptr<Node> node);
+	void appendChild(std::unique_ptr<Node> node, bool silenceEvent);
+	void insertBefore(std::unique_ptr<Node> node, Node* ref);
 	bool hasParent() const;
 	Node* parent() const;
 	bool hasNextSibling() const;
@@ -465,7 +466,7 @@ public:
 	using iterator_category = std::forward_iterator_tag;
 
 	NodeIterator() = default;
-	explicit NodeIterator(pointer n);
+	explicit NodeIterator(pointer node);
 	reference operator*() const;
 	pointer operator->() const;
 	NodeIterator<T>& operator++();
@@ -495,13 +496,13 @@ public:
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
 	std::unique_ptr<TextNode> clone() const;
 	const std::string& string() const;
-	void addFormat(Format f);
-	void removeFormat(Format f);
-	bool hasFormat(Format f) const;
+	void addFormat(Format format);
+	void removeFormat(Format format);
+	bool hasFormat(Format format) const;
 	Format format() const;
 
 private:
-	Format fmt_;
+	Format format_;
 
 	std::unique_ptr<Node> cloneInternal() const override;
 };
@@ -533,7 +534,7 @@ public:
 	int line() const;
 	void line(int line);
 	int length() const;
-	void length(int len); // Used by UHSWriter
+	void length(int length); // Used by UHSWriter
 	bool isMedia() const;
 	const std::string mediaExt() const;
 
@@ -606,10 +607,10 @@ public:
 private:
 	static const char AsciiStart = 0x20;
 	static const char AsciiEnd = 0x7F;
-	static constexpr const char* KeySeed = "key";
+	static constexpr auto KeySeed = "key";
 
 	int keystream(
-	    std::string key, std::size_t keyLen, std::size_t line, bool isText) const;
+	    std::string key, std::size_t keyLength, std::size_t line, bool isText) const;
 	bool isPrintable(int c) const;
 	char toPrintable(int c) const;
 };
@@ -621,7 +622,7 @@ struct ParserOptions {
 
 class Parser {
 public:
-	explicit Parser(const ParserOptions opt = {});
+	explicit Parser(const ParserOptions options = {});
 	std::unique_ptr<Document> parse(std::ifstream& in);
 	void reset();
 
@@ -634,14 +635,14 @@ private:
 		int min;
 		int max;
 
-		NodeRange(Node& n, const int min, const int max);
+		NodeRange(Node& node, const int min, const int max);
 	};
 
 	struct NodeRangeList {
 		std::vector<NodeRange> data = {};
 
 		Node* find(const int min, const int max);
-		void add(Node& n, const int min, const int max);
+		void add(Node& node, const int min, const int max);
 		void clear();
 	};
 
@@ -662,10 +663,10 @@ private:
 		DataHandler(std::size_t offset, std::size_t length, DataCallback func);
 	};
 
-	static const int HeaderLen = 4;
-	static const int FormatTokenLen = 3;
+	static const auto HeaderLength = 4;
+	static const auto FormatTokenLength = 3;
 
-	const ParserOptions opt_;
+	const ParserOptions options_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 	std::unique_ptr<CRC> crc_ = nullptr;
 	Codec codec_;
@@ -682,36 +683,37 @@ private:
 	void parse88a();
 	void parse88aElements(int firstHintTextLine, NodeMap& parents);
 	void parse88aTextNodes(int lastHintTextLine, NodeMap& parents);
-	void parse88aCredits(std::unique_ptr<const Token> t);
-	void parseHeaderSep(std::unique_ptr<const Token> t);
+	void parse88aCredits(std::unique_ptr<const Token> token);
+	void parseHeaderSep(std::unique_ptr<const Token> token);
 
 	// 96a
 	void parse96a();
-	Element* parseElement(std::unique_ptr<const Token> t);
-	void parseCommentElement(Element* const e);
-	void parseDataElement(Element* const e);
-	void parseHintElement(Element* const e);
-	void parseHyperpngElement(Element* const e);
-	void parseInfoElement(Element* const e);
-	void parseIncentiveElement(Element* const e);
-	void parseLinkElement(Element* const e);
-	void parseOverlayElement(Element* const e);
-	void parseSubjectElement(Element* const e);
-	void parseTextElement(Element* const e);
-	void parseVersionElement(Element* const e);
+	Element* parseElement(std::unique_ptr<const Token> token);
+	void parseCommentElement(Element* const element);
+	void parseDataElement(Element* const element);
+	void parseHintElement(Element* const element);
+	void parseHyperpngElement(Element* const element);
+	void parseInfoElement(Element* const element);
+	void parseIncentiveElement(Element* const element);
+	void parseLinkElement(Element* const element);
+	void parseOverlayElement(Element* const element);
+	void parseSubjectElement(Element* const element);
+	void parseTextElement(Element* const element);
+	void parseVersionElement(Element* const element);
 
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	void findParentAndAppend(std::unique_ptr<Element> e, std::unique_ptr<const Token> t);
+	void findParentAndAppend(
+	    std::unique_ptr<Element> element, std::unique_ptr<const Token> token);
 	void deferLinkCheck(int targetLine, const int line, const int column);
 	void checkLinks();
 	Element* findTarget(const int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
-	void parseData(std::unique_ptr<const Token> t);
+	void parseData(std::unique_ptr<const Token> token);
 	void checkCRC();
-	void parseDate(const std::string& s, std::tm& tm) const;
-	void parseTime(const std::string& s, std::tm& tm) const;
+	void parseDate(const std::string& date, std::tm& tm) const;
+	void parseTime(const std::string& time, std::tm& tm) const;
 	bool isPunctuation(char c);
 	int offsetLine(int line);
 };
@@ -725,37 +727,37 @@ struct WriterOptions {
 
 class Writer {
 public:
-	Writer(std::ostream& out, const WriterOptions opt = {});
+	Writer(std::ostream& out, const WriterOptions options = {});
 	virtual ~Writer() = default;
-	virtual void write(const Document& d) = 0;
+	virtual void write(const Document& document) = 0;
 	virtual void reset();
 
 protected:
 	std::ostream& out_;
-	const WriterOptions opt_;
+	const WriterOptions options_;
 };
 
 class TreeWriter : public Writer {
 public:
-	TreeWriter(std::ostream& out, const WriterOptions opt = {});
-	void write(const Document& d) override;
+	TreeWriter(std::ostream& out, const WriterOptions options = {});
+	void write(const Document& document) override;
 
 private:
-	void draw(const Document& d);
-	void draw(const Element& e);
-	void drawScaffold(const Node& n);
+	void draw(const Document& document);
+	void draw(const Element& element);
+	void drawScaffold(const Node& node);
 };
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(std::ostream& out, const WriterOptions opt = {});
-	void write(const Document& d) override;
+	JSONWriter(std::ostream& out, const WriterOptions options = {});
+	void write(const Document& document) override;
 
 private:
-	Json::Value serialize(const Document& d, Json::Value& root) const;
-	void serializeElement(const Element& e, Json::Value& obj) const;
-	void serializeDocument(const Document& d, Json::Value& obj) const;
-	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& obj) const;
+	Json::Value serialize(const Document& document, Json::Value& root) const;
+	void serializeElement(const Element& element, Json::Value& object) const;
+	void serializeDocument(const Document& document, Json::Value& object) const;
+	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& object) const;
 };
 
 class UHSWriter : public Writer {
@@ -763,33 +765,33 @@ public:
 	// The official readers work with lines longer than 76 characters, but
 	// lines were capped at 76 so that DOS readers would display correctly
 	// within the standard 80-character window (with border and padding).
-	static const std::size_t LineLen = 76;
+	static const std::size_t LineLength = 76;
 
-	UHSWriter(std::ostream& out, const WriterOptions opt = {});
-	void write(const Document& d) override;
+	UHSWriter(std::ostream& out, const WriterOptions options = {});
+	void write(const Document& document) override;
 	void reset() override;
 
 private:
 	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
 
-	static const std::size_t InitialBufferLen = 204'800; // 200 KiB
-	static const std::size_t MediaSizeLen = 6; // Up to 999,999 bytes per media file
-	static const std::size_t FileSizeLen = 7;  // Up to 9,999,999 bytes per document
-	static constexpr const char* DataAddressMarker = "000000";
-	static constexpr const char* InfoLengthMarker = "length=0000000";
+	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
+	static const std::size_t MediaSizeLength = 6; // Up to 999,999 bytes per media file
+	static const std::size_t FileSizeLength = 7;  // Up to 9,999,999 bytes per document
+	static constexpr auto DataAddressMarker = "000000";
+	static constexpr auto InfoLengthMarker = "length=0000000";
 
-	void serialize88a(const Document& d, std::string& out);
+	void serialize88a(const Document& document, std::string& out);
 	void serialize96a(std::string& out);
-	void serializeElement(const Element& e, std::string& out, int& len);
-	void serializeCommentElement(const Element& e, std::string& out, int& len);
-	void serializeDataElement(const Element& e, std::string& out, int& len);
-	void serializeHintElement(const Element& e, std::string& out, int& len);
-	void serializeInfoElement(std::string& out, int& len);
-	void serializeSubjectElement(const Element& e, std::string& out, int& len);
-	void serializeTextElement(const Element& e, std::string& out, int& len);
+	void serializeElement(const Element& element, std::string& out, int& length);
+	void serializeCommentElement(const Element& element, std::string& out, int& length);
+	void serializeDataElement(const Element& element, std::string& out, int& length);
+	void serializeHintElement(const Element& element, std::string& out, int& length);
+	void serializeInfoElement(std::string& out, int& length);
+	void serializeSubjectElement(const Element& element, std::string& out, int& length);
+	void serializeTextElement(const Element& element, std::string& out, int& length);
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
-	std::string createDataAddress(std::size_t bodyLen, std::string textFormat = "");
+	std::string createDataAddress(std::size_t bodyLength, std::string textFormat = "");
 	void convertTo91a();
 
 	Codec codec_;

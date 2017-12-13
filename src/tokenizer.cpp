@@ -4,42 +4,41 @@
 
 namespace UHS {
 
-Tokenizer::Tokenizer(Pipe& p) : pipe_{p}, out_{p} {
-	pipe_.addHandler([=](const char* s, std::streamsize n) { this->tokenize(s, n); });
+Tokenizer::Tokenizer(Pipe& pipe) : pipe_{pipe}, out_{pipe} {
+	pipe_.addHandler([=](const char* buffer, std::streamsize length) {
+		this->tokenize(buffer, length);
+	});
 }
 
-void Tokenizer::tokenize(const char* buf, std::streamsize n) {
-	std::size_t len = n;
-	std::string s{buf, len};
-	std::size_t i = 0;
+void Tokenizer::tokenize(const char* buffer, std::streamsize length) {
+	std::string localBuffer{buffer, static_cast<std::size_t>(length)};
 	std::size_t column = 0;
-	std::size_t lineLen;
 
-	while (i < len) {
+	for (auto i = 0; i < length;) {
 		if (binaryMode_) {
-			buf_ += s.substr(i);
+			buffer_ += localBuffer.substr(i);
 			break;
 		}
 
-		auto pos = s.find_first_of("\x1A\n", i);
-		if (pos == std::string::npos) {
-			buf_ += s.substr(i);
-			i = s.length();
+		auto position = localBuffer.find_first_of("\x1A\n", i);
+		if (position == std::string::npos) {
+			buffer_ += localBuffer.substr(i);
+			i = localBuffer.length();
 		} else {
-			buf_ += s.substr(i, pos - i);
-			i = pos;
+			buffer_ += localBuffer.substr(i, position - i);
+			i = position;
 		}
 
-		if (s[i] == Token::DataSep || s[i] == '\n') {
+		if (localBuffer[i] == Token::DataSep || localBuffer[i] == '\n') {
 			this->tokenizeLine();
-			lineLen = buf_.length() + 1;
-			buf_.clear();
-			offset_ += lineLen;
+			auto lineLength = buffer_.length() + 1;
+			buffer_.clear();
+			offset_ += lineLength;
 
-			switch (s[i]) {
+			switch (localBuffer[i]) {
 			case Token::DataSep:
 				binaryMode_ = true;
-				column = lineLen;
+				column = lineLength;
 				break;
 			case '\n':
 				++line_;
@@ -51,20 +50,20 @@ void Tokenizer::tokenize(const char* buf, std::streamsize n) {
 	}
 
 	if (pipe_.eof()) {
-		auto eofColumn = column + buf_.length();
+		auto eofColumn = column + buffer_.length();
 
 		if (!beforeHeaderSep_) {
-			auto crcColumn = eofColumn - CRC::ByteLen;
-			auto dataLen = crcColumn - column;
-			auto data = buf_.substr(0, dataLen);
+			auto crcColumn = eofColumn - CRC::ByteLength;
+			auto dataLength = crcColumn - column;
+			auto data = buffer_.substr(0, dataLength);
 			this->tokenizeData(data, column);
 
 			column = crcColumn;
 			offset_ += column;
-			auto crc = buf_.substr(dataLen);
+			auto crc = buffer_.substr(dataLength);
 			this->tokenizeCRC(crc, column);
 
-			offset_ += CRC::ByteLen;
+			offset_ += CRC::ByteLength;
 		}
 
 		this->tokenizeEOF(eofColumn);
@@ -83,72 +82,74 @@ std::unique_ptr<const Token> Tokenizer::next() {
 
 void Tokenizer::tokenizeLine() {
 	// UHS uses DOS-style line endings
-	auto s = Strings::rtrim(buf_, '\r');
+	auto localBuffer = Strings::rtrim(buffer_, '\r');
 
 	// Empty lines may be safely ignored
-	if (s.length() == 0) {
+	if (localBuffer.length() == 0) {
 		return;
 	}
 
 	// All numbers are line numbers in 88a, and link elements contain a line number
-	if (Strings::isInt(s) && (beforeHeaderSep_ || line_ == expectedLineTokenLine_)) {
-		out_.send({TokenType::Line, offset_, line_, 0, Strings::ltrim(s, '0')});
+	if (Strings::isInt(localBuffer)
+	    && (beforeHeaderSep_ || line_ == expectedLineTokenLine_)) {
+		out_.send({TokenType::Line, offset_, line_, 0, Strings::ltrim(localBuffer, '0')});
 		expectedLineTokenLine_ = -1;
 		return;
 	}
 
 	// All descriptors are immediately followed by a string title
 	if (line_ == expectedStringTokenLine_) {
-		out_.send({TokenType::String, offset_, line_, 0, s});
+		out_.send({TokenType::String, offset_, line_, 0, localBuffer});
 		expectedStringTokenLine_ = -1;
 		return;
 	}
 
 	// Check for exact line matches
-	if (s == Token::HeaderSep && beforeHeaderSep_) {
+	if (localBuffer == Token::HeaderSep && beforeHeaderSep_) {
 		beforeHeaderSep_ = false;
 		out_.send({TokenType::HeaderSep, offset_, line_});
-	} else if (s == Token::CreditSep && beforeHeaderSep_) {
+	} else if (localBuffer == Token::CreditSep && beforeHeaderSep_) {
 		out_.send({TokenType::CreditSep, offset_, line_});
-	} else if (s == Token::NestedElementSep && !beforeHeaderSep_) {
+	} else if (localBuffer == Token::NestedElementSep && !beforeHeaderSep_) {
 		out_.send({TokenType::NestedElementSep, offset_, line_});
-	} else if (s == Token::NestedTextSep && !beforeHeaderSep_) {
+	} else if (localBuffer == Token::NestedTextSep && !beforeHeaderSep_) {
 		out_.send({TokenType::NestedTextSep, offset_, line_});
-	} else if (s == Token::ParagraphSep && !beforeHeaderSep_) {
+	} else if (localBuffer == Token::ParagraphSep && !beforeHeaderSep_) {
 		out_.send({TokenType::NestedParagraphSep, offset_, line_});
-	} else if (s == Token::Signature && line_ == 1) {
+	} else if (localBuffer == Token::Signature && line_ == 1) {
 		out_.send({TokenType::Signature, offset_, line_});
 	} else {
 		// Check for line match patterns
 		std::smatch matches;
-		if (std::regex_match(s, matches, Regex::Descriptor)) {
+		if (std::regex_match(localBuffer, matches, Regex::Descriptor)) {
 			ElementType elementType = this->tokenizeDescriptor(matches);
 			if (elementType == ElementType::Link) {
 				expectedLineTokenLine_ = line_ + 2;
 			}
 			expectedStringTokenLine_ = line_ + 1;
-		} else if (std::regex_match(s, matches, Regex::DataAddress)) {
+		} else if (std::regex_match(localBuffer, matches, Regex::DataAddress)) {
 			this->tokenizeDataAddress(matches);
-		} else if (std::regex_match(s, matches, Regex::HyperpngRegion)) {
+		} else if (std::regex_match(localBuffer, matches, Regex::HyperpngRegion)) {
 			this->tokenizeHyperpngRegion(matches);
-		} else if (std::regex_match(s, matches, Regex::OverlayAddress)) {
+		} else if (std::regex_match(localBuffer, matches, Regex::OverlayAddress)) {
 			this->tokenizeOverlayAddress(matches);
 		} else {
-			out_.send({TokenType::String, offset_, line_, 0, s});
+			out_.send({TokenType::String, offset_, line_, 0, localBuffer});
 		}
 	}
 }
 
-ElementType Tokenizer::tokenizeDescriptor(const std::smatch& m) {
-	out_.send({TokenType::Length, offset_, line_, 0, Strings::ltrim(m[1].str(), '0')});
-	std::string ident{m[2].str()};
-	auto column = static_cast<std::size_t>(m.position(2));
+ElementType Tokenizer::tokenizeDescriptor(const std::smatch& matches) {
+	out_.send(
+	    {TokenType::Length, offset_, line_, 0, Strings::ltrim(matches[1].str(), '0')});
+	std::string ident{matches[2].str()};
+	auto column = static_cast<std::size_t>(matches.position(2));
 	out_.send({TokenType::Ident, offset_ + column, line_, column, ident});
 	return Element::elementType(ident);
 }
 
-void Tokenizer::tokenizeDataAddress(const std::smatch& m) {
-	this->tokenizeMatches(m,
+void Tokenizer::tokenizeDataAddress(const std::smatch& matches) {
+	this->tokenizeMatches(matches,
 	    {
 	        TokenType::TextFormat,
 	        TokenType::DataOffset,
@@ -156,8 +157,8 @@ void Tokenizer::tokenizeDataAddress(const std::smatch& m) {
 	    });
 }
 
-void Tokenizer::tokenizeHyperpngRegion(const std::smatch& m) {
-	this->tokenizeMatches(m,
+void Tokenizer::tokenizeHyperpngRegion(const std::smatch& matches) {
+	this->tokenizeMatches(matches,
 	    {
 	        TokenType::CoordX,
 	        TokenType::CoordY,
@@ -166,8 +167,8 @@ void Tokenizer::tokenizeHyperpngRegion(const std::smatch& m) {
 	    });
 }
 
-void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
-	this->tokenizeMatches(m,
+void Tokenizer::tokenizeOverlayAddress(const std::smatch& matches) {
+	this->tokenizeMatches(matches,
 	    {
 	        TokenType::DataOffset,
 	        TokenType::DataLength,
@@ -177,11 +178,11 @@ void Tokenizer::tokenizeOverlayAddress(const std::smatch& m) {
 }
 
 void Tokenizer::tokenizeMatches(
-    const std::smatch& m, const std::vector<TokenType>&& tokens) {
+    const std::smatch& matches, const std::vector<TokenType>&& tokens) {
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
-		if (m[i + 1].length() > 0) {
-			auto column = static_cast<std::size_t>(m.position(i + 1));
-			auto value = Strings::ltrim(m[i + 1].str(), '0');
+		if (matches[i + 1].length() > 0) {
+			auto column = static_cast<std::size_t>(matches.position(i + 1));
+			auto value = Strings::ltrim(matches[i + 1].str(), '0');
 			out_.send({tokens[i], offset_, line_, column, value});
 		}
 	}
@@ -199,12 +200,12 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 	out_.send({TokenType::FileEnd, offset_, line_, column});
 }
 
-Tokenizer::TokenChannel::TokenChannel(Pipe& p) : pipe_{p} {}
+Tokenizer::TokenChannel::TokenChannel(Pipe& pipe) : pipe_{pipe} {}
 
-void Tokenizer::TokenChannel::send(const Token&& t) {
+void Tokenizer::TokenChannel::send(const Token&& token) {
 	std::lock_guard<std::mutex> m{mutex_};
 	assert(open_);
-	queue_.push(t);
+	queue_.push(token);
 }
 
 std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {

@@ -12,7 +12,7 @@ optional<const std::string> Attributes::attr(const std::string key) const {
 	std::string s;
 	try {
 		s = attrs_.at(key);
-	} catch (const std::out_of_range& ex) {
+	} catch (const std::out_of_range&) {
 		return nullopt;
 	}
 	return s;
@@ -24,26 +24,26 @@ void Attributes::attr(const std::string key, const std::string value) {
 
 //---------------------------------- Body -----------------------------------//
 
-Body::Body(const std::string s) : body_{s} {}
+Body::Body(const std::string body) : body_{body} {}
 
 const std::string& Body::body() const {
 	return body_;
 }
 
-void Body::body(const std::string s) {
-	body_ = s;
+void Body::body(const std::string body) {
+	body_ = body;
 }
 
 //---------------------------------- Title ----------------------------------//
 
-Title::Title(const std::string s) : title_{s} {}
+Title::Title(const std::string title) : title_{title} {}
 
 const std::string& Title::title() const {
 	return title_;
 }
 
-void Title::title(std::string s) {
-	title_ = s;
+void Title::title(std::string title) {
+	title_ = title;
 }
 
 //-------------------------------- Visibility -------------------------------//
@@ -58,8 +58,8 @@ VisibilityType Visibility::visibility() const {
 	return visibility_;
 }
 
-void Visibility::visibility(VisibilityType v) {
-	visibility_ = v;
+void Visibility::visibility(VisibilityType visibility) {
+	visibility_ = visibility;
 }
 
 } // namespace UHS::Traits

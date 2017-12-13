@@ -147,7 +147,7 @@ const std::string Element::TypeAtlas::findByType(const ElementType type) const {
 ElementType Element::TypeAtlas::findByString(const std::string& string) const {
 	try {
 		return byString_.at(string);
-	} catch (const std::out_of_range& ex) {
+	} catch (const std::out_of_range&) {
 		return ElementType::Unknown;
 	}
 }

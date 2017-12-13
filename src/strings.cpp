@@ -127,7 +127,7 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 		return items;
 	}
 
-	int i = 0;
+	auto i = 0;
 	for (;;) {
 		if (n > 0 && i >= n) {
 			break;
@@ -146,7 +146,7 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 
 std::string join(const std::vector<std::string>& items, const std::string& sep) {
 	std::string s;
-	int i = 0;
+	auto i = 0;
 
 	for (const auto& item : items) {
 		if (i > 0) {
@@ -159,7 +159,7 @@ std::string join(const std::vector<std::string>& items, const std::string& sep) 
 }
 
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width) {
-	int numLines = 0;
+	auto numLines = 0;
 	return wrap(s, sep, width, numLines);
 }
 
@@ -171,7 +171,7 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 	width -= prefix.length();
 
 	while (i < length) {
-		std::size_t len = 0;
+		std::size_t lineLength = 0;
 
 		if (length - i > width) {
 			// Select position of first newline or last space within width
@@ -179,19 +179,19 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 			auto pos2 = s.find_last_of(' ', i + width);
 			auto pos = (pos1 < pos2) ? pos1 : pos2;
 
-			len = pos - i;
-			if (len > width) { // Hard cut (no whitespace found)
-				len = width;
+			lineLength = pos - i;
+			if (lineLength > width) { // Hard cut (no whitespace found)
+				lineLength = width;
 			}
 		} else {
-			len = length - i;
+			lineLength = length - i;
 		}
 		if (i > 0) {
 			lines += sep;
 		}
-		lines += prefix + s.substr(i, len);
+		lines += prefix + s.substr(i, lineLength);
 		++numLines;
-		i += len + 1;
+		i += lineLength + 1;
 	}
 
 	return lines;
@@ -201,7 +201,7 @@ const std::string hex(const std::string& s) {
 	std::ostringstream out;
 
 	out << std::hex << std::setfill('0') << std::uppercase;
-	int i = 0;
+	auto i = 0;
 	for (auto c : s) {
 		if (i > 0) {
 			out << ' ';

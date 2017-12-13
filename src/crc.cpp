@@ -14,62 +14,64 @@ CRC::CRC() {
 	this->createTable();
 }
 
-void CRC::upstream(Pipe& p) {
-	pipe_ = &p;
-	p.addHandler([=](const char* s, std::streamsize n) { this->calculate(s, n, true); });
+void CRC::upstream(Pipe& pipe) {
+	pipe_ = &pipe;
+	pipe.addHandler([=](const char* buffer, std::streamsize length) {
+		this->calculate(buffer, length, true);
+	});
 }
 
-void CRC::calculate(const char* buf, std::streamsize n) {
-	for (int i = 0; i < n; ++i) {
-		auto byte = this->reflectByte(buf[i] & 0xFF);
-		rem_ = (rem_ ^ (byte << 8)) & CastMask;
-		int pos = (rem_ >> 8) & 0xFF;
-		rem_ = (rem_ << 8) & CastMask;
-		rem_ = (rem_ ^ table_[pos]) & CastMask;
+void CRC::calculate(const char* buffer, std::streamsize length) {
+	for (auto i = 0; i < length; ++i) {
+		auto byte = this->reflectByte(buffer[i] & 0xFF);
+		remainder_ = (remainder_ ^ (byte << 8)) & CastMask;
+		int position = (remainder_ >> 8) & 0xFF;
+		remainder_ = (remainder_ << 8) & CastMask;
+		remainder_ = (remainder_ ^ table_[position]) & CastMask;
 	}
 }
 
-void CRC::calculate(const char* buf, std::streamsize n, bool) {
-	switch (n) {
+void CRC::calculate(const char* buffer, std::streamsize length, bool) {
+	switch (length) {
 	case 0:
 		return;
 	case 1:
-		switch (bufLen_) {
+		switch (checksumLength_) {
 		case 0:
-			buf_[0] = buf[0];
-			bufLen_ = 1;
+			checksum_[0] = buffer[0];
+			checksumLength_ = 1;
 			break;
 		case 1:
-			buf_[1] = buf[1];
-			bufLen_ = 2;
+			checksum_[1] = buffer[1];
+			checksumLength_ = 2;
 			break;
 		default:
-			this->calculate(buf_, 1);
-			buf_[0] = buf_[1];
-			buf_[1] = buf[0];
-			bufLen_ = 2;
+			this->calculate(checksum_, 1);
+			checksum_[0] = checksum_[1];
+			checksum_[1] = buffer[0];
+			checksumLength_ = 2;
 			return;
 		}
 	default:
-		if (bufLen_ > 0) {
-			this->calculate(buf_, bufLen_);
+		if (checksumLength_ > 0) {
+			this->calculate(checksum_, checksumLength_);
 		}
-		buf_[0] = buf[n - 2];
-		buf_[1] = buf[n - 1];
-		bufLen_ = 2;
-		this->calculate(buf, n - bufLen_);
+		checksum_[0] = buffer[length - 2];
+		checksum_[1] = buffer[length - 1];
+		checksumLength_ = 2;
+		this->calculate(buffer, length - checksumLength_);
 	}
 }
 
 uint16_t CRC::result() {
 	this->finalize();
-	return rem_;
+	return remainder_;
 }
 
 void CRC::result(std::vector<char>& out) {
 	this->finalize();
-	out.push_back(rem_ & 0xFF); // low
-	out.push_back(rem_ >> 8);   // high
+	out.push_back(remainder_ & 0xFF); // low
+	out.push_back(remainder_ >> 8);   // high
 }
 
 bool CRC::valid() {
@@ -78,16 +80,16 @@ bool CRC::valid() {
 
 void CRC::reset() {
 	pipe_ = nullptr;
-	std::fill(buf_, buf_ + 2, 0);
-	bufLen_ = 0;
-	rem_ = 0x0000;
+	std::fill(checksum_, checksum_ + 2, 0);
+	checksumLength_ = 0;
+	remainder_ = 0x0000;
 	finalized_ = false;
 }
 
 void CRC::createTable() {
-	for (int i = 0; i < TableLen; ++i) {
+	for (auto i = 0; i < TableLength; ++i) {
 		uint16_t byte = (i << 8) & CastMask;
-		for (int bit = 0; bit < 8; ++bit) {
+		for (auto bit = 0; bit < 8; ++bit) {
 			if ((byte & MSBMask) != 0) {
 				byte <<= 1;
 				byte ^= Polynomial;
@@ -102,7 +104,7 @@ void CRC::createTable() {
 uint8_t CRC::reflectByte(uint8_t byte) {
 	uint8_t etyb = 0;
 
-	for (int bit = 0; bit < 8; ++bit) {
+	for (auto bit = 0; bit < 8; ++bit) {
 		if ((byte & (1 << bit)) != 0) {
 			etyb |= ((1 << (7 - bit)) & 0xFF);
 		}
@@ -111,14 +113,14 @@ uint8_t CRC::reflectByte(uint8_t byte) {
 }
 
 void CRC::finalize() {
-	if (!finalized_ && rem_ > Polynomial) {
-		rem_ = (rem_ + FinalXOR) & CastMask;
+	if (!finalized_ && remainder_ > Polynomial) {
+		remainder_ = (remainder_ + FinalXOR) & CastMask;
 	}
 	finalized_ = true;
 }
 
 uint16_t CRC::checksum() {
-	return (static_cast<uint8_t>(buf_[1]) << 8) | static_cast<uint8_t>(buf_[0]);
+	return (static_cast<uint8_t>(checksum_[1]) << 8) | static_cast<uint8_t>(checksum_[0]);
 }
 
 } // namespace UHS

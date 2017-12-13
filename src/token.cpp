@@ -77,19 +77,19 @@ const std::string Token::typeString() const {
 }
 
 const std::string Token::string() const {
-	auto buf = "("s;
-	buf += this->formatToken();
+	auto buffer = "("s;
+	buffer += this->formatToken();
 
 	switch (type_) {
 	case TokenType::CRC:
 		[[fallthrough]];
 	case TokenType::Data:
-		buf += this->formatByteValue();
+		buffer += this->formatByteValue();
 		break;
 	case TokenType::Ident:
 		[[fallthrough]];
 	case TokenType::String:
-		buf += this->formatStringValue();
+		buffer += this->formatStringValue();
 		break;
 	case TokenType::DataLength:
 		[[fallthrough]];
@@ -104,54 +104,46 @@ const std::string Token::string() const {
 	case TokenType::CoordY:
 		[[fallthrough]];
 	case TokenType::TextFormat:
-		buf += this->formatIntValue();
+		buffer += this->formatIntValue();
 		break;
 	default:
 		break; // No special processing needed
 	}
-	buf += ')';
+	buffer += ')';
 
-	return buf;
+	return buffer;
 }
 
 const std::string Token::formatToken() const {
-	std::string buf{typeString()};
-	buf += ' ';
-	buf += std::to_string(line_);
-	buf += ':';
-	buf += std::to_string(column_);
-	buf += ':';
-	buf += std::to_string(offset_);
+	auto buffer = typeString();
+	buffer += ' ';
+	buffer += std::to_string(line_);
+	buffer += ':';
+	buffer += std::to_string(column_);
+	buffer += ':';
+	buffer += std::to_string(offset_);
 
-	return buf;
+	return buffer;
 }
 
 const std::string Token::formatIntValue() const {
-	auto buf = " ["s;
-	buf += value_;
-	int intVal{Strings::toInt(value_)};
-	if (intVal == -1) {
-		buf += '?';
-	}
-	buf += ']';
-
-	return buf;
+	return this->formatStringValue();
 }
 
 const std::string Token::formatStringValue() const {
-	auto buf = " ["s;
-	buf += value_;
-	buf += ']';
+	auto buffer = " ["s;
+	buffer += value_;
+	buffer += ']';
 
-	return buf;
+	return buffer;
 }
 
 const std::string Token::formatByteValue() const {
-	auto buf = " ["s;
-	buf += Strings::hex(value_);
-	buf += ']';
+	auto buffer = " ["s;
+	buffer += Strings::hex(value_);
+	buffer += ']';
 
-	return buf;
+	return buffer;
 }
 
 } // namespace UHS

@@ -40,7 +40,7 @@ int main(int argc, const char* argv[]) {
 		return OK;
 	}
 
-	for (int i = 1; i < argc; ++i) {
+	for (auto i = 1; i < argc; ++i) {
 		auto arg = std::string(argv[i]);
 
 		if (arg[0] == '-') { // Parse options
