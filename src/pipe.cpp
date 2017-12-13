@@ -1,5 +1,4 @@
 #include "uhs.h"
-#include <iostream>
 
 namespace UHS {
 

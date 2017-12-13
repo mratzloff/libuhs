@@ -1,7 +1,6 @@
 #include "uhs.h"
 #include <fstream>
 #include <iomanip>
-#include <iostream>
 
 namespace UHS {
 

@@ -63,13 +63,11 @@ void Parser::reset() {
 //--------------------------------- UHS 88a ---------------------------------//
 
 void Parser::parse88a() {
-	std::unique_ptr<const Token> token;
-
 	// Signature
-	token = this->expect(TokenType::Signature);
+	this->expect(TokenType::Signature);
 
 	// Title
-	token = this->expect(TokenType::String);
+	auto token = this->expect(TokenType::String);
 	document_->title(token->value());
 
 	// First hint line
@@ -139,11 +137,10 @@ void Parser::parse88a() {
 // doesn't support it, and as far as I can tell no one bothered to ever check
 // it. It mostly works in the DOS reader, but it looks glitchy.
 void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
-	std::unique_ptr<const Token> token;
 	auto elementType = ElementType::Subject;
 
 	for (;;) {
-		token = this->expect(TokenType::String);
+		auto token = this->expect(TokenType::String);
 		std::string encodedTitle{token->value()};
 		auto line = token->line();
 
@@ -200,11 +197,10 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 }
 
 void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
-	std::unique_ptr<const Token> token;
 	auto line = 0;
 
 	do {
-		token = this->expect(TokenType::String);
+		auto token = this->expect(TokenType::String);
 		line = token->line();
 
 		Node* parent = nullptr;
@@ -277,12 +273,11 @@ void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
 }
 
 void Parser::parse96a() {
-	std::unique_ptr<const Token> token;
 	parents_.add(*document_, 0, INT_MAX);
 
 	// Parse elements
 	for (;;) {
-		token = this->next();
+		auto token = this->next();
 
 		switch (token->type()) {
 		case TokenType::Length: {
@@ -400,14 +395,12 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 }
 
 void Parser::parseCommentElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	auto length = element->length();
 	std::string body;
 	auto continuation = false;
 
 	for (auto i = 3; i <= length; ++i) {
-		token = this->next();
+		auto token = this->next();
 
 		switch (token->type()) {
 		case TokenType::String:
@@ -432,8 +425,6 @@ void Parser::parseCommentElement(Element* const element) {
 }
 
 void Parser::parseDataElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	// Offset
 	std::size_t offset;
 
@@ -463,7 +454,7 @@ void Parser::parseDataElement(Element* const element) {
 
 expectDataLength:
 	// Length
-	token = this->expect(TokenType::DataLength);
+	auto token = this->expect(TokenType::DataLength);
 	int intLength;
 	try {
 		intLength = Strings::toInt(token->value());
@@ -484,7 +475,6 @@ expectDataLength:
 // error, but bluforce.uhs has an instance of this. This actually screws
 // up the official reader UI for that particular hint.
 void Parser::parseHintElement(Element* const element) {
-	std::unique_ptr<const Token> token;
 	std::string hintText;
 
 	// Parse child elements
@@ -492,7 +482,7 @@ void Parser::parseHintElement(Element* const element) {
 	auto continuation = false;
 
 	for (auto i = 3; i <= length; ++i) {
-		token = this->next();
+		auto token = this->next();
 
 		switch (token->type()) {
 		case TokenType::String:
@@ -550,8 +540,6 @@ void Parser::parseHintElement(Element* const element) {
 }
 
 void Parser::parseHyperpngElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	this->parseDataElement(element);
 
 	// Parse child elements
@@ -560,7 +548,7 @@ void Parser::parseHyperpngElement(Element* const element) {
 
 	for (auto i = 4; i < length; i += 1 + childLength) {
 		// Interactive region top-left X coordinate
-		token = this->expect(TokenType::CoordX);
+		auto token = this->expect(TokenType::CoordX);
 		auto x1 = token->value();
 		try {
 			Strings::toInt(x1);
@@ -616,7 +604,6 @@ void Parser::parseHyperpngElement(Element* const element) {
 // list for four files, so we skip bad instructions of that form. Fourteen
 // other files have lines pointing to nowhere, so we skip those, too.
 void Parser::parseIncentiveElement(Element* const element) {
-	std::unique_ptr<const Token> token;
 	std::string body;
 
 	element->visibility(VisibilityType::None);
@@ -626,7 +613,7 @@ void Parser::parseIncentiveElement(Element* const element) {
 	auto continuation = false;
 
 	for (auto i = 2; i < length; ++i) {
-		token = this->expect(TokenType::String);
+		auto token = this->expect(TokenType::String);
 		if (continuation) {
 			body += ' ';
 		}
@@ -675,7 +662,6 @@ void Parser::parseIncentiveElement(Element* const element) {
 }
 
 void Parser::parseInfoElement(Element* const element) {
-	std::unique_ptr<const Token> token;
 	std::string serialized;
 	std::string key;
 	std::string value;
@@ -688,7 +674,7 @@ void Parser::parseInfoElement(Element* const element) {
 	auto length = element->length();
 
 	for (auto i = 2; i < length; ++i) {
-		token = this->expect(TokenType::String);
+		auto token = this->expect(TokenType::String);
 		serialized = token->value();
 
 		if (serialized.substr(0, 1) == Token::NoticePrefix) {
@@ -744,10 +730,8 @@ void Parser::parseInfoElement(Element* const element) {
 }
 
 void Parser::parseLinkElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	// Ref line
-	token = this->expect(TokenType::Line);
+	auto token = this->expect(TokenType::Line);
 	auto body = token->value();
 	int targetLine;
 	try {
@@ -765,13 +749,11 @@ void Parser::parseLinkElement(Element* const element) {
 }
 
 void Parser::parseOverlayElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	this->parseDataElement(element);
 
 	// Image top-left X coordinate
-	token = this->expect(TokenType::CoordX);
-	const auto x = token->value();
+	auto token = this->expect(TokenType::CoordX);
+	auto x = token->value();
 	try {
 		Strings::toInt(x);
 	} catch (const Error& err) {
@@ -781,7 +763,7 @@ void Parser::parseOverlayElement(Element* const element) {
 
 	// Image bottom-right Y coordinate
 	token = this->expect(TokenType::CoordY);
-	const auto y = token->value();
+	auto y = token->value();
 	try {
 		Strings::toInt(y);
 	} catch (const Error& err) {
@@ -804,7 +786,7 @@ void Parser::parseSubjectElement(Element* const element) {
 
 	for (auto i = 3; i <= length; i += childLength) {
 		// Length
-		token = this->expect(TokenType::Length);
+		auto token = this->expect(TokenType::Length);
 
 		// Child element
 		const auto child = this->parseElement(std::move(token));
@@ -813,10 +795,8 @@ void Parser::parseSubjectElement(Element* const element) {
 }
 
 void Parser::parseTextElement(Element* const element) {
-	std::unique_ptr<const Token> token;
-
 	// Format
-	token = this->expect(TokenType::TextFormat);
+	auto token = this->expect(TokenType::TextFormat);
 	int format;
 	try {
 		format = Strings::toInt(token->value());
