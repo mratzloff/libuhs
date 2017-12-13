@@ -2,45 +2,10 @@
 
 namespace UHS {
 
-const std::string Token::typeString(TokenType t) {
-	switch (t) {
-	case TokenType::CRC:
-		return "CRC";
-	case TokenType::CoordX:
-		return "CoordX";
-	case TokenType::CoordY:
-		return "CoordY";
-	case TokenType::CreditSep:
-		return "CreditSep";
-	case TokenType::Data:
-		return "Data";
-	case TokenType::DataLength:
-		return "DataLength";
-	case TokenType::DataOffset:
-		return "DataOffset";
-	case TokenType::FileEnd:
-		return "FileEnd";
-	case TokenType::HeaderSep:
-		return "HeaderSep";
-	case TokenType::Ident:
-		return "Ident";
-	case TokenType::Length:
-		return "Length";
-	case TokenType::Line:
-		return "Line";
-	case TokenType::NestedElementSep:
-		return "NestedElementSep";
-	case TokenType::NestedTextSep:
-		return "NestedTextSep";
-	case TokenType::NestedParagraphSep:
-		return "ParagraphSep";
-	case TokenType::Signature:
-		return "Signature";
-	case TokenType::String:
-		return "String";
-	case TokenType::TextFormat:
-		return "TextFormat";
-	}
+Token::TypeMap Token::typeMap_;
+
+const std::string Token::typeString(TokenType type) {
+	return Token::typeMap_.findByType(type);
 }
 
 Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
@@ -144,6 +109,31 @@ const std::string Token::formatByteValue() const {
 	buffer += ']';
 
 	return buffer;
+}
+
+Token::TypeMap::TypeMap() {
+    map_.emplace(TokenType::CRC, "CRC");
+    map_.emplace(TokenType::CoordX, "CoordX");
+    map_.emplace(TokenType::CoordY, "CoordY");
+    map_.emplace(TokenType::CreditSep, "CreditSep");
+    map_.emplace(TokenType::Data, "Data");
+    map_.emplace(TokenType::DataLength, "DataLength");
+    map_.emplace(TokenType::DataOffset, "DataOffset");
+    map_.emplace(TokenType::FileEnd, "FileEnd");
+    map_.emplace(TokenType::HeaderSep, "HeaderSep");
+    map_.emplace(TokenType::Ident, "Ident");
+    map_.emplace(TokenType::Length, "Length");
+    map_.emplace(TokenType::Line, "Line");
+    map_.emplace(TokenType::NestedElementSep, "NestedElementSep");
+    map_.emplace(TokenType::NestedTextSep, "NestedTextSep");
+    map_.emplace(TokenType::NestedParagraphSep, "NestedParagraphSep");
+    map_.emplace(TokenType::Signature, "Signature");
+    map_.emplace(TokenType::String, "String");
+    map_.emplace(TokenType::TextFormat, "TextFormat");
+}
+
+const std::string Token::TypeMap::findByType(const TokenType type) const {
+	return map_.at(type);
 }
 
 } // namespace UHS

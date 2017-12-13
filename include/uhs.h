@@ -336,6 +336,17 @@ public:
 	const std::string string() const;
 
 private:
+	class TypeMap {
+	public:
+		TypeMap();
+		const std::string findByType(const TokenType type) const;
+
+	private:
+		std::map<const TokenType, const std::string> map_;
+	};
+
+	static Token::TypeMap typeMap_;
+
 	const TokenType type_;
 	int line_ = 0;
 	std::size_t column_ = 0;
@@ -539,9 +550,9 @@ public:
 	const std::string mediaExt() const;
 
 private:
-	class TypeAtlas {
+	class TypeMap {
 	public:
-		TypeAtlas();
+		TypeMap();
 		const std::string findByType(const ElementType type) const;
 		ElementType findByString(const std::string& string) const;
 
@@ -550,7 +561,7 @@ private:
 		std::map<const std::string, const ElementType> byString_;
 	};
 
-	static Element::TypeAtlas typeAtlas_;
+	static Element::TypeMap typeMap_;
 
 	ElementType elementType_;
 	int id_;

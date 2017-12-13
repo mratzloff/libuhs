@@ -2,18 +2,18 @@
 
 namespace UHS {
 
-Element::TypeAtlas Element::typeAtlas_;
+Element::TypeMap Element::typeMap_;
 
 std::unique_ptr<Element> Element::create(ElementType type, const int id) {
 	return std::make_unique<Element>(type, id);
 }
 
 ElementType Element::elementType(const std::string& typeString) {
-	return Element::typeAtlas_.findByString(typeString);
+	return Element::typeMap_.findByString(typeString);
 }
 
 const std::string Element::typeString(ElementType type) {
-	return Element::typeAtlas_.findByType(type);
+	return Element::typeMap_.findByType(type);
 }
 
 Element::Element(ElementType type, const int id)
@@ -114,7 +114,7 @@ std::unique_ptr<Node> Element::cloneInternal() const {
 	return std::make_unique<Element>(*this);
 }
 
-Element::TypeAtlas::TypeAtlas() {
+Element::TypeMap::TypeMap() {
 	const std::vector<std::pair<const ElementType, const std::string>> list = {
 	    std::make_pair(ElementType::Unknown, "unknown"),
 	    std::make_pair(ElementType::Blank, "blank"),
@@ -140,11 +140,11 @@ Element::TypeAtlas::TypeAtlas() {
 	}
 }
 
-const std::string Element::TypeAtlas::findByType(const ElementType type) const {
+const std::string Element::TypeMap::findByType(const ElementType type) const {
 	return byType_.at(type);
 }
 
-ElementType Element::TypeAtlas::findByString(const std::string& string) const {
+ElementType Element::TypeMap::findByString(const std::string& string) const {
 	try {
 		return byString_.at(string);
 	} catch (const std::out_of_range&) {
