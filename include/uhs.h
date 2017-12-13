@@ -704,8 +704,7 @@ private:
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	void findParentAndAppend(
-	    std::unique_ptr<Element> element, std::unique_ptr<const Token> token);
+	void findParentAndAppend(std::unique_ptr<Element> element);
 	void deferLinkCheck(int targetLine, const int line, const int column);
 	void checkLinks();
 	Element* findTarget(const int line);

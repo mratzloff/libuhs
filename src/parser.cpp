@@ -334,7 +334,14 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 	element->length(length);
 	e = element.get();
 
-	this->findParentAndAppend(std::move(element), std::move(token));
+	try {
+		this->findParentAndAppend(std::move(element));
+	} catch (const Error& err) {
+		std::throw_with_nested(ParseError(token->line(),
+		    token->column(),
+		    "orphaned element: %s",
+		    element->elementTypeString()));
+	}
 
 	// Title
 	token = this->expect(TokenType::String);
@@ -911,10 +918,8 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	return token;
 }
 
-void Parser::findParentAndAppend(
-    std::unique_ptr<Element> element, std::unique_ptr<const Token> token) {
+void Parser::findParentAndAppend(std::unique_ptr<Element> element) {
 	assert(element);
-	assert(token);
 
 	auto min = element->line();
 	auto max = min + element->length();
@@ -922,7 +927,7 @@ void Parser::findParentAndAppend(
 	parents_.add(*element, min, max);
 
 	if (!parent) {
-		throw ParseError(token->line(), token->column(), "orphaned element");
+		throw Error("could not find parent element between lines %d and %d", min, max);
 	}
 	parent->appendChild(std::move(element));
 }
