@@ -8,9 +8,9 @@ set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
-set (json_includes ${PROJECT_SOURCE_DIR}/contrib/jsoncpp/json)
-set (tinyformat_includes ${PROJECT_SOURCE_DIR}/contrib/tinyformat)
-set (uhs_includes ${PROJECT_SOURCE_DIR}/include)
+set (json_includes contrib/jsoncpp/json)
+set (tinyformat_includes contrib/tinyformat)
+set (uhs_includes include)
 
 set (uhs_sources
 	src/codec.cpp
@@ -47,7 +47,7 @@ target_link_libraries (uhs-bin PUBLIC uhs)
 # clang-format
 add_custom_target (format
 	COMMAND clang-format -style=file -i -verbose
-		${PROJECT_SOURCE_DIR}/include/uhs.h
+		${uhs_includes}/uhs.h
 		${uhs_sources}
 		${uhs_bin_sources})
 
