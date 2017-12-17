@@ -828,6 +828,7 @@ private:
 	int serializeOverlayElement(Element& element, std::string& out);
 	int serializeSubjectElement(Element& element, std::string& out);
 	int serializeTextElement(Element& element, std::string& out);
+	void serializeElementHeader(Element& element, std::string& out);
 	void updateLinkTargets(std::string& out);
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);

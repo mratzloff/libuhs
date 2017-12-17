@@ -384,44 +384,32 @@ void UHSWriter::serialize96a(std::string& out) {
 }
 
 int UHSWriter::serializeElement(Element& element, std::string& out) {
-	auto length = 0;
-	std::string buffer;
-
-	element.line(currentLine_); // For links and incentives
-
-	// Serialize element to buffer
-	length = serializer_.invoke(*this, element, buffer);
-
-	out += std::to_string(length);
-	out += ' ';
-	out += element.elementTypeString();
-	out += EOL;
-
-	const auto& title = element.title();
-	if (title.length() == 0) {
-		out += '-';
-	} else {
-		out += title;
-	}
-	out += EOL;
-	out += buffer;
-
-	return length;
+	element.line(currentLine_);
+	return serializer_.invoke(*this, element, out);
 }
 
-int UHSWriter::serializeBlankElement(Element&, std::string&) {
+int UHSWriter::serializeBlankElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+
 	currentLine_ += length;
+	element.length(length);
+	this->serializeElementHeader(element, out);
+
 	return length;
 }
 
 int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+	std::string buffer;
 
 	if (const auto& body = element.body(); !body.empty()) {
-		out += Strings::wrap(body, EOL, LineLength, length) + EOL;
+		buffer += Strings::wrap(body, EOL, LineLength, length) + EOL;
 	}
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -432,11 +420,15 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	const auto elementType = element.elementType();
 	const auto& body = element.body();
 
-	out += this->createDataAddress(body.length());
+	std::string buffer = this->createDataAddress(body.length());
 	++length;
 	data_.emplace(std::make_pair(elementType, body));
 
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -444,11 +436,12 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	auto continuation = false;
+	std::string buffer;
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (continuation) {
-			out += Token::NestedTextSep;
-			out += EOL;
+			buffer += Token::NestedTextSep;
+			buffer += EOL;
 			++length;
 		}
 		if (node->nodeType() != NodeType::Text) {
@@ -457,44 +450,58 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 		}
 		const auto& textNode = static_cast<const TextNode&>(*node);
 		const auto& body = textNode.body();
-		out += codec_.encode88a(Strings::wrap(body, EOL, LineLength, length)) + EOL;
+		buffer += codec_.encode88a(Strings::wrap(body, EOL, LineLength, length)) + EOL;
 
 		continuation = true;
 	}
 
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
 
 int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+
 	currentLine_ += length;
+	element.length(length);
+	this->serializeElementHeader(element, out);
+
 	return length;
 }
 
 int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+
 	currentLine_ += length;
+	element.length(length);
+	this->serializeElementHeader(element, out);
+
 	return length;
 }
 
-int UHSWriter::serializeInfoElement(Element&, std::string& out) {
+int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	out += InfoLengthMarker;
-	out += EOL;
+	std::string buffer;
+
+	buffer += InfoLengthMarker;
+	buffer += EOL;
 	++length;
 
 	const auto now = std::time(nullptr);
 	const auto tm = std::localtime(&now);
 
-	char buffer[10];
-	const auto dateLength = std::strftime(buffer, 10, "%d-%b-%y", tm);
-	out += "date=" + std::string(buffer, dateLength) + EOL;
+	char formatted[10];
+	const auto dateLength = std::strftime(formatted, 10, "%d-%b-%y", tm);
+	buffer += "date=" + std::string(formatted, dateLength) + EOL;
 	++length;
 
-	const auto timeLength = std::strftime(buffer, 9, "%H:%M:%S", tm);
-	out += "time=" + std::string(buffer, timeLength) + EOL;
+	const auto timeLength = std::strftime(formatted, 9, "%H:%M:%S", tm);
+	buffer += "time=" + std::string(formatted, timeLength) + EOL;
 	++length;
 
 	std::map<const std::string, bool> whitelisted = {
@@ -507,23 +514,30 @@ int UHSWriter::serializeInfoElement(Element&, std::string& out) {
 
 	for (const auto& [key, value] : document_->attrs()) {
 		if (whitelisted[key]) {
-			out += Strings::wrap(value, EOL, LineLength, length, key + "=") + EOL;
+			buffer += Strings::wrap(value, EOL, LineLength, length, key + "=") + EOL;
 		}
 	}
 
 	if (auto notice = document_->attr("notice")) {
-		out += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
+		buffer += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
 	}
 
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
 
 int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	out += LinkMarker;
-	out += EOL;
+	std::string buffer;
+
+	buffer += LinkMarker;
+	buffer += EOL;
+	++length;
 
 	int targetID;
 	try {
@@ -537,30 +551,43 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 
 	if (auto target = document_->find(targetID)) {
 		deferredLinks_.push_back(target);
-		++length;
 	} else {
 		throw WriteError("target element not found for id %d", targetID);
 	}
 
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
 
 int UHSWriter::serializeNesthintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+
 	currentLine_ += length;
+	element.length(length);
+	this->serializeElementHeader(element, out);
+
 	return length;
 }
 
 int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+
 	currentLine_ += length;
+	element.length(length);
+	this->serializeElementHeader(element, out);
+
 	return length;
 }
 
 int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+	std::string buffer;
+
 	currentLine_ += length;
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
@@ -568,8 +595,12 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString().data());
 		}
 		auto& child = static_cast<Element&>(*node);
-		length += this->serializeElement(child, out);
+		length += this->serializeElement(child, buffer);
 	}
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -578,9 +609,10 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	const auto elementType = element.elementType();
 	const auto& body = element.body();
+	std::string buffer;
 
 	const auto textFormat = ((*element.attr("typeface") == "monospace") ? "1 " : "0 ");
-	out += this->createDataAddress(body.length(), textFormat);
+	buffer += this->createDataAddress(body.length(), textFormat);
 	++length;
 
 	auto lines = Strings::split(body, "\n");
@@ -593,8 +625,26 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	data_.emplace(std::make_pair(elementType, Strings::join(lines, EOL) + EOL));
 
 	currentLine_ += length;
+	element.length(length);
+
+	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
+}
+
+void UHSWriter::serializeElementHeader(Element& element, std::string& out) {
+	out += std::to_string(element.length());
+	out += ' ';
+	out += element.elementTypeString();
+	out += EOL;
+
+	if (const auto& title = element.title(); title.empty()) {
+		out += '-';
+	} else {
+		out += title;
+	}
+	out += EOL;
 }
 
 void UHSWriter::updateLinkTargets(std::string& out) {
