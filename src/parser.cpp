@@ -48,16 +48,16 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 }
 
 void Parser::reset() {
-	tokenizer_.reset();
 	crc_.reset();
-	document_.reset();
-	parents_.clear();
-	deferredLinkChecks_.clear();
 	dataHandlers_.clear();
+	deferredLinks_.clear();
+	document_.reset();
+	done_ = false;
+	isTitleSet_ = false;
 	key_.clear();
 	lineOffset_ = 0;
-	isTitleSet_ = false;
-	done_ = false;
+	parents_.clear();
+	tokenizer_.reset();
 }
 
 //--------------------------------- UHS 88a ---------------------------------//
@@ -261,8 +261,6 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> token) {
 	}
 }
 
-//--------------------------------- UHS 96a ---------------------------------//
-
 void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
 	if (options_.force88aMode) {
 		done_ = true;
@@ -272,6 +270,8 @@ void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
 	lineOffset_ = token->line();
 }
 
+//--------------------------------- UHS 96a ---------------------------------//
+
 void Parser::parse96a() {
 	parents_.add(*document_, 0, INT_MAX);
 
@@ -280,10 +280,9 @@ void Parser::parse96a() {
 		auto token = this->next();
 
 		switch (token->type()) {
-		case TokenType::Length: {
+		case TokenType::Length:
 			this->parseElement(std::move(token));
 			break;
-		}
 		case TokenType::Data:
 			this->parseData(std::move(token));
 			break;
@@ -291,14 +290,16 @@ void Parser::parse96a() {
 			this->checkCRC();
 			break;
 		case TokenType::FileEnd:
-			done_ = true;
-			return;
+			done_ = true; // i.e., done parsing
+			goto done;
 		default:
 			throw ParseError::badToken(token->line(), token->column(), token->type());
 		}
 	}
 
-	this->checkLinks();
+done:
+	this->processLinks();
+	this->processVisibility();
 }
 
 // Elements are automatically appended to their parents
@@ -593,10 +594,10 @@ void Parser::parseHyperpngElement(Element* const element) {
 		childLength = child->length();
 
 		// Backfill coordinates
-		child->attr("region:top-left-x", x1);
-		child->attr("region:top-left-y", y1);
-		child->attr("region:bottom-right-x", x2);
-		child->attr("region:bottom-right-y", y2);
+		child->attr("region-top-left-x", x1);
+		child->attr("region-top-left-y", y1);
+		child->attr("region-bottom-right-x", x2);
+		child->attr("region-bottom-right-y", y2);
 	}
 }
 
@@ -627,37 +628,39 @@ void Parser::parseIncentiveElement(Element* const element) {
 	}
 
 	// Process instructions
-	auto markers = Strings::split(body, " ");
-	std::size_t markerLength;
+	auto instructions = Strings::split(body, " ");
 
-	for (const auto& marker : markers) {
-		markerLength = marker.length();
+	for (const auto& instruction : instructions) {
+		auto instructionLength = instruction.length();
 
 		// Split instruction (e.g., "3Z")
-		if (markerLength < 2) {
+		if (instructionLength < 2) {
 			continue; // TODO: Warn
 		}
 
-		int targetLine;
+		int id;
 		try {
-			targetLine = Strings::toInt(marker.substr(0, markerLength - 1));
-			if (targetLine < 0) {
+			id = Strings::toInt(instruction.substr(0, instructionLength - 1));
+			if (id < 0) {
 				throw Error();
 			}
 		} catch (const Error& err) {
 			continue; // TODO: Warn
 		}
 
-		// Set visibility
-		if (auto target = this->findTarget(targetLine)) {
-			auto instruction = marker.substr(markerLength - 1, 1);
+		auto flag = instruction.substr(instructionLength - 1, 1);
 
-			if (instruction == Token::Registered) {
-				target->visibility(VisibilityType::Registered);
-			} else if (instruction == Token::Unregistered) {
-				target->visibility(VisibilityType::Unregistered);
-			}
+		VisibilityType visibility;
+		if (flag == Token::Registered) {
+			visibility = VisibilityType::Registered;
+		} else if (flag == Token::Unregistered) {
+			visibility = VisibilityType::Unregistered;
 		}
+
+		// Defer visibility processing to guarantee all nodes have been parsed.
+		// Note that the incentive node always comes near the end, but it's
+		// unclear if that's a specification requirement.
+		deferredVisibilities_.emplace_back(id, visibility);
 	}
 }
 
@@ -701,7 +704,7 @@ void Parser::parseInfoElement(Element* const element) {
 				throw ParseError::badValue(
 				    token->line(), token->column(), ParseError::Uint, value);
 			}
-			document_->attr("length", std::to_string(fileLength));
+			document_->attr("length", fileLength);
 		} else if (key == "date") {
 			try {
 				this->parseDate(value, tm);
@@ -732,20 +735,8 @@ void Parser::parseInfoElement(Element* const element) {
 void Parser::parseLinkElement(Element* const element) {
 	// Ref line
 	auto token = this->expect(TokenType::Line);
-	auto body = token->value();
-	int targetLine;
-	try {
-		targetLine = Strings::toInt(body);
-		if (targetLine < 0) {
-			throw Error();
-		}
-	} catch (const Error& err) {
-		throw ParseError::badValue(
-		    token->line(), token->column(), ParseError::Uint, body);
-	}
-	element->body(body);
-
-	this->deferLinkCheck(targetLine, token->line(), token->column());
+	element->body(token->value());
+	deferredLinks_.emplace_back(*element, token->line(), token->column());
 }
 
 void Parser::parseOverlayElement(Element* const element) {
@@ -759,7 +750,7 @@ void Parser::parseOverlayElement(Element* const element) {
 	} catch (const Error& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, x);
 	}
-	element->attr("image:x", x);
+	element->attr("image-x", x);
 
 	// Image bottom-right Y coordinate
 	token = this->expect(TokenType::CoordY);
@@ -769,7 +760,7 @@ void Parser::parseOverlayElement(Element* const element) {
 	} catch (const Error& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, y);
 	}
-	element->attr("image:y", y);
+	element->attr("image-y", y);
 }
 
 void Parser::parseSubjectElement(Element* const element) {
@@ -898,6 +889,14 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	return token;
 }
 
+void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
+	dataHandlers_.emplace_back(offset, length, func);
+}
+
+void Parser::checkCRC() {
+	document_->validChecksum(crc_->valid());
+}
+
 void Parser::findParentAndAppend(std::unique_ptr<Element> element) {
 	assert(element);
 
@@ -912,41 +911,12 @@ void Parser::findParentAndAppend(std::unique_ptr<Element> element) {
 	parent->appendChild(std::move(element));
 }
 
-void Parser::deferLinkCheck(int targetLine, const int line, const int column) {
-	deferredLinkChecks_.emplace_back(targetLine, line, column);
+bool Parser::isPunctuation(char c) {
+	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
 }
 
-void Parser::checkLinks() {
-	for (const auto [targetLine, line, column] : deferredLinkChecks_) {
-		if (const auto target = this->findTarget(targetLine); !target) {
-			// TODO: Warning using ld.line and ld.column
-		}
-	}
-}
-
-// A link pointing to the child of a hyperpng element is a special case. Instead of
-// referencing the descriptor line, it points to the region, even if it doesn't
-// share a parent hyperpng. A link outside of a hyperpng pointing to a child of
-// a hyperpng references the descriptor line, as usual.
-Element* Parser::findTarget(const int line) {
-	auto target = document_->find(line);
-	if (!target) {
-		target = document_->find(line + 1);
-		if (!target) {
-			return nullptr;
-		}
-		if (const auto parent = target->parent()) {
-			const auto& parentElement = static_cast<Element&>(*parent);
-			if (parentElement.elementType() != ElementType::Hyperpng) {
-				return nullptr; // We found an element, but shouldn't have
-			}
-		}
-	}
-	return target;
-}
-
-void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
-	dataHandlers_.push_back(DataHandler(offset, length, func));
+int Parser::offsetLine(int line) {
+	return line - lineOffset_;
 }
 
 void Parser::parseData(std::unique_ptr<const Token> token) {
@@ -956,10 +926,6 @@ void Parser::parseData(std::unique_ptr<const Token> token) {
 		offset = handler.offset - token->offset();
 		handler.func(token->value().substr(offset, handler.length));
 	}
-}
-
-void Parser::checkCRC() {
-	document_->validChecksum(crc_->valid());
 }
 
 // Format: DD-Mon-YY
@@ -1062,12 +1028,55 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 	tm.tm_sec = sec;
 }
 
-bool Parser::isPunctuation(char c) {
-	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
+void Parser::processLinks() {
+	for (const auto& [link, line, column] : deferredLinks_) {
+		const auto& body = link.body();
+		int targetLine;
+		try {
+			targetLine = Strings::toInt(body);
+			if (targetLine < 0) {
+				throw Error();
+			}
+		} catch (const Error& err) {
+			throw ParseError::badValue(line, column, ParseError::Uint, body);
+		}
+
+		Element* target = nullptr;
+		if (target = document_->find(targetLine); !target) {
+			// A link pointing to the child of a hyperpng element is a special case.
+			// Instead of referencing the descriptor line, it points to the region, even
+			// if it doesn't share a parent hyperpng. A link outside of a hyperpng
+			// pointing to a child of a hyperpng references the descriptor line, as usual.
+			//
+			// The most straightforward way of maintaining a consistent ID model is to
+			// modify the link body. However, we leave a trail for debugging purposes.
+			if (target = document_->find(targetLine + 1); target) {
+				if (const auto parent = target->parent()) {
+					const auto& parentElement = static_cast<Element&>(*parent);
+					if (parentElement.elementType() == ElementType::Hyperpng) {
+						link.body(targetLine + 1);
+						link.attr("unmodified-target", targetLine);
+					} else {
+						target = nullptr; // We found an element, but shouldn't have
+					}
+				}
+			}
+		}
+		if (!target) {
+			// TODO: Warn using line and column
+			throw ParseError(line, column, "target not found: %d", targetLine);
+		}
+	}
 }
 
-int Parser::offsetLine(int line) {
-	return line - lineOffset_;
+void Parser::processVisibility() {
+	for (const auto [targetLine, visibility] : deferredVisibilities_) {
+		if (auto target = document_->find(targetLine)) {
+			target->visibility(visibility);
+		} else {
+			// TODO: Warn
+		}
+	}
 }
 
 Parser::NodeRange::NodeRange(Node& node, const int min, const int max)
@@ -1076,10 +1085,10 @@ Parser::NodeRange::NodeRange(Node& node, const int min, const int max)
 Node* Parser::NodeRangeList::find(const int min, const int max) {
 	Node* node = nullptr;
 
-	for (const auto& nr : data) {
-		if (min > nr.min) {
-			if (max <= nr.max) {
-				node = &nr.node;
+	for (const auto& each : data) {
+		if (min > each.min) {
+			if (max <= each.max) {
+				node = &each.node;
 			}
 		} else {
 			break;
@@ -1100,7 +1109,10 @@ Parser::DataHandler::DataHandler(
     std::size_t offset, std::size_t length, DataCallback func)
     : offset{offset}, length{length}, func{func} {}
 
-Parser::LinkData::LinkData(const int targetLine, const int line, const int column)
-    : targetLine{targetLine}, line{line}, column{column} {}
+Parser::LinkData::LinkData(Element& link, const int line, const int column)
+    : link{link}, line{line}, column{column} {}
+
+Parser::VisibilityData::VisibilityData(int targetLine, VisibilityType visibility)
+    : targetLine{targetLine}, visibility{visibility} {}
 
 } // namespace UHS

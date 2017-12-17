@@ -4,7 +4,7 @@ namespace UHS {
 
 Element::TypeMap Element::typeMap_;
 
-std::unique_ptr<Element> Element::create(ElementType type, const int id) {
+std::unique_ptr<Element> Element::create(ElementType type, int id) {
 	return std::make_unique<Element>(type, id);
 }
 
@@ -16,7 +16,7 @@ const std::string Element::typeString(ElementType type) {
 	return Element::typeMap_.findByType(type);
 }
 
-Element::Element(ElementType type, const int id)
+Element::Element(ElementType type, int id)
     : Node(NodeType::Element), elementType_{type}, id_{id} {}
 
 Element::Element(const Element& other)
@@ -110,7 +110,7 @@ const std::string Element::mediaExt() const {
 	}
 }
 
-std::unique_ptr<Node> Element::cloneInternal() const {
+std::unique_ptr<Node> Element::cloneInternal(Passkey<Node>) const {
 	return std::make_unique<Element>(*this);
 }
 

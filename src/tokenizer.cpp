@@ -179,6 +179,7 @@ void Tokenizer::tokenizeOverlayAddress(const std::smatch& matches) {
 
 void Tokenizer::tokenizeMatches(
     const std::smatch& matches, const std::vector<TokenType>&& tokens) {
+
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (matches[i + 1].length() > 0) {
 			auto column = static_cast<std::size_t>(matches.position(i + 1));

@@ -34,6 +34,7 @@ const std::string Codec::encode88a(std::string decoded) const {
 
 const std::string Codec::decode96a(
     std::string encoded, std::string key, bool isTextElement) const {
+
 	std::string& decoded = encoded;
 	const std::size_t length = encoded.length();
 	const std::size_t keyLength = key.length();
@@ -47,6 +48,7 @@ const std::string Codec::decode96a(
 
 const std::string Codec::encode96a(
     std::string decoded, std::string key, bool isTextElement) const {
+
 	std::string& encoded = decoded;
 	const std::size_t length = decoded.length();
 	const std::size_t keyLength = key.length();
@@ -64,6 +66,7 @@ const std::string Codec::createKey(std::string secret) const {
 
 int Codec::keystream(
     std::string key, std::size_t keyLength, std::size_t line, bool isTextElement) const {
+
 	const int intIndex = static_cast<int>(line); // Guarantee signedness
 	const int offset = intIndex % keyLength;
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);

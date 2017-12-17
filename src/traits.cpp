@@ -22,9 +22,15 @@ void Attributes::attr(const std::string key, const std::string value) {
 	attrs_[key] = value;
 }
 
+void Attributes::attr(const std::string key, const int value) {
+	this->attr(key, std::to_string(value));
+}
+
 //---------------------------------- Body -----------------------------------//
 
 Body::Body(const std::string body) : body_{body} {}
+
+Body::Body(const int body) : Body(std::to_string(body)) {}
 
 const std::string& Body::body() const {
 	return body_;
@@ -32,6 +38,10 @@ const std::string& Body::body() const {
 
 void Body::body(const std::string body) {
 	body_ = body;
+}
+
+void Body::body(const int body) {
+	this->body(std::to_string(body));
 }
 
 //---------------------------------- Title ----------------------------------//

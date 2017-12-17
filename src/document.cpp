@@ -108,7 +108,7 @@ void Document::reindex() {
 	indexed_ = true;
 }
 
-std::unique_ptr<Node> Document::cloneInternal() const {
+std::unique_ptr<Node> Document::cloneInternal(Passkey<Node>) const {
 	return std::make_unique<Document>(*this);
 }
 

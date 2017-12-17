@@ -112,24 +112,24 @@ const std::string Token::formatByteValue() const {
 }
 
 Token::TypeMap::TypeMap() {
-    map_.emplace(TokenType::CRC, "CRC");
-    map_.emplace(TokenType::CoordX, "CoordX");
-    map_.emplace(TokenType::CoordY, "CoordY");
-    map_.emplace(TokenType::CreditSep, "CreditSep");
-    map_.emplace(TokenType::Data, "Data");
-    map_.emplace(TokenType::DataLength, "DataLength");
-    map_.emplace(TokenType::DataOffset, "DataOffset");
-    map_.emplace(TokenType::FileEnd, "FileEnd");
-    map_.emplace(TokenType::HeaderSep, "HeaderSep");
-    map_.emplace(TokenType::Ident, "Ident");
-    map_.emplace(TokenType::Length, "Length");
-    map_.emplace(TokenType::Line, "Line");
-    map_.emplace(TokenType::NestedElementSep, "NestedElementSep");
-    map_.emplace(TokenType::NestedTextSep, "NestedTextSep");
-    map_.emplace(TokenType::NestedParagraphSep, "NestedParagraphSep");
-    map_.emplace(TokenType::Signature, "Signature");
-    map_.emplace(TokenType::String, "String");
-    map_.emplace(TokenType::TextFormat, "TextFormat");
+	map_.emplace(TokenType::CRC, "CRC");
+	map_.emplace(TokenType::CoordX, "CoordX");
+	map_.emplace(TokenType::CoordY, "CoordY");
+	map_.emplace(TokenType::CreditSep, "CreditSep");
+	map_.emplace(TokenType::Data, "Data");
+	map_.emplace(TokenType::DataLength, "DataLength");
+	map_.emplace(TokenType::DataOffset, "DataOffset");
+	map_.emplace(TokenType::FileEnd, "FileEnd");
+	map_.emplace(TokenType::HeaderSep, "HeaderSep");
+	map_.emplace(TokenType::Ident, "Ident");
+	map_.emplace(TokenType::Length, "Length");
+	map_.emplace(TokenType::Line, "Line");
+	map_.emplace(TokenType::NestedElementSep, "NestedElementSep");
+	map_.emplace(TokenType::NestedTextSep, "NestedTextSep");
+	map_.emplace(TokenType::NestedParagraphSep, "NestedParagraphSep");
+	map_.emplace(TokenType::Signature, "Signature");
+	map_.emplace(TokenType::String, "String");
+	map_.emplace(TokenType::TextFormat, "TextFormat");
 }
 
 const std::string Token::TypeMap::findByType(const TokenType type) const {

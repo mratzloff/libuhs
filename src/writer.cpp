@@ -203,6 +203,7 @@ void JSONWriter::serializeDocument(const Document& document, Json::Value& object
 
 void JSONWriter::serializeMap(
     const Traits::Attributes::Type& attrs, Json::Value& object) const {
+
 	for (const auto& [k, v] : attrs) {
 		if (v == "true") {
 			object[k] = true;
@@ -361,9 +362,8 @@ void UHSWriter::serialize96a(std::string& out) {
 			break;
 		}
 		case NodeType::Element: {
-			auto length = 0;
-			const auto& element = static_cast<const Element&>(*node);
-			this->serializeElement(element, out, length);
+			auto& element = static_cast<Element&>(*node);
+			this->serializeElement(element, out);
 			break;
 		}
 		case NodeType::Text: {
@@ -373,63 +373,71 @@ void UHSWriter::serialize96a(std::string& out) {
 		}
 	}
 
+	this->updateLinkTargets(out);
+
 	out += Token::DataSep;
 
 	this->serializeData(out);
 	this->serializeCRC(out);
 }
 
-void UHSWriter::serializeElement(const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeElement(Element& element, std::string& out) {
+	auto length = 0;
 	std::string buffer;
-	auto childLength = 0;
+
+	element.line(currentLine_); // For links and incentives
 
 	switch (element.elementType()) {
 	case ElementType::Unknown: /* No further processing required */
-		break;
+		return length;
 	case ElementType::Blank: /* No further processing required */
+		length = this->serializeBlankElement(element, buffer);
 		break;
 	case ElementType::Comment:
-		this->serializeCommentElement(element, buffer, childLength);
+		length = this->serializeCommentElement(element, buffer);
 		break;
 	case ElementType::Credit:
-		this->serializeCommentElement(element, buffer, childLength);
+		length = this->serializeCommentElement(element, buffer);
 		break;
 	case ElementType::Gifa:
-		this->serializeDataElement(element, buffer, childLength);
+		length = this->serializeDataElement(element, buffer);
 		break;
 	case ElementType::Hint:
-		this->serializeHintElement(element, buffer, childLength);
+		length = this->serializeHintElement(element, buffer);
 		break;
 	case ElementType::Hyperpng: /* TODO 2 */
+		length = this->serializeHyperpngElement(element, buffer);
 		break;
 	case ElementType::Incentive: /* TODO 3 */
+		length = this->serializeIncentiveElement(element, buffer);
 		break;
 	case ElementType::Info:
-		this->serializeInfoElement(buffer, childLength);
+		length = this->serializeInfoElement(buffer);
 		break;
-	case ElementType::Link: /* TODO 1 */
+	case ElementType::Link:
+		length = this->serializeLinkElement(element, buffer);
 		break;
 	case ElementType::Nesthint: /* TODO 1 */
+		length = this->serializeNesthintElement(element, buffer);
 		break;
 	case ElementType::Overlay: /* TODO 2 */
+		length = this->serializeOverlayElement(element, buffer);
 		break;
 	case ElementType::Sound:
-		this->serializeDataElement(element, buffer, childLength);
+		length = this->serializeDataElement(element, buffer);
 		break;
 	case ElementType::Subject:
-		this->serializeSubjectElement(element, buffer, childLength);
+		length = this->serializeSubjectElement(element, buffer);
 		break;
 	case ElementType::Text:
-		this->serializeTextElement(element, buffer, childLength);
+		length = this->serializeTextElement(element, buffer);
 		break;
 	case ElementType::Version:
-		this->serializeCommentElement(element, buffer, childLength);
+		length = this->serializeCommentElement(element, buffer);
 		break;
 	}
 
-	childLength += 2; // Include descriptor and title in length
-
-	out += std::to_string(childLength);
+	out += std::to_string(length);
 	out += ' ';
 	out += element.elementTypeString();
 	out += EOL;
@@ -441,31 +449,45 @@ void UHSWriter::serializeElement(const Element& element, std::string& out, int& 
 		out += title;
 	}
 	out += EOL;
-
 	out += buffer;
-	length += childLength;
+
+	return length;
 }
 
-void UHSWriter::serializeCommentElement(
-    const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeBlankElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+	return length;
+}
+
+int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+
 	if (const auto& body = element.body(); !body.empty()) {
 		out += Strings::wrap(body, EOL, LineLength, length) + EOL;
 	}
+	currentLine_ += length;
+
+	return length;
 }
 
 // GIFs don't appear to be displayed by the official reader any longer
-void UHSWriter::serializeDataElement(
-    const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeDataElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
 	const auto elementType = element.elementType();
 	const auto& body = element.body();
 
 	out += this->createDataAddress(body.length());
 	++length;
 	data_.emplace(std::make_pair(elementType, body));
+
+	currentLine_ += length;
+
+	return length;
 }
 
-void UHSWriter::serializeHintElement(
-    const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeHintElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
 	auto continuation = false;
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
@@ -484,9 +506,26 @@ void UHSWriter::serializeHintElement(
 
 		continuation = true;
 	}
+
+	currentLine_ += length;
+
+	return length;
 }
 
-void UHSWriter::serializeInfoElement(std::string& out, int& length) {
+int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+	return length;
+}
+
+int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+	return length;
+}
+
+int UHSWriter::serializeInfoElement(std::string& out) {
+	auto length = InitialElementLength;
 	out += InfoLengthMarker;
 	out += EOL;
 	++length;
@@ -503,31 +542,85 @@ void UHSWriter::serializeInfoElement(std::string& out, int& length) {
 	out += "time=" + std::string(buffer, timeLength) + EOL;
 	++length;
 
+	std::map<const std::string, bool> whitelisted = {
+	    {"author", true},
+	    {"author-note", true},
+	    {"copyright", true},
+	    {"game-note", true},
+	    {"publisher", true},
+	};
+
 	for (const auto& [key, value] : document_->attrs()) {
-		if (key == "length" || key == "date" || key == "time" || key == "notice") {
-			continue;
+		if (whitelisted[key]) {
+			out += Strings::wrap(value, EOL, LineLength, length, key + "=") + EOL;
 		}
-		out += Strings::wrap(value, EOL, LineLength, length, key + "=") + EOL;
 	}
 
 	if (auto notice = document_->attr("notice")) {
 		out += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
 	}
+
+	currentLine_ += length;
+
+	return length;
 }
 
-void UHSWriter::serializeSubjectElement(
-    const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	out += LinkMarker;
+	out += EOL;
+
+	int targetID;
+	try {
+		targetID = Strings::toInt(element.body());
+		if (targetID < 0) {
+			throw Error();
+		}
+	} catch (const Error& err) {
+		throw WriteError("expected positive integer, found %s", element.body());
+	}
+
+	if (auto target = document_->find(targetID)) {
+		deferredLinks_.push_back(target);
+		++length;
+	} else {
+		throw WriteError("target element not found for id %d", targetID);
+	}
+
+	currentLine_ += length;
+
+	return length;
+}
+
+int UHSWriter::serializeNesthintElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+	return length;
+}
+
+int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+	return length;
+}
+
+int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
+	currentLine_ += length;
+
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString().data());
 		}
-		const auto& child = static_cast<const Element&>(*node);
-		this->serializeElement(child, out, length);
+		auto& child = static_cast<Element&>(*node);
+		length += this->serializeElement(child, out);
 	}
+
+	return length;
 }
 
-void UHSWriter::serializeTextElement(
-    const Element& element, std::string& out, int& length) {
+int UHSWriter::serializeTextElement(Element& element, std::string& out) {
+	auto length = InitialElementLength;
 	const auto elementType = element.elementType();
 	const auto& body = element.body();
 
@@ -543,6 +636,25 @@ void UHSWriter::serializeTextElement(
 		line = codec_.encode96a(line, key_, true);
 	}
 	data_.emplace(std::make_pair(elementType, Strings::join(lines, EOL) + EOL));
+
+	currentLine_ += length;
+
+	return length;
+}
+
+void UHSWriter::updateLinkTargets(std::string& out) {
+	// Because we're shifting characters, we move backwards through the file in order to
+	// reduce the total number of bytes copied within the output buffer.
+	const auto end = deferredLinks_.crend();
+	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {
+		const auto target = *it;
+		assert(target);
+		const auto pos = out.rfind(LinkMarker);
+		const auto targetLine = std::to_string(target->line());
+		const auto length = targetLine.length();
+		out.replace(pos, length, targetLine);
+		out.erase(pos + length, strlen(LinkMarker) - length);
+	}
 }
 
 void UHSWriter::serializeData(std::string& out) {

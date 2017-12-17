@@ -30,6 +30,7 @@ ParseError ParseError::badLine(int line, int column, int targetLine) {
 
 ParseError ParseError::badValue(
     int line, int column, ValueType expectedType, std::string found) {
+
 	std::string expected;
 	switch (expectedType) {
 	case Uint:
@@ -53,6 +54,7 @@ ParseError ParseError::badValue(
 
 ParseError ParseError::badValue(
     int line, int column, std::string expected, std::string found) {
+
 	return ParseError(
 	    line, column, "expected %s, found '%s'", expected.data(), found.data());
 }
@@ -63,6 +65,7 @@ ParseError ParseError::badToken(int line, int column, TokenType type) {
 
 ParseError ParseError::badToken(
     int line, int column, TokenType expected, TokenType found) {
+
 	return ParseError(line,
 	    column,
 	    "expected %s, found %s",

@@ -104,6 +104,16 @@ static constexpr auto EOL = "\r\n";
 static const auto MaxDepth = 16;
 static constexpr auto Version = UHS_VERSION;
 
+template<typename T>
+class Passkey {
+private:
+	friend T;
+
+	Passkey() = default;
+	Passkey(const Passkey&) {}
+	Passkey& operator=(const Passkey&) = delete;
+};
+
 class Error : public std::runtime_error {
 public:
 	Error();
@@ -202,6 +212,7 @@ public:
 	const Type& attrs() const;
 	optional<const std::string> attr(const std::string key) const;
 	void attr(const std::string key, const std::string value);
+	void attr(const std::string key, const int value);
 
 private:
 	Type attrs_;
@@ -211,8 +222,10 @@ class Body {
 public:
 	Body() = default;
 	explicit Body(const std::string body);
+	explicit Body(const int body);
 	const std::string& body() const;
 	void body(const std::string body);
+	void body(const int body);
 
 private:
 	std::string body_;
@@ -297,8 +310,6 @@ private:
 class Tokenizer;
 
 class Token {
-	friend class Tokenizer;
-
 public:
 	static constexpr auto AsciiEncStart = "#a+";
 	static constexpr auto AsciiEncEnd = "#a-";
@@ -421,8 +432,8 @@ public:
 	explicit Node(NodeType type);
 	Node(const Node& other);
 	Node& operator=(Node other);
-	friend void swap(Node& lhs, Node& rhs) noexcept;
 	virtual ~Node() = default;
+	friend void swap(Node& lhs, Node& rhs) noexcept;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
 	void detachParent();
@@ -440,6 +451,7 @@ public:
 	Node* lastChild() const;
 	int numChildren() const;
 	int depth() const;
+	virtual std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
 
 	// Iterators
 	iterator begin();
@@ -450,7 +462,6 @@ public:
 	const_iterator cend() const;
 
 protected:
-	virtual std::unique_ptr<Node> cloneInternal() const;
 	void cloneChildren(const Node& node);
 	virtual void didRemove();
 	virtual void didAdd();
@@ -497,8 +508,6 @@ class TextNode
     : public Node
     , public Traits::Body {
 public:
-	friend class Node;
-
 	static std::unique_ptr<TextNode> create(const std::string body);
 
 	explicit TextNode(const std::string body);
@@ -511,12 +520,13 @@ public:
 	void removeFormat(Format format);
 	bool hasFormat(Format format) const;
 	Format format() const;
+	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	Format format_;
-
-	std::unique_ptr<Node> cloneInternal() const override;
 };
+
+class Document;
 
 class Element
     : public Node
@@ -525,15 +535,13 @@ class Element
     , public Traits::Title
     , public Traits::Visibility {
 public:
-	friend class Node;
-
 	using Node::appendChild;
 
 	static std::unique_ptr<Element> create(ElementType type, const int id = 0);
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType type);
 
-	Element(ElementType type, const int id = 0);
+	Element(ElementType type, int id = 0);
 	Element(const Element& other);
 	Element& operator=(Element other);
 	friend void swap(Element& lhs, Element& rhs) noexcept;
@@ -548,6 +556,7 @@ public:
 	void length(int length); // Used by UHSWriter
 	bool isMedia() const;
 	const std::string mediaExt() const;
+	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	class TypeMap {
@@ -567,8 +576,6 @@ private:
 	int id_;
 	int line_ = 0;
 	int length_ = 0;
-
-	std::unique_ptr<Node> cloneInternal() const override;
 };
 
 class Document
@@ -577,8 +584,6 @@ class Document
     , public Traits::Title
     , public Traits::Visibility {
 public:
-	friend class Node;
-
 	static std::unique_ptr<Document> create(VersionType version);
 
 	Document(VersionType version);
@@ -595,14 +600,13 @@ public:
 	void elementRemoved(Element& element);
 	void elementAdded(Element& element);
 	void reindex();
+	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	VersionType version_;
 	bool validChecksum_ = false;
 	std::map<const int, Element*> index_;
 	bool indexed_ = true;
-
-	std::unique_ptr<Node> cloneInternal() const override;
 };
 
 class Codec {
@@ -658,12 +662,18 @@ private:
 	};
 
 	struct LinkData {
-		int targetLine;
+		Element& link;
 		int line;
 		int column;
 
-		LinkData() = default;
-		LinkData(int targetLine, const int line, const int column);
+		LinkData(Element& link, const int line, const int column);
+	};
+
+	struct VisibilityData {
+		int targetLine;
+		VisibilityType visibility;
+
+		VisibilityData(int targetLine, VisibilityType visibility);
 	};
 
 	struct DataHandler {
@@ -677,18 +687,19 @@ private:
 	static const auto HeaderLength = 4;
 	static const auto FormatTokenLength = 3;
 
-	const ParserOptions options_;
-	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
-	std::unique_ptr<CRC> crc_ = nullptr;
 	Codec codec_;
-	std::unique_ptr<Document> document_ = nullptr;
-	NodeRangeList parents_;
-	std::vector<LinkData> deferredLinkChecks_;
+	std::unique_ptr<CRC> crc_ = nullptr;
 	std::vector<DataHandler> dataHandlers_;
+	std::vector<LinkData> deferredLinks_;
+	std::vector<VisibilityData> deferredVisibilities_;
+	std::unique_ptr<Document> document_ = nullptr;
+	bool done_ = false;
+	bool isTitleSet_ = false;
 	std::string key_;
 	int lineOffset_ = 0;
-	bool isTitleSet_ = false;
-	bool done_ = false;
+	const ParserOptions options_;
+	NodeRangeList parents_;
+	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 
 	// 88a
 	void parse88a();
@@ -704,8 +715,8 @@ private:
 	void parseDataElement(Element* const element);
 	void parseHintElement(Element* const element);
 	void parseHyperpngElement(Element* const element);
-	void parseInfoElement(Element* const element);
 	void parseIncentiveElement(Element* const element);
+	void parseInfoElement(Element* const element);
 	void parseLinkElement(Element* const element);
 	void parseOverlayElement(Element* const element);
 	void parseSubjectElement(Element* const element);
@@ -715,17 +726,16 @@ private:
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	void findParentAndAppend(std::unique_ptr<Element> element);
-	void deferLinkCheck(int targetLine, const int line, const int column);
-	void checkLinks();
-	Element* findTarget(const int line);
 	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
-	void parseData(std::unique_ptr<const Token> token);
 	void checkCRC();
-	void parseDate(const std::string& date, std::tm& tm) const;
-	void parseTime(const std::string& time, std::tm& tm) const;
+	void findParentAndAppend(std::unique_ptr<Element> element);
 	bool isPunctuation(char c);
 	int offsetLine(int line);
+	void parseData(std::unique_ptr<const Token> token);
+	void parseDate(const std::string& date, std::tm& tm) const;
+	void parseTime(const std::string& time, std::tm& tm) const;
+	void processLinks();
+	void processVisibility();
 };
 
 struct WriterOptions {
@@ -787,18 +797,27 @@ private:
 	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
 	static const std::size_t MediaSizeLength = 6; // Up to 999,999 bytes per media file
 	static const std::size_t FileSizeLength = 7;  // Up to 9,999,999 bytes per document
+	static const auto InitialElementLength = 2;   // Element descriptor and title
 	static constexpr auto DataAddressMarker = "000000";
 	static constexpr auto InfoLengthMarker = "length=0000000";
+	static constexpr auto LinkMarker = "** LINK **";
 
 	void serialize88a(const Document& document, std::string& out);
 	void serialize96a(std::string& out);
-	void serializeElement(const Element& element, std::string& out, int& length);
-	void serializeCommentElement(const Element& element, std::string& out, int& length);
-	void serializeDataElement(const Element& element, std::string& out, int& length);
-	void serializeHintElement(const Element& element, std::string& out, int& length);
-	void serializeInfoElement(std::string& out, int& length);
-	void serializeSubjectElement(const Element& element, std::string& out, int& length);
-	void serializeTextElement(const Element& element, std::string& out, int& length);
+	int serializeElement(Element& element, std::string& out);
+	int serializeBlankElement(Element& element, std::string& out);
+	int serializeCommentElement(Element& element, std::string& out);
+	int serializeDataElement(Element& element, std::string& out);
+	int serializeHintElement(Element& element, std::string& out);
+	int serializeHyperpngElement(Element& element, std::string& out);
+	int serializeIncentiveElement(Element& element, std::string& out);
+	int serializeInfoElement(std::string& out);
+	int serializeLinkElement(Element& element, std::string& out);
+	int serializeNesthintElement(Element& element, std::string& out);
+	int serializeOverlayElement(Element& element, std::string& out);
+	int serializeSubjectElement(Element& element, std::string& out);
+	int serializeTextElement(Element& element, std::string& out);
+	void updateLinkTargets(std::string& out);
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	std::string createDataAddress(std::size_t bodyLength, std::string textFormat = "");
@@ -806,9 +825,11 @@ private:
 
 	Codec codec_;
 	CRC crc_;
+	int currentLine_ = 1;
 	std::unique_ptr<Document> document_ = nullptr;
 	std::string key_;
 	DataQueue data_;
+	std::vector<Element*> deferredLinks_;
 };
 
 } // namespace UHS

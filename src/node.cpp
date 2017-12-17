@@ -223,7 +223,7 @@ Node::const_iterator Node::cend() const {
 	return Node::end();
 }
 
-std::unique_ptr<Node> Node::cloneInternal() const {
+std::unique_ptr<Node> Node::cloneInternal(Passkey<Node>) const {
 	return std::make_unique<Node>(*this);
 }
 
@@ -231,13 +231,16 @@ void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Document:
-			this->appendChild(static_cast<Document&>(*node).cloneInternal(), true);
+			this->appendChild(
+			    static_cast<Document&>(*node).cloneInternal(Passkey<Node>()), true);
 			break;
 		case NodeType::Element:
-			this->appendChild(static_cast<Element&>(*node).cloneInternal(), true);
+			this->appendChild(
+			    static_cast<Element&>(*node).cloneInternal(Passkey<Node>()), true);
 			break;
 		case NodeType::Text:
-			this->appendChild(static_cast<TextNode&>(*node).cloneInternal(), true);
+			this->appendChild(
+			    static_cast<TextNode&>(*node).cloneInternal(Passkey<Node>()), true);
 			break;
 		}
 	}
@@ -388,7 +391,7 @@ Format TextNode::format() const {
 	return format_;
 }
 
-std::unique_ptr<Node> TextNode::cloneInternal() const {
+std::unique_ptr<Node> TextNode::cloneInternal(Passkey<Node>) const {
 	return std::make_unique<TextNode>(*this);
 }
 
