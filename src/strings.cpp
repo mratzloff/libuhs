@@ -1,9 +1,9 @@
 #include "uhs.h"
 #include <iomanip>
 
-namespace UHS { namespace Strings {
+namespace UHS::Strings {
 
-const CharacterMap specialChars{
+const CharacterMap specialChars = {
     {"S^", u8"Š"},
     {"OE", u8"Œ"},
     {"-", u8"–"},
@@ -220,4 +220,4 @@ const std::string hex(char c) {
 	return out.str();
 }
 
-}} // namespace UHS::Strings
+} // namespace UHS::Strings

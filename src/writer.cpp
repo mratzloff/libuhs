@@ -223,6 +223,8 @@ void JSONWriter::serializeMap(
 
 //-------------------------------- UHSWriter --------------------------------//
 
+UHSWriter::Serializer UHSWriter::serializer_;
+
 UHSWriter::UHSWriter(std::ostream& out, const WriterOptions options)
     : Writer(out, options) {}
 
@@ -387,55 +389,8 @@ int UHSWriter::serializeElement(Element& element, std::string& out) {
 
 	element.line(currentLine_); // For links and incentives
 
-	switch (element.elementType()) {
-	case ElementType::Unknown: /* No further processing required */
-		return length;
-	case ElementType::Blank: /* No further processing required */
-		length = this->serializeBlankElement(element, buffer);
-		break;
-	case ElementType::Comment:
-		length = this->serializeCommentElement(element, buffer);
-		break;
-	case ElementType::Credit:
-		length = this->serializeCommentElement(element, buffer);
-		break;
-	case ElementType::Gifa:
-		length = this->serializeDataElement(element, buffer);
-		break;
-	case ElementType::Hint:
-		length = this->serializeHintElement(element, buffer);
-		break;
-	case ElementType::Hyperpng: /* TODO 2 */
-		length = this->serializeHyperpngElement(element, buffer);
-		break;
-	case ElementType::Incentive: /* TODO 3 */
-		length = this->serializeIncentiveElement(element, buffer);
-		break;
-	case ElementType::Info:
-		length = this->serializeInfoElement(buffer);
-		break;
-	case ElementType::Link:
-		length = this->serializeLinkElement(element, buffer);
-		break;
-	case ElementType::Nesthint: /* TODO 1 */
-		length = this->serializeNesthintElement(element, buffer);
-		break;
-	case ElementType::Overlay: /* TODO 2 */
-		length = this->serializeOverlayElement(element, buffer);
-		break;
-	case ElementType::Sound:
-		length = this->serializeDataElement(element, buffer);
-		break;
-	case ElementType::Subject:
-		length = this->serializeSubjectElement(element, buffer);
-		break;
-	case ElementType::Text:
-		length = this->serializeTextElement(element, buffer);
-		break;
-	case ElementType::Version:
-		length = this->serializeCommentElement(element, buffer);
-		break;
-	}
+	// Serialize element to buffer
+	length = serializer_.invoke(*this, element, buffer);
 
 	out += std::to_string(length);
 	out += ' ';
@@ -454,7 +409,7 @@ int UHSWriter::serializeElement(Element& element, std::string& out) {
 	return length;
 }
 
-int UHSWriter::serializeBlankElement(Element& element, std::string& out) {
+int UHSWriter::serializeBlankElement(Element&, std::string&) {
 	auto length = InitialElementLength;
 	currentLine_ += length;
 	return length;
@@ -524,7 +479,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 	return length;
 }
 
-int UHSWriter::serializeInfoElement(std::string& out) {
+int UHSWriter::serializeInfoElement(Element&, std::string& out) {
 	auto length = InitialElementLength;
 	out += InfoLengthMarker;
 	out += EOL;
@@ -773,6 +728,28 @@ void UHSWriter::convertTo91a() {
 		version->body(*notice);
 	}
 	document_->appendChild(std::move(version));
+}
+
+UHSWriter::Serializer::Serializer() {
+	map_.emplace(ElementType::Blank, &UHSWriter::serializeBlankElement);
+	map_.emplace(ElementType::Comment, &UHSWriter::serializeCommentElement);
+	map_.emplace(ElementType::Credit, &UHSWriter::serializeCommentElement);
+	map_.emplace(ElementType::Gifa, &UHSWriter::serializeDataElement);
+	map_.emplace(ElementType::Hint, &UHSWriter::serializeHintElement);
+	map_.emplace(ElementType::Hyperpng, &UHSWriter::serializeHyperpngElement);
+	map_.emplace(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
+	map_.emplace(ElementType::Info, &UHSWriter::serializeInfoElement);
+	map_.emplace(ElementType::Link, &UHSWriter::serializeLinkElement);
+	map_.emplace(ElementType::Nesthint, &UHSWriter::serializeNesthintElement);
+	map_.emplace(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
+	map_.emplace(ElementType::Sound, &UHSWriter::serializeDataElement);
+	map_.emplace(ElementType::Subject, &UHSWriter::serializeSubjectElement);
+	map_.emplace(ElementType::Text, &UHSWriter::serializeTextElement);
+	map_.emplace(ElementType::Version, &UHSWriter::serializeCommentElement);
+}
+
+int UHSWriter::Serializer::invoke(UHSWriter& writer, Element& element, std::string& out) {
+	return (writer.*map_[element.elementType()])(element, out);
 }
 
 } // namespace UHS

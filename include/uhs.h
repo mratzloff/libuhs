@@ -792,6 +792,17 @@ public:
 	void reset() override;
 
 private:
+	class Serializer {
+	public:
+		using Func = int (UHSWriter::*)(Element&, std::string&);
+
+		Serializer();
+		int invoke(UHSWriter& writer, Element& element, std::string& out);
+
+	private:
+		std::map<const ElementType, Func> map_;
+	};
+
 	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
 
 	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
@@ -811,7 +822,7 @@ private:
 	int serializeHintElement(Element& element, std::string& out);
 	int serializeHyperpngElement(Element& element, std::string& out);
 	int serializeIncentiveElement(Element& element, std::string& out);
-	int serializeInfoElement(std::string& out);
+	int serializeInfoElement(Element& element, std::string& out);
 	int serializeLinkElement(Element& element, std::string& out);
 	int serializeNesthintElement(Element& element, std::string& out);
 	int serializeOverlayElement(Element& element, std::string& out);
@@ -822,6 +833,8 @@ private:
 	void serializeCRC(std::string& out);
 	std::string createDataAddress(std::size_t bodyLength, std::string textFormat = "");
 	void convertTo91a();
+
+	static UHSWriter::Serializer serializer_;
 
 	Codec codec_;
 	CRC crc_;
