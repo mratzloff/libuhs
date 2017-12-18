@@ -415,18 +415,17 @@ int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 // GIFs don't appear to be displayed by the official reader any longer
 int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	const auto elementType = element.elementType();
 	const auto& body = element.body();
 
-	std::string buffer = this->createDataAddress(body.length());
+	auto dataAddress = this->createDataAddress(body.length());
+	this->addData(element);
 	++length;
-	data_.emplace(std::make_pair(elementType, body));
 
 	currentLine_ += length;
 	element.length(length);
 
 	this->serializeElementHeader(element, out);
-	out += buffer;
+	out += dataAddress;
 
 	return length;
 }
@@ -437,7 +436,7 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	std::string buffer;
 
 	currentLine_ += length;
-	auto elementType = element.elementType();
+	const auto elementType = element.elementType();
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		auto childLength = 0;
@@ -496,10 +495,52 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+	const auto& body = element.body();
 
+	auto buffer = this->createDataAddress(body.length());
+	this->addData(element);
+	++length;
 	currentLine_ += length;
+
+	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
+		if (node->nodeType() != NodeType::Element) {
+			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+		}
+		
+		auto& child = static_cast<Element&>(*node);
+
+		std::vector<std::pair<std::string, int>> coords {
+			{"region-top-left-x", 0},
+			{"region-top-left-y", 0},
+			{"region-bottom-right-x", 0},
+			{"region-bottom-right-y", 0},
+		};
+		for (auto& [attr, coord] : coords) {
+			if (auto value = child.attr(attr)) {
+				try {
+					coord = Strings::toInt(*value);
+				} catch (const Error& err) {
+					throw WriteError("invalid coordinate: %s", *value);
+				}
+			}
+		}
+
+		auto x1 = coords[0].second;
+		auto y1 = coords[1].second;
+		auto x2 = coords[2].second;
+		auto y2 = coords[3].second;
+
+		buffer += this->createRegion(x1, y1, x2, y2);
+		++length;
+		++currentLine_;
+
+		length += this->serializeElement(child, buffer);
+	}
+
 	element.length(length);
+
 	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -597,10 +638,34 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+	const auto& body = element.body();
+
+	std::vector<std::pair<std::string, int>> coords {
+		{"image-x", 0},
+		{"image-y", 0},
+	};
+	for (auto& [attr, coord] : coords) {
+		if (auto value = element.attr(attr)) {
+			try {
+				coord = Strings::toInt(*value);
+			} catch (const Error& err) {
+				throw WriteError("invalid coordinate: %s", *value);
+			}
+		}
+	}
+
+	auto x = coords[0].second;
+	auto y = coords[1].second;
+
+	auto buffer = this->createOverlayAddress(body.length(), x, y);
+	this->addData(element);
+	++length;
 
 	currentLine_ += length;
 	element.length(length);
+
 	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -654,7 +719,7 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	return length;
 }
 
-void UHSWriter::serializeElementHeader(Element& element, std::string& out) {
+void UHSWriter::serializeElementHeader(Element& element, std::string& out) const {
 	out += std::to_string(element.length());
 	out += ' ';
 	out += element.elementTypeString();
@@ -668,7 +733,7 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) {
 	out += EOL;
 }
 
-void UHSWriter::updateLinkTargets(std::string& out) {
+void UHSWriter::updateLinkTargets(std::string& out) const {
 	// Because we're shifting characters, we move backwards through the file in order to
 	// reduce the total number of bytes copied within the output buffer.
 	const auto end = deferredLinks_.crend();
@@ -750,7 +815,11 @@ void UHSWriter::serializeCRC(std::string& out) {
 	out.push_back(checksum[1]);
 }
 
-std::string UHSWriter::createDataAddress(std::size_t bodyLength, std::string textFormat) {
+void UHSWriter::addData(const Element& element) {
+	data_.emplace(std::make_pair(element.elementType(), element.body()));
+}
+
+std::string UHSWriter::createDataAddress(std::size_t bodyLength, std::string textFormat) const {
 	std::string out;
 
 	out += DataAddressMarker;
@@ -764,6 +833,34 @@ std::string UHSWriter::createDataAddress(std::size_t bodyLength, std::string tex
 	out += EOL;
 
 	return out;
+}
+
+std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y) const {
+	std::string out;
+
+	out += DataAddressMarker;
+	out += ' ';
+	out += std::string(FileSizeLength, '0');
+	out += ' ';
+	std::ostringstream buffer;
+	buffer << std::setfill('0') << std::setw(MediaSizeLength) << bodyLength;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << x;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y;
+	out += buffer.str();
+	out += EOL;
+
+	return out;
+}
+
+std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
+	std::ostringstream buffer;
+	buffer << std::setfill('0') << std::setw(RegionSizeLength) << x1;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y1;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << x2;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y2;
+	buffer << EOL;
+
+	return buffer.str();
 }
 
 void UHSWriter::convertTo91a() {
