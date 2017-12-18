@@ -20,8 +20,8 @@ void printHelp() {
 	          << "-f <fmt>\t\tOutput format (json, tree, uhs)\n"
 	          << "-o <file>\t\tOutput file\n"
 	          << "-m <dir>\t\tMedia directory\n"
-	          << "    --88a\t\tForce 88a mode for reading and writing\n"
-	          << "    --unregistered\tRead in unregistered mode\n"
+	          << "    --88a\t\tForce 88a mode (read and write)\n"
+	          << "    --unregistered\tUnregistered mode (write only)\n"
 	          << "    --debug\t\tPrint debugging statements\n"
 	          << "-v, --version\t\tPrint the version\n"
 	          << "-h, --help\t\tPrint this help statement" << std::endl;
@@ -32,8 +32,8 @@ int main(int argc, const char* argv[]) {
 	std::string infile;
 	std::string outfile;
 	std::string dir;
-	ParserOptions parserOpt;
-	WriterOptions writerOpt;
+	ParserOptions parserOptions;
+	WriterOptions writerOptions;
 
 	if (argc == 1) {
 		printHelp();
@@ -67,7 +67,7 @@ int main(int argc, const char* argv[]) {
 					std::cerr << "uhs: error: -m requires a parameter" << std::endl;
 					return Err;
 				}
-				writerOpt.mediaDir = argv[i];
+				writerOptions.mediaDir = argv[i];
 				break;
 			case 'v':
 				printVersion();
@@ -77,15 +77,15 @@ int main(int argc, const char* argv[]) {
 				return OK;
 			case '-':
 				if (arg == "--88a") {
-					parserOpt.force88aMode = true;
-					writerOpt.force88aMode = true;
+					parserOptions.force88aMode = true;
+					writerOptions.force88aMode = true;
 					break;
 				} else if (arg == "--unregistered") {
-					writerOpt.registered = false;
+					writerOptions.registered = false;
 					break;
 				} else if (arg == "--debug") {
-					parserOpt.debug = true;
-					writerOpt.debug = true;
+					parserOptions.debug = true;
+					writerOptions.debug = true;
 					break;
 				} else if (arg == "--help") {
 					printHelp();
@@ -124,7 +124,7 @@ int main(int argc, const char* argv[]) {
 	}
 
 	try {
-		Parser p{parserOpt};
+		Parser p{parserOptions};
 		std::ifstream in{infile, std::ios::in | std::ios::binary};
 		auto document = p.parse(in);
 
@@ -135,13 +135,13 @@ int main(int argc, const char* argv[]) {
 		std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
 		if (format == "json") {
-			JSONWriter w{out, writerOpt};
+			JSONWriter w{out, writerOptions};
 			w.write(*document);
 		} else if (format == "tree") {
-			TreeWriter w{out, writerOpt};
+			TreeWriter w{out, writerOptions};
 			w.write(*document);
 		} else if (format == "uhs") {
-			UHSWriter w{out, writerOpt};
+			UHSWriter w{out, writerOptions};
 			w.write(*document);
 		}
 	} catch (const Error& err) {

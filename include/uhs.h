@@ -806,10 +806,10 @@ private:
 	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
 
 	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
-	static const std::size_t MediaSizeLength = 6; // Up to 999,999 bytes per media file
+	static const std::size_t MediaSizeLength = 6;  // Up to 999,999 bytes per media file
 	static const std::size_t RegionSizeLength = 4; // Up to 9,999 × 9,999 px per region
-	static const std::size_t FileSizeLength = 7;  // Up to 9,999,999 bytes per document
-	static const auto InitialElementLength = 2;   // Element descriptor and title
+	static const std::size_t FileSizeLength = 7;   // Up to 9,999,999 bytes per document
+	static const auto InitialElementLength = 2;    // Element descriptor and title
 	static constexpr auto DataAddressMarker = "000000";
 	static constexpr auto InfoLengthMarker = "length=0000000";
 	static constexpr auto LinkMarker = "** LINK **";
@@ -833,7 +833,8 @@ private:
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	void addData(const Element& element);
-	std::string createDataAddress(std::size_t bodyLength, std::string textFormat = "") const;
+	std::string createDataAddress(
+	    std::size_t bodyLength, std::string textFormat = "") const;
 	std::string createOverlayAddress(std::size_t bodyLength, int x, int y) const;
 	std::string createRegion(int x1, int y1, int x2, int y2) const;
 	void convertTo91a();

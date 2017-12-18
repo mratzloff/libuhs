@@ -506,14 +506,14 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
-		
+
 		auto& child = static_cast<Element&>(*node);
 
-		std::vector<std::pair<std::string, int>> coords {
-			{"region-top-left-x", 0},
-			{"region-top-left-y", 0},
-			{"region-bottom-right-x", 0},
-			{"region-bottom-right-y", 0},
+		std::vector<std::pair<std::string, int>> coords{
+		    {"region-top-left-x", 0},
+		    {"region-top-left-y", 0},
+		    {"region-bottom-right-x", 0},
+		    {"region-bottom-right-y", 0},
 		};
 		for (auto& [attr, coord] : coords) {
 			if (auto value = child.attr(attr)) {
@@ -547,10 +547,58 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
+	std::string buffer;
+
+	std::map<const ElementType, bool> blacklisted = {
+	    {ElementType::Incentive, true},
+	    {ElementType::Info, true},
+	    {ElementType::Version, true},
+	};
+
+	std::vector<std::string> instructions;
+
+	for (const auto& node : *document_) {
+		if (node.nodeType() != NodeType::Element) {
+			continue;
+		}
+		const auto& candidate = static_cast<const Element&>(node);
+		if (blacklisted[candidate.elementType()]) {
+			continue;
+		}
+
+		std::string flag;
+		switch (candidate.visibility()) {
+		case VisibilityType::Registered:
+			flag = (options_.registered) ? Token::Registered : Token::Unregistered;
+			break;
+		case VisibilityType::Unregistered:
+			flag = (options_.registered) ? Token::Unregistered : Token::Registered;
+			break;
+		default:
+			continue; // Ignore
+		}
+
+		instructions.push_back(std::to_string(candidate.line()) + flag);
+	}
+
+	if (instructions.empty()) {
+		return 0; // Elide element if empty
+	}
+
+	auto decoded = Strings::join(instructions, " ");
+	auto wrapped = Strings::wrap(decoded, EOL, LineLength, length);
+	auto lines = Strings::split(wrapped, EOL);
+	for (auto& line : lines) {
+		line = codec_.encode96a(line, key_, false);
+	}
+	buffer += Strings::join(lines, EOL);
+	buffer += EOL;
 
 	currentLine_ += length;
 	element.length(length);
+
 	this->serializeElementHeader(element, out);
+	out += buffer;
 
 	return length;
 }
@@ -640,9 +688,9 @@ int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	const auto& body = element.body();
 
-	std::vector<std::pair<std::string, int>> coords {
-		{"image-x", 0},
-		{"image-y", 0},
+	std::vector<std::pair<std::string, int>> coords = {
+	    {"image-x", 0},
+	    {"image-y", 0},
 	};
 	for (auto& [attr, coord] : coords) {
 		if (auto value = element.attr(attr)) {
@@ -819,7 +867,9 @@ void UHSWriter::addData(const Element& element) {
 	data_.emplace(std::make_pair(element.elementType(), element.body()));
 }
 
-std::string UHSWriter::createDataAddress(std::size_t bodyLength, std::string textFormat) const {
+std::string UHSWriter::createDataAddress(
+    std::size_t bodyLength, std::string textFormat) const {
+
 	std::string out;
 
 	out += DataAddressMarker;
