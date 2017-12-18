@@ -824,7 +824,6 @@ private:
 	int serializeIncentiveElement(Element& element, std::string& out);
 	int serializeInfoElement(Element& element, std::string& out);
 	int serializeLinkElement(Element& element, std::string& out);
-	int serializeNesthintElement(Element& element, std::string& out);
 	int serializeOverlayElement(Element& element, std::string& out);
 	int serializeSubjectElement(Element& element, std::string& out);
 	int serializeTextElement(Element& element, std::string& out);

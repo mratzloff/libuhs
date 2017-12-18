@@ -55,12 +55,11 @@ ParseError ParseError::badValue(
 ParseError ParseError::badValue(
     int line, int column, std::string expected, std::string found) {
 
-	return ParseError(
-	    line, column, "expected %s, found '%s'", expected.data(), found.data());
+	return ParseError(line, column, "expected %s, found '%s'", expected, found);
 }
 
 ParseError ParseError::badToken(int line, int column, TokenType type) {
-	return ParseError(line, column, "unexpected %s", Token::typeString(type).data());
+	return ParseError(line, column, "unexpected %s", Token::typeString(type));
 }
 
 ParseError ParseError::badToken(
@@ -69,8 +68,8 @@ ParseError ParseError::badToken(
 	return ParseError(line,
 	    column,
 	    "expected %s, found %s",
-	    Token::typeString(expected).data(),
-	    Token::typeString(found).data());
+	    Token::typeString(expected),
+	    Token::typeString(found));
 }
 
 ParseError::ParseError(int line, int column, const std::string& message)

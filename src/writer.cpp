@@ -272,19 +272,6 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 		queue.pop();
 
 		switch (node->nodeType()) {
-		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			buffer += codec_.encode88a(textNode.body()) + EOL;
-
-			line += numPreviousChildren - 1; // Simplifies to line -= 1 after first pass
-
-			if (lastHintTextLine == 0) {
-				lastHintTextLine = line;
-			}
-			firstHintTextLine = line; // Work backwards from last
-			break;
-		}
-
 		case NodeType::Element: {
 			const auto& element = static_cast<const Element&>(*node);
 			const auto elementType = element.elementType();
@@ -305,7 +292,7 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 				break;
 			default:
 				throw WriteError(
-				    "unexpected element: %s", Element::typeString(elementType).data());
+				    "unexpected element type: %s", Element::typeString(elementType));
 			}
 
 			buffer += codec_.encode88a(title) + EOL;
@@ -314,7 +301,18 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			previousType = elementType;
 			break;
 		}
+		case NodeType::Text: {
+			const auto& textNode = static_cast<const TextNode&>(*node);
+			buffer += codec_.encode88a(textNode.body()) + EOL;
 
+			line += numPreviousChildren - 1; // Simplifies to line -= 1 after first pass
+
+			if (lastHintTextLine == 0) {
+				lastHintTextLine = line;
+			}
+			firstHintTextLine = line; // Work backwards from last
+			break;
+		}
 		default:
 			break; // Ignore
 		}
@@ -370,7 +368,7 @@ void UHSWriter::serialize96a(std::string& out) {
 		}
 		case NodeType::Text: {
 			const auto& textNode = static_cast<const TextNode&>(*node);
-			throw WriteError("unexpected text node: %s", textNode.body().data());
+			throw WriteError("unexpected text node: %s", textNode.body());
 		}
 		}
 	}
@@ -438,24 +436,56 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto continuation = false;
 	std::string buffer;
 
+	currentLine_ += length;
+	auto elementType = element.elementType();
+
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
+		auto childLength = 0;
+		auto nodeType = node->nodeType();
+
 		if (continuation) {
-			buffer += Token::NestedTextSep;
+			if (nodeType == NodeType::Element) {
+				buffer += Token::NestedElementSep;
+			} else if (nodeType == NodeType::Text) {
+				buffer += Token::NestedTextSep;
+			}
 			buffer += EOL;
 			++length;
+			++currentLine_;
 		}
-		if (node->nodeType() != NodeType::Text) {
-			// Hint should only contain text nodes at this point
-			throw WriteError("unexpected node type: %s", node->nodeTypeString().data());
-		}
-		const auto& textNode = static_cast<const TextNode&>(*node);
-		const auto& body = textNode.body();
-		buffer += codec_.encode88a(Strings::wrap(body, EOL, LineLength, length)) + EOL;
 
+		if (nodeType == NodeType::Element && elementType == ElementType::Nesthint) {
+			auto& child = static_cast<Element&>(*node);
+			childLength += this->serializeElement(child, buffer);
+
+		} else if (nodeType == NodeType::Text) {
+			const auto& textNode = static_cast<const TextNode&>(*node);
+			const auto& body = textNode.body();
+			auto wrapped = Strings::wrap(body, EOL, LineLength, childLength);
+			currentLine_ += childLength;
+
+			if (elementType == ElementType::Nesthint) {
+				auto lines = Strings::split(wrapped, EOL);
+				for (auto& line : lines) {
+					if (line == "") {
+						line = Token::ParagraphSep;
+					}
+					line = codec_.encode96a(line, key_, false);
+				}
+				buffer += Strings::join(lines, EOL);
+			} else if (elementType == ElementType::Hint) {
+				buffer += codec_.encode88a(wrapped);
+			}
+			buffer += EOL;
+
+		} else {
+			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+		}
+
+		length += childLength;
 		continuation = true;
 	}
 
-	currentLine_ += length;
 	element.length(length);
 
 	this->serializeElementHeader(element, out);
@@ -519,7 +549,8 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	}
 
 	if (auto notice = document_->attr("notice")) {
-		buffer += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
+		buffer +=
+		    Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
 	}
 
 	currentLine_ += length;
@@ -564,16 +595,6 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 	return length;
 }
 
-int UHSWriter::serializeNesthintElement(Element& element, std::string& out) {
-	auto length = InitialElementLength;
-
-	currentLine_ += length;
-	element.length(length);
-	this->serializeElementHeader(element, out);
-
-	return length;
-}
-
 int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 
@@ -592,7 +613,7 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError("unexpected node type: %s", node->nodeTypeString().data());
+			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
 		auto& child = static_cast<Element&>(*node);
 		length += this->serializeElement(child, buffer);
@@ -751,8 +772,7 @@ void UHSWriter::convertTo91a() {
 	container->title(document_->title());
 	for (auto node = document_->firstChild(); node; node = document_->firstChild()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError(
-			    "expected element, found %s node", node->nodeTypeString().data());
+			throw WriteError("expected element, found %s node", node->nodeTypeString());
 		}
 		container->appendChild(document_->removeChild(node));
 	}
@@ -790,7 +810,7 @@ UHSWriter::Serializer::Serializer() {
 	map_.emplace(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
 	map_.emplace(ElementType::Info, &UHSWriter::serializeInfoElement);
 	map_.emplace(ElementType::Link, &UHSWriter::serializeLinkElement);
-	map_.emplace(ElementType::Nesthint, &UHSWriter::serializeNesthintElement);
+	map_.emplace(ElementType::Nesthint, &UHSWriter::serializeHintElement);
 	map_.emplace(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
 	map_.emplace(ElementType::Sound, &UHSWriter::serializeDataElement);
 	map_.emplace(ElementType::Subject, &UHSWriter::serializeSubjectElement);
