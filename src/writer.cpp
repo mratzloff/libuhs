@@ -632,14 +632,15 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	};
 
 	for (const auto& [key, value] : document_->attrs()) {
-		if (whitelisted[key]) {
-			buffer += Strings::wrap(value, EOL, LineLength, length, key + "=") + EOL;
+		if (whitelisted[key] && !value.empty()) {
+			buffer += Strings::wrap(value, EOL, LineLength, length, key + "=");
+			buffer += EOL;
 		}
 	}
 
 	if (auto notice = document_->attr("notice")) {
-		buffer +=
-		    Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix) + EOL;
+		buffer += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix);
+		buffer += EOL;
 	}
 
 	currentLine_ += length;

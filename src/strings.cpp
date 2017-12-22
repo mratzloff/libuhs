@@ -165,6 +165,7 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
     int& numLines, const std::string prefix) {
+
 	std::string lines;
 	std::size_t i = 0;
 	auto length = s.length();
