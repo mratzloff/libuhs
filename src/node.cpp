@@ -14,7 +14,7 @@ const std::string Node::typeString(NodeType type) {
 }
 
 bool Node::isElementOfType(const Node& node, ElementType type) {
-	if (node.nodeType() == NodeType::Element) {
+	if (node.isElement()) {
 		const auto& element = static_cast<const Element&>(node);
 		return (element.elementType() == type);
 	}
@@ -46,6 +46,18 @@ NodeType Node::nodeType() const {
 
 const std::string Node::nodeTypeString() const {
 	return Node::typeString(nodeType_);
+}
+
+bool Node::isDocument() const {
+	return nodeType_ == NodeType::Document;
+}
+
+bool Node::isElement() const {
+	return nodeType_ == NodeType::Element;
+}
+
+bool Node::isText() const {
+	return nodeType_ == NodeType::Text;
 }
 
 void Node::detachParent() {
@@ -268,7 +280,7 @@ void Node::didAdd() {
 
 Document* Node::findDocument() const {
 	for (auto node = parent_; node; node = node->parent()) {
-		if (node->nodeType() == NodeType::Document) {
+		if (node->isDocument()) {
 			return static_cast<Document*>(node);
 		}
 	}

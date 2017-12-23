@@ -101,7 +101,7 @@ void Document::reindex() {
 	index_.clear();
 
 	for (auto& node : *this) {
-		if (node.nodeType() == NodeType::Element) {
+		if (node.isElement()) {
 			this->elementAdded(static_cast<Element&>(node));
 		}
 	}

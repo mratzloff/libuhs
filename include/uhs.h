@@ -436,6 +436,9 @@ public:
 	friend void swap(Node& lhs, Node& rhs) noexcept;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
+	bool isDocument() const;
+	bool isElement() const;
+	bool isText() const;
 	void detachParent();
 	std::unique_ptr<Node> removeChild(Node* node);
 	void appendChild(std::unique_ptr<Node> node);

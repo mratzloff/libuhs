@@ -1,4 +1,5 @@
 #include "uhs.h"
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 
@@ -440,24 +441,24 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		auto childLength = 0;
-		auto nodeType = node->nodeType();
 
-		if (continuation) {
-			if (nodeType == NodeType::Element) {
-				buffer += Token::NestedElementSep;
-			} else if (nodeType == NodeType::Text) {
-				buffer += Token::NestedTextSep;
-			}
+		if (node->isElement() && elementType == ElementType::Nesthint) {
+			buffer += Token::NestedElementSep;
 			buffer += EOL;
 			++length;
 			++currentLine_;
-		}
 
-		if (nodeType == NodeType::Element && elementType == ElementType::Nesthint) {
 			auto& child = static_cast<Element&>(*node);
 			childLength += this->serializeElement(child, buffer);
 
-		} else if (nodeType == NodeType::Text) {
+		} else if (node->isText()) {
+			if (continuation) {
+				buffer += Token::NestedTextSep;
+				buffer += EOL;
+				++length;
+				++currentLine_;
+			}
+
 			const auto& textNode = static_cast<const TextNode&>(*node);
 			const auto& body = textNode.body();
 			auto wrapped = Strings::wrap(body, EOL, LineLength, childLength);
@@ -905,10 +906,22 @@ std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y
 
 std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
 	std::ostringstream buffer;
-	buffer << std::setfill('0') << std::setw(RegionSizeLength) << x1;
-	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y1;
-	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << x2;
-	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y2;
+	std::vector<const int> coords = {x1, y1, x2, y2};
+	auto continuation = false;
+
+	for (auto coord : coords) {
+		if (continuation) {
+			buffer << ' ';
+		}
+		auto width = RegionSizeLength;
+		if (coord < 0) {
+			buffer << '-';
+			width -= 1;
+			coord = std::abs(coord);
+		}
+		buffer << std::setfill('0') << std::setw(width) << coord;
+		continuation = true;
+	}
 	buffer << EOL;
 
 	return buffer.str();
