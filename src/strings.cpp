@@ -167,32 +167,48 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
     int& numLines, const std::string prefix) {
 
 	std::string lines;
-	std::size_t i = 0;
-	auto length = s.length();
+	std::size_t cutpoint = 0;
+	auto cutting = false;
+	auto end = s.length();
+	auto foundCutpoint = false;
+	std::size_t start = 0;
+
 	width -= prefix.length();
 
-	while (i < length) {
-		std::size_t lineLength = 0;
-
-		if (length - i > width) {
-			// Select position of first newline or last space within width
-			auto pos1 = s.find('\n', i);
-			auto pos2 = s.find_last_of(' ', i + width);
-			auto pos = (pos1 < pos2) ? pos1 : pos2;
-
-			lineLength = pos - i;
-			if (lineLength > width) { // Hard cut (no whitespace found)
-				lineLength = width;
-			}
-		} else {
-			lineLength = length - i;
-		}
-		if (i > 0) {
+	auto cut = [&](std::size_t endpoint) {
+		if (start > 0) {
 			lines += sep;
 		}
-		lines += prefix + s.substr(i, lineLength);
+		lines += prefix;
+		lines += s.substr(start, endpoint - start);
 		++numLines;
-		i += lineLength + 1;
+	};
+
+	for (auto cursor = start; cursor <= end; ++cursor) {
+		switch (s[cursor]) {
+		case '\n':
+			cutting = true; // Always cut on newline
+			[[fallthrough]];
+		case ' ':
+			foundCutpoint = true;
+			cutpoint = cursor;
+		}
+		if (auto limit = start + width; cursor > limit) {
+			if (!foundCutpoint) { // Hard cut
+				cutpoint = limit;
+			}
+			cutting = true;
+		}
+
+		if (cutting) {
+			cut(cutpoint);
+			start = (foundCutpoint) ? cutpoint + 1 : cutpoint;
+			foundCutpoint = false;
+			cutting = false;
+		}
+	}
+	if (cutpoint <= end) {
+		cut(end);
 	}
 
 	return lines;
