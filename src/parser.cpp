@@ -399,6 +399,7 @@ void Parser::parseCommentElement(Element* const element) {
 	auto length = element->length();
 	std::string body;
 	auto continuation = false;
+	auto paragraph = false;
 
 	for (auto i = 3; i <= length; ++i) {
 		auto token = this->next();
@@ -410,12 +411,14 @@ void Parser::parseCommentElement(Element* const element) {
 			}
 			body += token->value();
 			continuation = true;
+			paragraph = false;
 			break;
 		case TokenType::NestedTextSep:
 			[[fallthrough]];
 		case TokenType::NestedParagraphSep:
-			body += "\n\n";
+			body += (paragraph) ? "\n" : "\n\n";
 			continuation = false;
+			paragraph = true;
 			break;
 		default:
 			throw ParseError::badToken(token->line(), token->column(), token->type());
@@ -476,37 +479,53 @@ expectDataLength:
 // error, but bluforce.uhs has an instance of this. This actually screws
 // up the official reader UI for that particular hint.
 void Parser::parseHintElement(Element* const element) {
+	auto continuation = false;
 	std::string hintText;
+	auto length = element->length();
+	auto paragraph = false;
 
 	// Parse child elements
-	auto length = element->length();
-	auto continuation = false;
-
 	for (auto i = 3; i <= length; ++i) {
 		auto token = this->next();
 
 		switch (token->type()) {
-		case TokenType::String:
+		case TokenType::String: {
+			std::string line;
+
+			if (element->elementType() == ElementType::Nesthint) {
+				line = codec_.decode96a(token->value(), key_, false);
+
+				if (line == Token::ParagraphSep) {
+					line = (continuation) ? "\n\n" : "\n";
+					continuation = false;
+					paragraph = true;
+				} else {
+					paragraph = false;
+				}
+			} else {
+				line = codec_.decode88a(token->value());
+			}
+
 			if (continuation) {
 				hintText += ' ';
 			}
-			if (element->elementType() == ElementType::Nesthint) {
-				hintText += codec_.decode96a(token->value(), key_, false);
-			} else {
-				hintText += codec_.decode88a(token->value());
-			}
-			continuation = true;
+			hintText += line;
+			continuation = !paragraph;
 			break;
+		}
 		case TokenType::NestedTextSep:
 			if (!hintText.empty()) {
-				element->appendChild(hintText);
+				element->appendChild(Strings::chomp(hintText, '\n'));
+				element->appendChild("-");
 				hintText.clear();
 			}
 			continuation = false;
+			paragraph = false;
 			break;
 		case TokenType::NestedParagraphSep:
-			hintText += "\n\n";
+			hintText += (continuation) ? "\n\n" : "\n";
 			continuation = false;
+			paragraph = true;
 			break;
 		case TokenType::NestedElementSep:
 			if (i == length || element->elementType() != ElementType::Nesthint) {
@@ -514,12 +533,12 @@ void Parser::parseHintElement(Element* const element) {
 				    token->line(), token->column(), ParseError::String, token->value());
 			}
 
-			// Append current text node
 			if (!hintText.empty()) {
-				element->appendChild(hintText);
+				element->appendChild(Strings::chomp(hintText, '\n'));
 				hintText.clear();
 			}
 			continuation = false;
+			paragraph = false;
 
 			// Length
 			token = this->expect(TokenType::Length);
@@ -534,9 +553,8 @@ void Parser::parseHintElement(Element* const element) {
 		}
 	}
 
-	// Append current text node
 	if (!hintText.empty()) {
-		element->appendChild(hintText);
+		element->appendChild(Strings::chomp(hintText, '\n'));
 	}
 }
 

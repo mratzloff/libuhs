@@ -118,6 +118,13 @@ std::string rtrim(const std::string& s, char c) {
 	return s;
 }
 
+std::string& chomp(std::string& s, char c) {
+	if (s.back() == c) {
+		s.pop_back();
+	}
+	return s;
+}
+
 std::vector<std::string> split(const std::string& s, const std::string& sep, int n) {
 	std::vector<std::string> items;
 	std::size_t from = 0;

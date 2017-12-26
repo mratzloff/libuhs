@@ -183,6 +183,7 @@ bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
+std::string& chomp(std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
 std::string join(const std::vector<std::string>& s, const std::string& sep);
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width);

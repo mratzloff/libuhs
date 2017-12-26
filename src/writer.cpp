@@ -450,34 +450,33 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 			auto& child = static_cast<Element&>(*node);
 			childLength += this->serializeElement(child, buffer);
-
 		} else if (node->isText()) {
-			if (continuation) {
+			const auto& textNode = static_cast<const TextNode&>(*node);
+			const auto& body = textNode.body();
+
+			if (body == "-") {
 				buffer += Token::NestedTextSep;
 				buffer += EOL;
 				++length;
 				++currentLine_;
-			}
+			} else {
+				auto wrapped = Strings::wrap(body, EOL, LineLength, childLength);
+				currentLine_ += childLength;
 
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			const auto& body = textNode.body();
-			auto wrapped = Strings::wrap(body, EOL, LineLength, childLength);
-			currentLine_ += childLength;
-
-			if (elementType == ElementType::Nesthint) {
-				auto lines = Strings::split(wrapped, EOL);
-				for (auto& line : lines) {
-					if (line == "") {
-						line = Token::ParagraphSep;
+				if (elementType == ElementType::Nesthint) {
+					auto lines = Strings::split(wrapped, EOL);
+					for (auto& line : lines) {
+						if (line == "") {
+							line = Token::ParagraphSep;
+						}
+						line = codec_.encode96a(line, key_, false);
 					}
-					line = codec_.encode96a(line, key_, false);
+					buffer += Strings::join(lines, EOL);
+				} else if (elementType == ElementType::Hint) {
+					buffer += codec_.encode88a(wrapped);
 				}
-				buffer += Strings::join(lines, EOL);
-			} else if (elementType == ElementType::Hint) {
-				buffer += codec_.encode88a(wrapped);
+				buffer += EOL;
 			}
-			buffer += EOL;
-
 		} else {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
