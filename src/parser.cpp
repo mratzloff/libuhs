@@ -475,70 +475,57 @@ expectDataLength:
 	this->addDataCallback(offset, length, [=](std::string data) { element->body(data); });
 }
 
-// A hint element ending with a nested text separator ("-") should be an
-// error, but bluforce.uhs has an instance of this. This actually screws
-// up the official reader UI for that particular hint.
 void Parser::parseHintElement(Element* const element) {
-	auto continuation = false;
-	std::string hintText;
+	int column = 0;
+	TextFormatter formatter;
 	auto length = element->length();
-	auto paragraph = false;
+	int line = 0;
+	auto message = "could not parse formatted string";
+	std::string text;
 
-	// Parse child elements
 	for (auto i = 3; i <= length; ++i) {
 		auto token = this->next();
+		line = token->line();
+		column = token->column();
 
 		switch (token->type()) {
 		case TokenType::String: {
-			std::string line;
-
 			if (element->elementType() == ElementType::Nesthint) {
-				line = codec_.decode96a(token->value(), key_, false);
-
-				if (line == Token::ParagraphSep) {
-					line = (continuation) ? "\n\n" : "\n";
-					continuation = false;
-					paragraph = true;
-				} else {
-					paragraph = false;
-				}
+				text += codec_.decode96a(token->value(), key_, false);
 			} else {
-				line = codec_.decode88a(token->value());
+				text += codec_.decode88a(token->value());
 			}
-
-			if (continuation) {
-				hintText += ' ';
-			}
-			hintText += line;
-			continuation = !paragraph;
+			text += '\n';
 			break;
 		}
 		case TokenType::NestedTextSep:
-			if (!hintText.empty()) {
-				element->appendChild(Strings::chomp(hintText, '\n'));
-				element->appendChild("-");
-				hintText.clear();
+			if (!text.empty()) {
+				try {
+					this->parseWithFormat(text, formatter, *element);
+				} catch (const Error& err) {
+					std::throw_with_nested(ParseError(line, column, message));
+				}
+				text.clear();
 			}
-			continuation = false;
-			paragraph = false;
+			element->appendChild(BreakNode::create());
 			break;
 		case TokenType::NestedParagraphSep:
-			hintText += (continuation) ? "\n\n" : "\n";
-			continuation = false;
-			paragraph = true;
-			break;
+			text += " \n";
+			break; // Handled by parseWithFormat()
 		case TokenType::NestedElementSep:
 			if (i == length || element->elementType() != ElementType::Nesthint) {
 				throw ParseError::badValue(
 				    token->line(), token->column(), ParseError::String, token->value());
 			}
 
-			if (!hintText.empty()) {
-				element->appendChild(Strings::chomp(hintText, '\n'));
-				hintText.clear();
+			if (!text.empty()) {
+				try {
+					this->parseWithFormat(text, formatter, *element);
+				} catch (const Error& err) {
+					std::throw_with_nested(ParseError(line, column, message));
+				}
+				text.clear();
 			}
-			continuation = false;
-			paragraph = false;
 
 			// Length
 			token = this->expect(TokenType::Length);
@@ -553,8 +540,12 @@ void Parser::parseHintElement(Element* const element) {
 		}
 	}
 
-	if (!hintText.empty()) {
-		element->appendChild(Strings::chomp(hintText, '\n'));
+	if (!text.empty()) {
+		try {
+			this->parseWithFormat(text, formatter, *element);
+		} catch (const Error& err) {
+			std::throw_with_nested(ParseError(line, column, message));
+		}
 	}
 }
 
@@ -822,10 +813,10 @@ void Parser::parseTextElement(Element* const element) {
 		    "text format byte must be between 0 and 3; found %d",
 		    format);
 	}
-	const auto formatType = static_cast<TextFormatType>(format);
+	const auto formatType = static_cast<TextElementType>(format);
 
-	if (formatType == TextFormatType::Monospace
-	    || formatType == TextFormatType::MonospaceAlt) {
+	if (formatType == TextElementType::Monospace
+	    || formatType == TextElementType::MonospaceAlt) {
 		element->attr("typeface", "monospace");
 	} else {
 		element->attr("typeface", "proportional");
@@ -1044,6 +1035,150 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 	tm.tm_hour = hour;
 	tm.tm_min = min;
 	tm.tm_sec = sec;
+}
+
+void Parser::parseWithFormat(
+    const std::string& text, TextFormatter& formatter, Element& element) const {
+	auto continuation = false;
+	auto length = text.length();
+	std::string segment;
+
+	for (std::size_t i = 0; i < length; ++i) {
+		auto hasLeadingNewline = false;
+		auto paragraph = false;
+
+		if (continuation) {
+			segment += ' ';
+			continuation = false;
+		}
+
+		switch (text[i]) {
+		case Token::Escape:
+			if (i + 1 < length && text[i + 1] == Token::Escape) {
+				i += 1;
+				segment += Token::Escape;
+			} else if (i + 2 < length) {
+				switch (text[i + 1]) {
+				case 'a':
+					segment += text[i];
+					break;
+				case 'h':
+					switch (text[i + 2]) {
+					case '+':
+						if (!formatter.is(TextFormat::Hyperlink) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.add(TextFormat::Hyperlink);
+						i += 2;
+						break;
+					case '-':
+						if (formatter.is(TextFormat::Hyperlink) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.remove(TextFormat::Hyperlink);
+						i += 2;
+						break;
+					default:
+						break; // TODO: Warn
+					}
+					break;
+				case 'p':
+					switch (text[i + 2]) {
+					case '+':
+						if (!formatter.is(TextFormat::Proportional) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.add(TextFormat::Proportional);
+						i += 2;
+						break;
+					case '-':
+						if (formatter.is(TextFormat::Proportional) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.remove(TextFormat::Proportional);
+						i += 2;
+						break;
+					default:
+						break; // TODO: Warn
+					}
+					break;
+				case 'w':
+					switch (text[i + 2]) {
+					case '.':
+						[[fallthrough]];
+					case '+':
+						if (!formatter.is(TextFormat::WordWrap) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.add(TextFormat::WordWrap);
+						i += 2;
+						break;
+					case '-':
+						if (formatter.is(TextFormat::WordWrap) && !segment.empty()) {
+							Strings::chomp(segment, '\n');
+							element.appendChild(segment, formatter);
+							segment.clear();
+						}
+						formatter.remove(TextFormat::WordWrap);
+						i += 2;
+						break;
+					default:
+						// TODO: Warn
+						break;
+					}
+					break;
+				default:
+					// TODO: Warn
+					break;
+				}
+			} else {
+				// TODO: Warn
+			}
+			break;
+		case ' ':
+			// If character does not begin a leading paragraph, it's just a space
+			if (i > 0 || i + 1 == length || text[i + 1] != '\n') {
+				segment += ' ';
+				break;
+			}
+			--i;
+			hasLeadingNewline = true;
+			[[fallthrough]];
+		case '\n': {
+			while (i + 2 < length && text[i + 1] == ' ' && text[i + 2] == '\n') {
+				segment += '\n';
+				i += 2;
+				paragraph = true;
+			}
+
+			if (paragraph && !hasLeadingNewline) {
+				segment += '\n';
+			} else if (formatter.is(TextFormat::WordWrap)) {
+				continuation = (segment.back() != '\n');
+			} else {
+				segment += '\n';
+			}
+			break;
+		}
+		default:
+			segment += text[i];
+		}
+	}
+
+	if (!segment.empty()) {
+		Strings::chomp(segment, '\n');
+		element.appendChild(segment, formatter);
+	}
 }
 
 void Parser::processLinks() {

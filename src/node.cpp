@@ -4,6 +4,8 @@ namespace UHS {
 
 const std::string Node::typeString(NodeType type) {
 	switch (type) {
+	case NodeType::Break:
+		return "break";
 	case NodeType::Document:
 		return "document";
 	case NodeType::Element:
@@ -46,6 +48,10 @@ NodeType Node::nodeType() const {
 
 const std::string Node::nodeTypeString() const {
 	return Node::typeString(nodeType_);
+}
+
+bool Node::isBreak() const {
+	return nodeType_ == NodeType::Break;
 }
 
 bool Node::isDocument() const {
@@ -242,6 +248,10 @@ std::unique_ptr<Node> Node::cloneInternal(Passkey<Node>) const {
 void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
+		case NodeType::Break:
+			this->appendChild(
+			    static_cast<BreakNode&>(*node).cloneInternal(Passkey<Node>()), true);
+			break;
 		case NodeType::Document:
 			this->appendChild(
 			    static_cast<Document&>(*node).cloneInternal(Passkey<Node>()), true);
@@ -352,16 +362,62 @@ bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) {
 template class NodeIterator<Node>;
 template class NodeIterator<const Node>;
 
+//------------------------------- BreakNode --------------------------------//
+
+std::unique_ptr<BreakNode> BreakNode::create() {
+	return std::make_unique<BreakNode>();
+}
+
+BreakNode::BreakNode() : Node(NodeType::Break) {}
+
+BreakNode::BreakNode(const BreakNode&) : Node(NodeType::Break) {}
+
+BreakNode& BreakNode::operator=(BreakNode) {
+	return *this;
+}
+
+std::unique_ptr<Node> BreakNode::cloneInternal(Passkey<Node>) const {
+	return std::make_unique<BreakNode>(*this);
+}
+
+//----------------------------- TextFormatter ------------------------------//
+
+TextFormatter::TextFormatter(TextFormat format) : format_{format} {}
+
+void TextFormatter::add(TextFormat format) {
+	format_ |= format;
+}
+
+void TextFormatter::remove(TextFormat format) {
+	format_ &= ~format;
+}
+
+bool TextFormatter::is(TextFormat format) const {
+	return (format_ & format) != TextFormat::None;
+}
+
+TextFormat TextFormatter::value() const {
+	return format_;
+}
+
 //-------------------------------- TextNode --------------------------------//
 
 std::unique_ptr<TextNode> TextNode::create(const std::string body) {
 	return std::make_unique<TextNode>(body);
 }
 
+std::unique_ptr<TextNode> TextNode::create(
+    const std::string body, TextFormatter formatter) {
+	return std::make_unique<TextNode>(body, formatter);
+}
+
 TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 
+TextNode::TextNode(const std::string body, TextFormatter formatter)
+    : Node(NodeType::Text), Body(body), formatter_{formatter} {}
+
 TextNode::TextNode(const TextNode& other)
-    : Node(other), Traits::Body(other), format_{other.format_} {}
+    : Node(other), Traits::Body(other), formatter_{other.formatter_} {}
 
 TextNode& TextNode::operator=(TextNode other) {
 	swap(*this, other);
@@ -373,7 +429,7 @@ void swap(TextNode& lhs, TextNode& rhs) noexcept {
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
 	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
-	swap(lhs.format_, rhs.format_);
+	swap(lhs.formatter_, rhs.formatter_);
 }
 
 // Copies and returns a detached text node.
@@ -387,20 +443,24 @@ const std::string& TextNode::string() const {
 	return this->body();
 }
 
-void TextNode::addFormat(Format format) {
-	format_ |= format;
+void TextNode::addFormat(TextFormat format) {
+	formatter_.add(format);
 }
 
-void TextNode::removeFormat(Format format) {
-	format_ &= ~format;
+void TextNode::removeFormat(TextFormat format) {
+	formatter_.remove(format);
 }
 
-bool TextNode::hasFormat(Format format) const {
-	return (format_ & format) != 0;
+bool TextNode::hasFormat(TextFormat format) const {
+	return formatter_.is(format);
 }
 
-Format TextNode::format() const {
-	return format_;
+TextFormat TextNode::format() const {
+	return formatter_.value();
+}
+
+TextFormatter TextNode::formatter() const {
+	return formatter_;
 }
 
 std::unique_ptr<Node> TextNode::cloneInternal(Passkey<Node>) const {

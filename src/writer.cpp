@@ -98,7 +98,7 @@ Json::Value JSONWriter::serialize(const Document& document, Json::Value& root) c
 		if (nodeDepth > depth) { // Down
 			parents[depth] = parent;
 			if ((*parent)["children"].empty()) {
-				Json::Value a{Json::arrayValue};
+				Json::Value a = {Json::arrayValue};
 				(*parent)["children"] = a;
 			} else {
 				parent = &((*parent)["children"][(*parent)["children"].size() - 1]);
@@ -110,12 +110,19 @@ Json::Value JSONWriter::serialize(const Document& document, Json::Value& root) c
 		}
 
 		// Serialize node
-		Json::Value object{Json::objectValue};
+		Json::Value object = {Json::objectValue};
 
 		switch (node.nodeType()) {
-		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(node);
-			(*parent)["children"].append(textNode.body());
+		case NodeType::Break:
+			(*parent)["children"].append("-");
+			break;
+		case NodeType::Document: {
+			if (nodeDepth == 0) {
+				object = root;
+			}
+			const auto& d = static_cast<const Document&>(node);
+			this->serializeDocument(d, object);
+			(*parent)["children"].append(object);
 			break;
 		}
 		case NodeType::Element: {
@@ -124,22 +131,42 @@ Json::Value JSONWriter::serialize(const Document& document, Json::Value& root) c
 			(*parent)["children"].append(object);
 			break;
 		}
-		case NodeType::Document: {
-			const auto& d = static_cast<const Document&>(node);
-			if (nodeDepth > 0) {
-				this->serializeDocument(d, object);
-				(*parent)["children"].append(object);
-			} else {
-				this->serializeDocument(d, root);
-			}
+		case NodeType::Text: {
+			const auto& textNode = static_cast<const TextNode&>(node);
+			this->serializeTextNode(textNode, object);
+			(*parent)["children"].append(object);
 			break;
 		}
+		default:
+			throw WriteError("unexpected node type: %s", node.nodeTypeString());
 		}
 
 		depth = nodeDepth;
 	}
 
 	return root;
+}
+
+void JSONWriter::serializeDocument(const Document& document, Json::Value& object) const {
+	object["title"] = document.title();
+	object["version"] = document.versionString();
+
+	if (document.version() > VersionType::Version88a) {
+		object["registered"] = options_.registered;
+		object["validChecksum"] = document.validChecksum();
+	}
+	if (!document.visible(options_.registered)) {
+		object["visible"] = false;
+	}
+	object["type"] = document.nodeTypeString();
+
+	// Build attributes map
+	const auto& attrs = document.attrs();
+	if (!attrs.empty()) {
+		Json::Value map = {Json::objectValue};
+		this->serializeMap(attrs, map);
+		object["attributes"] = map;
+	}
 }
 
 void JSONWriter::serializeElement(const Element& element, Json::Value& object) const {
@@ -180,26 +207,21 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 	}
 }
 
-void JSONWriter::serializeDocument(const Document& document, Json::Value& object) const {
-	object["title"] = document.title();
-	object["version"] = document.versionString();
+void JSONWriter::serializeTextNode(const TextNode& textNode, Json::Value& object) const {
+	object["body"] = textNode.body();
 
-	if (document.version() > VersionType::Version88a) {
-		object["registered"] = options_.registered;
-		object["validChecksum"] = document.validChecksum();
-	}
-	if (!document.visible(options_.registered)) {
-		object["visible"] = false;
-	}
-	object["type"] = Node::typeString(document.nodeType());
+	auto attributes = Json::Value(Json::objectValue);
 
-	// Build attributes map
-	const auto& attrs = document.attrs();
-	if (!attrs.empty()) {
-		Json::Value map{Json::objectValue};
-		this->serializeMap(attrs, map);
-		object["attributes"] = map;
+	if (textNode.hasFormat(TextFormat::WordWrap)) {
+		attributes["word-wrap"] = true;
 	}
+	if (textNode.hasFormat(TextFormat::Proportional)) {
+		attributes["proportional"] = true;
+	}
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		attributes["hyperlink"] = true;
+	}
+	object["attributes"] = attributes;
 }
 
 void JSONWriter::serializeMap(
@@ -352,6 +374,8 @@ void UHSWriter::serialize96a(std::string& out) {
 
 	for (auto node = document_->firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
+		case NodeType::Break:
+			throw WriteError("unexpected break node");
 		case NodeType::Document: {
 			const auto& document = static_cast<const Document&>(*node);
 			if (document.version() != VersionType::Version88a) {
@@ -433,8 +457,8 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	auto continuation = false;
 	std::string buffer;
+	auto previousFormatter = TextFormatter();
 
 	currentLine_ += length;
 	const auto elementType = element.elementType();
@@ -450,39 +474,22 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 			auto& child = static_cast<Element&>(*node);
 			childLength += this->serializeElement(child, buffer);
+		} else if (node->isBreak()) {
+			buffer += Token::NestedTextSep;
+			buffer += EOL;
+			++length;
+			++currentLine_;
 		} else if (node->isText()) {
 			const auto& textNode = static_cast<const TextNode&>(*node);
-			const auto& body = textNode.body();
-
-			if (body == "-") {
-				buffer += Token::NestedTextSep;
-				buffer += EOL;
-				++length;
-				++currentLine_;
-			} else {
-				auto wrapped = Strings::wrap(body, EOL, LineLength, childLength);
-				currentLine_ += childLength;
-
-				if (elementType == ElementType::Nesthint) {
-					auto lines = Strings::split(wrapped, EOL);
-					for (auto& line : lines) {
-						if (line == "") {
-							line = Token::ParagraphSep;
-						}
-						line = codec_.encode96a(line, key_, false);
-					}
-					buffer += Strings::join(lines, EOL);
-				} else if (elementType == ElementType::Hint) {
-					buffer += codec_.encode88a(wrapped);
-				}
-				buffer += EOL;
-			}
+			buffer += this->serializeTextNode(
+			    elementType, textNode, previousFormatter, childLength);
+			previousFormatter = textNode.formatter();
+			currentLine_ += childLength;
 		} else {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
 
 		length += childLength;
-		continuation = true;
 	}
 
 	element.length(length);
@@ -862,6 +869,54 @@ void UHSWriter::serializeCRC(std::string& out) {
 	crc_.result(checksum);
 	out.push_back(checksum[0]);
 	out.push_back(checksum[1]);
+}
+
+std::string UHSWriter::serializeTextNode(const ElementType parentType,
+    const TextNode& textNode, const TextFormatter previousFormatter, int& length) {
+	std::string buffer;
+	auto body = textNode.body();
+	const auto formatter = textNode.formatter();
+
+	if (body == "") {
+		body = Token::ParagraphSep;
+	}
+	if (formatter.is(TextFormat::Hyperlink)) {
+		body = Token::HyperlinkStart + body + Token::HyperlinkEnd;
+	}
+	if (formatter.is(TextFormat::Proportional)
+	    && !previousFormatter.is(TextFormat::Proportional)) {
+		body = Token::ProportionalStart + body;
+	}
+	if (!formatter.is(TextFormat::Proportional)
+	    && previousFormatter.is(TextFormat::Proportional)) {
+		body = Token::ProportionalEnd + body;
+	}
+	if (formatter.is(TextFormat::WordWrap)
+	    && !previousFormatter.is(TextFormat::WordWrap)) {
+		body = Token::WordWrapStart + body;
+	}
+	if (!formatter.is(TextFormat::WordWrap)
+	    && previousFormatter.is(TextFormat::WordWrap)) {
+		body = Token::WordWrapEnd + body;
+	}
+
+	auto wrapped = Strings::wrap(body, EOL, LineLength, length);
+	auto lines = Strings::split(wrapped, EOL);
+
+	for (auto& line : lines) {
+		if (line == "") {
+			line = Token::ParagraphSep;
+		}
+		if (parentType == ElementType::Nesthint) {
+			line = codec_.encode96a(line, key_, false);
+		} else if (parentType == ElementType::Hint) {
+			line = codec_.encode88a(line);
+		}
+	}
+	buffer += Strings::join(lines, EOL);
+	buffer += EOL;
+
+	return buffer;
 }
 
 void UHSWriter::addData(const Element& element) {

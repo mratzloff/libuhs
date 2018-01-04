@@ -47,19 +47,22 @@ enum class ElementType {
 	Version,
 };
 
-enum class TextFormatType {
+enum class TextElementType {
 	None, // Also used for binary data
 	Monospace,
 	NoneAlt,
 	MonospaceAlt,
 };
 
-enum class TypefaceType {
-	Proportional,
-	Monospace,
+enum class TextFormat : uint8_t {
+	None = 00,
+	WordWrap = 01,
+	Proportional = 02,
+	Hyperlink = 04,
 };
 
 enum class NodeType {
+	Break,
 	Document,
 	Element,
 	Text,
@@ -103,6 +106,37 @@ enum class VisibilityType {
 static constexpr auto EOL = "\r\n";
 static const auto MaxDepth = 16;
 static constexpr auto Version = UHS_VERSION;
+
+inline constexpr TextFormat operator&(TextFormat lhs, TextFormat rhs) {
+	return static_cast<TextFormat>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
+}
+
+inline constexpr TextFormat operator|(TextFormat lhs, TextFormat rhs) {
+	return static_cast<TextFormat>(static_cast<uint8_t>(lhs) | static_cast<uint8_t>(rhs));
+}
+
+inline constexpr TextFormat operator^(TextFormat lhs, TextFormat rhs) {
+	return static_cast<TextFormat>(static_cast<uint8_t>(lhs) ^ static_cast<uint8_t>(rhs));
+}
+
+inline constexpr TextFormat operator~(TextFormat operand) {
+	return static_cast<TextFormat>(~static_cast<uint8_t>(operand));
+}
+
+inline constexpr TextFormat operator&=(TextFormat& lhs, TextFormat rhs) {
+	lhs = lhs & rhs;
+	return lhs;
+}
+
+inline constexpr TextFormat operator|=(TextFormat& lhs, TextFormat rhs) {
+	lhs = lhs | rhs;
+	return lhs;
+}
+
+inline constexpr TextFormat operator^=(TextFormat& lhs, TextFormat rhs) {
+	lhs = lhs ^ rhs;
+	return lhs;
+}
 
 template<typename T>
 class Passkey {
@@ -177,7 +211,7 @@ class WriteError : public Error {
 
 namespace Strings {
 
-typedef std::map<const std::string, const std::string> CharacterMap;
+using CharacterMap = std::map<const std::string, const std::string>;
 
 bool isInt(const std::string& s);
 int toInt(const std::string& s);
@@ -208,7 +242,7 @@ namespace Traits {
 
 class Attributes {
 public:
-	typedef std::map<std::string, std::string> Type;
+	using Type = std::map<std::string, std::string>;
 
 	const Type& attrs() const;
 	optional<const std::string> attr(const std::string key) const;
@@ -257,7 +291,7 @@ private:
 
 class Pipe {
 public:
-	typedef std::function<void(const char*, std::streamsize n)> Handler;
+	using Handler = std::function<void(const char*, std::streamsize n)>;
 
 	explicit Pipe(std::ifstream& in);
 	void addHandler(Handler func);
@@ -316,6 +350,7 @@ public:
 	static constexpr auto AsciiEncEnd = "#a-";
 	static constexpr auto CreditSep = "CREDITS:";
 	static const auto DataSep = '\x1A';
+	static const auto Escape = '#';
 	static constexpr auto HyperlinkStart = "#h+";
 	static constexpr auto HyperlinkEnd = "#h-";
 	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";
@@ -330,9 +365,9 @@ public:
 	static constexpr auto Registered = "A";
 	static constexpr auto Signature = "UHS";
 	static constexpr auto Unregistered = "Z";
-	static constexpr auto WordWrapStart = "#w+";
+	static constexpr auto WordWrapStart = "#w.";
+	static constexpr auto WordWrapStartInline = "#w+";
 	static constexpr auto WordWrapEnd = "#w-";
-	static constexpr auto WordWrapEndAlt = "#w.";
 
 	static const std::string typeString(TokenType t);
 
@@ -437,6 +472,7 @@ public:
 	friend void swap(Node& lhs, Node& rhs) noexcept;
 	NodeType nodeType() const;
 	const std::string nodeTypeString() const;
+	bool isBreak() const;
 	bool isDocument() const;
 	bool isElement() const;
 	bool isText() const;
@@ -506,28 +542,52 @@ private:
 	bool visited_ = false;
 };
 
-typedef uint8_t Format;
+class BreakNode : public Node {
+public:
+	static std::unique_ptr<BreakNode> create();
+	BreakNode();
+	BreakNode(const BreakNode&);
+	BreakNode& operator=(BreakNode);
+	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
+};
+
+class TextFormatter {
+public:
+	TextFormatter() = default;
+	explicit TextFormatter(TextFormat format);
+	void add(TextFormat format);
+	void remove(TextFormat format);
+	bool is(TextFormat format) const;
+	TextFormat value() const;
+
+private:
+	TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
+};
 
 class TextNode
     : public Node
     , public Traits::Body {
 public:
 	static std::unique_ptr<TextNode> create(const std::string body);
+	static std::unique_ptr<TextNode> create(
+	    const std::string body, TextFormatter formatter);
 
 	explicit TextNode(const std::string body);
+	TextNode(const std::string body, TextFormatter formatter);
 	TextNode(const TextNode& other);
 	TextNode& operator=(TextNode other);
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
 	std::unique_ptr<TextNode> clone() const;
 	const std::string& string() const;
-	void addFormat(Format format);
-	void removeFormat(Format format);
-	bool hasFormat(Format format) const;
-	Format format() const;
+	void addFormat(TextFormat format);
+	void removeFormat(TextFormat format);
+	bool hasFormat(TextFormat format) const;
+	TextFormat format() const;
+	TextFormatter formatter() const;
 	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
-	Format format_;
+	TextFormatter formatter_;
 };
 
 class Document;
@@ -552,7 +612,8 @@ public:
 	std::unique_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
-	void appendChild(const std::string s);
+	void appendChild(const std::string body);
+	void appendChild(const std::string body, TextFormatter formatter);
 	int id() const;
 	int line() const;
 	void line(int line);
@@ -646,8 +707,8 @@ public:
 	void reset();
 
 private:
-	typedef std::map<const int, Node*> NodeMap;
-	typedef std::function<void(std::string)> DataCallback;
+	using NodeMap = std::map<const int, Node*>;
+	using DataCallback = std::function<void(std::string)>;
 
 	struct NodeRange {
 		Node& node;
@@ -738,6 +799,8 @@ private:
 	void parseData(std::unique_ptr<const Token> token);
 	void parseDate(const std::string& date, std::tm& tm) const;
 	void parseTime(const std::string& time, std::tm& tm) const;
+	void parseWithFormat(
+	    const std::string& text, TextFormatter& formatter, Element& element) const;
 	void processLinks();
 	void processVisibility();
 };
@@ -779,8 +842,9 @@ public:
 
 private:
 	Json::Value serialize(const Document& document, Json::Value& root) const;
-	void serializeElement(const Element& element, Json::Value& object) const;
 	void serializeDocument(const Document& document, Json::Value& object) const;
+	void serializeElement(const Element& element, Json::Value& object) const;
+	void serializeTextNode(const TextNode& textNode, Json::Value& object) const;
 	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& object) const;
 };
 
@@ -807,7 +871,7 @@ private:
 		std::map<const ElementType, Func> map_;
 	};
 
-	typedef std::queue<std::pair<ElementType, const std::string>> DataQueue;
+	using DataQueue = std::queue<std::pair<ElementType, const std::string>>;
 
 	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
 	static const std::size_t MediaSizeLength = 6;  // Up to 999,999 bytes per media file
@@ -836,6 +900,8 @@ private:
 	void updateLinkTargets(std::string& out) const;
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
+	std::string serializeTextNode(const ElementType parentType, const TextNode& textNode,
+	    const TextFormatter previousFormatter, int& length);
 	void addData(const Element& element);
 	std::string createDataAddress(
 	    std::size_t bodyLength, std::string textFormat = "") const;

@@ -64,8 +64,12 @@ const std::string Element::elementTypeString() const {
 	return Element::typeString(elementType_);
 }
 
-void Element::appendChild(const std::string s) {
-	Node::appendChild(TextNode::create(s));
+void Element::appendChild(const std::string body) {
+	Node::appendChild(TextNode::create(body));
+}
+
+void Element::appendChild(const std::string body, TextFormatter formatter) {
+	Node::appendChild(TextNode::create(body, formatter));
 }
 
 int Element::id() const {
