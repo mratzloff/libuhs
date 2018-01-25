@@ -185,6 +185,9 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 				title += '?';
 			}
 		}
+		if (options_.debug) {
+			tfm::format(std::cerr, "\"%s\"\n", title);
+		}
 		e->title(title);
 
 		if (line < firstHintTextLine) {
@@ -222,7 +225,11 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		}
 
 		auto& element = static_cast<Element&>(*parent);
-		element.appendChild(codec_.decode88a(token->value()));
+		auto body = codec_.decode88a(token->value());
+		if (options_.debug) {
+			tfm::format(std::cerr, "\"%s\"\n", body);
+		}
+		element.appendChild(body);
 	} while (line < lastHintTextLine);
 }
 
@@ -477,11 +484,11 @@ expectDataLength:
 
 void Parser::parseHintElement(Element* const element) {
 	int column = 0;
-	TextFormatter formatter;
+	TextFormat format;
 	auto length = element->length();
 	int line = 0;
 	auto message = "could not parse formatted string";
-	std::string text;
+	std::string body;
 
 	for (auto i = 3; i <= length; ++i) {
 		auto token = this->next();
@@ -490,27 +497,32 @@ void Parser::parseHintElement(Element* const element) {
 
 		switch (token->type()) {
 		case TokenType::String: {
+			std::string text;
 			if (element->elementType() == ElementType::Nesthint) {
-				text += codec_.decode96a(token->value(), key_, false);
+				text = codec_.decode96a(token->value(), key_, false);
 			} else {
-				text += codec_.decode88a(token->value());
+				text = codec_.decode88a(token->value());
 			}
-			text += '\n';
+			if (options_.debug) {
+				tfm::format(std::cerr, "\"%s\"\n", text);
+			}
+			body += text;
+			body += '\n';
 			break;
 		}
 		case TokenType::NestedTextSep:
-			if (!text.empty()) {
+			if (!body.empty()) {
 				try {
-					this->parseWithFormat(text, formatter, *element);
+					this->parseWithFormat(body, format, *element);
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
-				text.clear();
+				body.clear();
 			}
 			element->appendChild(BreakNode::create());
 			break;
 		case TokenType::NestedParagraphSep:
-			text += " \n";
+			body += " \n";
 			break; // Handled by parseWithFormat()
 		case TokenType::NestedElementSep:
 			if (i == length || element->elementType() != ElementType::Nesthint) {
@@ -518,13 +530,14 @@ void Parser::parseHintElement(Element* const element) {
 				    token->line(), token->column(), ParseError::String, token->value());
 			}
 
-			if (!text.empty()) {
+			if (!body.empty()) {
 				try {
-					this->parseWithFormat(text, formatter, *element);
+					auto childFormat = TextFormat::Proportional | TextFormat::WordWrap;
+					this->parseWithFormat(body, childFormat, *element);
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
-				text.clear();
+				body.clear();
 			}
 
 			// Length
@@ -540,9 +553,9 @@ void Parser::parseHintElement(Element* const element) {
 		}
 	}
 
-	if (!text.empty()) {
+	if (!body.empty()) {
 		try {
-			this->parseWithFormat(text, formatter, *element);
+			this->parseWithFormat(body, format, *element);
 		} catch (const Error& err) {
 			std::throw_with_nested(ParseError(line, column, message));
 		}
@@ -627,7 +640,11 @@ void Parser::parseIncentiveElement(Element* const element) {
 		if (continuation) {
 			body += ' ';
 		}
-		body += codec_.decode96a(token->value(), key_, false);
+		auto text = codec_.decode96a(token->value(), key_, false);
+		if (options_.debug) {
+			tfm::format(std::cerr, "\"%s\"\n", text);
+		}
+		body += text;
 		continuation = true;
 	}
 	element->body(body);
@@ -853,14 +870,17 @@ void Parser::parseTextElement(Element* const element) {
 	// Data
 	this->addDataCallback(offset, length, [=](std::string data) {
 		auto lines = Strings::split(data, UHS::EOL);
-		for (auto& line : lines) {
-			line = codec_.decode96a(line, key_, true);
-			if (line == Token::ParagraphSep) {
-				line = "";
+		for (auto& text : lines) {
+			text = codec_.decode96a(text, key_, true);
+			if (options_.debug) {
+				tfm::format(std::cerr, "\"%s\"\n", text);
+			}
+			if (text == Token::ParagraphSep) {
+				text = "";
 			}
 		}
-		auto value = Strings::rtrim(Strings::join(lines, "\n"), '\n');
-		element->body(value);
+		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
+		element->body(body);
 	});
 }
 
@@ -880,7 +900,7 @@ std::unique_ptr<const Token> Parser::next() {
 	auto token = tokenizer_->next();
 
 	if (options_.debug) {
-		std::cout << token->string() << std::endl;
+		std::cerr << token->string() << std::endl;
 	}
 	return token;
 }
@@ -1038,7 +1058,8 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 }
 
 void Parser::parseWithFormat(
-    const std::string& text, TextFormatter& formatter, Element& element) const {
+    const std::string& text, TextFormat& format, Element& element) const {
+
 	auto continuation = false;
 	auto length = text.length();
 	std::string segment;
@@ -1065,21 +1086,25 @@ void Parser::parseWithFormat(
 				case 'h':
 					switch (text[i + 2]) {
 					case '+':
-						if (!formatter.is(TextFormat::Hyperlink) && !segment.empty()) {
+						if ((format & TextFormat::Hyperlink) != TextFormat::Hyperlink
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.add(TextFormat::Hyperlink);
+						format |= TextFormat::Hyperlink;
 						i += 2;
 						break;
 					case '-':
-						if (formatter.is(TextFormat::Hyperlink) && !segment.empty()) {
+						if ((format & TextFormat::Hyperlink) == TextFormat::Hyperlink
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.remove(TextFormat::Hyperlink);
+						format &= ~TextFormat::Hyperlink;
 						i += 2;
 						break;
 					default:
@@ -1089,21 +1114,27 @@ void Parser::parseWithFormat(
 				case 'p':
 					switch (text[i + 2]) {
 					case '+':
-						if (!formatter.is(TextFormat::Proportional) && !segment.empty()) {
+						if ((format & TextFormat::Proportional)
+						        != TextFormat::Proportional
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.add(TextFormat::Proportional);
+						format |= TextFormat::Proportional;
 						i += 2;
 						break;
 					case '-':
-						if (formatter.is(TextFormat::Proportional) && !segment.empty()) {
+						if ((format & TextFormat::Proportional)
+						        == TextFormat::Proportional
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.remove(TextFormat::Proportional);
+						format &= ~TextFormat::Proportional;
 						i += 2;
 						break;
 					default:
@@ -1115,21 +1146,25 @@ void Parser::parseWithFormat(
 					case '.':
 						[[fallthrough]];
 					case '+':
-						if (!formatter.is(TextFormat::WordWrap) && !segment.empty()) {
+						if ((format & TextFormat::WordWrap) != TextFormat::WordWrap
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.add(TextFormat::WordWrap);
+						format |= TextFormat::WordWrap;
 						i += 2;
 						break;
 					case '-':
-						if (formatter.is(TextFormat::WordWrap) && !segment.empty()) {
+						if ((format & TextFormat::WordWrap) == TextFormat::WordWrap
+						    && !segment.empty()) {
+
 							Strings::chomp(segment, '\n');
-							element.appendChild(segment, formatter);
+							element.appendChild(segment, format);
 							segment.clear();
 						}
-						formatter.remove(TextFormat::WordWrap);
+						format &= ~TextFormat::WordWrap;
 						i += 2;
 						break;
 					default:
@@ -1163,7 +1198,7 @@ void Parser::parseWithFormat(
 
 			if (paragraph && !hasLeadingNewline) {
 				segment += '\n';
-			} else if (formatter.is(TextFormat::WordWrap)) {
+			} else if ((format & TextFormat::WordWrap) == TextFormat::WordWrap) {
 				continuation = (segment.back() != '\n');
 			} else {
 				segment += '\n';
@@ -1177,7 +1212,7 @@ void Parser::parseWithFormat(
 
 	if (!segment.empty()) {
 		Strings::chomp(segment, '\n');
-		element.appendChild(segment, formatter);
+		element.appendChild(segment, format);
 	}
 }
 

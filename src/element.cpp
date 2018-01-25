@@ -68,8 +68,8 @@ void Element::appendChild(const std::string body) {
 	Node::appendChild(TextNode::create(body));
 }
 
-void Element::appendChild(const std::string body, TextFormatter formatter) {
-	Node::appendChild(TextNode::create(body, formatter));
+void Element::appendChild(const std::string body, TextFormat format) {
+	Node::appendChild(TextNode::create(body, format));
 }
 
 int Element::id() const {

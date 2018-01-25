@@ -55,10 +55,10 @@ enum class TextElementType {
 };
 
 enum class TextFormat : uint8_t {
-	None = 00,
-	WordWrap = 01,
-	Proportional = 02,
-	Hyperlink = 04,
+	None = 0,
+	WordWrap = 1,
+	Proportional = 2,
+	Hyperlink = 4,
 };
 
 enum class NodeType {
@@ -136,6 +136,10 @@ inline constexpr TextFormat operator|=(TextFormat& lhs, TextFormat rhs) {
 inline constexpr TextFormat operator^=(TextFormat& lhs, TextFormat rhs) {
 	lhs = lhs ^ rhs;
 	return lhs;
+}
+
+inline bool hasFormat(const TextFormat haystack, const TextFormat needle) {
+	return (haystack & needle) == needle;
 }
 
 template<typename T>
@@ -551,29 +555,15 @@ public:
 	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
 };
 
-class TextFormatter {
-public:
-	TextFormatter() = default;
-	explicit TextFormatter(TextFormat format);
-	void add(TextFormat format);
-	void remove(TextFormat format);
-	bool is(TextFormat format) const;
-	TextFormat value() const;
-
-private:
-	TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
-};
-
 class TextNode
     : public Node
     , public Traits::Body {
 public:
 	static std::unique_ptr<TextNode> create(const std::string body);
-	static std::unique_ptr<TextNode> create(
-	    const std::string body, TextFormatter formatter);
+	static std::unique_ptr<TextNode> create(const std::string body, TextFormat format);
 
 	explicit TextNode(const std::string body);
-	TextNode(const std::string body, TextFormatter formatter);
+	TextNode(const std::string body, TextFormat format);
 	TextNode(const TextNode& other);
 	TextNode& operator=(TextNode other);
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
@@ -583,11 +573,11 @@ public:
 	void removeFormat(TextFormat format);
 	bool hasFormat(TextFormat format) const;
 	TextFormat format() const;
-	TextFormatter formatter() const;
+	void format(TextFormat format);
 	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
-	TextFormatter formatter_;
+	TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
 };
 
 class Document;
@@ -613,7 +603,7 @@ public:
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
 	void appendChild(const std::string body);
-	void appendChild(const std::string body, TextFormatter formatter);
+	void appendChild(const std::string body, TextFormat format);
 	int id() const;
 	int line() const;
 	void line(int line);
@@ -800,7 +790,7 @@ private:
 	void parseDate(const std::string& date, std::tm& tm) const;
 	void parseTime(const std::string& time, std::tm& tm) const;
 	void parseWithFormat(
-	    const std::string& text, TextFormatter& formatter, Element& element) const;
+	    const std::string& text, TextFormat& format, Element& element) const;
 	void processLinks();
 	void processVisibility();
 };
@@ -901,7 +891,7 @@ private:
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	std::string serializeTextNode(const ElementType parentType, const TextNode& textNode,
-	    const TextFormatter previousFormatter, int& length);
+	    const TextFormat previousFormat, int& length);
 	void addData(const Element& element);
 	std::string createDataAddress(
 	    std::size_t bodyLength, std::string textFormat = "") const;

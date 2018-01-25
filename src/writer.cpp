@@ -211,16 +211,9 @@ void JSONWriter::serializeTextNode(const TextNode& textNode, Json::Value& object
 	object["body"] = textNode.body();
 
 	auto attributes = Json::Value(Json::objectValue);
-
-	if (textNode.hasFormat(TextFormat::WordWrap)) {
-		attributes["word-wrap"] = true;
-	}
-	if (textNode.hasFormat(TextFormat::Proportional)) {
-		attributes["proportional"] = true;
-	}
-	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		attributes["hyperlink"] = true;
-	}
+	attributes["word-wrap"] = textNode.hasFormat(TextFormat::WordWrap);
+	attributes["proportional"] = textNode.hasFormat(TextFormat::Proportional);
+	attributes["hyperlink"] = textNode.hasFormat(TextFormat::Hyperlink);
 	object["attributes"] = attributes;
 }
 
@@ -318,15 +311,26 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 				    "unexpected element type: %s", Element::typeString(elementType));
 			}
 
-			buffer += codec_.encode88a(title) + EOL;
-			buffer += std::to_string(line) + EOL;
+			if (!options_.debug) {
+				title = codec_.encode88a(title);
+			}
+			buffer += title;
+			buffer += EOL;
+			buffer += std::to_string(line);
+			buffer += EOL;
 
 			previousType = elementType;
 			break;
 		}
 		case NodeType::Text: {
 			const auto& textNode = static_cast<const TextNode&>(*node);
-			buffer += codec_.encode88a(textNode.body()) + EOL;
+			auto body = textNode.body();
+
+			if (!options_.debug) {
+				body = codec_.encode88a(body);
+			}
+			buffer += body;
+			buffer += EOL;
 
 			line += numPreviousChildren - 1; // Simplifies to line -= 1 after first pass
 
@@ -458,7 +462,9 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
-	auto previousFormatter = TextFormatter();
+	auto formats = std::map<const int, TextFormat>;
+	auto depth = element->depth();
+	formats[depth] = TextFormat::Proportional | TextFormat::WordWrap;
 
 	currentLine_ += length;
 	const auto elementType = element.elementType();
@@ -467,11 +473,11 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 		auto childLength = 0;
 
 		if (node->isElement() && elementType == ElementType::Nesthint) {
+			++depth;
 			buffer += Token::NestedElementSep;
 			buffer += EOL;
 			++length;
 			++currentLine_;
-
 			auto& child = static_cast<Element&>(*node);
 			childLength += this->serializeElement(child, buffer);
 		} else if (node->isBreak()) {
@@ -482,8 +488,8 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 		} else if (node->isText()) {
 			const auto& textNode = static_cast<const TextNode&>(*node);
 			buffer += this->serializeTextNode(
-			    elementType, textNode, previousFormatter, childLength);
-			previousFormatter = textNode.formatter();
+			    elementType, textNode, formats[depth], childLength);
+			formats[depth] = textNode.format();
 			currentLine_ += childLength;
 		} else {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
@@ -595,8 +601,10 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 	auto decoded = Strings::join(instructions, " ");
 	auto wrapped = Strings::wrap(decoded, EOL, LineLength, length);
 	auto lines = Strings::split(wrapped, EOL);
-	for (auto& line : lines) {
-		line = codec_.encode96a(line, key_, false);
+	if (!options_.debug) {
+		for (auto& line : lines) {
+			line = codec_.encode96a(line, key_, false);
+		}
 	}
 	buffer += Strings::join(lines, EOL);
 	buffer += EOL;
@@ -762,7 +770,9 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 		if (line == "") {
 			line = Token::ParagraphSep;
 		}
-		line = codec_.encode96a(line, key_, true);
+		if (!options_.debug) {
+			line = codec_.encode96a(line, key_, true);
+		}
 	}
 	data_.emplace(std::make_pair(elementType, Strings::join(lines, EOL) + EOL));
 
@@ -872,31 +882,35 @@ void UHSWriter::serializeCRC(std::string& out) {
 }
 
 std::string UHSWriter::serializeTextNode(const ElementType parentType,
-    const TextNode& textNode, const TextFormatter previousFormatter, int& length) {
+    const TextNode& textNode, const TextFormat previousFormat, int& length) {
+
 	std::string buffer;
 	auto body = textNode.body();
-	const auto formatter = textNode.formatter();
 
 	if (body == "") {
 		body = Token::ParagraphSep;
 	}
-	if (formatter.is(TextFormat::Hyperlink)) {
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
 		body = Token::HyperlinkStart + body + Token::HyperlinkEnd;
 	}
-	if (formatter.is(TextFormat::Proportional)
-	    && !previousFormatter.is(TextFormat::Proportional)) {
+	if (textNode.hasFormat(TextFormat::Proportional)
+	    && !hasFormat(previousFormat, TextFormat::Proportional)) {
+
 		body = Token::ProportionalStart + body;
 	}
-	if (!formatter.is(TextFormat::Proportional)
-	    && previousFormatter.is(TextFormat::Proportional)) {
+	if (!textNode.hasFormat(TextFormat::Proportional)
+		&& hasFormat(previousFormat, TextFormat::Proportional)) {
+
 		body = Token::ProportionalEnd + body;
 	}
-	if (formatter.is(TextFormat::WordWrap)
-	    && !previousFormatter.is(TextFormat::WordWrap)) {
+	if (textNode.hasFormat(TextFormat::WordWrap)
+		&& !hasFormat(previousFormat, TextFormat::WordWrap)) {
+
 		body = Token::WordWrapStart + body;
 	}
-	if (!formatter.is(TextFormat::WordWrap)
-	    && previousFormatter.is(TextFormat::WordWrap)) {
+	if (!textNode.hasFormat(TextFormat::WordWrap)
+		&& hasFormat(previousFormat, TextFormat::WordWrap)) {
+
 		body = Token::WordWrapEnd + body;
 	}
 
@@ -906,6 +920,9 @@ std::string UHSWriter::serializeTextNode(const ElementType parentType,
 	for (auto& line : lines) {
 		if (line == "") {
 			line = Token::ParagraphSep;
+		}
+		if (options_.debug) {
+			continue; // Don't encode text
 		}
 		if (parentType == ElementType::Nesthint) {
 			line = codec_.encode96a(line, key_, false);
