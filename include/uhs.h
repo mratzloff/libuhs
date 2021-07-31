@@ -7,25 +7,24 @@
 #include <cstdint>
 #include <ctime>
 #include <exception>
-#include <experimental/optional>
 #include <fstream>
 #include <istream>
 #include <iterator>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <ostream>
 #include <queue>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace UHS {
 
-using std::experimental::nullopt;
-using std::experimental::optional;
 using std::string_literals::operator""s;
 
 enum class ElementType {
@@ -215,8 +214,6 @@ class WriteError : public Error {
 
 namespace Strings {
 
-using CharacterMap = std::map<const std::string, const std::string>;
-
 bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
@@ -249,7 +246,7 @@ public:
 	using Type = std::map<std::string, std::string>;
 
 	const Type& attrs() const;
-	optional<const std::string> attr(const std::string key) const;
+	std::optional<const std::string> attr(const std::string key) const;
 	void attr(const std::string key, const std::string value);
 	void attr(const std::string key, const int value);
 
@@ -537,8 +534,8 @@ public:
 	pointer operator->() const;
 	NodeIterator<T>& operator++();
 	NodeIterator<T> operator++(int);
-	bool operator==(const NodeIterator<T>& rhs);
-	bool operator!=(const NodeIterator<T>& rhs);
+	bool operator==(const NodeIterator<T>& rhs) const;
+	bool operator!=(const NodeIterator<T>& rhs) const;
 
 private:
 	pointer initial_ = nullptr;

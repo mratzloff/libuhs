@@ -4,7 +4,7 @@ project (libuhs CXX)
 
 set (version 1.0.0-alpha)
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
@@ -60,7 +60,7 @@ add_custom_target (lint
 		-I${json_includes}
 		-I${tinyformat_includes}
 		-I${uhs_includes}
-		-std=c++1z
+		-std=c++20
 		-DUHS_VERSION=0 # Unused in source code
 		${uhs_sources} ${uhs_bin_sources})
 add_dependencies (lint format)

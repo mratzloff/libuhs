@@ -350,12 +350,12 @@ NodeIterator<T> NodeIterator<T>::operator++(int) {
 }
 
 template<typename T>
-bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) {
+bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) const {
 	return current_ == rhs.current_;
 }
 
 template<typename T>
-bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) {
+bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) const {
 	return !(*this == rhs);
 }
 

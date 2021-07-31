@@ -8,12 +8,12 @@ const Attributes::Type& Attributes::attrs() const {
 	return attrs_;
 }
 
-optional<const std::string> Attributes::attr(const std::string key) const {
+std::optional<const std::string> Attributes::attr(const std::string key) const {
 	std::string s;
 	try {
 		s = attrs_.at(key);
 	} catch (const std::out_of_range&) {
-		return nullopt;
+		return std::nullopt;
 	}
 	return s;
 }
