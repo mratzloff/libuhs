@@ -21,6 +21,7 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread{[&pipe] { pipe->read(); }};
+	// pipe->read();
 
 	try {
 		// Meanwhile, build out document by parsing emitted tokens in parallel
@@ -186,7 +187,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			}
 		}
 		if (options_.debug) {
-			tfm::format(std::cerr, "\"%s\"\n", title);
+			tfm::format(std::cout, "\"%s\"\n", title);
 		}
 		e->title(title);
 
@@ -227,7 +228,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		auto& element = static_cast<Element&>(*parent);
 		auto body = codec_.decode88a(token->value());
 		if (options_.debug) {
-			tfm::format(std::cerr, "\"%s\"\n", body);
+			tfm::format(std::cout, "\"%s\"\n", body);
 		}
 		element.appendChild(body);
 	} while (line < lastHintTextLine);
@@ -504,10 +505,10 @@ void Parser::parseHintElement(Element* const element) {
 				text = codec_.decode88a(token->value());
 			}
 			if (options_.debug) {
-				tfm::format(std::cerr, "\"%s\"\n", text);
+				tfm::format(std::cout, "\"%s\"\n", text);
 			}
 			body += text;
-			body += '\n';
+			body += ' ';
 			break;
 		}
 		case TokenType::NestedTextSep:
@@ -532,7 +533,8 @@ void Parser::parseHintElement(Element* const element) {
 
 			if (!body.empty()) {
 				try {
-					auto childFormat = TextFormat::Proportional | TextFormat::WordWrap;
+					// auto childFormat = TextFormat::Proportional | TextFormat::WordWrap;
+					auto childFormat = TextFormat::None;
 					this->parseWithFormat(body, childFormat, *element);
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
@@ -642,7 +644,7 @@ void Parser::parseIncentiveElement(Element* const element) {
 		}
 		auto text = codec_.decode96a(token->value(), key_, false);
 		if (options_.debug) {
-			tfm::format(std::cerr, "\"%s\"\n", text);
+			tfm::format(std::cout, "\"%s\"\n", text);
 		}
 		body += text;
 		continuation = true;
@@ -873,7 +875,7 @@ void Parser::parseTextElement(Element* const element) {
 		for (auto& text : lines) {
 			text = codec_.decode96a(text, key_, true);
 			if (options_.debug) {
-				tfm::format(std::cerr, "\"%s\"\n", text);
+				tfm::format(std::cout, "\"%s\"\n", text);
 			}
 			if (text == Token::ParagraphSep) {
 				text = "";
@@ -900,7 +902,7 @@ std::unique_ptr<const Token> Parser::next() {
 	auto token = tokenizer_->next();
 
 	if (options_.debug) {
-		std::cerr << token->string() << std::endl;
+		std::cout << token->string() << std::endl;
 	}
 	return token;
 }
@@ -1086,92 +1088,90 @@ void Parser::parseWithFormat(
 				case 'h':
 					switch (text[i + 2]) {
 					case '+':
-						if ((format & TextFormat::Hyperlink) != TextFormat::Hyperlink
+						if (!::UHS::hasFormat(format, TextFormat::Hyperlink)
 						    && !segment.empty()) {
 
 							Strings::chomp(segment, '\n');
 							element.appendChild(segment, format);
 							segment.clear();
 						}
-						format |= TextFormat::Hyperlink;
+						format = ::UHS::withFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
 					case '-':
-						if ((format & TextFormat::Hyperlink) == TextFormat::Hyperlink
+						if (::UHS::hasFormat(format, TextFormat::Hyperlink)
 						    && !segment.empty()) {
 
 							Strings::chomp(segment, '\n');
 							element.appendChild(segment, format);
 							segment.clear();
 						}
-						format &= ~TextFormat::Hyperlink;
+						format = ::UHS::withoutFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
 					default:
 						break; // TODO: Warn
 					}
 					break;
-				case 'p':
-					switch (text[i + 2]) {
-					case '+':
-						if ((format & TextFormat::Proportional)
-						        != TextFormat::Proportional
-						    && !segment.empty()) {
+				// case 'p':
+				// 	switch (text[i + 2]) {
+				// 	case '+':
+				// 		if (!::UHS::hasFormat(format, TextFormat::Proportional)
+				// 		    && !segment.empty()) {
 
-							Strings::chomp(segment, '\n');
-							element.appendChild(segment, format);
-							segment.clear();
-						}
-						format |= TextFormat::Proportional;
-						i += 2;
-						break;
-					case '-':
-						if ((format & TextFormat::Proportional)
-						        == TextFormat::Proportional
-						    && !segment.empty()) {
+				// 			Strings::chomp(segment, '\n');
+				// 			element.appendChild(segment, format);
+				// 			segment.clear();
+				// 		}
+				// 		format = ::UHS::withFormat(format, TextFormat::Proportional);
+				// 		i += 2;
+				// 		break;
+				// 	case '-':
+				// 		if (::UHS::hasFormat(format, TextFormat::Proportional)
+				// 		    && !segment.empty()) {
 
-							Strings::chomp(segment, '\n');
-							element.appendChild(segment, format);
-							segment.clear();
-						}
-						format &= ~TextFormat::Proportional;
-						i += 2;
-						break;
-					default:
-						break; // TODO: Warn
-					}
-					break;
-				case 'w':
-					switch (text[i + 2]) {
-					case '.':
-						[[fallthrough]];
-					case '+':
-						if ((format & TextFormat::WordWrap) != TextFormat::WordWrap
-						    && !segment.empty()) {
+				// 			Strings::chomp(segment, '\n');
+				// 			element.appendChild(segment, format);
+				// 			segment.clear();
+				// 		}
+				// 		format = ::UHS::withoutFormat(format, TextFormat::Proportional);
+				// 		i += 2;
+				// 		break;
+				// 	default:
+				// 		break; // TODO: Warn
+				// 	}
+				// 	break;
+				// case 'w':
+				// 	switch (text[i + 2]) {
+				// 	case '.':
+				// 		[[fallthrough]];
+				// 	case '+':
+				// 		if (!::UHS::hasFormat(format, TextFormat::WordWrap)
+				// 		    && !segment.empty()) {
 
-							Strings::chomp(segment, '\n');
-							element.appendChild(segment, format);
-							segment.clear();
-						}
-						format |= TextFormat::WordWrap;
-						i += 2;
-						break;
-					case '-':
-						if ((format & TextFormat::WordWrap) == TextFormat::WordWrap
-						    && !segment.empty()) {
+				// 			Strings::chomp(segment, '\n');
+				// 			element.appendChild(segment, format);
+				// 			segment.clear();
+				// 		}
+				// 		format = ::UHS::withFormat(format, TextFormat::WordWrap);
+				// 		i += 2;
+				// 		break;
+				// 	case '-':
+				// 		if (::UHS::hasFormat(format, TextFormat::WordWrap)
+				// 		    && !segment.empty()) {
 
-							Strings::chomp(segment, '\n');
-							element.appendChild(segment, format);
-							segment.clear();
-						}
-						format &= ~TextFormat::WordWrap;
-						i += 2;
-						break;
-					default:
-						// TODO: Warn
-						break;
-					}
-					break;
+				// 			Strings::chomp(segment, '\n');
+				// 			element.appendChild(segment, format);
+				// 			segment.clear();
+				// 		}
+				// 		format = ::UHS::withoutFormat(format, TextFormat::WordWrap);
+				// 		i += 2;
+				// 		break;
+				// default:
+				// 	// TODO: Warn
+				// 	break;
+				// }
+				// break;
 				default:
 					// TODO: Warn
 					break;
@@ -1198,7 +1198,7 @@ void Parser::parseWithFormat(
 
 			if (paragraph && !hasLeadingNewline) {
 				segment += '\n';
-			} else if ((format & TextFormat::WordWrap) == TextFormat::WordWrap) {
+			} else if (false) { // ::UHS::hasFormat(format, TextFormat::WordWrap)) {
 				continuation = (segment.back() != '\n');
 			} else {
 				segment += '\n';

@@ -20,7 +20,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
+// #include <unordered_map>
 #include <vector>
 
 namespace UHS {
@@ -137,8 +137,40 @@ inline constexpr TextFormat operator^=(TextFormat& lhs, TextFormat rhs) {
 	return lhs;
 }
 
+inline constexpr TextFormat withFormat(
+    const TextFormat format, const TextFormat formatToAdd) {
+	return format | formatToAdd;
+}
+
+inline constexpr TextFormat withoutFormat(
+    const TextFormat format, const TextFormat formatToRemove) {
+	return format & ~formatToRemove;
+}
+
 inline bool hasFormat(const TextFormat haystack, const TextFormat needle) {
 	return (haystack & needle) == needle;
+}
+
+inline void printFormat(const TextFormat format) {
+	std::string buffer;
+
+	if (::UHS::hasFormat(format, TextFormat::Hyperlink)) {
+		buffer += "Hyperlink: true, ";
+	} else {
+		buffer += "Hyperlink: false, ";
+	}
+	if (::UHS::hasFormat(format, TextFormat::Proportional)) {
+		buffer += "Proportional: true, ";
+	} else {
+		buffer += "Proportional: false, ";
+	}
+	if (::UHS::hasFormat(format, TextFormat::WordWrap)) {
+		buffer += "WordWrap: true";
+	} else {
+		buffer += "WordWrap: false";
+	}
+
+	tfm::format(std::cerr, "%s\n", buffer);
 }
 
 template<typename T>
@@ -574,7 +606,8 @@ public:
 	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
-	TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
+	// TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
+	TextFormat format_ = TextFormat::None;
 };
 
 class Document;
@@ -840,7 +873,7 @@ public:
 	// The official readers work with lines longer than 76 characters, but
 	// lines were capped at 76 so that DOS readers would display correctly
 	// within the standard 80-character window (with border and padding).
-	static const std::size_t LineLength = 76;
+	static const std::size_t LineLength = 74;
 
 	UHSWriter(std::ostream& out, const WriterOptions options = {});
 	void write(const Document& document) override;

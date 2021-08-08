@@ -423,11 +423,11 @@ const std::string& TextNode::string() const {
 }
 
 void TextNode::addFormat(TextFormat format) {
-	format_ |= format;
+	format_ = ::UHS::withFormat(format_, format);
 }
 
 void TextNode::removeFormat(TextFormat format) {
-	format_ &= ~format;
+	format_ = ::UHS::withoutFormat(format_, format);
 }
 
 bool TextNode::hasFormat(TextFormat format) const {

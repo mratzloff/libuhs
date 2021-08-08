@@ -462,9 +462,9 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
-	auto formats = std::map<const int, TextFormat>;
-	auto depth = element->depth();
-	formats[depth] = TextFormat::Proportional | TextFormat::WordWrap;
+	std::map<const int, TextFormat> formats;
+	auto depth = element.depth();
+	// formats[depth] = TextFormat::Proportional | TextFormat::WordWrap;
 
 	currentLine_ += length;
 	const auto elementType = element.elementType();
@@ -473,7 +473,7 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 		auto childLength = 0;
 
 		if (node->isElement() && elementType == ElementType::Nesthint) {
-			++depth;
+			depth = element.depth();
 			buffer += Token::NestedElementSep;
 			buffer += EOL;
 			++length;
@@ -487,6 +487,10 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 			++currentLine_;
 		} else if (node->isText()) {
 			const auto& textNode = static_cast<const TextNode&>(*node);
+
+			// tfm::format(std::cerr, "line = %d, depth = %d\n", element.line(), depth);
+			// ::UHS::printFormat(formats[depth]);
+
 			buffer += this->serializeTextNode(
 			    elementType, textNode, formats[depth], childLength);
 			formats[depth] = textNode.format();
@@ -802,6 +806,7 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 void UHSWriter::updateLinkTargets(std::string& out) const {
 	// Because we're shifting characters, we move backwards through the file in order to
 	// reduce the total number of bytes copied within the output buffer.
+	// TODO: I don't think this is actually true
 	const auto end = deferredLinks_.crend();
 	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {
 		const auto target = *it;
@@ -891,27 +896,27 @@ std::string UHSWriter::serializeTextNode(const ElementType parentType,
 		body = Token::ParagraphSep;
 	}
 	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		body = Token::HyperlinkStart + body + Token::HyperlinkEnd;
+		// body = Token::HyperlinkStart + body + Token::HyperlinkEnd;
 	}
 	if (textNode.hasFormat(TextFormat::Proportional)
 	    && !hasFormat(previousFormat, TextFormat::Proportional)) {
 
-		body = Token::ProportionalStart + body;
+		// body = Token::ProportionalStart + body;
 	}
 	if (!textNode.hasFormat(TextFormat::Proportional)
-		&& hasFormat(previousFormat, TextFormat::Proportional)) {
+	    && hasFormat(previousFormat, TextFormat::Proportional)) {
 
-		body = Token::ProportionalEnd + body;
+		// body = Token::ProportionalEnd + body;
 	}
 	if (textNode.hasFormat(TextFormat::WordWrap)
-		&& !hasFormat(previousFormat, TextFormat::WordWrap)) {
+	    && !hasFormat(previousFormat, TextFormat::WordWrap)) {
 
-		body = Token::WordWrapStart + body;
+		// body = Token::WordWrapStart + body;
 	}
 	if (!textNode.hasFormat(TextFormat::WordWrap)
-		&& hasFormat(previousFormat, TextFormat::WordWrap)) {
+	    && hasFormat(previousFormat, TextFormat::WordWrap)) {
 
-		body = Token::WordWrapEnd + body;
+		// body = Token::WordWrapEnd + body;
 	}
 
 	auto wrapped = Strings::wrap(body, EOL, LineLength, length);
@@ -1022,7 +1027,7 @@ void UHSWriter::convertTo91a() {
 	header->appendChild(std::move(subject));
 	document_->insertBefore(std::move(header), document_->firstChild());
 
-	// Set version to 96a
+	// Set version to 91a
 	document_->version(VersionType::Version91a);
 	auto version = Element::create(ElementType::Version);
 	version->title("91a");

@@ -187,7 +187,7 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 			lines += sep;
 		}
 		lines += prefix;
-		lines += s.substr(start, endpoint - start);
+		lines += ltrim(s.substr(start, endpoint - start), ' ');
 		++numLines;
 	};
 
