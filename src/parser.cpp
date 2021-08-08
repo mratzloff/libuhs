@@ -485,7 +485,7 @@ expectDataLength:
 
 void Parser::parseHintElement(Element* const element) {
 	int column = 0;
-	TextFormat format;
+	TextFormat format = TextFormat::None;
 	auto length = element->length();
 	int line = 0;
 	auto message = "could not parse formatted string";
