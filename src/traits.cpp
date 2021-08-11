@@ -56,6 +56,18 @@ void Title::title(std::string title) {
 	title_ = title;
 }
 
+//--------------------------------- Inlined ---------------------------------//
+
+Inlined::Inlined(bool inlined) : inlined_{inlined} {}
+
+bool Inlined::inlined() {
+	return inlined_;
+}
+
+void Inlined::inlined(bool inlined) {
+	inlined_ = inlined;
+}
+
 //-------------------------------- Visibility -------------------------------//
 
 bool Visibility::visible(bool registered) const {

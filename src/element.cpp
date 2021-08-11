@@ -24,6 +24,7 @@ Element::Element(const Element& other)
     , Traits::Attributes(other)
     , Traits::Body(other)
     , Traits::Title(other)
+    , Traits::Inlined(other)
     , Traits::Visibility(other)
     , elementType_{other.elementType_}
     , id_{other.id_}
@@ -42,6 +43,7 @@ void swap(Element& lhs, Element& rhs) noexcept {
 	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
 	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
 	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
+	swap(static_cast<Traits::Inlined&>(lhs), static_cast<Traits::Inlined&>(rhs));
 	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
 	swap(lhs.elementType_, rhs.elementType_);
 	swap(lhs.id_, rhs.id_);

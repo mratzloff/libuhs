@@ -76,6 +76,22 @@ namespace UHS::Strings {
 //     {"y:", u8"ÿ"},
 // };
 
+bool beginsWithAttachedPunctuation(const std::string& s) {
+	auto c = s.front();
+	return c == '\'' || c == '"' || c == ')' || c == ' ' || c == '?' || c == '!'
+	       || c == '.' || c == ',' || c == ';' || c == ':';
+}
+
+bool endsWithAttachedPunctuation(const std::string& s) {
+	auto c = s.back();
+	return c == '\'' || c == '"' || c == '(' || c == ' ';
+}
+
+bool endsWithFinalPunctuation(const std::string& s) {
+	auto c = s.back();
+	return c == '?' || c == '!' || c == '.';
+}
+
 bool isInt(const std::string& s) {
 	if (s.length() == 0) {
 		return false;
@@ -187,7 +203,7 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 			lines += sep;
 		}
 		lines += prefix;
-		lines += ltrim(s.substr(start, endpoint - start), ' ');
+		lines += s.substr(start, endpoint - start);
 		++numLines;
 	};
 

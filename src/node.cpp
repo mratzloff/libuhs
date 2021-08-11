@@ -86,23 +86,18 @@ std::unique_ptr<Node> Node::removeChild(Node* node) {
 		node->didRemove();
 
 		return detachedNode;
-	} else {
-		Node* previous = nullptr;
-		for (auto n = this->firstChild(); n; n = n->nextSibling()) {
-			if (previous && node == n) {
-				auto detachedNode = std::move(previous->nextSibling_);
-				if (node->hasNextSibling()) {
-					previous->nextSibling_ = std::move(node->nextSibling_);
-				} else {
-					lastChild_ = nullptr;
-				}
-				node->didRemove();
+	} else if (node->hasPreviousSibling()) {
+		auto previous = node->previousSibling();
+		auto detachedNode = std::move(previous->nextSibling_);
 
-				return detachedNode;
-			} else {
-				previous = n;
-			}
+		if (node->hasNextSibling()) {
+			previous->nextSibling_ = std::move(node->nextSibling_);
+		} else {
+			lastChild_ = nullptr;
 		}
+		node->didRemove();
+
+		return detachedNode;
 	}
 
 	return nullptr;
@@ -122,7 +117,8 @@ void Node::appendChild(std::unique_ptr<Node> node, bool) {
 	assert(node);
 
 	auto n = node.get();
-	if (this->hasLastChild()) { // No children
+	if (this->hasLastChild()) {
+		node->previousSibling_ = lastChild_;
 		lastChild_->nextSibling_ = std::move(node);
 	} else {
 		firstChild_ = std::move(node);
@@ -152,18 +148,12 @@ void Node::insertBefore(std::unique_ptr<Node> node, Node* ref) {
 		node->nextSibling_ = std::move(firstChild_);
 		firstChild_ = std::move(node);
 	} else {
-		Node* previous = nullptr;
+		if (!ref->hasPreviousSibling()) {
+			// TODO: Warn about data inconsistency
+			return;
+		}
 
-		for (auto sibling = this->firstChild(); sibling;
-		     sibling = sibling->nextSibling()) {
-			if (sibling == ref) {
-				break;
-			}
-			previous = sibling;
-		}
-		if (!previous) {
-			return; // Not found; no action to take
-		}
+		auto previous = ref->previousSibling();
 		node->nextSibling_ = std::move(previous->nextSibling_);
 		previous->nextSibling_ = std::move(node);
 	}
@@ -183,6 +173,14 @@ bool Node::hasParent() const {
 
 Node* Node::parent() const {
 	return parent_;
+}
+
+bool Node::hasPreviousSibling() const {
+	return previousSibling_ != nullptr;
+}
+
+Node* Node::previousSibling() const {
+	return previousSibling_;
 }
 
 bool Node::hasNextSibling() const {

@@ -21,7 +21,6 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 
 	// Interleave disk reads with tokenization and CRC calculation
 	std::thread thread{[&pipe] { pipe->read(); }};
-	// pipe->read();
 
 	try {
 		// Meanwhile, build out document by parsing emitted tokens in parallel
@@ -33,6 +32,8 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 			// Set 88a header as first (hidden) child of 96a document
 			document_->visibility(VisibilityType::None);
 
+			// Create a document with a provisional 96a version
+			// (updated once the version element is encountered)
 			auto document = Document::create(VersionType::Version96a);
 			document_.swap(document);
 			document_->appendChild(std::move(document));
@@ -181,8 +182,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 
 		std::string title{codec_.decode88a(encodedTitle)};
 		if (parent->nodeType() != NodeType::Document) {
-			char finalChar = title[title.length() - 1];
-			if (!this->isPunctuation(finalChar)) {
+			if (!Strings::endsWithFinalPunctuation(title)) {
 				title += '?';
 			}
 		}
@@ -437,11 +437,14 @@ void Parser::parseCommentElement(Element* const element) {
 }
 
 void Parser::parseDataElement(Element* const element) {
-	// Offset
 	std::size_t offset;
+	auto line = 0;
+	auto column = 0;
 
 	for (;;) {
 		auto token = this->next();
+		line = token->line();
+		column = token->column();
 
 		switch (token->type()) {
 		case TokenType::DataOffset:
@@ -453,14 +456,14 @@ void Parser::parseDataElement(Element* const element) {
 				}
 			} catch (const Error& err) {
 				throw ParseError::badValue(
-				    token->line(), token->column(), ParseError::Uint, token->value());
+				    line, column, ParseError::Uint, token->value());
 			}
 			offset = intOffset;
 			goto expectDataLength;
 		case TokenType::TextFormat:
 			continue; // Ignore
 		default:
-			throw ParseError::badToken(token->line(), token->column(), token->type());
+			throw ParseError::badToken(line, column, token->type());
 		}
 	}
 
@@ -474,18 +477,19 @@ expectDataLength:
 			throw Error();
 		}
 	} catch (const Error& err) {
-		throw ParseError::badValue(
-		    token->line(), token->column(), ParseError::Uint, token->value());
+		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t length = intLength;
 
 	// Data
-	this->addDataCallback(offset, length, [=](std::string data) { element->body(data); });
+	this->addDataCallback(
+	    line, column, offset, length, [=](std::string data) { element->body(data); });
 }
 
 void Parser::parseHintElement(Element* const element) {
 	int column = 0;
-	TextFormat format = TextFormat::None;
+	auto inlined = false;
+	auto format = TextFormat::None;
 	auto length = element->length();
 	int line = 0;
 	auto message = "could not parse formatted string";
@@ -499,20 +503,32 @@ void Parser::parseHintElement(Element* const element) {
 		switch (token->type()) {
 		case TokenType::String: {
 			std::string text;
+
 			if (element->elementType() == ElementType::Nesthint) {
 				text = codec_.decode96a(token->value(), key_, false);
+				if (text.ends_with(Token::InlineBegin)) {
+					inlined = true;
+				}
+				if (text.starts_with(Token::InlineEnd)) {
+					inlined = false;
+				}
 			} else {
 				text = codec_.decode88a(token->value());
 			}
+
 			if (options_.debug) {
 				tfm::format(std::cout, "\"%s\"\n", text);
 			}
+
+			text += '\n';
 			body += text;
-			body += ' ';
 			break;
 		}
 		case TokenType::NestedTextSep:
 			if (!body.empty()) {
+				if (!body.ends_with("\n \n")) {
+					Strings::chomp(body, '\n');
+				}
 				try {
 					this->parseWithFormat(body, format, *element);
 				} catch (const Error& err) {
@@ -525,15 +541,17 @@ void Parser::parseHintElement(Element* const element) {
 		case TokenType::NestedParagraphSep:
 			body += " \n";
 			break; // Handled by parseWithFormat()
-		case TokenType::NestedElementSep:
+		case TokenType::NestedElementSep: {
 			if (i == length || element->elementType() != ElementType::Nesthint) {
 				throw ParseError::badValue(
 				    token->line(), token->column(), ParseError::String, token->value());
 			}
 
 			if (!body.empty()) {
+				if (!body.ends_with("\n \n")) {
+					Strings::chomp(body, '\n');
+				}
 				try {
-					// auto childFormat = TextFormat::Proportional | TextFormat::WordWrap;
 					auto childFormat = TextFormat::None;
 					this->parseWithFormat(body, childFormat, *element);
 				} catch (const Error& err) {
@@ -545,11 +563,18 @@ void Parser::parseHintElement(Element* const element) {
 			// Length
 			token = this->expect(TokenType::Length);
 
-			{ // Child element
-				const auto child = this->parseElement(std::move(token));
-				i += child->length();
+			// Child element
+			const auto child = this->parseElement(std::move(token));
+			i += child->length();
+
+			if (inlined) {
+				child->inlined(true);
 			}
+
+			tfm::format(std::cout, "> \"%s\": %s\n", child->title(), child->inlined());
+
 			break;
+		}
 		default:
 			throw ParseError::badToken(token->line(), token->column(), token->type());
 		}
@@ -814,25 +839,26 @@ void Parser::parseSubjectElement(Element* const element) {
 }
 
 void Parser::parseTextElement(Element* const element) {
-	// Format
 	auto token = this->expect(TokenType::TextFormat);
-	int format;
+	auto line = token->line();
+	auto column = token->column();
+
+	int formatByte;
 	try {
-		format = Strings::toInt(token->value());
-		if (format < 0) {
+		formatByte = Strings::toInt(token->value());
+		if (formatByte < 0) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		throw ParseError::badValue(
-		    token->line(), token->column(), ParseError::Uint, token->value());
+		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
-	if (format > 3) {
-		throw ParseError(token->line(),
-		    token->column(),
+	if (formatByte > 3) {
+		throw ParseError(line,
+		    column,
 		    "text format byte must be between 0 and 3; found %d",
-		    format);
+		    formatByte);
 	}
-	const auto formatType = static_cast<TextElementType>(format);
+	const auto formatType = static_cast<TextElementType>(formatByte);
 
 	if (formatType == TextElementType::Monospace
 	    || formatType == TextElementType::MonospaceAlt) {
@@ -850,8 +876,7 @@ void Parser::parseTextElement(Element* const element) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		throw ParseError::badValue(
-		    token->line(), token->column(), ParseError::Uint, token->value());
+		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t offset = intOffset;
 
@@ -864,25 +889,30 @@ void Parser::parseTextElement(Element* const element) {
 			throw Error();
 		}
 	} catch (const Error& err) {
-		throw ParseError::badValue(
-		    token->line(), token->column(), ParseError::Uint, token->value());
+		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t length = intLength;
 
 	// Data
-	this->addDataCallback(offset, length, [=](std::string data) {
-		auto lines = Strings::split(data, UHS::EOL);
+	this->addDataCallback(line, column, offset, length, [=](std::string data) {
+		auto lines = Strings::split(data, EOL);
 		for (auto& text : lines) {
 			text = codec_.decode96a(text, key_, true);
 			if (options_.debug) {
 				tfm::format(std::cout, "\"%s\"\n", text);
 			}
-			if (text == Token::ParagraphSep) {
-				text = "";
+		}
+
+		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
+		if (!body.empty()) {
+			TextFormat format = TextFormat::None;
+			try {
+				this->parseWithFormat(body, format, *element);
+			} catch (const Error& err) {
+				std::throw_with_nested(
+				    ParseError(line, column, "could not parse formatted string"));
 			}
 		}
-		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
-		element->body(body);
 	});
 }
 
@@ -920,8 +950,10 @@ std::unique_ptr<const Token> Parser::expect(TokenType expected) {
 	return token;
 }
 
-void Parser::addDataCallback(std::size_t offset, std::size_t length, DataCallback func) {
-	dataHandlers_.emplace_back(offset, length, func);
+void Parser::addDataCallback(
+    int line, int column, std::size_t offset, std::size_t length, DataCallback func) {
+
+	dataHandlers_.emplace_back(line, column, offset, length, func);
 }
 
 void Parser::checkCRC() {
@@ -940,10 +972,6 @@ void Parser::findParentAndAppend(std::unique_ptr<Element> element) {
 		throw Error("could not find parent element between lines %d and %d", min, max);
 	}
 	parent->appendChild(std::move(element));
-}
-
-bool Parser::isPunctuation(char c) {
-	return c == '?' || c == '!' || c == '.' || c == ',' || c == ';';
 }
 
 int Parser::offsetLine(int line) {
@@ -1062,24 +1090,31 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 void Parser::parseWithFormat(
     const std::string& text, TextFormat& format, Element& element) const {
 
-	auto continuation = false;
 	auto length = text.length();
 	std::string segment;
 
 	for (std::size_t i = 0; i < length; ++i) {
-		auto hasLeadingNewline = false;
-		auto paragraph = false;
+		switch (text[i]) { // TODO: Move this to a function map once logic is accurate
+		case '\n':
+			if (text.substr(i + 1, 2) == " \n") {
+				for (std::size_t j = i; j < length && text.substr(j + 1, 2) == " \n";
+				     j += 2, i = j) {
 
-		if (continuation) {
-			segment += ' ';
-			continuation = false;
-		}
-
-		switch (text[i]) {
+					segment += '\n';
+				}
+				segment += '\n';
+			} else if (element.elementType() == ElementType::Text
+			           || hasFormat(format, TextFormat::Overflow)
+			           || hasFormat(format, TextFormat::Monospace)) {
+				segment += text[i];
+			} else if (i > 0 && text[i - 1] != ' ' && i + 1 < length) {
+				segment += ' ';
+			}
+			break;
 		case Token::Escape:
 			if (i + 1 < length && text[i + 1] == Token::Escape) {
 				i += 1;
-				segment += Token::Escape;
+				segment += '#';
 			} else if (i + 2 < length) {
 				switch (text[i + 1]) {
 				case 'a':
@@ -1088,90 +1123,109 @@ void Parser::parseWithFormat(
 				case 'h':
 					switch (text[i + 2]) {
 					case '+':
-						if (!::UHS::hasFormat(format, TextFormat::Hyperlink)
-						    && !segment.empty()) {
+						if (hasFormat(format, TextFormat::Hyperlink)) {
+							// TODO: Warn: unexpected sequence
+						}
 
-							Strings::chomp(segment, '\n');
+						// Append previous segment
+						if (!segment.empty()) {
 							element.appendChild(segment, format);
 							segment.clear();
 						}
-						format = ::UHS::withFormat(format, TextFormat::Hyperlink);
+
+						format = withFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
 					case '-':
-						if (::UHS::hasFormat(format, TextFormat::Hyperlink)
-						    && !segment.empty()) {
+						if (!hasFormat(format, TextFormat::Hyperlink)) {
+							// TODO: Warn: unexpected sequence
+						}
 
-							Strings::chomp(segment, '\n');
+						// Append previous segment
+						if (!segment.empty()) {
 							element.appendChild(segment, format);
 							segment.clear();
 						}
-						format = ::UHS::withoutFormat(format, TextFormat::Hyperlink);
+
+						format = withoutFormat(format, TextFormat::Hyperlink);
+						i += 2;
+						break;
+					default:
+						// TODO: Warn: unexpected sequence
+						break;
+					}
+					break;
+				case 'p':
+					switch (text[i + 2]) {
+					case '-':
+						if (hasFormat(format, TextFormat::Monospace)) {
+							// TODO: Warn: unexpected sequence
+						}
+
+						// Append previous segment
+						if (!segment.empty()) {
+							element.appendChild(segment, format);
+							segment.clear();
+						}
+
+						format = withFormat(format, TextFormat::Monospace);
+						i += 2;
+						break;
+					case '+':
+						if (!hasFormat(format, TextFormat::Monospace)) {
+							// TODO: Warn: unexpected sequence
+						}
+
+						// Append previous segment
+						if (!segment.empty()) {
+							element.appendChild(segment, format);
+							segment.clear();
+						}
+
+						format = withoutFormat(format, TextFormat::Monospace);
 						i += 2;
 						break;
 					default:
 						break; // TODO: Warn
 					}
 					break;
-				// case 'p':
-				// 	switch (text[i + 2]) {
-				// 	case '+':
-				// 		if (!::UHS::hasFormat(format, TextFormat::Proportional)
-				// 		    && !segment.empty()) {
+				case 'w':
+					switch (text[i + 2]) {
+					case '-':
+						// Append previous segment
+						if (!segment.empty()) {
+							element.appendChild(segment, format);
+							segment.clear();
+						}
 
-				// 			Strings::chomp(segment, '\n');
-				// 			element.appendChild(segment, format);
-				// 			segment.clear();
-				// 		}
-				// 		format = ::UHS::withFormat(format, TextFormat::Proportional);
-				// 		i += 2;
-				// 		break;
-				// 	case '-':
-				// 		if (::UHS::hasFormat(format, TextFormat::Proportional)
-				// 		    && !segment.empty()) {
+						format = withFormat(format, TextFormat::Overflow);
+						i += 2;
+						break;
+					case '+':
+						// Append previous segment
+						if (!segment.empty()) {
+							element.appendChild(segment, format);
+							segment.clear();
+						}
 
-				// 			Strings::chomp(segment, '\n');
-				// 			element.appendChild(segment, format);
-				// 			segment.clear();
-				// 		}
-				// 		format = ::UHS::withoutFormat(format, TextFormat::Proportional);
-				// 		i += 2;
-				// 		break;
-				// 	default:
-				// 		break; // TODO: Warn
-				// 	}
-				// 	break;
-				// case 'w':
-				// 	switch (text[i + 2]) {
-				// 	case '.':
-				// 		[[fallthrough]];
-				// 	case '+':
-				// 		if (!::UHS::hasFormat(format, TextFormat::WordWrap)
-				// 		    && !segment.empty()) {
+						format = withoutFormat(format, TextFormat::Overflow);
+						i += 2;
+						break;
+					case '.':
+						// Append previous segment
+						if (!segment.empty()) {
+							element.appendChild(segment, format);
+							segment.clear();
+						}
 
-				// 			Strings::chomp(segment, '\n');
-				// 			element.appendChild(segment, format);
-				// 			segment.clear();
-				// 		}
-				// 		format = ::UHS::withFormat(format, TextFormat::WordWrap);
-				// 		i += 2;
-				// 		break;
-				// 	case '-':
-				// 		if (::UHS::hasFormat(format, TextFormat::WordWrap)
-				// 		    && !segment.empty()) {
-
-				// 			Strings::chomp(segment, '\n');
-				// 			element.appendChild(segment, format);
-				// 			segment.clear();
-				// 		}
-				// 		format = ::UHS::withoutFormat(format, TextFormat::WordWrap);
-				// 		i += 2;
-				// 		break;
-				// default:
-				// 	// TODO: Warn
-				// 	break;
-				// }
-				// break;
+						format = withoutFormat(format, TextFormat::Overflow);
+						i += 2;
+						break;
+					default:
+						// TODO: Warn
+						break;
+					}
+					break;
 				default:
 					// TODO: Warn
 					break;
@@ -1180,38 +1234,12 @@ void Parser::parseWithFormat(
 				// TODO: Warn
 			}
 			break;
-		case ' ':
-			// If character does not begin a leading paragraph, it's just a space
-			if (i > 0 || i + 1 == length || text[i + 1] != '\n') {
-				segment += ' ';
-				break;
-			}
-			--i;
-			hasLeadingNewline = true;
-			[[fallthrough]];
-		case '\n': {
-			while (i + 2 < length && text[i + 1] == ' ' && text[i + 2] == '\n') {
-				segment += '\n';
-				i += 2;
-				paragraph = true;
-			}
-
-			if (paragraph && !hasLeadingNewline) {
-				segment += '\n';
-			} else if (false) { // ::UHS::hasFormat(format, TextFormat::WordWrap)) {
-				continuation = (segment.back() != '\n');
-			} else {
-				segment += '\n';
-			}
-			break;
-		}
 		default:
 			segment += text[i];
 		}
 	}
 
 	if (!segment.empty()) {
-		Strings::chomp(segment, '\n');
 		element.appendChild(segment, format);
 	}
 }
@@ -1231,13 +1259,15 @@ void Parser::processLinks() {
 
 		Element* target = nullptr;
 		if (target = document_->find(targetLine); !target) {
-			// A link pointing to the child of a hyperpng element is a special case.
-			// Instead of referencing the descriptor line, it points to the region, even
-			// if it doesn't share a parent hyperpng. A link outside of a hyperpng
-			// pointing to a child of a hyperpng references the descriptor line, as usual.
+			// A link pointing to the child of a hyperpng element is a special
+			// case. Instead of referencing the descriptor line, it points to the
+			// region, even if it doesn't share a parent hyperpng. A link outside
+			// of a hyperpng pointing to a child of a hyperpng references the
+			// descriptor line, as usual.
 			//
-			// The most straightforward way of maintaining a consistent ID model is to
-			// modify the link body. However, we leave a trail for debugging purposes.
+			// The most straightforward way of maintaining a consistent ID model
+			// is to modify the link body. However, we leave a trail for debugging
+			// purposes.
 			if (target = document_->find(targetLine + 1); target) {
 				if (const auto parent = target->parent()) {
 					const auto& parentElement = static_cast<Element&>(*parent);
@@ -1294,8 +1324,8 @@ void Parser::NodeRangeList::clear() {
 }
 
 Parser::DataHandler::DataHandler(
-    std::size_t offset, std::size_t length, DataCallback func)
-    : offset{offset}, length{length}, func{func} {}
+    int line, int column, std::size_t offset, std::size_t length, DataCallback func)
+    : line{line}, column{column}, offset{offset}, length{length}, func{func} {}
 
 Parser::LinkData::LinkData(Element& link, const int line, const int column)
     : link{link}, line{line}, column{column} {}

@@ -49,14 +49,14 @@ enum class ElementType {
 enum class TextElementType {
 	None, // Also used for binary data
 	Monospace,
-	NoneAlt,
-	MonospaceAlt,
+	NoneAlt,      // Probably overflow?
+	MonospaceAlt, // Probably both?
 };
 
 enum class TextFormat : uint8_t {
 	None = 0,
-	WordWrap = 1,
-	Proportional = 2,
+	Overflow = 1,
+	Monospace = 2,
 	Hyperlink = 4,
 };
 
@@ -147,30 +147,8 @@ inline constexpr TextFormat withoutFormat(
 	return format & ~formatToRemove;
 }
 
-inline bool hasFormat(const TextFormat haystack, const TextFormat needle) {
+inline constexpr bool hasFormat(const TextFormat haystack, const TextFormat needle) {
 	return (haystack & needle) == needle;
-}
-
-inline void printFormat(const TextFormat format) {
-	std::string buffer;
-
-	if (::UHS::hasFormat(format, TextFormat::Hyperlink)) {
-		buffer += "Hyperlink: true, ";
-	} else {
-		buffer += "Hyperlink: false, ";
-	}
-	if (::UHS::hasFormat(format, TextFormat::Proportional)) {
-		buffer += "Proportional: true, ";
-	} else {
-		buffer += "Proportional: false, ";
-	}
-	if (::UHS::hasFormat(format, TextFormat::WordWrap)) {
-		buffer += "WordWrap: true";
-	} else {
-		buffer += "WordWrap: false";
-	}
-
-	tfm::format(std::cerr, "%s\n", buffer);
 }
 
 template<typename T>
@@ -246,6 +224,9 @@ class WriteError : public Error {
 
 namespace Strings {
 
+bool beginsWithAttachedPunctuation(const std::string& s);
+bool endsWithAttachedPunctuation(const std::string& s);
+bool endsWithFinalPunctuation(const std::string& s);
 bool isInt(const std::string& s);
 int toInt(const std::string& s);
 std::string ltrim(const std::string& s, char c);
@@ -269,6 +250,7 @@ const std::regex HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 const std::regex OverlayAddress{
     "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+
 } // namespace Regex
 
 namespace Traits {
@@ -308,6 +290,17 @@ public:
 
 private:
 	std::string title_;
+};
+
+class Inlined { // `inline` is a C++ keyword
+public:
+	Inlined() = default;
+	explicit Inlined(bool inlined);
+	bool inlined();
+	void inlined(bool inlined);
+
+private:
+	bool inlined_ = false;
 };
 
 class Visibility {
@@ -379,28 +372,29 @@ class Tokenizer;
 
 class Token {
 public:
-	static constexpr auto AsciiEncStart = "#a+";
+	static constexpr auto AsciiEncBegin = "#a+";
 	static constexpr auto AsciiEncEnd = "#a-";
 	static constexpr auto CreditSep = "CREDITS:";
 	static const auto DataSep = '\x1A';
 	static const auto Escape = '#';
-	static constexpr auto HyperlinkStart = "#h+";
+	static constexpr auto HyperlinkBegin = "#h+";
 	static constexpr auto HyperlinkEnd = "#h-";
 	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";
 	static constexpr auto InfoKeyValueSep = "=";
+	static constexpr auto InlineBegin = "#w+";
+	static constexpr auto InlineEnd = "#w.";
+	static constexpr auto MonospaceBegin = "#p-";
+	static constexpr auto MonospaceEnd = "#p+";
 	static constexpr auto NestedElementSep = "=";
 	static constexpr auto NestedTextSep = "-";
 	static constexpr auto NoticePrefix = ">";
 	static constexpr auto NumberSign = "##";
+	static constexpr auto OverflowBegin = "#w-";
+	static constexpr auto OverflowEnd = "#w+";
 	static constexpr auto ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
-	static constexpr auto ProportionalStart = "#p+";
-	static constexpr auto ProportionalEnd = "#p-";
 	static constexpr auto Registered = "A";
 	static constexpr auto Signature = "UHS";
 	static constexpr auto Unregistered = "Z";
-	static constexpr auto WordWrapStart = "#w.";
-	static constexpr auto WordWrapStartInline = "#w+";
-	static constexpr auto WordWrapEnd = "#w-";
 
 	static const std::string typeString(TokenType t);
 
@@ -516,6 +510,8 @@ public:
 	void insertBefore(std::unique_ptr<Node> node, Node* ref);
 	bool hasParent() const;
 	Node* parent() const;
+	bool hasPreviousSibling() const;
+	Node* previousSibling() const;
 	bool hasNextSibling() const;
 	Node* nextSibling() const;
 	bool hasFirstChild() const;
@@ -542,6 +538,7 @@ protected:
 private:
 	NodeType nodeType_;
 	Node* parent_ = nullptr;
+	Node* previousSibling_ = nullptr;
 	std::unique_ptr<Node> nextSibling_ = nullptr;
 	std::unique_ptr<Node> firstChild_ = nullptr;
 	Node* lastChild_ = nullptr;
@@ -606,7 +603,6 @@ public:
 	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
-	// TextFormat format_ = TextFormat::WordWrap | TextFormat::Proportional;
 	TextFormat format_ = TextFormat::None;
 };
 
@@ -617,6 +613,7 @@ class Element
     , public Traits::Attributes
     , public Traits::Body
     , public Traits::Title
+    , public Traits::Inlined
     , public Traits::Visibility {
 public:
 	using Node::appendChild;
@@ -658,7 +655,7 @@ private:
 	static Element::TypeMap typeMap_;
 
 	ElementType elementType_;
-	int id_;
+	int id_ = 0;
 	int line_ = 0;
 	int length_ = 0;
 };
@@ -732,8 +729,8 @@ private:
 
 	struct NodeRange {
 		Node& node;
-		int min;
-		int max;
+		int min = 0;
+		int max = 0;
 
 		NodeRange(Node& node, const int min, const int max);
 	};
@@ -748,8 +745,8 @@ private:
 
 	struct LinkData {
 		Element& link;
-		int line;
-		int column;
+		int line = 0;
+		int column = 0;
 
 		LinkData(Element& link, const int line, const int column);
 	};
@@ -762,11 +759,14 @@ private:
 	};
 
 	struct DataHandler {
-		std::size_t offset;
-		std::size_t length;
+		int line = 0;
+		int column = 0;
+		std::size_t offset = 0;
+		std::size_t length = 0;
 		DataCallback func;
 
-		DataHandler(std::size_t offset, std::size_t length, DataCallback func);
+		DataHandler(int line, int column, std::size_t offset, std::size_t length,
+		    DataCallback func);
 	};
 
 	static const auto HeaderLength = 4;
@@ -811,10 +811,10 @@ private:
 	// Parse helpers
 	std::unique_ptr<const Token> next();
 	std::unique_ptr<const Token> expect(TokenType expected);
-	void addDataCallback(std::size_t offset, std::size_t length, DataCallback func);
+	void addDataCallback(
+	    int line, int column, std::size_t offset, std::size_t length, DataCallback func);
 	void checkCRC();
 	void findParentAndAppend(std::unique_ptr<Element> element);
-	bool isPunctuation(char c);
 	int offsetLine(int line);
 	void parseData(std::unique_ptr<const Token> token);
 	void parseDate(const std::string& date, std::tm& tm) const;
@@ -873,7 +873,7 @@ public:
 	// The official readers work with lines longer than 76 characters, but
 	// lines were capped at 76 so that DOS readers would display correctly
 	// within the standard 80-character window (with border and padding).
-	static const std::size_t LineLength = 74;
+	static const std::size_t LineLength = 76;
 
 	UHSWriter(std::ostream& out, const WriterOptions options = {});
 	void write(const Document& document) override;
@@ -920,8 +920,8 @@ private:
 	void updateLinkTargets(std::string& out) const;
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
-	std::string serializeTextNode(const ElementType parentType, const TextNode& textNode,
-	    const TextFormat previousFormat, int& length);
+	std::string formatText(const TextNode& textNode, const TextFormat previousFormat);
+	std::string encodeText(const std::string text, const ElementType parentType);
 	void addData(const Element& element);
 	std::string createDataAddress(
 	    std::size_t bodyLength, std::string textFormat = "") const;
