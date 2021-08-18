@@ -571,8 +571,6 @@ void Parser::parseHintElement(Element* const element) {
 				child->inlined(true);
 			}
 
-			tfm::format(std::cout, "> \"%s\": %s\n", child->title(), child->inlined());
-
 			break;
 		}
 		default:
@@ -1107,8 +1105,16 @@ void Parser::parseWithFormat(
 			           || hasFormat(format, TextFormat::Overflow)
 			           || hasFormat(format, TextFormat::Monospace)) {
 				segment += text[i];
-			} else if (i > 0 && text[i - 1] != ' ' && i + 1 < length) {
-				segment += ' ';
+			} else {
+				auto pos = text.find_last_of('\n', i - 1);
+				if (pos == std::string::npos) {
+					pos = -1;
+				}
+				if (text.substr(pos + 1, 2) == "  ") {
+					segment += '\n';
+				} else if (i > 0 && text[i - 1] != ' ' && i + 1 < length) {
+					segment += ' ';
+				}
 			}
 			break;
 		case Token::Escape:
