@@ -488,7 +488,7 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 			auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
 			buffer += this->encodeText(wrapped, elementType);
 			length += childLength;
-			currentLine_ += length;
+			currentLine_ += childLength;
 			textBuffer.clear();
 		}
 
@@ -505,7 +505,6 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 			childLength += this->serializeElement(child, buffer);
 			length += childLength;
-			currentLine_ += length;
 		} else if (node->isBreak()) {
 			buffer += Token::NestedTextSep;
 			buffer += EOL;
@@ -524,7 +523,7 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
 		buffer += this->encodeText(wrapped, elementType);
 		length += childLength;
-		currentLine_ += length;
+		currentLine_ += childLength;
 	}
 
 	element.length(length);
