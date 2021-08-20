@@ -1,8 +1,6 @@
 #ifndef UHS_H
 #define UHS_H
 
-#include "json.h"
-#include "tinyformat.h"
 #include <cassert>
 #include <cstdint>
 #include <ctime>
@@ -22,6 +20,12 @@
 #include <string>
 // #include <unordered_map>
 #include <vector>
+
+#include "json.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#include "tinyformat.h"
+#pragma clang diagnostic pop
 
 namespace UHS {
 
