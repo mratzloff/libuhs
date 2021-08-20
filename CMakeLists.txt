@@ -9,6 +9,7 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 
 set (json_includes contrib/jsoncpp/json)
+set (popl_includes contrib/popl)
 set (tinyformat_includes contrib/tinyformat)
 set (uhs_includes include)
 
@@ -35,7 +36,11 @@ target_include_directories (json PUBLIC ${json_includes})
 
 # lib/libuhs.a
 add_library (uhs STATIC $<TARGET_OBJECTS:json> ${uhs_sources})
-target_include_directories (uhs PUBLIC ${json_includes} ${tinyformat_includes} ${uhs_includes})
+target_include_directories (uhs PUBLIC
+	${json_includes}
+	${popl_includes}
+	${tinyformat_includes}
+	${uhs_includes})
 target_compile_options (uhs PRIVATE -g -Wall -Wextra)
 add_definitions (-DUHS_VERSION="${version}")
 

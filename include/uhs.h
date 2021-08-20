@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "json.h"
+#include "popl.hpp"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #include "tinyformat.h"
