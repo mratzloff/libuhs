@@ -1,7 +1,10 @@
-#include "uhs.h"
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+
+#include "argh.h"
+#include "uhs.h"
 
 using namespace UHS;
 
@@ -10,116 +13,135 @@ enum Status {
 	OK = 0,
 };
 
+void printHelp() {
+	auto help =
+	    "uhs %s\n"
+	    "A utility to read and write Universal Hint System game hint files\n\n"
+	    "\033[1mUSAGE\033[0m\n"
+	    "  $ uhs -f <fmt> [options] <file>\n\n"
+	    "\033[1mOPTIONS\033[0m\n"
+	    "  -f <fmt>,  --format=<fmt>   Output format\n"
+	    "                              ●  uhs   UHS file (default)\n"
+	    "                              ○  tree  Tree representation of file\n"
+	    "                              ○  json  JSON file\n\n"
+	    "  -o <file>, --output=<file>  Output file\n"
+	    "  -m <dir>,  --media=<dir>    Media directory (i.e., images and audio)\n"
+	    "             --mode=<mode>    Read and write mode\n"
+	    "                              ●  96a   2000s-era reader and writer (default)\n"
+	    "                              ○  88a   1980s-era reader and writer\n\n"
+	    "             --preserve       Preserve unregistered content restrictions on write\n"
+	    "  -d,        --debug          Print debugging statements\n"
+	    "  -v,        --version        Print the version\n"
+	    "  -h,        --help           Print this help statement\n";
+
+	tfm::printf(help, Version);
+}
+
 void printVersion() {
 	std::cout << Version << std::endl;
 }
 
-void printHelp() {
-	std::cout << "uhs " << Version << "\n\n"
-	          << "Usage: uhs -f <fmt> [options] <file>\n"
-	          << "-f <fmt>\t\tOutput format (json, tree, uhs)\n"
-	          << "-o <file>\t\tOutput file\n"
-	          << "-m <dir>\t\tMedia directory\n"
-	          << "    --88a\t\tForce 88a mode (read and write)\n"
-	          << "    --unregistered\tUnregistered mode (write only)\n"
-	          << "    --debug\t\tPrint debugging statements\n"
-	          << "-v, --version\t\tPrint the version\n"
-	          << "-h, --help\t\tPrint this help statement" << std::endl;
-}
-
-int main(int argc, const char* argv[]) {
-	std::string format;
-	std::string infile;
-	std::string outfile;
-	std::string dir;
+int main(const int argc, char* argv[]) {
 	ParserOptions parserOptions;
 	WriterOptions writerOptions;
 
-	if (argc == 1) {
+	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
+	args.parse(argv);
+
+	// Help
+	if (args[{"-h", "--help"}] || argc == 1) {
 		printHelp();
 		return OK;
 	}
 
-	for (auto i = 1; i < argc; ++i) {
-		auto arg = std::string(argv[i]);
+	// Version
+	if (args[{"-v", "--version"}]) {
+		printVersion();
+		return OK;
+	}
 
-		if (arg[0] == '-') { // Parse options
-			switch (arg[1]) {
-			case 'f':
-				++i;
-				if (i >= argc) {
-					std::cerr << "uhs: error: -f requires a parameter" << std::endl;
-					return Err;
-				}
-				format = argv[i];
-				break;
-			case 'o':
-				++i;
-				if (i >= argc) {
-					std::cerr << "uhs: error: -o requires a parameter" << std::endl;
-					return Err;
-				}
-				outfile = argv[i];
-				break;
-			case 'm':
-				++i;
-				if (i >= argc) {
-					std::cerr << "uhs: error: -m requires a parameter" << std::endl;
-					return Err;
-				}
-				writerOptions.mediaDir = argv[i];
-				break;
-			case 'v':
-				printVersion();
-				return OK;
-			case 'h':
-				printHelp();
-				return OK;
-			case '-':
-				if (arg == "--88a") {
-					parserOptions.force88aMode = true;
-					writerOptions.force88aMode = true;
-					break;
-				} else if (arg == "--unregistered") {
-					writerOptions.registered = false;
-					break;
-				} else if (arg == "--debug") {
-					parserOptions.debug = true;
-					writerOptions.debug = true;
-					break;
-				} else if (arg == "--help") {
-					printHelp();
-					return OK;
-				} else if (arg == "--version") {
-					printVersion();
-					return OK;
-				} else {
-					std::cerr << "uhs: unknown option: " << arg << std::endl;
-					return Err;
-				}
-			default:
-				std::cerr << "uhs: unknown option: " << arg << std::endl;
+	// Output format
+	std::string format;
+
+	if (!(args({"-f", "--format"}, "uhs") >> format)) {
+		std::cerr << "uhs: error: --format (-f) is required" << std::endl;
+		return Err;
+	};
+	if (format != "uhs" && format != "tree" && format != "json") {
+		std::cerr << "uhs: error: unknown option for --format: " << format << std::endl;
+		return Err;
+	}
+
+	// Output file
+	std::string outfile;
+
+	if (args[{"-o", "--output"}]) {
+		if (!(args({"-o", "--output"}) >> outfile) || outfile.length() == 0) {
+			std::cerr << "uhs: error: --output (-o) requires a parameter" << std::endl;
+			return Err;
+		}
+		if (outfile.length() > 0) {
+			std::filesystem::path outfilePath{outfile};
+			if (!outfilePath.has_parent_path()
+			    || !std::filesystem::exists(outfilePath.parent_path())) {
+				std::cerr << "uhs: error: --output (-o) requires a valid path"
+				          << std::endl;
 				return Err;
 			}
-		} else { // Parse filename (required)
-			if (i != argc - 1) {
-				printHelp();
-				return Err;
-			}
-			infile = argv[argc - 1];
 		}
 	}
 
-	if (infile.empty()) {
-		std::cerr << "uhs: error: no input file" << std::endl;
+	// Media directory
+	std::string mediaDir;
+
+	if (args[{"-m", "--media"}]) {
+		if (!(args({"-m", "--media"}) >> mediaDir) || mediaDir.length() == 0) {
+			std::cerr << "uhs: error: --media (-m) requires a parameter" << std::endl;
+			return Err;
+		}
+		if (mediaDir.length() > 0) {
+			std::filesystem::path mediaDirPath{mediaDir};
+			if (!std::filesystem::exists(mediaDirPath)) {
+				std::cerr << "uhs: error: --media (-m) requires a valid path"
+				          << std::endl;
+				return Err;
+			}
+			writerOptions.mediaDir = mediaDir;
+		}
+	}
+
+	// Read and write mode
+	std::string mode;
+	args({"--mode"}, "96a") >> mode;
+
+	if (mode != "96a" && mode != "88a") {
+		std::cerr << "uhs: error: unknown option for --mode: " << mode << std::endl;
 		return Err;
 	}
-	if (format.empty()) {
-		std::cerr << "uhs: error: no output format specified" << std::endl;
+	if (mode == "88a") {
+		parserOptions.force88aMode = true;
+		writerOptions.force88aMode = true;
+	}
+
+	// Preserve unregistered content restrictions on write option
+	writerOptions.registered = !args[{"--preserve"}];
+
+	if (args[{"-d", "--debug"}]) {
+		parserOptions.debug = true;
+		writerOptions.debug = true;
+	}
+
+	// Input file
+	if (argc < 2) {
+		std::cerr << "uhs: error: no input file specified" << std::endl;
 		return Err;
 	}
-	if (format != "json" && format != "tree" && format != "uhs") {
-		std::cerr << "uhs: error: unknown output format: " << format << std::endl;
+
+	std::string infile = argv[argc - 1];
+	std::filesystem::path infilePath{infile};
+
+	if (!std::filesystem::exists(infilePath)) {
+		std::cerr << "uhs: error: invalid file" << std::endl;
 		return Err;
 	}
 
@@ -134,14 +156,14 @@ int main(int argc, const char* argv[]) {
 		}
 		std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
-		if (format == "json") {
-			JSONWriter w{out, writerOptions};
+		if (format == "uhs") {
+			UHSWriter w{out, writerOptions};
 			w.write(*document);
 		} else if (format == "tree") {
 			TreeWriter w{out, writerOptions};
 			w.write(*document);
-		} else if (format == "uhs") {
-			UHSWriter w{out, writerOptions};
+		} else if (format == "json") {
+			JSONWriter w{out, writerOptions};
 			w.write(*document);
 		}
 	} catch (const Error& err) {
