@@ -5,13 +5,11 @@
 
 namespace UHS {
 
-Writer::Writer(std::ostream& out, const WriterOptions options)
-    : out_{out}, options_{options} {}
+Writer::Writer(std::ostream& out, const Options options) : out_{out}, options_{options} {}
 
 void Writer::reset() {}
 
-TreeWriter::TreeWriter(std::ostream& out, const WriterOptions options)
-    : Writer(out, options) {}
+TreeWriter::TreeWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
 void TreeWriter::write(const Document& document) {
 	for (const auto& node : document) {
@@ -75,8 +73,7 @@ void TreeWriter::drawScaffold(const Node& node) {
 
 //------------------------------- JSONWriter --------------------------------//
 
-JSONWriter::JSONWriter(std::ostream& out, const WriterOptions options)
-    : Writer(out, options) {}
+JSONWriter::JSONWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
 void JSONWriter::write(const Document& document) {
 	Json::Value root{Json::objectValue};
@@ -235,8 +232,7 @@ void JSONWriter::serializeMap(
 
 UHSWriter::Serializer UHSWriter::serializer_;
 
-UHSWriter::UHSWriter(std::ostream& out, const WriterOptions options)
-    : Writer(out, options) {}
+UHSWriter::UHSWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
 void UHSWriter::write(const Document& document) {
 	std::string buffer;

@@ -46,8 +46,7 @@ void printVersion() {
 }
 
 int main(const int argc, char* argv[]) {
-	ParserOptions parserOptions;
-	WriterOptions writerOptions;
+	Options options;
 
 	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
 	args.parse(argv);
@@ -106,7 +105,7 @@ int main(const int argc, char* argv[]) {
 			printError("invalid media directory: " + mediaDir);
 			return Err;
 		}
-		writerOptions.mediaDir = mediaDir;
+		options.mediaDir = mediaDir;
 	}
 
 	// Read and write mode
@@ -118,19 +117,14 @@ int main(const int argc, char* argv[]) {
 		return Err;
 	}
 	if (mode == "88a") {
-		parserOptions.mode = VersionType::Version88a;
-		writerOptions.mode = VersionType::Version88a;
+		options.mode = VersionType::Version88a;
 	}
 
 	// Preserve unregistered content restrictions
-	auto preserve = args[{"--preserve"}];
-	parserOptions.preserve = preserve;
-	writerOptions.preserve = preserve;
+	options.preserve = args[{"--preserve"}];
 
-	if (args[{"-d", "--debug"}]) {
-		parserOptions.debug = true;
-		writerOptions.debug = true;
-	}
+	// Debug
+	options.debug = args[{"-d", "--debug"}];
 
 	// Input file
 	if (argc < 2) {
@@ -147,7 +141,7 @@ int main(const int argc, char* argv[]) {
 	}
 
 	try {
-		Parser p{parserOptions};
+		Parser p{options};
 		std::ifstream in{infile, std::ios::in | std::ios::binary};
 		auto document = p.parse(in);
 
@@ -158,13 +152,13 @@ int main(const int argc, char* argv[]) {
 		std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
 		if (format == "uhs") {
-			UHSWriter w{out, writerOptions};
+			UHSWriter w{out, options};
 			w.write(*document);
 		} else if (format == "tree") {
-			TreeWriter w{out, writerOptions};
+			TreeWriter w{out, options};
 			w.write(*document);
 		} else if (format == "json") {
-			JSONWriter w{out, writerOptions};
+			JSONWriter w{out, options};
 			w.write(*document);
 		}
 	} catch (const Error& err) {

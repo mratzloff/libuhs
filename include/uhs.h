@@ -228,6 +228,13 @@ class WriteError : public Error {
 	using Error::Error;
 };
 
+struct Options {
+	bool debug = false;
+	std::string mediaDir;
+	VersionType mode = VersionType::Version96a;
+	bool preserve = false;
+};
+
 namespace Strings {
 
 bool beginsWithAttachedPunctuation(const std::string& s);
@@ -718,15 +725,9 @@ private:
 	char toPrintable(int c) const;
 };
 
-struct ParserOptions {
-	bool debug = false;
-	VersionType mode = VersionType::Version96a;
-	bool preserve = false;
-};
-
 class Parser {
 public:
-	explicit Parser(const ParserOptions options = {});
+	explicit Parser(const Options options = {});
 	std::unique_ptr<Document> parse(std::ifstream& in);
 	void reset();
 
@@ -789,7 +790,7 @@ private:
 	bool isTitleSet_ = false;
 	std::string key_;
 	int lineOffset_ = 0;
-	const ParserOptions options_;
+	const Options options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 
@@ -832,28 +833,21 @@ private:
 	void processVisibility();
 };
 
-struct WriterOptions {
-	bool debug = false;
-	VersionType mode = VersionType::Version96a;
-	std::string mediaDir;
-	bool preserve = false;
-};
-
 class Writer {
 public:
-	Writer(std::ostream& out, const WriterOptions options = {});
+	Writer(std::ostream& out, const Options options = {});
 	virtual ~Writer() = default;
 	virtual void write(const Document& document) = 0;
 	virtual void reset();
 
 protected:
 	std::ostream& out_;
-	const WriterOptions options_;
+	const Options options_;
 };
 
 class TreeWriter : public Writer {
 public:
-	TreeWriter(std::ostream& out, const WriterOptions options = {});
+	TreeWriter(std::ostream& out, const Options options = {});
 	void write(const Document& document) override;
 
 private:
@@ -864,7 +858,7 @@ private:
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(std::ostream& out, const WriterOptions options = {});
+	JSONWriter(std::ostream& out, const Options options = {});
 	void write(const Document& document) override;
 
 private:
@@ -882,7 +876,7 @@ public:
 	// within the standard 80-character window (with border and padding).
 	static const std::size_t LineLength = 76;
 
-	UHSWriter(std::ostream& out, const WriterOptions options = {});
+	UHSWriter(std::ostream& out, const Options options = {});
 	void write(const Document& document) override;
 	void reset() override;
 

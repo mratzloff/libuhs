@@ -5,7 +5,7 @@
 
 namespace UHS {
 
-Parser::Parser(const ParserOptions options) : options_{options} {
+Parser::Parser(const Options options) : options_{options} {
 	// TODO: Guard these by platform
 	setenv("TZ", "", 1);
 	tzset();
