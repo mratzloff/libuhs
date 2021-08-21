@@ -596,6 +596,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 		if (node.nodeType() != NodeType::Element) {
 			continue;
 		}
+
 		const auto& candidate = static_cast<const Element&>(node);
 		if (excluded[candidate.elementType()]) {
 			continue;
@@ -636,7 +637,6 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 
 	this->serializeElementHeader(element, out);
 	out += buffer;
-
 	return length;
 }
 

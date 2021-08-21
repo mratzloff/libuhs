@@ -1307,7 +1307,7 @@ void Parser::processVisibility() {
 				continue;
 			}
 
-			auto targetElement = static_cast<Element&>(*target);
+			Element& targetElement = static_cast<Element&>(*target);
 			if (!options_.preserve) {
 				switch (visibility) {
 				case VisibilityType::RegisteredOnly:
@@ -1322,6 +1322,7 @@ void Parser::processVisibility() {
 					break; // No change
 				}
 			}
+
 			targetElement.visibility(visibility);
 		} else {
 			// TODO: Warn
