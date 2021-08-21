@@ -13,6 +13,10 @@ enum Status {
 	OK = 0,
 };
 
+void printError(const std::string message) {
+	tfm::format(std::cerr, "uhs: error: %s\n", message);
+}
+
 void printHelp() {
 	auto help =
 	    "uhs %s\n"
@@ -64,11 +68,11 @@ int main(const int argc, char* argv[]) {
 	std::string format;
 
 	if (!(args({"-f", "--format"}, "uhs") >> format)) {
-		std::cerr << "uhs: error: --format (-f) is required" << std::endl;
+		printError("--format (-f) is required");
 		return Err;
 	};
 	if (format != "uhs" && format != "tree" && format != "json") {
-		std::cerr << "uhs: error: unknown option for --format: " << format << std::endl;
+		printError("unknown option for --format: " + format);
 		return Err;
 	}
 
@@ -77,15 +81,15 @@ int main(const int argc, char* argv[]) {
 
 	if (args[{"-o", "--output"}]) {
 		if (!(args({"-o", "--output"}) >> outfile) || outfile.length() == 0) {
-			std::cerr << "uhs: error: --output (-o) requires a parameter" << std::endl;
+			printError("--output (-o) requires a parameter");
 			return Err;
 		}
 		if (outfile.length() > 0) {
 			std::filesystem::path outfilePath{outfile};
 			if (!outfilePath.has_parent_path()
 			    || !std::filesystem::exists(outfilePath.parent_path())) {
-				std::cerr << "uhs: error: --output (-o) requires a valid path"
-				          << std::endl;
+
+				printError("--output (-o) requires a valid path");
 				return Err;
 			}
 		}
@@ -96,14 +100,13 @@ int main(const int argc, char* argv[]) {
 
 	if (args[{"-m", "--media"}]) {
 		if (!(args({"-m", "--media"}) >> mediaDir) || mediaDir.length() == 0) {
-			std::cerr << "uhs: error: --media (-m) requires a parameter" << std::endl;
+			printError("--media (-m) requires a parameter");
 			return Err;
 		}
 		if (mediaDir.length() > 0) {
 			std::filesystem::path mediaDirPath{mediaDir};
 			if (!std::filesystem::exists(mediaDirPath)) {
-				std::cerr << "uhs: error: --media (-m) requires a valid path"
-				          << std::endl;
+				printError("--media (-m) requires a valid path");
 				return Err;
 			}
 			writerOptions.mediaDir = mediaDir;
@@ -115,7 +118,7 @@ int main(const int argc, char* argv[]) {
 	args({"--mode"}, "96a") >> mode;
 
 	if (mode != "96a" && mode != "88a") {
-		std::cerr << "uhs: error: unknown option for --mode: " << mode << std::endl;
+		printError("unknown option for --mode: " + mode);
 		return Err;
 	}
 	if (mode == "88a") {
@@ -123,7 +126,7 @@ int main(const int argc, char* argv[]) {
 		writerOptions.force88aMode = true;
 	}
 
-	// Preserve unregistered content restrictions on write option
+	// Preserve unregistered content restrictions on write
 	writerOptions.registered = !args[{"--preserve"}];
 
 	if (args[{"-d", "--debug"}]) {
@@ -133,7 +136,7 @@ int main(const int argc, char* argv[]) {
 
 	// Input file
 	if (argc < 2) {
-		std::cerr << "uhs: error: no input file specified" << std::endl;
+		printError("no input file specified");
 		return Err;
 	}
 
@@ -141,7 +144,7 @@ int main(const int argc, char* argv[]) {
 	std::filesystem::path infilePath{infile};
 
 	if (!std::filesystem::exists(infilePath)) {
-		std::cerr << "uhs: error: invalid file" << std::endl;
+		printError("invalid file: " + infile);
 		return Err;
 	}
 
@@ -167,7 +170,7 @@ int main(const int argc, char* argv[]) {
 			w.write(*document);
 		}
 	} catch (const Error& err) {
-		std::cerr << "uhs: " << err << std::endl;
+		printError(err.string());
 		return Err;
 	} catch (const std::exception& err) {
 		std::cerr << "uhs: unexpected error: " << err.what() << std::endl;

@@ -176,6 +176,8 @@ public:
 		auto message = tfm::format(format, args...);
 		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
 	}
+
+	const std::string string() const;
 };
 
 std::ostream& operator<<(std::ostream& out, const Error& err);

@@ -10,15 +10,23 @@ Error::Error(const std::string& message) : std::runtime_error(message) {}
 
 Error::Error(const char* message) : std::runtime_error(message) {}
 
-std::ostream& operator<<(std::ostream& out, const Error& err) {
-	out << err.what();
+const std::string Error::string() const {
+	std::string buffer;
+	buffer += this->what();
 	try {
-		std::rethrow_if_nested(err);
+		std::rethrow_if_nested(this);
 	} catch (const Error& err) {
-		out << " (" << err << ")";
+		buffer += " (";
+		buffer += err.string();
+		buffer += ")";
 	} catch (...) {
 		// Silence internal exceptions
 	}
+	return buffer;
+}
+
+std::ostream& operator<<(std::ostream& out, const Error& err) {
+	out << err.string();
 	return out;
 }
 
