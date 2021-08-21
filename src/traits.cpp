@@ -70,18 +70,25 @@ void Inlined::inlined(bool inlined) {
 
 //-------------------------------- Visibility -------------------------------//
 
-bool Visibility::visible(bool registered) const {
-	return (visibility_ == VisibilityType::All
-	        || (!registered && visibility_ == VisibilityType::Unregistered)
-	        || (registered && visibility_ == VisibilityType::Registered));
-}
-
 VisibilityType Visibility::visibility() const {
 	return visibility_;
 }
 
 void Visibility::visibility(VisibilityType visibility) {
 	visibility_ = visibility;
+}
+
+const std::string Visibility::visibilityString() const {
+	switch (visibility_) {
+	case VisibilityType::All:
+		return "all";
+	case VisibilityType::None:
+		return "none";
+	case VisibilityType::RegisteredOnly:
+		return "registered";
+	case VisibilityType::UnregisteredOnly:
+		return "unregistered";
+	}
 }
 
 } // namespace UHS::Traits

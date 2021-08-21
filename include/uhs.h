@@ -100,10 +100,10 @@ enum class VersionType {
 };
 
 enum class VisibilityType {
-	All,          // Visible to every user
-	Unregistered, // Visible only to unregistered users
-	Registered,   // Visible only to registered users
-	None,         // Visible to no one
+	All,              // Visible to every user
+	UnregisteredOnly, // Visible only to unregistered users
+	RegisteredOnly,   // Visible only to registered users
+	None,             // Visible to no one
 };
 
 static constexpr auto EOL = "\r\n";
@@ -311,9 +311,9 @@ private:
 
 class Visibility {
 public:
-	bool visible(bool registered) const;
 	VisibilityType visibility() const;
 	void visibility(VisibilityType visibility);
+	const std::string visibilityString() const;
 
 private:
 	VisibilityType visibility_ = VisibilityType::All;
@@ -398,9 +398,9 @@ public:
 	static constexpr auto OverflowBegin = "#w-";
 	static constexpr auto OverflowEnd = "#w+";
 	static constexpr auto ParagraphSep = " "; // e.g., "text.\r\n \r\nText"
-	static constexpr auto Registered = "A";
+	static constexpr auto RegisteredOnly = "A";
 	static constexpr auto Signature = "UHS";
-	static constexpr auto Unregistered = "Z";
+	static constexpr auto UnregisteredOnly = "Z";
 
 	static const std::string typeString(TokenType t);
 
@@ -678,7 +678,7 @@ public:
 	Document(const Document& other);
 	Document& operator=(Document other);
 	friend void swap(Document& lhs, Document& rhs) noexcept;
-	Element* find(const int id);
+	Node* find(const int id);
 	std::unique_ptr<Document> clone() const;
 	void version(VersionType v);
 	VersionType version() const;
@@ -693,7 +693,7 @@ public:
 private:
 	VersionType version_;
 	bool validChecksum_ = false;
-	std::map<const int, Element*> index_;
+	std::map<const int, Node*> index_;
 	bool indexed_ = true;
 };
 
@@ -720,7 +720,8 @@ private:
 
 struct ParserOptions {
 	bool debug = false;
-	bool force88aMode = false;
+	VersionType mode = VersionType::Version96a;
+	bool preserve = false;
 };
 
 class Parser {
@@ -750,11 +751,11 @@ private:
 	};
 
 	struct LinkData {
-		Element& link;
+		Node& link;
 		int line = 0;
 		int column = 0;
 
-		LinkData(Element& link, const int line, const int column);
+		LinkData(Node& link, const int line, const int column);
 	};
 
 	struct VisibilityData {
@@ -833,9 +834,9 @@ private:
 
 struct WriterOptions {
 	bool debug = false;
-	bool force88aMode = false;
+	VersionType mode = VersionType::Version96a;
 	std::string mediaDir;
-	bool registered = true; // JSONWriter only
+	bool preserve = false;
 };
 
 class Writer {
@@ -943,7 +944,7 @@ private:
 	std::unique_ptr<Document> document_ = nullptr;
 	std::string key_;
 	DataQueue data_;
-	std::vector<Element*> deferredLinks_;
+	std::vector<Node*> deferredLinks_;
 };
 
 } // namespace UHS

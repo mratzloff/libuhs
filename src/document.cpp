@@ -38,7 +38,7 @@ void swap(Document& lhs, Document& rhs) noexcept {
 	lhs.reindex();
 }
 
-Element* Document::find(const int id) {
+Node* Document::find(const int id) {
 	if (!indexed_) {
 		this->reindex();
 	}

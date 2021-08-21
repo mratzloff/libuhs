@@ -152,11 +152,7 @@ void JSONWriter::serializeDocument(const Document& document, Json::Value& object
 	object["version"] = document.versionString();
 
 	if (document.version() > VersionType::Version88a) {
-		object["registered"] = options_.registered;
 		object["validChecksum"] = document.validChecksum();
-	}
-	if (!document.visible(options_.registered)) {
-		object["visible"] = false;
 	}
 	object["type"] = document.nodeTypeString();
 
@@ -193,9 +189,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 		}
 	}
 
-	if (!element.visible(options_.registered)) {
-		object["visible"] = false;
-	}
+	object["visibility"] = element.visibilityString();
 	object["type"] = Element::typeString(element.elementType());
 
 	// Build attributes map
@@ -248,7 +242,7 @@ void UHSWriter::write(const Document& document) {
 	std::string buffer;
 	buffer.reserve(InitialBufferLength);
 
-	if (options_.force88aMode) {
+	if (options_.mode == VersionType::Version88a) {
 		this->serialize88a(document, buffer);
 	} else {
 		document_ = document.clone();
@@ -587,10 +581,14 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 }
 
 int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
+	if (!options_.preserve) {
+		return 0;
+	}
+
 	auto length = InitialElementLength;
 	std::string buffer;
 
-	std::map<const ElementType, bool> blacklisted = {
+	std::map<const ElementType, bool> excluded = {
 	    {ElementType::Incentive, true},
 	    {ElementType::Info, true},
 	    {ElementType::Version, true},
@@ -598,22 +596,22 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 
 	std::vector<std::string> instructions;
 
-	for (const auto& node : *document_) {
+	for (auto& node : *document_) {
 		if (node.nodeType() != NodeType::Element) {
 			continue;
 		}
 		const auto& candidate = static_cast<const Element&>(node);
-		if (blacklisted[candidate.elementType()]) {
+		if (excluded[candidate.elementType()]) {
 			continue;
 		}
 
 		std::string flag;
 		switch (candidate.visibility()) {
-		case VisibilityType::Registered:
-			flag = (options_.registered) ? Token::Registered : Token::Unregistered;
+		case VisibilityType::RegisteredOnly:
+			flag = Token::RegisteredOnly;
 			break;
-		case VisibilityType::Unregistered:
-			flag = (options_.registered) ? Token::Unregistered : Token::Registered;
+		case VisibilityType::UnregisteredOnly:
+			flag = Token::UnregisteredOnly;
 			break;
 		default:
 			continue; // Ignore
@@ -839,8 +837,15 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {
 		const auto target = *it;
 		assert(target);
+
+		if (!target->isElement()) {
+			// TODO: Warn
+			continue;
+		}
+
+		auto targetElement = static_cast<Element&>(*target);
 		const auto pos = out.rfind(LinkMarker);
-		const auto targetLine = std::to_string(target->line());
+		const auto targetLine = std::to_string(targetElement.line());
 		const auto length = targetLine.length();
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);

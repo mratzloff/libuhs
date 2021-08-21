@@ -33,7 +33,7 @@ void printHelp() {
 	    "             --mode=<mode>    Read and write mode\n"
 	    "                              ●  96a   2000s-era reader and writer (default)\n"
 	    "                              ○  88a   1980s-era reader and writer\n\n"
-	    "             --preserve       Preserve unregistered content restrictions on write\n"
+	    "             --preserve       Preserve unregistered content restrictions\n"
 	    "  -d,        --debug          Print debugging statements\n"
 	    "  -v,        --version        Print the version\n"
 	    "  -h,        --help           Print this help statement\n";
@@ -79,38 +79,34 @@ int main(const int argc, char* argv[]) {
 	// Output file
 	std::string outfile;
 
-	if (args[{"-o", "--output"}]) {
-		if (!(args({"-o", "--output"}) >> outfile) || outfile.length() == 0) {
-			printError("--output (-o) requires a parameter");
-			return Err;
-		}
-		if (outfile.length() > 0) {
-			std::filesystem::path outfilePath{outfile};
-			if (!outfilePath.has_parent_path()
-			    || !std::filesystem::exists(outfilePath.parent_path())) {
+	if (!(args({"-o", "--output"}) >> outfile) || outfile.length() == 0) {
+		printError("--output (-o) requires a parameter");
+		return Err;
+	}
+	if (outfile.length() > 0) {
+		std::filesystem::path path{outfile};
+		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
 
-				printError("--output (-o) requires a valid path");
-				return Err;
-			}
+			printError("invalid output file: " + outfile);
+			return Err;
 		}
 	}
 
 	// Media directory
 	std::string mediaDir;
 
-	if (args[{"-m", "--media"}]) {
-		if (!(args({"-m", "--media"}) >> mediaDir) || mediaDir.length() == 0) {
-			printError("--media (-m) requires a parameter");
+	if (!(args({"-m", "--media"}) >> mediaDir) || mediaDir.length() == 0) {
+		printError("--media (-m) requires a parameter");
+		return Err;
+	}
+	if (mediaDir.length() > 0) {
+		std::filesystem::path path{mediaDir};
+		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
+
+			printError("invalid media directory: " + mediaDir);
 			return Err;
 		}
-		if (mediaDir.length() > 0) {
-			std::filesystem::path mediaDirPath{mediaDir};
-			if (!std::filesystem::exists(mediaDirPath)) {
-				printError("--media (-m) requires a valid path");
-				return Err;
-			}
-			writerOptions.mediaDir = mediaDir;
-		}
+		writerOptions.mediaDir = mediaDir;
 	}
 
 	// Read and write mode
@@ -122,12 +118,14 @@ int main(const int argc, char* argv[]) {
 		return Err;
 	}
 	if (mode == "88a") {
-		parserOptions.force88aMode = true;
-		writerOptions.force88aMode = true;
+		parserOptions.mode = VersionType::Version88a;
+		writerOptions.mode = VersionType::Version88a;
 	}
 
-	// Preserve unregistered content restrictions on write
-	writerOptions.registered = !args[{"--preserve"}];
+	// Preserve unregistered content restrictions
+	auto preserve = args[{"--preserve"}];
+	parserOptions.preserve = preserve;
+	writerOptions.preserve = preserve;
 
 	if (args[{"-d", "--debug"}]) {
 		parserOptions.debug = true;

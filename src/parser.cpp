@@ -28,7 +28,7 @@ std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
 
 		this->parse88a();
 
-		if (!done_ && !options_.force88aMode) {
+		if (!done_ && options_.mode == VersionType::Version96a) {
 			// Set 88a header as first (hidden) child of 96a document
 			document_->visibility(VisibilityType::None);
 
@@ -270,7 +270,7 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> token) {
 }
 
 void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
-	if (options_.force88aMode) {
+	if (options_.mode == VersionType::Version88a) {
 		done_ = true;
 		return;
 	}
@@ -702,10 +702,10 @@ void Parser::parseIncentiveElement(Element* const element) {
 		auto flag = instruction.substr(instructionLength - 1, 1);
 
 		VisibilityType visibility;
-		if (flag == Token::Registered) {
-			visibility = VisibilityType::Registered;
-		} else if (flag == Token::Unregistered) {
-			visibility = VisibilityType::Unregistered;
+		if (flag == Token::RegisteredOnly) {
+			visibility = VisibilityType::RegisteredOnly;
+		} else if (flag == Token::UnregisteredOnly) {
+			visibility = VisibilityType::UnregisteredOnly;
 		}
 
 		// Defer visibility processing to guarantee all nodes have been parsed.
@@ -1251,7 +1251,13 @@ void Parser::parseWithFormat(
 }
 
 void Parser::processLinks() {
-	for (const auto& [link, line, column] : deferredLinks_) {
+	for (const auto& [node, line, column] : deferredLinks_) {
+		if (!node.isElement()) {
+			// TODO: Warn using line and column
+			throw ParseError(line, column, "invalid target type");
+		}
+
+		auto link = static_cast<Element&>(node);
 		const auto& body = link.body();
 		int targetLine;
 		try {
@@ -1263,7 +1269,7 @@ void Parser::processLinks() {
 			throw ParseError::badValue(line, column, ParseError::Uint, body);
 		}
 
-		Element* target = nullptr;
+		Node* target = nullptr;
 		if (target = document_->find(targetLine); !target) {
 			// A link pointing to the child of a hyperpng element is a special
 			// case. Instead of referencing the descriptor line, it points to the
@@ -1294,9 +1300,29 @@ void Parser::processLinks() {
 }
 
 void Parser::processVisibility() {
-	for (const auto [targetLine, visibility] : deferredVisibilities_) {
+	for (auto [targetLine, visibility] : deferredVisibilities_) {
 		if (auto target = document_->find(targetLine)) {
-			target->visibility(visibility);
+			if (!target->isElement()) {
+				// TODO: Warn
+				continue;
+			}
+
+			auto targetElement = static_cast<Element&>(*target);
+			if (!options_.preserve) {
+				switch (visibility) {
+				case VisibilityType::RegisteredOnly:
+					visibility = VisibilityType::All;
+					break;
+				case VisibilityType::UnregisteredOnly:
+					if (target->hasParent()) {
+						target->parent()->removeChild(target);
+					}
+					break;
+				default:
+					break; // No change
+				}
+			}
+			targetElement.visibility(visibility);
 		} else {
 			// TODO: Warn
 		}
@@ -1333,7 +1359,7 @@ Parser::DataHandler::DataHandler(
     int line, int column, std::size_t offset, std::size_t length, DataCallback func)
     : line{line}, column{column}, offset{offset}, length{length}, func{func} {}
 
-Parser::LinkData::LinkData(Element& link, const int line, const int column)
+Parser::LinkData::LinkData(Node& link, const int line, const int column)
     : link{link}, line{line}, column{column} {}
 
 Parser::VisibilityData::VisibilityData(int targetLine, VisibilityType visibility)
