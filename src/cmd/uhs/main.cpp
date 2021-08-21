@@ -29,7 +29,7 @@ void printHelp() {
 	    "                              ○  tree  Tree representation of file\n"
 	    "                              ○  json  JSON file\n\n"
 	    "  -o <file>, --output=<file>  Output file\n"
-	    "  -m <dir>,  --media=<dir>    Media directory (i.e., images and audio)\n"
+	    "  -m <dir>,  --media=<dir>    Image and audio directory (JSON output only)\n"
 	    "             --mode=<mode>    Read and write mode\n"
 	    "                              ●  96a   2000s-era reader and writer (default)\n"
 	    "                              ○  88a   1980s-era reader and writer\n\n"
@@ -77,11 +77,8 @@ int main(const int argc, char* argv[]) {
 
 	// Output file
 	std::string outfile;
+	args({"-o", "--output"}) >> outfile;
 
-	if (!(args({"-o", "--output"}) >> outfile) || outfile.length() == 0) {
-		printError("--output (-o) requires a parameter");
-		return Err;
-	}
 	if (outfile.length() > 0) {
 		std::filesystem::path path{outfile};
 		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
@@ -93,11 +90,8 @@ int main(const int argc, char* argv[]) {
 
 	// Media directory
 	std::string mediaDir;
+	args({"-m", "--media"}) >> mediaDir;
 
-	if (!(args({"-m", "--media"}) >> mediaDir) || mediaDir.length() == 0) {
-		printError("--media (-m) requires a parameter");
-		return Err;
-	}
 	if (mediaDir.length() > 0) {
 		std::filesystem::path path{mediaDir};
 		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
