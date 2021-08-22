@@ -1,5 +1,6 @@
-#include "uhs.h"
 #include <iomanip>
+
+#include "uhs.h"
 
 namespace UHS::Strings {
 

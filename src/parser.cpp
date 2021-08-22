@@ -1,7 +1,8 @@
-#include "uhs.h"
 #include <climits>
 #include <iostream>
 #include <thread>
+
+#include "uhs.h"
 
 namespace UHS {
 

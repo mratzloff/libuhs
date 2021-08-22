@@ -1,7 +1,8 @@
-#include "uhs.h"
 #include <cmath>
 #include <fstream>
 #include <iomanip>
+
+#include "uhs.h"
 
 namespace UHS {
 

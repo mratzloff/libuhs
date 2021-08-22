@@ -1,6 +1,7 @@
-#include "uhs.h"
 #include <chrono>
 #include <thread>
+
+#include "uhs.h"
 
 namespace UHS {
 
