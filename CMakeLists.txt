@@ -10,6 +10,7 @@ list (APPEND CMAKE_MODULE_PATH contrib)
 
 set (argh_includes contrib/argh)
 set (json_includes contrib/jsoncpp/json)
+set (pugixml_includes contrib/pugixml)
 set (tinyformat_includes contrib/tinyformat)
 set (uhs_includes include)
 
@@ -35,10 +36,11 @@ add_library (json OBJECT contrib/jsoncpp/jsoncpp.cpp)
 target_include_directories (json PUBLIC ${json_includes})
 
 # lib/libuhs.a
-add_library (uhs STATIC $<TARGET_OBJECTS:json> ${uhs_sources})
+add_library (uhs STATIC ${uhs_sources})
+target_link_libraries(uhs json)
 target_include_directories (uhs
-	PUBLIC ${argh_includes}
-	       ${json_includes}
+	PUBLIC ${json_includes}
+		   ${pugixml_includes}
 	       ${tinyformat_includes}
 	       ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -Wall -Wextra)
@@ -47,6 +49,7 @@ add_definitions (-DUHS_VERSION="${version}")
 # bin/uhs
 add_executable (uhs-bin src/cmd/uhs/main.cpp)
 set_target_properties (uhs-bin PROPERTIES OUTPUT_NAME uhs)
+target_include_directories (uhs-bin PUBLIC ${argh_includes})
 target_link_libraries (uhs-bin PUBLIC uhs)
 
 # clang-format
@@ -67,6 +70,6 @@ add_custom_target (lint
 		-I${tinyformat_includes}
 		-I${uhs_includes}
 		-std=c++20
-		-DUHS_VERSION=0 # Unused in source code
+		-DUHS_VERSION="${version}"
 		${uhs_sources} ${uhs_bin_sources})
 add_dependencies (lint format)
