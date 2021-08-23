@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "json.h"
+#include "pugixml.hpp"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #include "tinyformat.h"
@@ -534,6 +535,7 @@ public:
 	int numChildren() const;
 	int depth() const;
 	virtual std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
+	Document* findDocument() const;
 
 	// Iterators
 	iterator begin();
@@ -557,8 +559,6 @@ private:
 	Node* lastChild_ = nullptr;
 	int numChildren_ = 0;
 	int depth_ = 0;
-
-	Document* findDocument() const;
 };
 
 template<typename T>
@@ -856,13 +856,26 @@ private:
 	void drawScaffold(const Node& node);
 };
 
+class HTMLWriter : public Writer {
+public:
+	HTMLWriter(std::ostream& out, const Options options = {});
+	void write(const Document& document) override;
+
+private:
+	void serialize(const Document& document, pugi::xml_document& xml) const;
+	void serializeDocument(const Document& document, pugi::xml_node root) const;
+	void serializeElement(
+	    const Element& element, pugi::xml_node xmlNode, const int depth) const;
+	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
+};
+
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const Options options = {});
 	void write(const Document& document) override;
 
 private:
-	Json::Value serialize(const Document& document, Json::Value& root) const;
+	void serialize(const Document& document, Json::Value& root) const;
 	void serializeDocument(const Document& document, Json::Value& object) const;
 	void serializeElement(const Element& element, Json::Value& object) const;
 	void serializeTextNode(const TextNode& textNode, Json::Value& object) const;

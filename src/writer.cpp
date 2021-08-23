@@ -72,18 +72,240 @@ void TreeWriter::drawScaffold(const Node& node) {
 	}
 }
 
+//------------------------------- HTMLWriter --------------------------------//
+
+HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {}
+
+void HTMLWriter::write(const Document& document) {
+	pugi::xml_document xml;
+	this->serialize(document, xml);
+	out_ << "<!DOCTYPE html>" << std::endl;
+	xml.save(out_,
+	    "    ",
+	    pugi::format_indent | pugi::format_no_declaration); // pugi::format_raw
+}
+
+void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) const {
+	auto html = xml.append_child("html");
+	html.append_attribute("lang") = "en";
+	auto head = html.append_child("head");
+	auto title = head.append_child("title");
+	title.append_child(pugi::node_pcdata).set_value(document.title().c_str());
+	auto meta1 = head.append_child("meta");
+	meta1.append_attribute("charset") = "utf-8";
+
+	if (auto author = document.attr("author")) {
+		auto meta2 = head.append_child("meta");
+		meta2.append_attribute("name") = "author";
+		meta2.append_attribute("content") = author.value().c_str();
+	}
+
+	auto style = head.append_child("style");
+	style.append_child(pugi::node_pcdata)
+	    .set_value(
+	        ".visibility-none { display: none; }\n"
+	        ".monospace { font-family: monospace; }");
+
+	auto body = html.append_child("body");
+	auto root = body.append_child("main");
+
+	pugi::xml_node parents[MaxDepth];
+	pugi::xml_node parent = root;
+	auto depth = 0;
+	parents[depth] = root;
+
+	for (const auto& node : document) {
+		auto nodeDepth = node.depth();
+		if (nodeDepth > depth) { // Down
+			parents[depth] = parent;
+			if (!parent.children().empty()) {
+				parent = parent.last_child();
+			}
+		} else if (nodeDepth < depth) { // Up
+			if (nodeDepth >= 0) {
+				parent = parents[nodeDepth];
+			}
+		}
+
+		// Serialize node
+		switch (node.nodeType()) {
+		case NodeType::Break: {
+			auto xmlNode = parent.append_child("div");
+			xmlNode.append_child(pugi::node_pcdata).set_value("-");
+			break;
+		}
+		case NodeType::Document: {
+			const auto& d = static_cast<const Document&>(node);
+			auto xmlNode = (nodeDepth == 0) ? root : parent.append_child("section");
+			this->serializeDocument(d, xmlNode);
+			break;
+		}
+		case NodeType::Element: {
+			const auto& element = static_cast<const Element&>(node);
+			auto xmlNode = parent.append_child("section");
+			this->serializeElement(element, xmlNode, nodeDepth);
+			break;
+		}
+		case NodeType::Text: {
+			const auto& textNode = static_cast<const TextNode&>(node);
+			auto xmlNode = parent.append_child("p");
+			this->serializeTextNode(textNode, xmlNode);
+			break;
+		}
+		default:
+			throw WriteError("unexpected node type: %s", node.nodeTypeString());
+		}
+
+		depth = nodeDepth;
+	}
+
+	if (document.attrs().size() > 0) {
+		auto about = root.append_child("div");
+		about.append_attribute("id") = "info";
+		auto aboutTitle = about.append_child("h1");
+		aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
+		auto aboutBody = about.append_child("div");
+		auto dl = aboutBody.append_child("dl");
+
+		if (auto author = document.attr("author")) {
+			auto authorKey = dl.append_child("dt");
+			authorKey.append_child(pugi::node_pcdata).set_value("Author");
+			auto authorValue = dl.append_child("dd");
+			authorValue.append_child(pugi::node_pcdata).set_value(author.value().c_str());
+		}
+
+		if (auto publisher = document.attr("publisher")) {
+			auto publisherKey = dl.append_child("dt");
+			publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
+			auto publisherValue = dl.append_child("dd");
+			publisherValue.append_child(pugi::node_pcdata)
+			    .set_value(publisher.value().c_str());
+		}
+
+		if (auto timestamp = document.attr("timestamp")) {
+			auto timestampKey = dl.append_child("dt");
+			timestampKey.append_child(pugi::node_pcdata).set_value("Date Created");
+			auto timestampValue = dl.append_child("dd");
+			timestampValue.append_child(pugi::node_pcdata)
+			    .set_value(timestamp.value().c_str());
+		}
+
+		if (auto copyright = document.attr("copyright")) {
+			auto copyrightKey = dl.append_child("dt");
+			copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
+			auto copyrightValue = dl.append_child("dd");
+			copyrightValue.append_child(pugi::node_pcdata)
+			    .set_value(copyright.value().c_str());
+		}
+	}
+}
+
+void HTMLWriter::serializeDocument(
+    const Document& document, pugi::xml_node xmlNode) const {
+
+	xmlNode.append_attribute("data-type") = document.nodeTypeString().c_str();
+	xmlNode.append_attribute("data-version") = document.versionString().c_str();
+
+	if (document.visibility() != VisibilityType::All) {
+		xmlNode.append_attribute("class") =
+		    ("visibility-" + document.visibilityString()).c_str();
+	}
+}
+
+void HTMLWriter::serializeElement(
+    const Element& element, pugi::xml_node xmlNode, const int depth) const {
+
+	std::string fname;
+	std::ofstream fout;
+
+	if (const auto id = element.id(); id > 0) {
+		xmlNode.append_attribute("data-id") = id;
+	}
+
+	if (element.elementType() == ElementType::Link) {
+		xmlNode.set_name("a");
+		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
+		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+	} else {
+		auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
+		auto title = xmlNode.append_child(("h" + headerDepth).c_str());
+		title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+	}
+
+	if (element.isMedia() && !options_.mediaDir.empty()) {
+		// TODO: Do something about how lazy this is
+		fname = options_.mediaDir + "/" + std::to_string(element.line()) + "."
+		        + element.mediaExt();
+		fout.open(fname, std::ios::out | std::ios::binary);
+		fout << element.body();
+		fout.close();
+		xmlNode.append_attribute("data-src") = fname.c_str();
+	} else {
+		const auto& body = element.body();
+		if (!body.empty()) {
+			xmlNode.append_attribute("data-body") = body.c_str();
+		}
+	}
+
+	xmlNode.append_attribute("data-type") =
+	    Element::typeString(element.elementType()).c_str();
+
+	if (element.visibility() != VisibilityType::All) {
+		xmlNode.append_attribute("class") =
+		    ("visibility-" + element.visibilityString()).c_str();
+	}
+
+	// Build attributes map
+	for (const auto& [k, v] : element.attrs()) {
+		xmlNode.append_attribute(("data-" + k).c_str()) = v.c_str();
+	}
+}
+
+void HTMLWriter::serializeTextNode(
+    const TextNode& textNode, pugi::xml_node xmlNode) const {
+
+	auto document = textNode.findDocument();
+	if (document && document->version() == VersionType::Version96a) {
+		xmlNode.set_name("span");
+	}
+
+	auto body = textNode.body();
+	auto lines = Strings::split(body, "\n");
+
+	for (std::size_t i = 0; i < lines.size(); ++i) {
+		if (i > 0) {
+			xmlNode.append_child("br");
+		}
+		xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
+	}
+
+	std::vector<std::string> classs;
+
+	if (textNode.hasFormat(TextFormat::Overflow)) {
+		classs.push_back("overflow");
+	}
+	if (textNode.hasFormat(TextFormat::Monospace)) {
+		classs.push_back("monospace");
+	}
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		classs.push_back("hyperlink");
+	}
+	if (!classs.empty()) {
+		xmlNode.append_attribute("class") = Strings::join(classs, " ").c_str();
+	}
+}
+
 //------------------------------- JSONWriter --------------------------------//
 
 JSONWriter::JSONWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
 void JSONWriter::write(const Document& document) {
 	Json::Value root{Json::objectValue};
-
 	this->serialize(document, root);
 	out_ << root << std::endl;
 }
 
-Json::Value JSONWriter::serialize(const Document& document, Json::Value& root) const {
+void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 	Json::Value* parents[MaxDepth];
 	Json::Value* parent = &root;
 
@@ -141,8 +363,6 @@ Json::Value JSONWriter::serialize(const Document& document, Json::Value& root) c
 
 		depth = nodeDepth;
 	}
-
-	return root;
 }
 
 void JSONWriter::serializeDocument(const Document& document, Json::Value& object) const {

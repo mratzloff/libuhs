@@ -243,6 +243,15 @@ std::unique_ptr<Node> Node::cloneInternal(Passkey<Node>) const {
 	return std::make_unique<Node>(*this);
 }
 
+Document* Node::findDocument() const {
+	for (auto node = parent_; node; node = node->parent()) {
+		if (node->isDocument()) {
+			return static_cast<Document*>(node);
+		}
+	}
+	return nullptr; // Orphaned element
+}
+
 void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
@@ -284,15 +293,6 @@ void Node::didAdd() {
 		auto& element = static_cast<Element&>(*this);
 		document->elementAdded(element);
 	}
-}
-
-Document* Node::findDocument() const {
-	for (auto node = parent_; node; node = node->parent()) {
-		if (node->isDocument()) {
-			return static_cast<Document*>(node);
-		}
-	}
-	return nullptr; // Orphaned element
 }
 
 //------------------------------ NodeIterator -------------------------------//

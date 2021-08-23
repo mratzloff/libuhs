@@ -862,8 +862,6 @@ void Parser::parseTextElement(Element* const element) {
 	if (formatType == TextElementType::Monospace
 	    || formatType == TextElementType::MonospaceAlt) {
 		element->attr("typeface", "monospace");
-	} else {
-		element->attr("typeface", "proportional");
 	}
 
 	// Offset

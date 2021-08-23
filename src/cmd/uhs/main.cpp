@@ -26,8 +26,9 @@ void printHelp() {
 	    "\033[1mOPTIONS\033[0m\n"
 	    "  -f <fmt>,  --format=<fmt>   Output format\n"
 	    "                              ●  uhs   UHS file (default)\n"
-	    "                              ○  tree  Tree representation of file\n"
+	    "                              ○  html  HTML file\n"
 	    "                              ○  json  JSON file\n\n"
+	    "                              ○  tree  Tree representation of file\n\n"
 	    "  -o <file>, --output=<file>  Output file\n"
 	    "  -m <dir>,  --media=<dir>    Image and audio directory (JSON output only)\n"
 	    "             --mode=<mode>    Read and write mode\n"
@@ -70,7 +71,7 @@ int main(const int argc, char* argv[]) {
 		printError("--format (-f) is required");
 		return Err;
 	};
-	if (format != "uhs" && format != "tree" && format != "json") {
+	if (format != "uhs" && format != "html" && format != "json" && format != "tree") {
 		printError("unknown option for --format: " + format);
 		return Err;
 	}
@@ -148,11 +149,14 @@ int main(const int argc, char* argv[]) {
 		if (format == "uhs") {
 			UHSWriter w{out, options};
 			w.write(*document);
-		} else if (format == "tree") {
-			TreeWriter w{out, options};
+		} else if (format == "html") {
+			HTMLWriter w{out, options};
 			w.write(*document);
 		} else if (format == "json") {
 			JSONWriter w{out, options};
+			w.write(*document);
+		} else if (format == "tree") {
+			TreeWriter w{out, options};
 			w.write(*document);
 		}
 	} catch (const Error& err) {

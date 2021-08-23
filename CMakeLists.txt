@@ -35,9 +35,13 @@ set (uhs_bin_sources src/cmd/uhs/main.cpp)
 add_library (json OBJECT contrib/jsoncpp/jsoncpp.cpp)
 target_include_directories (json PUBLIC ${json_includes})
 
+# pugixml.o
+add_library (pugixml OBJECT contrib/pugixml/pugixml.cpp)
+target_include_directories (pugixml PUBLIC ${pugixml_includes})
+
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
-target_link_libraries(uhs json)
+target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
 		   ${pugixml_includes}
@@ -67,6 +71,7 @@ add_custom_target (lint
 		-analyzer-output=text
 		-I${argh_includes}
 		-I${json_includes}
+		-I${pugixml_includes}
 		-I${tinyformat_includes}
 		-I${uhs_includes}
 		-std=c++20
