@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 3.8)
 
 project (libuhs CXX)
-set (version 1.0.0-alpha)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
@@ -48,7 +47,6 @@ target_include_directories (uhs
 	       ${tinyformat_includes}
 	       ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -Wall -Wextra)
-add_definitions (-DUHS_VERSION="${version}")
 
 # bin/uhs
 add_executable (uhs-bin src/cmd/uhs/main.cpp)
@@ -75,6 +73,5 @@ add_custom_target (lint
 		-I${tinyformat_includes}
 		-I${uhs_includes}
 		-std=c++20
-		-DUHS_VERSION="${version}"
 		${uhs_sources} ${uhs_bin_sources})
 add_dependencies (lint format)
