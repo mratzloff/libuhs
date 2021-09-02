@@ -533,23 +533,28 @@ void Parser::parseHintElement(Element* const element) {
 			body += text;
 			break;
 		}
-		case TokenType::NestedTextSep:
+		case TokenType::NestedTextSep: {
 			if (!body.empty()) {
 				if (!body.ends_with("\n \n")) {
 					Strings::chomp(body, '\n');
 				}
 				try {
 					this->parseWithFormat(body, format, *group, element->elementType());
-					element->appendChild(std::move(group));
-					group = GroupNode::create(this->offsetLine(line), length - i);
-					this->addNodeToParentIndex(*group);
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
 				body.clear();
 			}
+
+			if (group->hasFirstChild()) {
+				element->appendChild(std::move(group));
+				group = GroupNode::create(this->offsetLine(line), length - i);
+				this->addNodeToParentIndex(*group);
+			}
+
 			element->appendChild(BreakNode::create());
 			break;
+		}
 		case TokenType::NestedParagraphSep:
 			body += " \n";
 			break; // Handled by parseWithFormat()
