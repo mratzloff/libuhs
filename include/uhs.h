@@ -292,7 +292,7 @@ class Inlined { // `inline` is a C++ keyword
 public:
 	Inlined() = default;
 	explicit Inlined(bool inlined);
-	bool inlined();
+	bool inlined() const;
 	void inlined(bool inlined);
 
 private:

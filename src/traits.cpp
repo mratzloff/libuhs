@@ -48,7 +48,7 @@ void Body::body(const int body) {
 
 Inlined::Inlined(bool inlined) : inlined_{inlined} {}
 
-bool Inlined::inlined() {
+bool Inlined::inlined() const {
 	return inlined_;
 }
 

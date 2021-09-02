@@ -432,6 +432,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 		}
 	}
 
+	object["inline"] = element.inlined();
 	object["visibility"] = element.visibilityString();
 	object["type"] = Element::typeString(element.elementType());
 
