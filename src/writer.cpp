@@ -25,6 +25,16 @@ void TreeWriter::write(const Document& document) {
 			this->draw(element);
 			break;
 		}
+		case NodeType::Group: {
+			const auto& groupNode = static_cast<const GroupNode&>(node);
+			this->draw(groupNode);
+			break;
+		}
+		case NodeType::Text: {
+			const auto& textNode = static_cast<const TextNode&>(node);
+			this->draw(textNode);
+			break;
+		}
 		default:
 			break; // Ignore
 		}
@@ -41,6 +51,21 @@ void TreeWriter::draw(const Element& element) {
 	this->drawScaffold(element);
 	out_ << "[" << element.elementTypeString() << "] \"" << element.title() << "\""
 	     << std::endl;
+}
+
+void TreeWriter::draw(const GroupNode& groupNode) {
+	this->drawScaffold(groupNode);
+	out_ << "[" << groupNode.nodeTypeString() << "]" << std::endl;
+}
+
+void TreeWriter::draw(const TextNode& textNode) {
+	this->drawScaffold(textNode);
+	auto body = textNode.body();
+	std::replace(body.begin(), body.end(), '\n', ' ');
+	if (body.length() > 76) {
+		body = body.substr(0, 73) + "...";
+	}
+	out_ << "[" << textNode.nodeTypeString() << "] \"" << body << "\"" << std::endl;
 }
 
 void TreeWriter::drawScaffold(const Node& node) {
@@ -80,9 +105,7 @@ void HTMLWriter::write(const Document& document) {
 	pugi::xml_document xml;
 	this->serialize(document, xml);
 	out_ << "<!DOCTYPE html>" << std::endl;
-	xml.save(out_,
-	    "    ",
-	    pugi::format_indent | pugi::format_no_declaration); // pugi::format_raw
+	xml.save(out_, "  ", pugi::format_indent | pugi::format_no_declaration);
 }
 
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) const {
@@ -129,11 +152,8 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) co
 
 		// Serialize node
 		switch (node.nodeType()) {
-		case NodeType::Break: {
-			auto xmlNode = parent.append_child("div");
-			xmlNode.append_child(pugi::node_pcdata).set_value("-");
+		case NodeType::Break:
 			break;
-		}
 		case NodeType::Document: {
 			const auto& d = static_cast<const Document&>(node);
 			auto xmlNode = (nodeDepth == 0) ? root : parent.append_child("section");
@@ -146,9 +166,14 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) co
 			this->serializeElement(element, xmlNode, nodeDepth);
 			break;
 		}
+		case NodeType::Group:
+			parent.append_child("p");
+			break;
 		case NodeType::Text: {
 			const auto& textNode = static_cast<const TextNode&>(node);
-			auto xmlNode = parent.append_child("p");
+			assert(textNode.hasParent());
+			auto childOfGroup = textNode.parent()->nodeType() == NodeType::Group;
+			auto xmlNode = parent.append_child(childOfGroup ? "span" : "p");
 			this->serializeTextNode(textNode, xmlNode);
 			break;
 		}
@@ -264,11 +289,6 @@ void HTMLWriter::serializeElement(
 void HTMLWriter::serializeTextNode(
     const TextNode& textNode, pugi::xml_node xmlNode) const {
 
-	auto document = textNode.findDocument();
-	if (document && document->version() == VersionType::Version96a) {
-		xmlNode.set_name("span");
-	}
-
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
 
@@ -315,10 +335,11 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 	for (const auto& node : document) {
 		// Manage JSON arrays as we descend and ascend
 		auto nodeDepth = node.depth();
+
 		if (nodeDepth > depth) { // Down
 			parents[depth] = parent;
 			if ((*parent)["children"].empty()) {
-				Json::Value a = {Json::arrayValue};
+				Json::Value a{Json::arrayValue};
 				(*parent)["children"] = a;
 			} else {
 				parent = &((*parent)["children"][(*parent)["children"].size() - 1]);
@@ -330,7 +351,7 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 		}
 
 		// Serialize node
-		Json::Value object = {Json::objectValue};
+		Json::Value object{Json::objectValue};
 
 		switch (node.nodeType()) {
 		case NodeType::Break:
@@ -348,6 +369,10 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 		case NodeType::Element: {
 			const auto& element = static_cast<const Element&>(node);
 			this->serializeElement(element, object);
+			(*parent)["children"].append(object);
+			break;
+		}
+		case NodeType::Group: {
 			(*parent)["children"].append(object);
 			break;
 		}
@@ -505,10 +530,6 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			std::string title;
 
 			switch (elementType) {
-			case ElementType::Subject:
-				line += numPreviousChildren * 2;
-				title = element.title();
-				break;
 			case ElementType::Hint:
 				if (previousType == ElementType::Subject) {
 					line += numPreviousChildren * 2;
@@ -516,6 +537,10 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 					line += numPreviousChildren;
 				}
 				title = Strings::rtrim(element.title(), '?');
+				break;
+			case ElementType::Subject:
+				line += numPreviousChildren * 2;
+				title = element.title();
 				break;
 			default:
 				throw WriteError(
@@ -581,7 +606,7 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 }
 
 void UHSWriter::serialize96a(std::string& out) {
-	if (document_->version() == VersionType::Version88a) {
+	if (document_->isVersion(VersionType::Version88a)) {
 		this->convertTo91a();
 	}
 
@@ -593,7 +618,7 @@ void UHSWriter::serialize96a(std::string& out) {
 			throw WriteError("unexpected break node");
 		case NodeType::Document: {
 			const auto& document = static_cast<const Document&>(*node);
-			if (document.version() != VersionType::Version88a) {
+			if (!document.isVersion(VersionType::Version88a)) {
 				continue;
 			}
 			this->serialize88a(document, out);
@@ -606,6 +631,8 @@ void UHSWriter::serialize96a(std::string& out) {
 			this->serializeElement(element, out);
 			break;
 		}
+		case NodeType::Group:
+			throw WriteError("unexpected group node");
 		case NodeType::Text: {
 			const auto& textNode = static_cast<const TextNode&>(*node);
 			throw WriteError("unexpected text node: %s", textNode.body());
@@ -670,67 +697,82 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	return length;
 }
 
+int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
+    std::map<const int, TextFormat>& formats, std::string& textBuffer, std::string& out) {
+
+	auto length = 0;
+	auto depth = parentElement.depth();
+	const auto elementType = parentElement.elementType();
+
+	if (node.isElement() && elementType == ElementType::Nesthint) {
+		auto& child = static_cast<Element&>(node);
+		auto followsTextNode = false;
+
+		if (node.hasPreviousSibling()) {
+			auto previousNode = node.previousSibling();
+			followsTextNode = previousNode->isText();
+		}
+		if (!followsTextNode && child.inlined()) {
+			textBuffer += Token::InlineBegin;
+		}
+	}
+
+	if (!node.isText() && !textBuffer.empty()) {
+		auto childLength = 0;
+		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
+		out += this->encodeText(wrapped, elementType);
+		length += childLength;
+		currentLine_ += childLength;
+		textBuffer.clear();
+	}
+
+	if (node.isElement() && elementType == ElementType::Nesthint) {
+		auto& child = static_cast<Element&>(node);
+		depth = parentElement.depth();
+
+		out += Token::NestedElementSep;
+		out += EOL;
+		++length;
+		++currentLine_;
+
+		auto childLength = this->serializeElement(child, out);
+		length += childLength;
+	} else if (node.isBreak()) {
+		out += Token::NestedTextSep;
+		out += EOL;
+		++length;
+		++currentLine_;
+	} else if (node.isGroup()) {
+		for (auto child = node.firstChild(); child; child = child->nextSibling()) {
+			length +=
+			    this->serializeHintChild(*child, parentElement, formats, textBuffer, out);
+		}
+	} else if (node.isText()) {
+		const auto& textNode = static_cast<const TextNode&>(node);
+		textBuffer += this->formatText(textNode, formats[depth]);
+		formats[depth] = textNode.format();
+	} else {
+		throw WriteError("unexpected node type: %s", node.nodeTypeString());
+	}
+
+	return length;
+}
+
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
-	auto childLength = 0;
-	std::string textBuffer;
 	std::map<const int, TextFormat> formats;
-	auto depth = element.depth();
+	std::string textBuffer;
 
 	currentLine_ += length;
 	const auto elementType = element.elementType();
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
-		if (node->isElement() && elementType == ElementType::Nesthint) {
-			auto& child = static_cast<Element&>(*node);
-			auto followsTextNode = false;
-
-			if (node->hasPreviousSibling()) {
-				auto previousNode = node->previousSibling();
-				followsTextNode = previousNode->isText();
-			}
-			if (!followsTextNode && child.inlined()) {
-				textBuffer += Token::InlineBegin;
-			}
-		}
-
-		if (!node->isText() && !textBuffer.empty()) {
-			auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
-			buffer += this->encodeText(wrapped, elementType);
-			length += childLength;
-			currentLine_ += childLength;
-			textBuffer.clear();
-		}
-
-		childLength = 0;
-
-		if (node->isElement() && elementType == ElementType::Nesthint) {
-			auto& child = static_cast<Element&>(*node);
-			depth = element.depth();
-
-			buffer += Token::NestedElementSep;
-			buffer += EOL;
-			++length;
-			++currentLine_;
-
-			childLength += this->serializeElement(child, buffer);
-			length += childLength;
-		} else if (node->isBreak()) {
-			buffer += Token::NestedTextSep;
-			buffer += EOL;
-			++length;
-			++currentLine_;
-		} else if (node->isText()) {
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			textBuffer += this->formatText(textNode, formats[depth]);
-			formats[depth] = textNode.format();
-		} else {
-			throw WriteError("unexpected node type: %s", node->nodeTypeString());
-		}
+		length += this->serializeHintChild(*node, element, formats, textBuffer, buffer);
 	}
 
 	if (!textBuffer.empty()) {
+		auto childLength = 0;
 		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
 		buffer += this->encodeText(wrapped, elementType);
 		length += childLength;
@@ -738,12 +780,87 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	}
 
 	element.length(length);
-
 	this->serializeElementHeader(element, out);
 	out += buffer;
 
 	return length;
 }
+
+// int UHSWriter::serializeHintElement(Element& element, std::string& out) {
+// 	auto length = InitialElementLength;
+// 	std::string buffer;
+// 	auto childLength = 0;
+// 	std::string textBuffer;
+// 	std::map<const int, TextFormat> formats;
+// 	auto depth = element.depth();
+
+// 	currentLine_ += length;
+// 	const auto elementType = element.elementType();
+
+// 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
+// 		if (node->isElement() && elementType == ElementType::Nesthint) {
+// 			auto& child = static_cast<Element&>(*node);
+// 			auto followsTextNode = false;
+
+// 			if (node->hasPreviousSibling()) {
+// 				auto previousNode = node->previousSibling();
+// 				followsTextNode = previousNode->isText();
+// 			}
+// 			if (!followsTextNode && child.inlined()) {
+// 				textBuffer += Token::InlineBegin;
+// 			}
+// 		}
+
+// 		if (!node->isText() && !textBuffer.empty()) {
+// 			auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
+// 			buffer += this->encodeText(wrapped, elementType);
+// 			length += childLength;
+// 			currentLine_ += childLength;
+// 			textBuffer.clear();
+// 		}
+
+// 		childLength = 0;
+
+// 		if (node->isElement() && elementType == ElementType::Nesthint) {
+// 			auto& child = static_cast<Element&>(*node);
+// 			depth = element.depth();
+
+// 			buffer += Token::NestedElementSep;
+// 			buffer += EOL;
+// 			++length;
+// 			++currentLine_;
+
+// 			childLength += this->serializeElement(child, buffer);
+// 			length += childLength;
+// 		} else if (node->isBreak()) {
+// 			buffer += Token::NestedTextSep;
+// 			buffer += EOL;
+// 			++length;
+// 			++currentLine_;
+// 		} else if (node->isGroup()) {
+// 			// TODO
+// 		} else if (node->isText()) {
+// 			const auto& textNode = static_cast<const TextNode&>(*node);
+// 			textBuffer += this->formatText(textNode, formats[depth]);
+// 			formats[depth] = textNode.format();
+// 		} else {
+// 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+// 		}
+// 	}
+
+// 	if (!textBuffer.empty()) {
+// 		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
+// 		buffer += this->encodeText(wrapped, elementType);
+// 		length += childLength;
+// 		currentLine_ += childLength;
+// 	}
+
+// 	element.length(length);
+// 	this->serializeElementHeader(element, out);
+// 	out += buffer;
+
+// 	return length;
+// }
 
 int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
@@ -1010,7 +1127,7 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 			const auto& textNode = static_cast<const TextNode&>(*node);
 			textBuffer += this->formatText(textNode, previousFormat);
 			previousFormat = textNode.format();
-		} else {
+		} else if (!node->isGroup()) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
 	}

@@ -44,18 +44,6 @@ void Body::body(const int body) {
 	this->body(std::to_string(body));
 }
 
-//---------------------------------- Title ----------------------------------//
-
-Title::Title(const std::string title) : title_{title} {}
-
-const std::string& Title::title() const {
-	return title_;
-}
-
-void Title::title(std::string title) {
-	title_ = title;
-}
-
 //--------------------------------- Inlined ---------------------------------//
 
 Inlined::Inlined(bool inlined) : inlined_{inlined} {}
@@ -66,6 +54,18 @@ bool Inlined::inlined() {
 
 void Inlined::inlined(bool inlined) {
 	inlined_ = inlined;
+}
+
+//---------------------------------- Title ----------------------------------//
+
+Title::Title(const std::string title) : title_{title} {}
+
+const std::string& Title::title() const {
+	return title_;
+}
+
+void Title::title(std::string title) {
+	title_ = title;
 }
 
 //-------------------------------- Visibility -------------------------------//

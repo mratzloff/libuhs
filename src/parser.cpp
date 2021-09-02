@@ -14,7 +14,7 @@ Parser::Parser(const Options options) : options_{options} {
 	// _tzset(); // MSVC
 }
 
-std::unique_ptr<Document> Parser::parse(std::ifstream& in) {
+std::shared_ptr<Document> Parser::parse(std::ifstream& in) {
 	auto pipe = std::make_unique<Pipe>(in);
 	tokenizer_ = std::make_unique<Tokenizer>(*pipe);
 	crc_ = std::make_unique<CRC>();
@@ -340,7 +340,9 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 	e = element.get();
 
 	try {
-		this->findParentAndAppend(std::move(element));
+		auto parent = this->findParent(*element);
+		this->addNodeToParentIndex(*element);
+		parent->appendChild(std::move(element));
 	} catch (const Error& err) {
 		std::throw_with_nested(ParseError(token->line(),
 		    token->column(),
@@ -488,18 +490,24 @@ expectDataLength:
 }
 
 void Parser::parseHintElement(Element* const element) {
+	std::string body;
 	int column = 0;
+	std::shared_ptr<GroupNode> group;
 	auto inlined = false;
 	auto format = TextFormat::None;
 	auto length = element->length();
 	int line = 0;
 	auto message = "could not parse formatted string";
-	std::string body;
 
 	for (auto i = 3; i <= length; ++i) {
 		auto token = this->next();
 		line = token->line();
 		column = token->column();
+
+		if (!group) {
+			group = GroupNode::create(this->offsetLine(line), length - i);
+			this->addNodeToParentIndex(*group);
+		}
 
 		switch (token->type()) {
 		case TokenType::String: {
@@ -531,7 +539,10 @@ void Parser::parseHintElement(Element* const element) {
 					Strings::chomp(body, '\n');
 				}
 				try {
-					this->parseWithFormat(body, format, *element);
+					this->parseWithFormat(body, format, *group, element->elementType());
+					element->appendChild(std::move(group));
+					group = GroupNode::create(this->offsetLine(line), length - i);
+					this->addNodeToParentIndex(*group);
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
@@ -554,7 +565,8 @@ void Parser::parseHintElement(Element* const element) {
 				}
 				try {
 					auto childFormat = TextFormat::None;
-					this->parseWithFormat(body, childFormat, *element);
+					this->parseWithFormat(
+					    body, childFormat, *group, element->elementType());
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
@@ -581,7 +593,8 @@ void Parser::parseHintElement(Element* const element) {
 
 	if (!body.empty()) {
 		try {
-			this->parseWithFormat(body, format, *element);
+			this->parseWithFormat(body, format, *group, element->elementType());
+			element->appendChild(std::move(group));
 		} catch (const Error& err) {
 			std::throw_with_nested(ParseError(line, column, message));
 		}
@@ -904,7 +917,7 @@ void Parser::parseTextElement(Element* const element) {
 		if (!body.empty()) {
 			TextFormat format = TextFormat::None;
 			try {
-				this->parseWithFormat(body, format, *element);
+				this->parseWithFormat(body, format, *element, element->elementType());
 			} catch (const Error& err) {
 				std::throw_with_nested(
 				    ParseError(line, column, "could not parse formatted string"));
@@ -957,18 +970,22 @@ void Parser::checkCRC() {
 	document_->validChecksum(crc_->valid());
 }
 
-void Parser::findParentAndAppend(std::unique_ptr<Element> element) {
-	assert(element);
-
-	auto min = element->line();
-	auto max = min + element->length();
+Node* Parser::findParent(ContainerNode& node) {
+	auto min = node.line();
+	auto max = min + node.length();
 	auto parent = parents_.find(min, max);
-	parents_.add(*element, min, max);
 
 	if (!parent) {
 		throw Error("could not find parent element between lines %d and %d", min, max);
 	}
-	parent->appendChild(std::move(element));
+
+	return parent;
+}
+
+void Parser::addNodeToParentIndex(ContainerNode& node) {
+	auto min = node.line();
+	auto max = min + node.length();
+	parents_.add(node, min, max);
 }
 
 int Parser::offsetLine(int line) {
@@ -1084,8 +1101,8 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 	tm.tm_sec = sec;
 }
 
-void Parser::parseWithFormat(
-    const std::string& text, TextFormat& format, Element& element) const {
+void Parser::parseWithFormat(const std::string& text, TextFormat& format,
+    ContainerNode& node, ElementType elementType) const {
 
 	auto length = text.length();
 	std::string segment;
@@ -1100,7 +1117,7 @@ void Parser::parseWithFormat(
 					segment += '\n';
 				}
 				segment += '\n';
-			} else if (element.elementType() == ElementType::Text
+			} else if (elementType == ElementType::Text
 			           || hasFormat(format, TextFormat::Overflow)
 			           || hasFormat(format, TextFormat::Monospace)) {
 				segment += text[i];
@@ -1134,7 +1151,7 @@ void Parser::parseWithFormat(
 
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1148,7 +1165,7 @@ void Parser::parseWithFormat(
 
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1169,7 +1186,7 @@ void Parser::parseWithFormat(
 
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1183,7 +1200,7 @@ void Parser::parseWithFormat(
 
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1199,7 +1216,7 @@ void Parser::parseWithFormat(
 					case '-':
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1209,7 +1226,7 @@ void Parser::parseWithFormat(
 					case '+':
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1219,7 +1236,7 @@ void Parser::parseWithFormat(
 					case '.':
 						// Append previous segment
 						if (!segment.empty()) {
-							element.appendChild(segment, format);
+							node.appendChild(segment, format);
 							segment.clear();
 						}
 
@@ -1245,7 +1262,7 @@ void Parser::parseWithFormat(
 	}
 
 	if (!segment.empty()) {
-		element.appendChild(segment, format);
+		node.appendChild(segment, format);
 	}
 }
 

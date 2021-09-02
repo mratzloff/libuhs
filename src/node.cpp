@@ -10,6 +10,8 @@ const std::string Node::typeString(NodeType type) {
 		return "document";
 	case NodeType::Element:
 		return "element";
+	case NodeType::Group:
+		return "group";
 	case NodeType::Text:
 		return "text";
 	}
@@ -25,7 +27,13 @@ bool Node::isElementOfType(const Node& node, ElementType type) {
 
 Node::Node(NodeType type) : nodeType_{type} {}
 
-Node::Node(const Node& other) : nodeType_{other.nodeType_}, parent_{other.parent_} {
+Node::Node(const Node& other)
+    : nodeType_{other.nodeType_}
+    , parent_{other.parent_}
+    , previousSibling_{other.previousSibling_}
+    , nextSibling_{other.nextSibling_}
+    , depth_{other.depth_} {
+
 	this->cloneChildren(other);
 }
 
@@ -39,6 +47,10 @@ void swap(Node& lhs, Node& rhs) noexcept {
 
 	swap(lhs.nodeType_, rhs.nodeType_);
 	swap(lhs.parent_, rhs.parent_);
+	swap(lhs.previousSibling_, rhs.previousSibling_);
+	swap(lhs.nextSibling_, rhs.nextSibling_);
+	swap(lhs.depth_, rhs.depth_);
+
 	lhs.cloneChildren(rhs);
 }
 
@@ -62,6 +74,10 @@ bool Node::isElement() const {
 	return nodeType_ == NodeType::Element;
 }
 
+bool Node::isGroup() const {
+	return nodeType_ == NodeType::Group;
+}
+
 bool Node::isText() const {
 	return nodeType_ == NodeType::Text;
 }
@@ -70,7 +86,7 @@ void Node::detachParent() {
 	parent_ = nullptr;
 }
 
-std::unique_ptr<Node> Node::removeChild(Node* node) {
+std::shared_ptr<Node> Node::removeChild(Node* node) {
 	assert(node);
 
 	node->parent_ = nullptr;
@@ -103,25 +119,25 @@ std::unique_ptr<Node> Node::removeChild(Node* node) {
 	return nullptr;
 }
 
-void Node::appendChild(std::unique_ptr<Node> node) {
+void Node::appendChild(std::shared_ptr<Node> node) {
 	assert(node);
 
 	auto n = node.get();
-	this->appendChild(std::move(node), true);
+	this->appendChild(node, true);
 	n->didAdd();
 }
 
 // Note that this node must be attached to a document tree in order to
 // correctly set the depth_ property when appending its own children.
-void Node::appendChild(std::unique_ptr<Node> node, bool) {
+void Node::appendChild(std::shared_ptr<Node> node, bool) {
 	assert(node);
 
 	auto n = node.get();
 	if (this->hasLastChild()) {
 		node->previousSibling_ = lastChild_;
-		lastChild_->nextSibling_ = std::move(node);
+		lastChild_->nextSibling_ = node;
 	} else {
-		firstChild_ = std::move(node);
+		firstChild_ = node;
 	}
 	lastChild_ = n;
 	n->parent_ = this;
@@ -134,19 +150,19 @@ void Node::appendChild(std::unique_ptr<Node> node, bool) {
 }
 
 // See note for appendChild() regarding depth.
-void Node::insertBefore(std::unique_ptr<Node> node, Node* ref) {
+void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 	assert(node);
 
 	if (!ref) {
-		this->appendChild(std::move(node));
+		this->appendChild(node);
 		return;
 	}
 
 	auto n = node.get();
 
 	if (ref == this->firstChild()) {
-		node->nextSibling_ = std::move(firstChild_);
-		firstChild_ = std::move(node);
+		node->nextSibling_ = firstChild_;
+		firstChild_ = node;
 	} else {
 		if (!ref->hasPreviousSibling()) {
 			// TODO: Warn about data inconsistency
@@ -154,8 +170,8 @@ void Node::insertBefore(std::unique_ptr<Node> node, Node* ref) {
 		}
 
 		auto previous = ref->previousSibling();
-		node->nextSibling_ = std::move(previous->nextSibling_);
-		previous->nextSibling_ = std::move(node);
+		node->nextSibling_ = previous->nextSibling_;
+		previous->nextSibling_ = node;
 	}
 	n->parent_ = this;
 
@@ -239,10 +255,6 @@ Node::const_iterator Node::cend() const {
 	return Node::end();
 }
 
-std::unique_ptr<Node> Node::cloneInternal(Passkey<Node>) const {
-	return std::make_unique<Node>(*this);
-}
-
 Document* Node::findDocument() const {
 	for (auto node = parent_; node; node = node->parent()) {
 		if (node->isDocument()) {
@@ -256,20 +268,19 @@ void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Break:
-			this->appendChild(
-			    static_cast<BreakNode&>(*node).cloneInternal(Passkey<Node>()), true);
+			this->appendChild(static_cast<BreakNode&>(*node).clone(), true);
 			break;
 		case NodeType::Document:
-			this->appendChild(
-			    static_cast<Document&>(*node).cloneInternal(Passkey<Node>()), true);
+			this->appendChild(static_cast<Document&>(*node).clone(), true);
 			break;
 		case NodeType::Element:
-			this->appendChild(
-			    static_cast<Element&>(*node).cloneInternal(Passkey<Node>()), true);
+			this->appendChild(static_cast<Element&>(*node).clone(), true);
+			break;
+		case NodeType::Group:
+			this->appendChild(static_cast<GroupNode&>(*node).clone(), true);
 			break;
 		case NodeType::Text:
-			this->appendChild(
-			    static_cast<TextNode&>(*node).cloneInternal(Passkey<Node>()), true);
+			this->appendChild(static_cast<TextNode&>(*node).clone(), true);
 			break;
 		}
 	}
@@ -293,6 +304,51 @@ void Node::didAdd() {
 		auto& element = static_cast<Element&>(*this);
 		document->elementAdded(element);
 	}
+}
+
+//----------------------------- ContainerNode ------------------------------//
+
+ContainerNode::ContainerNode(NodeType type) : Node(type) {}
+
+ContainerNode::ContainerNode(const ContainerNode& other)
+    : Node(other), line_{other.line_}, length_{other.length_} {}
+
+ContainerNode& ContainerNode::operator=(ContainerNode other) {
+	Node::operator=(other);
+	return *this;
+}
+
+void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept {
+	using std::swap;
+
+	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
+	swap(lhs.line_, rhs.line_);
+	swap(lhs.length_, rhs.length_);
+}
+
+void ContainerNode::appendChild(const std::string body) {
+	Node::appendChild(TextNode::create(body));
+}
+
+void ContainerNode::appendChild(const std::string body, TextFormat format) {
+	Node::appendChild(TextNode::create(body, format));
+}
+
+int ContainerNode::line() const {
+	return line_;
+}
+
+void ContainerNode::line(const int line) {
+	line_ = line;
+}
+
+// Used only for bookkeeping while parsing
+int ContainerNode::length() const {
+	return length_;
+}
+
+void ContainerNode::length(const int length) {
+	length_ = length;
 }
 
 //------------------------------ NodeIterator -------------------------------//
@@ -362,30 +418,60 @@ template class NodeIterator<const Node>;
 
 //------------------------------- BreakNode --------------------------------//
 
-std::unique_ptr<BreakNode> BreakNode::create() {
-	return std::make_unique<BreakNode>();
+std::shared_ptr<BreakNode> BreakNode::create() {
+	return std::make_shared<BreakNode>();
 }
 
 BreakNode::BreakNode() : Node(NodeType::Break) {}
 
-BreakNode::BreakNode(const BreakNode&) : Node(NodeType::Break) {}
+BreakNode::BreakNode(const BreakNode& other) : Node(other) {}
 
-BreakNode& BreakNode::operator=(BreakNode) {
+BreakNode& BreakNode::operator=(BreakNode other) {
+	std::swap(*this, other);
 	return *this;
 }
 
-std::unique_ptr<Node> BreakNode::cloneInternal(Passkey<Node>) const {
-	return std::make_unique<BreakNode>(*this);
+std::shared_ptr<BreakNode> BreakNode::clone() const {
+	return std::make_shared<BreakNode>(*this);
+}
+
+//------------------------------- GroupNode --------------------------------//
+
+std::shared_ptr<GroupNode> GroupNode::create(int line, int length) {
+	return std::make_shared<GroupNode>(line, length);
+}
+
+GroupNode::GroupNode(int line, int length) : ContainerNode(NodeType::Group) {
+	line_ = line;
+	length_ = length;
+}
+
+GroupNode::GroupNode(const GroupNode& other) : ContainerNode(other) {}
+
+GroupNode& GroupNode::operator=(GroupNode other) {
+	swap(*this, other);
+	return *this;
+}
+
+void swap(GroupNode& lhs, GroupNode& rhs) noexcept {
+	std::swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
+}
+
+// Copies and returns a detached element with its children.
+std::shared_ptr<GroupNode> GroupNode::clone() const {
+	auto groupNode = std::make_shared<GroupNode>(*this);
+	groupNode->detachParent();
+	return groupNode;
 }
 
 //-------------------------------- TextNode --------------------------------//
 
-std::unique_ptr<TextNode> TextNode::create(const std::string body) {
-	return std::make_unique<TextNode>(body);
+std::shared_ptr<TextNode> TextNode::create(const std::string body) {
+	return std::make_shared<TextNode>(body);
 }
 
-std::unique_ptr<TextNode> TextNode::create(const std::string body, TextFormat format) {
-	return std::make_unique<TextNode>(body, format);
+std::shared_ptr<TextNode> TextNode::create(const std::string body, TextFormat format) {
+	return std::make_shared<TextNode>(body, format);
 }
 
 TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
@@ -410,8 +496,8 @@ void swap(TextNode& lhs, TextNode& rhs) noexcept {
 }
 
 // Copies and returns a detached text node.
-std::unique_ptr<TextNode> TextNode::clone() const {
-	auto textNode = std::make_unique<TextNode>(*this);
+std::shared_ptr<TextNode> TextNode::clone() const {
+	auto textNode = std::make_shared<TextNode>(*this);
 	textNode->detachParent();
 	return textNode;
 }
@@ -438,10 +524,6 @@ TextFormat TextNode::format() const {
 
 void TextNode::format(TextFormat format) {
 	format_ = format;
-}
-
-std::unique_ptr<Node> TextNode::cloneInternal(Passkey<Node>) const {
-	return std::make_unique<TextNode>(*this);
 }
 
 } // namespace UHS

@@ -2,8 +2,8 @@
 
 namespace UHS {
 
-std::unique_ptr<Document> Document::create(VersionType version) {
-	return std::make_unique<Document>(version);
+std::shared_ptr<Document> Document::create(VersionType version) {
+	return std::make_shared<Document>(version);
 }
 
 Document::Document(VersionType version) : Node(NodeType::Document), version_{version} {}
@@ -16,6 +16,7 @@ Document::Document(const Document& other)
     , version_{other.version_}
     , validChecksum_{other.validChecksum_}
     , indexed_{false} {
+
 	this->reindex();
 }
 
@@ -33,8 +34,8 @@ void swap(Document& lhs, Document& rhs) noexcept {
 	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
 	swap(lhs.version_, rhs.version_);
 	swap(lhs.validChecksum_, rhs.validChecksum_);
-	lhs.indexed_ = false;
 
+	lhs.indexed_ = false;
 	lhs.reindex();
 }
 
@@ -50,8 +51,8 @@ Node* Document::find(const int id) {
 }
 
 // Copies and returns a detached document with its children.
-std::unique_ptr<Document> Document::clone() const {
-	auto document = std::make_unique<Document>(*this);
+std::shared_ptr<Document> Document::clone() const {
+	auto document = std::make_shared<Document>(*this);
 	document->detachParent();
 	return document;
 }
@@ -62,6 +63,10 @@ void Document::version(VersionType v) {
 
 VersionType Document::version() const {
 	return version_;
+}
+
+bool Document::isVersion(VersionType v) const {
+	return version_ == v;
 }
 
 const std::string Document::versionString() const {
@@ -106,10 +111,6 @@ void Document::reindex() {
 		}
 	}
 	indexed_ = true;
-}
-
-std::unique_ptr<Node> Document::cloneInternal(Passkey<Node>) const {
-	return std::make_unique<Document>(*this);
 }
 
 } // namespace UHS

@@ -4,8 +4,8 @@ namespace UHS {
 
 Element::TypeMap Element::typeMap_;
 
-std::unique_ptr<Element> Element::create(ElementType type, int id) {
-	return std::make_unique<Element>(type, id);
+std::shared_ptr<Element> Element::create(ElementType type, int id) {
+	return std::make_shared<Element>(type, id);
 }
 
 ElementType Element::elementType(const std::string& typeString) {
@@ -17,19 +17,17 @@ const std::string Element::typeString(ElementType type) {
 }
 
 Element::Element(ElementType type, int id)
-    : Node(NodeType::Element), elementType_{type}, id_{id} {}
+    : ContainerNode(NodeType::Element), elementType_{type}, id_{id} {}
 
 Element::Element(const Element& other)
-    : Node(other)
+    : ContainerNode(other)
     , Traits::Attributes(other)
     , Traits::Body(other)
     , Traits::Title(other)
     , Traits::Inlined(other)
     , Traits::Visibility(other)
     , elementType_{other.elementType_}
-    , id_{other.id_}
-    , line_{other.line_}
-    , length_{other.length_} {}
+    , id_{other.id_} {}
 
 Element& Element::operator=(Element other) {
 	swap(*this, other);
@@ -39,7 +37,7 @@ Element& Element::operator=(Element other) {
 void swap(Element& lhs, Element& rhs) noexcept {
 	using std::swap;
 
-	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
+	swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
 	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
 	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
 	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
@@ -47,13 +45,11 @@ void swap(Element& lhs, Element& rhs) noexcept {
 	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
 	swap(lhs.elementType_, rhs.elementType_);
 	swap(lhs.id_, rhs.id_);
-	swap(lhs.line_, rhs.line_);
-	swap(lhs.length_, rhs.length_);
 }
 
 // Copies and returns a detached element with its children.
-std::unique_ptr<Element> Element::clone() const {
-	auto element = std::make_unique<Element>(*this);
+std::shared_ptr<Element> Element::clone() const {
+	auto element = std::make_shared<Element>(*this);
 	element->detachParent();
 	return element;
 }
@@ -66,33 +62,8 @@ const std::string Element::elementTypeString() const {
 	return Element::typeString(elementType_);
 }
 
-void Element::appendChild(const std::string body) {
-	Node::appendChild(TextNode::create(body));
-}
-
-void Element::appendChild(const std::string body, TextFormat format) {
-	Node::appendChild(TextNode::create(body, format));
-}
-
 int Element::id() const {
 	return id_;
-}
-
-int Element::line() const {
-	return line_;
-}
-
-void Element::line(const int line) {
-	line_ = line;
-}
-
-// Used only for bookkeeping while parsing
-int Element::length() const {
-	return length_;
-}
-
-void Element::length(const int length) {
-	length_ = length;
 }
 
 bool Element::isMedia() const {
@@ -114,10 +85,6 @@ const std::string Element::mediaExt() const {
 	default:
 		return "";
 	}
-}
-
-std::unique_ptr<Node> Element::cloneInternal(Passkey<Node>) const {
-	return std::make_unique<Element>(*this);
 }
 
 Element::TypeMap::TypeMap() {

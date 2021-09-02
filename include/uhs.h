@@ -71,6 +71,7 @@ enum class NodeType {
 	Break,
 	Document,
 	Element,
+	Group,
 	Text,
 };
 
@@ -157,16 +158,6 @@ inline constexpr TextFormat withoutFormat(
 inline constexpr bool hasFormat(const TextFormat haystack, const TextFormat needle) {
 	return (haystack & needle) == needle;
 }
-
-template<typename T>
-class Passkey {
-private:
-	friend T;
-
-	Passkey() = default;
-	Passkey(const Passkey&) {}
-	Passkey& operator=(const Passkey&) = delete;
-};
 
 class Error : public std::runtime_error {
 public:
@@ -297,17 +288,6 @@ private:
 	std::string body_;
 };
 
-class Title {
-public:
-	Title() = default;
-	explicit Title(const std::string title);
-	const std::string& title() const;
-	void title(const std::string title);
-
-private:
-	std::string title_;
-};
-
 class Inlined { // `inline` is a C++ keyword
 public:
 	Inlined() = default;
@@ -317,6 +297,17 @@ public:
 
 private:
 	bool inlined_ = false;
+};
+
+class Title {
+public:
+	Title() = default;
+	explicit Title(const std::string title);
+	const std::string& title() const;
+	void title(const std::string title);
+
+private:
+	std::string title_;
 };
 
 class Visibility {
@@ -518,12 +509,13 @@ public:
 	bool isBreak() const;
 	bool isDocument() const;
 	bool isElement() const;
+	bool isGroup() const;
 	bool isText() const;
 	void detachParent();
-	std::unique_ptr<Node> removeChild(Node* node);
-	void appendChild(std::unique_ptr<Node> node);
-	void appendChild(std::unique_ptr<Node> node, bool silenceEvent);
-	void insertBefore(std::unique_ptr<Node> node, Node* ref);
+	std::shared_ptr<Node> removeChild(Node* node);
+	void appendChild(std::shared_ptr<Node> node);
+	void appendChild(std::shared_ptr<Node> node, bool silenceEvent);
+	void insertBefore(std::shared_ptr<Node> node, Node* ref);
 	bool hasParent() const;
 	Node* parent() const;
 	bool hasPreviousSibling() const;
@@ -536,7 +528,6 @@ public:
 	Node* lastChild() const;
 	int numChildren() const;
 	int depth() const;
-	virtual std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
 	Document* findDocument() const;
 
 	// Iterators
@@ -556,11 +547,32 @@ private:
 	NodeType nodeType_;
 	Node* parent_ = nullptr;
 	Node* previousSibling_ = nullptr;
-	std::unique_ptr<Node> nextSibling_ = nullptr;
-	std::unique_ptr<Node> firstChild_ = nullptr;
+	std::shared_ptr<Node> nextSibling_ = nullptr;
+	std::shared_ptr<Node> firstChild_ = nullptr;
 	Node* lastChild_ = nullptr;
 	int numChildren_ = 0;
 	int depth_ = 0;
+};
+
+class ContainerNode : public Node {
+public:
+	using Node::appendChild;
+
+	explicit ContainerNode(NodeType type);
+	ContainerNode(const ContainerNode& other);
+	ContainerNode& operator=(ContainerNode other);
+	virtual ~ContainerNode() = default;
+	friend void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept;
+	void appendChild(const std::string body);
+	void appendChild(const std::string body, TextFormat format);
+	int line() const;
+	void line(int line);
+	int length() const;
+	void length(int length); // Used by UHSWriter
+
+protected:
+	int line_ = 0;
+	int length_ = 0;
 };
 
 template<typename T>
@@ -589,33 +601,42 @@ private:
 
 class BreakNode : public Node {
 public:
-	static std::unique_ptr<BreakNode> create();
+	static std::shared_ptr<BreakNode> create();
 	BreakNode();
 	BreakNode(const BreakNode&);
 	BreakNode& operator=(BreakNode);
-	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const;
+	std::shared_ptr<BreakNode> clone() const;
+};
+
+class GroupNode : public ContainerNode {
+public:
+	static std::shared_ptr<GroupNode> create(int line, int length);
+	GroupNode(int line, int length);
+	GroupNode(const GroupNode&);
+	GroupNode& operator=(GroupNode);
+	friend void swap(GroupNode& lhs, GroupNode& rhs) noexcept;
+	std::shared_ptr<GroupNode> clone() const;
 };
 
 class TextNode
     : public Node
     , public Traits::Body {
 public:
-	static std::unique_ptr<TextNode> create(const std::string body);
-	static std::unique_ptr<TextNode> create(const std::string body, TextFormat format);
+	static std::shared_ptr<TextNode> create(const std::string body);
+	static std::shared_ptr<TextNode> create(const std::string body, TextFormat format);
 
 	explicit TextNode(const std::string body);
 	TextNode(const std::string body, TextFormat format);
 	TextNode(const TextNode& other);
 	TextNode& operator=(TextNode other);
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
-	std::unique_ptr<TextNode> clone() const;
+	std::shared_ptr<TextNode> clone() const;
 	const std::string& string() const;
 	void addFormat(TextFormat format);
 	void removeFormat(TextFormat format);
 	bool hasFormat(TextFormat format) const;
 	TextFormat format() const;
 	void format(TextFormat format);
-	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	TextFormat format_ = TextFormat::None;
@@ -624,16 +645,14 @@ private:
 class Document;
 
 class Element
-    : public Node
+    : public ContainerNode
     , public Traits::Attributes
     , public Traits::Body
     , public Traits::Title
     , public Traits::Inlined
     , public Traits::Visibility {
 public:
-	using Node::appendChild;
-
-	static std::unique_ptr<Element> create(ElementType type, const int id = 0);
+	static std::shared_ptr<Element> create(ElementType type, const int id = 0);
 	static ElementType elementType(const std::string& typeString);
 	static const std::string typeString(ElementType type);
 
@@ -641,19 +660,12 @@ public:
 	Element(const Element& other);
 	Element& operator=(Element other);
 	friend void swap(Element& lhs, Element& rhs) noexcept;
-	std::unique_ptr<Element> clone() const;
+	std::shared_ptr<Element> clone() const;
 	ElementType elementType() const;
 	const std::string elementTypeString() const;
-	void appendChild(const std::string body);
-	void appendChild(const std::string body, TextFormat format);
 	int id() const;
-	int line() const;
-	void line(int line);
-	int length() const;
-	void length(int length); // Used by UHSWriter
 	bool isMedia() const;
 	const std::string mediaExt() const;
-	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	class TypeMap {
@@ -671,8 +683,6 @@ private:
 
 	ElementType elementType_;
 	int id_ = 0;
-	int line_ = 0;
-	int length_ = 0;
 };
 
 class Document
@@ -681,23 +691,23 @@ class Document
     , public Traits::Title
     , public Traits::Visibility {
 public:
-	static std::unique_ptr<Document> create(VersionType version);
+	static std::shared_ptr<Document> create(VersionType version);
 
 	Document(VersionType version);
 	Document(const Document& other);
 	Document& operator=(Document other);
 	friend void swap(Document& lhs, Document& rhs) noexcept;
 	Node* find(const int id);
-	std::unique_ptr<Document> clone() const;
+	std::shared_ptr<Document> clone() const;
 	void version(VersionType v);
 	VersionType version() const;
+	bool isVersion(VersionType v) const;
 	const std::string versionString() const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
 	void elementRemoved(Element& element);
 	void elementAdded(Element& element);
 	void reindex();
-	std::unique_ptr<Node> cloneInternal(Passkey<Node>) const override;
 
 private:
 	VersionType version_;
@@ -730,7 +740,7 @@ private:
 class Parser {
 public:
 	explicit Parser(const Options options = {});
-	std::unique_ptr<Document> parse(std::ifstream& in);
+	std::shared_ptr<Document> parse(std::ifstream& in);
 	void reset();
 
 private:
@@ -787,7 +797,7 @@ private:
 	std::vector<DataHandler> dataHandlers_;
 	std::vector<LinkData> deferredLinks_;
 	std::vector<VisibilityData> deferredVisibilities_;
-	std::unique_ptr<Document> document_ = nullptr;
+	std::shared_ptr<Document> document_ = nullptr;
 	bool done_ = false;
 	bool isTitleSet_ = false;
 	std::string key_;
@@ -824,13 +834,14 @@ private:
 	void addDataCallback(
 	    int line, int column, std::size_t offset, std::size_t length, DataCallback func);
 	void checkCRC();
-	void findParentAndAppend(std::unique_ptr<Element> element);
+	Node* findParent(ContainerNode& node);
+	void addNodeToParentIndex(ContainerNode& node);
 	int offsetLine(int line);
 	void parseData(std::unique_ptr<const Token> token);
 	void parseDate(const std::string& date, std::tm& tm) const;
 	void parseTime(const std::string& time, std::tm& tm) const;
-	void parseWithFormat(
-	    const std::string& text, TextFormat& format, Element& element) const;
+	void parseWithFormat(const std::string& text, TextFormat& format, ContainerNode& node,
+	    ElementType elementType) const;
 	void processLinks();
 	void processVisibility();
 };
@@ -855,6 +866,8 @@ public:
 private:
 	void draw(const Document& document);
 	void draw(const Element& element);
+	void draw(const GroupNode& groupNode);
+	void draw(const TextNode& textNode);
 	void drawScaffold(const Node& node);
 };
 
@@ -924,6 +937,9 @@ private:
 	int serializeBlankElement(Element& element, std::string& out);
 	int serializeCommentElement(Element& element, std::string& out);
 	int serializeDataElement(Element& element, std::string& out);
+	int serializeHintChild(Node& node, Element& parentElement,
+	    std::map<const int, TextFormat>& formats, std::string& textBuffer,
+	    std::string& out);
 	int serializeHintElement(Element& element, std::string& out);
 	int serializeHyperpngElement(Element& element, std::string& out);
 	int serializeIncentiveElement(Element& element, std::string& out);
@@ -950,7 +966,7 @@ private:
 	Codec codec_;
 	CRC crc_;
 	int currentLine_ = 1;
-	std::unique_ptr<Document> document_ = nullptr;
+	std::shared_ptr<Document> document_ = nullptr;
 	std::string key_;
 	DataQueue data_;
 	std::vector<Node*> deferredLinks_;
