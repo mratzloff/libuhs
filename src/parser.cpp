@@ -312,9 +312,7 @@ done:
 }
 
 // Elements are automatically appended to their parents
-Element* Parser::parseElement(std::unique_ptr<const Token> token) {
-	Element* e;
-
+std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token) {
 	// Length
 	int length;
 	try {
@@ -337,12 +335,11 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 	auto element = Element::create(elementType, line);
 	element->line(line);
 	element->length(length);
-	e = element.get();
 
 	try {
 		auto parent = this->findParent(*element);
 		this->addNodeToParentIndex(*element);
-		parent->appendChild(std::move(element));
+		parent->appendChild(element);
 	} catch (const Error& err) {
 		std::throw_with_nested(ParseError(token->line(),
 		    token->column(),
@@ -352,7 +349,7 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 
 	// Title
 	token = this->expect(TokenType::String);
-	e->title(token->value());
+	element->title(token->value());
 
 	switch (elementType) {
 	case ElementType::Unknown: /* No further processing required */
@@ -360,54 +357,54 @@ Element* Parser::parseElement(std::unique_ptr<const Token> token) {
 	case ElementType::Blank: /* No further processing required */
 		break;
 	case ElementType::Comment:
-		this->parseCommentElement(e);
+		this->parseCommentElement(*element);
 		break;
 	case ElementType::Credit:
-		this->parseCommentElement(e);
+		this->parseCommentElement(*element);
 		break;
 	case ElementType::Gifa:
-		this->parseDataElement(e);
+		this->parseDataElement(*element);
 		break;
 	case ElementType::Hint:
-		this->parseHintElement(e);
+		this->parseHintElement(*element);
 		break;
 	case ElementType::Hyperpng:
-		this->parseHyperpngElement(e);
+		this->parseHyperpngElement(*element);
 		break;
 	case ElementType::Incentive:
-		this->parseIncentiveElement(e);
+		this->parseIncentiveElement(*element);
 		break;
 	case ElementType::Info:
-		this->parseInfoElement(e);
+		this->parseInfoElement(*element);
 		break;
 	case ElementType::Link:
-		this->parseLinkElement(e);
+		this->parseLinkElement(*element);
 		break;
 	case ElementType::Nesthint:
-		this->parseHintElement(e);
+		this->parseHintElement(*element);
 		break;
 	case ElementType::Overlay:
-		this->parseOverlayElement(e);
+		this->parseOverlayElement(*element);
 		break;
 	case ElementType::Sound:
-		this->parseDataElement(e);
+		this->parseDataElement(*element);
 		break;
 	case ElementType::Subject:
-		this->parseSubjectElement(e);
+		this->parseSubjectElement(*element);
 		break;
 	case ElementType::Text:
-		this->parseTextElement(e);
+		this->parseTextElement(*element);
 		break;
 	case ElementType::Version:
-		this->parseVersionElement(e);
+		this->parseVersionElement(*element);
 		break;
 	}
 
-	return e;
+	return element;
 }
 
-void Parser::parseCommentElement(Element* const element) {
-	auto length = element->length();
+void Parser::parseCommentElement(Element& element) {
+	auto length = element.length();
 	std::string body;
 	auto continuation = false;
 	auto paragraph = false;
@@ -436,10 +433,10 @@ void Parser::parseCommentElement(Element* const element) {
 		}
 	}
 
-	element->body(body);
+	element.body(body);
 }
 
-void Parser::parseDataElement(Element* const element) {
+void Parser::parseDataElement(Element& element) {
 	std::size_t offset;
 	auto line = 0;
 	auto column = 0;
@@ -485,17 +482,18 @@ expectDataLength:
 	std::size_t length = intLength;
 
 	// Data
-	this->addDataCallback(
-	    line, column, offset, length, [=](std::string data) { element->body(data); });
+	this->addDataCallback(line, column, offset, length, [=, &element](std::string data) {
+		element.body(data);
+	});
 }
 
-void Parser::parseHintElement(Element* const element) {
+void Parser::parseHintElement(Element& element) {
 	std::string body;
 	int column = 0;
 	std::shared_ptr<GroupNode> group;
 	auto inlined = false;
 	auto format = TextFormat::None;
-	auto length = element->length();
+	auto length = element.length();
 	int line = 0;
 	auto message = "could not parse formatted string";
 
@@ -513,7 +511,7 @@ void Parser::parseHintElement(Element* const element) {
 		case TokenType::String: {
 			std::string text;
 
-			if (element->elementType() == ElementType::Nesthint) {
+			if (element.elementType() == ElementType::Nesthint) {
 				text = codec_.decode96a(token->value(), key_, false);
 				if (text.ends_with(Token::InlineBegin)) {
 					inlined = true;
@@ -539,7 +537,7 @@ void Parser::parseHintElement(Element* const element) {
 					Strings::chomp(body, '\n');
 				}
 				try {
-					this->parseWithFormat(body, format, *group, element->elementType());
+					this->parseWithFormat(body, format, *group, element.elementType());
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
@@ -547,19 +545,19 @@ void Parser::parseHintElement(Element* const element) {
 			}
 
 			if (group->hasFirstChild()) {
-				element->appendChild(std::move(group));
+				element.appendChild(std::move(group));
 				group = GroupNode::create(this->offsetLine(line), length - i);
 				this->addNodeToParentIndex(*group);
 			}
 
-			element->appendChild(BreakNode::create());
+			element.appendChild(BreakNode::create());
 			break;
 		}
 		case TokenType::NestedParagraphSep:
 			body += " \n";
 			break; // Handled by parseWithFormat()
 		case TokenType::NestedElementSep: {
-			if (i == length || element->elementType() != ElementType::Nesthint) {
+			if (i == length || element.elementType() != ElementType::Nesthint) {
 				throw ParseError::badValue(
 				    token->line(), token->column(), ParseError::String, token->value());
 			}
@@ -571,7 +569,7 @@ void Parser::parseHintElement(Element* const element) {
 				try {
 					auto childFormat = TextFormat::None;
 					this->parseWithFormat(
-					    body, childFormat, *group, element->elementType());
+					    body, childFormat, *group, element.elementType());
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
@@ -598,19 +596,19 @@ void Parser::parseHintElement(Element* const element) {
 
 	if (!body.empty()) {
 		try {
-			this->parseWithFormat(body, format, *group, element->elementType());
-			element->appendChild(std::move(group));
+			this->parseWithFormat(body, format, *group, element.elementType());
+			element.appendChild(std::move(group));
 		} catch (const Error& err) {
 			std::throw_with_nested(ParseError(line, column, message));
 		}
 	}
 }
 
-void Parser::parseHyperpngElement(Element* const element) {
+void Parser::parseHyperpngElement(Element& element) {
 	this->parseDataElement(element);
 
 	// Parse child elements
-	auto length = element->length();
+	auto length = element.length();
 	auto childLength = 0;
 
 	for (auto i = 4; i < length; i += 1 + childLength) {
@@ -670,13 +668,13 @@ void Parser::parseHyperpngElement(Element* const element) {
 // A bad instruction ("12") is found at the beginning or end of the incentive
 // list for four files, so we skip bad instructions of that form. Fourteen
 // other files have lines pointing to nowhere, so we skip those, too.
-void Parser::parseIncentiveElement(Element* const element) {
+void Parser::parseIncentiveElement(Element& element) {
 	std::string body;
 
-	element->visibility(VisibilityType::None);
+	element.visibility(VisibilityType::None);
 
 	// Read and decode visibility instructions
-	auto length = element->length();
+	auto length = element.length();
 	auto continuation = false;
 
 	for (auto i = 2; i < length; ++i) {
@@ -691,7 +689,7 @@ void Parser::parseIncentiveElement(Element* const element) {
 		body += text;
 		continuation = true;
 	}
-	element->body(body);
+	element.body(body);
 
 	if (body.empty()) {
 		return; // No instructions to process
@@ -734,17 +732,17 @@ void Parser::parseIncentiveElement(Element* const element) {
 	}
 }
 
-void Parser::parseInfoElement(Element* const element) {
+void Parser::parseInfoElement(Element& element) {
 	std::string serialized;
 	std::string key;
 	std::string value;
 	std::string date;
 	std::tm tm;
 
-	element->visibility(VisibilityType::None);
+	element.visibility(VisibilityType::None);
 
 	// Key-value pairs followed by a notice
-	auto length = element->length();
+	auto length = element.length();
 
 	for (auto i = 2; i < length; ++i) {
 		auto token = this->expect(TokenType::String);
@@ -802,14 +800,14 @@ void Parser::parseInfoElement(Element* const element) {
 	}
 }
 
-void Parser::parseLinkElement(Element* const element) {
+void Parser::parseLinkElement(Element& element) {
 	// Ref line
 	auto token = this->expect(TokenType::Line);
-	element->body(token->value());
-	deferredLinks_.emplace_back(*element, token->line(), token->column());
+	element.body(token->value());
+	deferredLinks_.emplace_back(element, token->line(), token->column());
 }
 
-void Parser::parseOverlayElement(Element* const element) {
+void Parser::parseOverlayElement(Element& element) {
 	this->parseDataElement(element);
 
 	// Image top-left X coordinate
@@ -820,7 +818,7 @@ void Parser::parseOverlayElement(Element* const element) {
 	} catch (const Error& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, x);
 	}
-	element->attr("image-x", x);
+	element.attr("image-x", x);
 
 	// Image bottom-right Y coordinate
 	token = this->expect(TokenType::CoordY);
@@ -830,19 +828,19 @@ void Parser::parseOverlayElement(Element* const element) {
 	} catch (const Error& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, y);
 	}
-	element->attr("image-y", y);
+	element.attr("image-y", y);
 }
 
-void Parser::parseSubjectElement(Element* const element) {
+void Parser::parseSubjectElement(Element& element) {
 	std::unique_ptr<const Token> token;
 
 	if (!isTitleSet_) {
-		document_->title(element->title());
+		document_->title(element.title());
 		key_ = codec_.createKey(document_->title());
 		isTitleSet_ = true;
 	}
 
-	const auto length = element->length();
+	const auto length = element.length();
 	auto childLength = 0;
 
 	for (auto i = 3; i <= length; i += childLength) {
@@ -855,7 +853,7 @@ void Parser::parseSubjectElement(Element* const element) {
 	}
 }
 
-void Parser::parseTextElement(Element* const element) {
+void Parser::parseTextElement(Element& element) {
 	auto token = this->expect(TokenType::TextFormat);
 	auto line = token->line();
 	auto column = token->column();
@@ -879,7 +877,7 @@ void Parser::parseTextElement(Element* const element) {
 
 	if (formatType == TextElementType::Monospace
 	    || formatType == TextElementType::MonospaceAlt) {
-		element->attr("typeface", "monospace");
+		element.attr("typeface", "monospace");
 	}
 
 	// Offset
@@ -909,7 +907,7 @@ void Parser::parseTextElement(Element* const element) {
 	std::size_t length = intLength;
 
 	// Data
-	this->addDataCallback(line, column, offset, length, [=](std::string data) {
+	this->addDataCallback(line, column, offset, length, [=, &element](std::string data) {
 		auto lines = Strings::split(data, EOL);
 		for (auto& text : lines) {
 			text = codec_.decode96a(text, key_, true);
@@ -922,7 +920,7 @@ void Parser::parseTextElement(Element* const element) {
 		if (!body.empty()) {
 			TextFormat format = TextFormat::None;
 			try {
-				this->parseWithFormat(body, format, *element, element->elementType());
+				this->parseWithFormat(body, format, element, element.elementType());
 			} catch (const Error& err) {
 				std::throw_with_nested(
 				    ParseError(line, column, "could not parse formatted string"));
@@ -931,11 +929,11 @@ void Parser::parseTextElement(Element* const element) {
 	});
 }
 
-void Parser::parseVersionElement(Element* const element) {
-	element->visibility(VisibilityType::None);
+void Parser::parseVersionElement(Element& element) {
+	element.visibility(VisibilityType::None);
 	this->parseCommentElement(element);
 
-	auto version = element->title();
+	auto version = element.title();
 	if (version == "91a") {
 		document_->version(VersionType::Version91a);
 	} else if (version == "95a") {
@@ -1107,7 +1105,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 }
 
 void Parser::parseWithFormat(const std::string& text, TextFormat& format,
-    ContainerNode& node, ElementType elementType) const {
+    ContainerNode& node, ElementType elementType) {
 
 	auto length = text.length();
 	std::string segment;
@@ -1274,8 +1272,9 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 void Parser::processLinks() {
 	for (const auto& [node, line, column] : deferredLinks_) {
 		if (!node.isElement()) {
-			// TODO: Warn using line and column
-			throw ParseError(line, column, "invalid target type");
+			throw ParseError(line,
+			    column,
+			    tfm::format("invalid target type: %s", node.nodeTypeString()));
 		}
 
 		auto link = static_cast<Element&>(node);

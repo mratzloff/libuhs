@@ -815,18 +815,18 @@ private:
 
 	// 96a
 	void parse96a();
-	Element* parseElement(std::unique_ptr<const Token> token);
-	void parseCommentElement(Element* const element);
-	void parseDataElement(Element* const element);
-	void parseHintElement(Element* const element);
-	void parseHyperpngElement(Element* const element);
-	void parseIncentiveElement(Element* const element);
-	void parseInfoElement(Element* const element);
-	void parseLinkElement(Element* const element);
-	void parseOverlayElement(Element* const element);
-	void parseSubjectElement(Element* const element);
-	void parseTextElement(Element* const element);
-	void parseVersionElement(Element* const element);
+	std::shared_ptr<Element> parseElement(std::unique_ptr<const Token> token);
+	void parseCommentElement(Element& element);
+	void parseDataElement(Element& element);
+	void parseHintElement(Element& element);
+	void parseHyperpngElement(Element& element);
+	void parseIncentiveElement(Element& element);
+	void parseInfoElement(Element& element);
+	void parseLinkElement(Element& element);
+	void parseOverlayElement(Element& element);
+	void parseSubjectElement(Element& element);
+	void parseTextElement(Element& element);
+	void parseVersionElement(Element& element);
 
 	// Parse helpers
 	std::unique_ptr<const Token> next();
@@ -841,7 +841,7 @@ private:
 	void parseDate(const std::string& date, std::tm& tm) const;
 	void parseTime(const std::string& time, std::tm& tm) const;
 	void parseWithFormat(const std::string& text, TextFormat& format, ContainerNode& node,
-	    ElementType elementType) const;
+	    ElementType elementType);
 	void processLinks();
 	void processVisibility();
 };
