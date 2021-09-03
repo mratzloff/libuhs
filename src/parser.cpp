@@ -920,8 +920,11 @@ void Parser::parseTextElement(Element& element) {
 		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
 		if (!body.empty()) {
 			TextFormat format = TextFormat::None;
+			auto group = GroupNode::create(element.line(), element.length());
+			element.appendChild(group);
+
 			try {
-				this->parseWithFormat(body, format, element, element.elementType());
+				this->parseWithFormat(body, format, *group, element.elementType());
 			} catch (const Error& err) {
 				std::throw_with_nested(
 				    ParseError(line, column, "could not parse formatted string"));

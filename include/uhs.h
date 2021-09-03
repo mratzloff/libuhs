@@ -253,10 +253,12 @@ namespace Regex {
 
 const std::regex Descriptor{"([0-9]+) ([a-z]{4,})"};
 const std::regex DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
+const std::regex EmailAddress{".+@.+\\..+"};
 const std::regex HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 const std::regex OverlayAddress{
     "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+const std::regex URL{"https?://.+\\..+"};
 
 } // namespace Regex
 

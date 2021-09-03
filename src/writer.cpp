@@ -105,7 +105,7 @@ void HTMLWriter::write(const Document& document) {
 	pugi::xml_document xml;
 	this->serialize(document, xml);
 	out_ << "<!DOCTYPE html>" << std::endl;
-	xml.save(out_, "  ", pugi::format_indent | pugi::format_no_declaration);
+	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) const {
@@ -299,19 +299,27 @@ void HTMLWriter::serializeTextNode(
 		xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
 	}
 
-	std::vector<std::string> classs;
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		xmlNode.set_name("a");
+		std::smatch matches;
+		if (std::regex_match(body, matches, Regex::EmailAddress)) {
+			body = "mailto:" + body;
+		} else if (!std::regex_match(body, matches, Regex::URL)) {
+			body = "http://" + body;
+		}
+		xmlNode.append_attribute("href") = body.c_str();
+	}
+
+	std::vector<std::string> classes;
 
 	if (textNode.hasFormat(TextFormat::Overflow)) {
-		classs.push_back("overflow");
+		classes.push_back("overflow");
 	}
 	if (textNode.hasFormat(TextFormat::Monospace)) {
-		classs.push_back("monospace");
+		classes.push_back("monospace");
 	}
-	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		classs.push_back("hyperlink");
-	}
-	if (!classs.empty()) {
-		xmlNode.append_attribute("class") = Strings::join(classs, " ").c_str();
+	if (!classes.empty()) {
+		xmlNode.append_attribute("class") = Strings::join(classes, " ").c_str();
 	}
 }
 
