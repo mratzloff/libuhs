@@ -244,12 +244,30 @@ void HTMLWriter::serializeElement(
 	std::ofstream fout;
 
 	if (const auto id = element.id(); id > 0) {
-		xmlNode.append_attribute("data-id") = id;
+		xmlNode.append_attribute("id") = id;
 	}
 
 	if (element.elementType() == ElementType::Link) {
+		auto isLink = false;
+		auto isText = false;
+
+		if (element.hasPreviousSibling()) {
+			auto previousNode = element.previousSibling();
+			if (previousNode->isText()) {
+				isText = true;
+			} else {
+				auto previousElement = static_cast<Element*>(previousNode);
+				isLink = (previousElement->elementType() == ElementType::Link);
+			}
+		}
+
+		if (!element.inlined() && (isText || isLink)) {
+			xmlNode.parent().insert_child_before("br", xmlNode);
+		}
+
 		xmlNode.set_name("a");
 		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
+		xmlNode.append_attribute("inline") = element.inlined();
 		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 	} else {
 		auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
@@ -288,6 +306,18 @@ void HTMLWriter::serializeElement(
 
 void HTMLWriter::serializeTextNode(
     const TextNode& textNode, pugi::xml_node xmlNode) const {
+
+	if (textNode.hasPreviousSibling()) {
+		auto previousNode = textNode.previousSibling();
+		if (previousNode->isElement()) {
+			auto previousElement = static_cast<Element&>(*previousNode);
+			auto isLink = (previousElement.elementType() == ElementType::Link);
+
+			if (!previousElement.inlined() && isLink) {
+				xmlNode.parent().insert_child_before("br", xmlNode);
+			}
+		}
+	}
 
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
