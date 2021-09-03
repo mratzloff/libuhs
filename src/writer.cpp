@@ -126,8 +126,10 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) co
 	auto style = head.append_child("style");
 	style.append_child(pugi::node_pcdata)
 	    .set_value(
-	        ".visibility-none { display: none; }\n"
-	        ".monospace { font-family: monospace; }");
+	        ".overflow { white-space: nowrap; }"
+	        ".overflow.monospace { white-space: pre; }"
+	        ".monospace { font-family: monospace; white-space: pre; }"
+	        ".visibility-none { display: none; }\n");
 
 	auto body = html.append_child("body");
 	auto root = body.append_child("main");
