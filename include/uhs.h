@@ -764,11 +764,11 @@ private:
 	};
 
 	struct LinkData {
-		Node& link;
+		Element& link;
 		int line = 0;
 		int column = 0;
 
-		LinkData(Node& link, const int line, const int column);
+		LinkData(Element& link, const int line, const int column);
 	};
 
 	struct VisibilityData {

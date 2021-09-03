@@ -1430,7 +1430,7 @@ void UHSWriter::convertTo91a() {
 		}
 		container->appendChild(document_->removeChild(node));
 	}
-	document_->appendChild(std::move(container));
+	document_->appendChild(container);
 
 	// Prepend minimal 88a header
 	auto header = Document::create(VersionType::Version88a);
@@ -1440,9 +1440,9 @@ void UHSWriter::convertTo91a() {
 	auto hint = Element::create(ElementType::Hint);
 	hint->title(codec_.decode88a("-"));
 	hint->appendChild(codec_.decode88a("-"));
-	subject->appendChild(std::move(hint));
-	header->appendChild(std::move(subject));
-	document_->insertBefore(std::move(header), document_->firstChild());
+	subject->appendChild(hint);
+	header->appendChild(subject);
+	document_->insertBefore(header, document_->firstChild());
 
 	// Set version to 91a
 	document_->version(VersionType::Version91a);
@@ -1451,7 +1451,7 @@ void UHSWriter::convertTo91a() {
 	if (auto notice = document_->attr("notice")) {
 		version->body(*notice);
 	}
-	document_->appendChild(std::move(version));
+	document_->appendChild(version);
 }
 
 UHSWriter::Serializer::Serializer() {

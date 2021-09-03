@@ -37,7 +37,7 @@ std::shared_ptr<Document> Parser::parse(std::ifstream& in) {
 			// (updated once the version element is encountered)
 			auto document = Document::create(VersionType::Version96a);
 			document_.swap(document);
-			document_->appendChild(std::move(document));
+			document_->appendChild(document);
 
 			this->parse96a();
 		}
@@ -179,7 +179,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		auto element = Element::create(elementType, line);
 		element->line(line);
 		auto e = element.get();
-		parent->appendChild(std::move(element));
+		parent->appendChild(element);
 
 		std::string title{codec_.decode88a(encodedTitle)};
 		if (parent->nodeType() != NodeType::Document) {
@@ -504,6 +504,7 @@ void Parser::parseHintElement(Element& element) {
 
 		if (!group) {
 			group = GroupNode::create(this->offsetLine(line), length - i);
+			element.appendChild(group);
 			this->addNodeToParentIndex(*group);
 		}
 
@@ -544,13 +545,14 @@ void Parser::parseHintElement(Element& element) {
 				body.clear();
 			}
 
+			element.appendChild(BreakNode::create());
+
 			if (group->hasFirstChild()) {
-				element.appendChild(std::move(group));
 				group = GroupNode::create(this->offsetLine(line), length - i);
+				element.appendChild(group);
 				this->addNodeToParentIndex(*group);
 			}
 
-			element.appendChild(BreakNode::create());
 			break;
 		}
 		case TokenType::NestedParagraphSep:
@@ -597,7 +599,6 @@ void Parser::parseHintElement(Element& element) {
 	if (!body.empty()) {
 		try {
 			this->parseWithFormat(body, format, *group, element.elementType());
-			element.appendChild(std::move(group));
 		} catch (const Error& err) {
 			std::throw_with_nested(ParseError(line, column, message));
 		}
@@ -1270,14 +1271,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 }
 
 void Parser::processLinks() {
-	for (const auto& [node, line, column] : deferredLinks_) {
-		if (!node.isElement()) {
-			throw ParseError(line,
-			    column,
-			    tfm::format("invalid target type: %s", node.nodeTypeString()));
-		}
-
-		auto link = static_cast<Element&>(node);
+	for (const auto& [link, line, column] : deferredLinks_) {
 		const auto& body = link.body();
 		int targetLine;
 		try {
@@ -1380,7 +1374,7 @@ Parser::DataHandler::DataHandler(
     int line, int column, std::size_t offset, std::size_t length, DataCallback func)
     : line{line}, column{column}, offset{offset}, length{length}, func{func} {}
 
-Parser::LinkData::LinkData(Node& link, const int line, const int column)
+Parser::LinkData::LinkData(Element& link, const int line, const int column)
     : link{link}, line{line}, column{column} {}
 
 Parser::VisibilityData::VisibilityData(int targetLine, VisibilityType visibility)
