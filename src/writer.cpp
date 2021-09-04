@@ -185,46 +185,6 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) co
 
 		depth = nodeDepth;
 	}
-
-	if (document.attrs().size() > 0) {
-		auto about = root.append_child("div");
-		about.append_attribute("id") = "info";
-		auto aboutTitle = about.append_child("h1");
-		aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
-		auto aboutBody = about.append_child("div");
-		auto dl = aboutBody.append_child("dl");
-
-		if (auto author = document.attr("author")) {
-			auto authorKey = dl.append_child("dt");
-			authorKey.append_child(pugi::node_pcdata).set_value("Author");
-			auto authorValue = dl.append_child("dd");
-			authorValue.append_child(pugi::node_pcdata).set_value(author.value().c_str());
-		}
-
-		if (auto publisher = document.attr("publisher")) {
-			auto publisherKey = dl.append_child("dt");
-			publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
-			auto publisherValue = dl.append_child("dd");
-			publisherValue.append_child(pugi::node_pcdata)
-			    .set_value(publisher.value().c_str());
-		}
-
-		if (auto timestamp = document.attr("timestamp")) {
-			auto timestampKey = dl.append_child("dt");
-			timestampKey.append_child(pugi::node_pcdata).set_value("Date Created");
-			auto timestampValue = dl.append_child("dd");
-			timestampValue.append_child(pugi::node_pcdata)
-			    .set_value(timestamp.value().c_str());
-		}
-
-		if (auto copyright = document.attr("copyright")) {
-			auto copyrightKey = dl.append_child("dt");
-			copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
-			auto copyrightValue = dl.append_child("dd");
-			copyrightValue.append_child(pugi::node_pcdata)
-			    .set_value(copyright.value().c_str());
-		}
-	}
 }
 
 void HTMLWriter::serializeDocument(
@@ -271,7 +231,9 @@ void HTMLWriter::serializeElement(
 		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
 		xmlNode.append_attribute("inline") = element.inlined();
 		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
-	} else {
+	} else if (element.elementType() == ElementType::Blank) {
+		xmlNode.set_name("hr");
+	} else if (element.title() != "-") {
 		auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
 		auto title = xmlNode.append_child(("h" + headerDepth).c_str());
 		title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
@@ -285,10 +247,11 @@ void HTMLWriter::serializeElement(
 		fout << element.body();
 		fout.close();
 		xmlNode.append_attribute("data-src") = fname.c_str();
-	} else {
+	} else if (element.elementType() != ElementType::Link) {
 		const auto& body = element.body();
 		if (!body.empty()) {
-			xmlNode.append_attribute("data-body") = body.c_str();
+			auto p = xmlNode.append_child("p");
+			p.append_child(pugi::node_pcdata).set_value(body.c_str());
 		}
 	}
 
@@ -303,6 +266,48 @@ void HTMLWriter::serializeElement(
 	// Build attributes map
 	for (const auto& [k, v] : element.attrs()) {
 		xmlNode.append_attribute(("data-" + k).c_str()) = v.c_str();
+	}
+
+	if (element.elementType() == ElementType::Info) {
+		auto document = element.findDocument();
+		if (document && document->attrs().size() > 0) {
+			xmlNode.append_attribute("id") = "info";
+			auto aboutTitle = xmlNode.append_child("h1");
+			aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
+			auto dl = xmlNode.append_child("dl");
+
+			if (auto author = document->attr("author")) {
+				auto authorKey = dl.append_child("dt");
+				authorKey.append_child(pugi::node_pcdata).set_value("Author");
+				auto authorValue = dl.append_child("dd");
+				authorValue.append_child(pugi::node_pcdata)
+				    .set_value(author.value().c_str());
+			}
+
+			if (auto publisher = document->attr("publisher")) {
+				auto publisherKey = dl.append_child("dt");
+				publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
+				auto publisherValue = dl.append_child("dd");
+				publisherValue.append_child(pugi::node_pcdata)
+				    .set_value(publisher.value().c_str());
+			}
+
+			if (auto timestamp = document->attr("timestamp")) {
+				auto timestampKey = dl.append_child("dt");
+				timestampKey.append_child(pugi::node_pcdata).set_value("Date Created");
+				auto timestampValue = dl.append_child("dd");
+				timestampValue.append_child(pugi::node_pcdata)
+				    .set_value(timestamp.value().c_str());
+			}
+
+			if (auto copyright = document->attr("copyright")) {
+				auto copyrightKey = dl.append_child("dt");
+				copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
+				auto copyrightValue = dl.append_child("dd");
+				copyrightValue.append_child(pugi::node_pcdata)
+				    .set_value(copyright.value().c_str());
+			}
+		}
 	}
 }
 
