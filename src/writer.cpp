@@ -227,7 +227,7 @@ void HTMLWriter::serializeCommentElement(const Element& element, pugi::xml_node 
 }
 
 void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendData(element, xmlNode);
+	this->appendMedia(element, xmlNode);
 }
 
 void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
@@ -238,7 +238,7 @@ void HTMLWriter::serializeHyperpngElement(
     const Element& element, pugi::xml_node xmlNode) {
 
 	this->appendHeader(element, xmlNode);
-	this->appendData(element, xmlNode);
+	this->appendMedia(element, xmlNode);
 }
 
 void HTMLWriter::serializeIncentiveElement(
@@ -293,29 +293,66 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xmlNode) {
 	auto isLink = false;
 	auto isText = false;
+	pugi::xml_node map;
 
-	if (element.hasPreviousSibling()) {
-		auto previousNode = element.previousSibling();
-		if (previousNode->isText()) {
-			isText = true;
-		} else {
-			auto previousElement = static_cast<Element*>(previousNode);
-			isLink = (previousElement->elementType() == ElementType::Link);
+	if (auto parentNode = element.parent(); parentNode->isElement()) {
+		auto parentElement = static_cast<Element&>(*parentNode);
+
+		if (parentElement.elementType() == ElementType::Hyperpng) {
+			auto parent = xmlNode.parent();
+			auto id = parentElement.id();
+
+			map =
+			    parent.find_child_by_attribute("map", "name", std::to_string(id).c_str());
+
+			if (!map) {
+				map = parent.append_child("map");
+				map.append_attribute("name") = id;
+			}
 		}
 	}
 
-	if (!element.inlined() && (isText || isLink)) {
-		xmlNode.parent().insert_child_before("br", xmlNode);
-	}
+	if (map) {
+		auto x1 = element.attr("region-top-left-x");
+		auto y1 = element.attr("region-top-left-y");
+		auto x2 = element.attr("region-bottom-right-x");
+		auto y2 = element.attr("region-bottom-right-y");
 
-	xmlNode.set_name("a");
-	xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
-	xmlNode.append_attribute("inline") = element.inlined();
-	xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+		if (!x1 || !y1 || !x2 || !y2) {
+			throw WriteError("expected coordinates for hyperpng link");
+		}
+		auto coords = tfm::format("%s,%s,%s,%s", *x1, *y1, *x2, *y2);
+
+		map.append_move(xmlNode);
+		xmlNode.set_name("area");
+		xmlNode.append_attribute("shape") = "rect";
+		xmlNode.append_attribute("coords") = coords.c_str();
+		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
+		xmlNode.append_attribute("alt") = element.title().c_str();
+	} else {
+		if (element.hasPreviousSibling()) {
+			auto previousNode = element.previousSibling();
+			if (previousNode->isText()) {
+				isText = true;
+			} else {
+				auto previousElement = static_cast<Element*>(previousNode);
+				isLink = (previousElement->elementType() == ElementType::Link);
+			}
+		}
+
+		if (!element.inlined() && (isText || isLink)) {
+			xmlNode.parent().insert_child_before("br", xmlNode);
+		}
+
+		xmlNode.set_name("a");
+		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
+		xmlNode.append_attribute("inline") = element.inlined();
+		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+	}
 }
 
 void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendData(element, xmlNode);
+	this->appendMedia(element, xmlNode);
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
@@ -384,23 +421,47 @@ void HTMLWriter::appendBody(const Element& element, pugi::xml_node xmlNode) cons
 	p.append_child(pugi::node_pcdata).set_value(body.c_str());
 }
 
-void HTMLWriter::appendData(const Element& element, pugi::xml_node xmlNode) const {
-	std::ofstream fout;
-
-	// TODO: Do something about how lazy this is
-	auto fname = options_.mediaDir + "/" + std::to_string(element.line()) + "."
-	             + element.mediaExt();
-	fout.open(fname, std::ios::out | std::ios::binary);
-	fout << element.body();
-	fout.close();
-	xmlNode.append_attribute("data-src") = fname.c_str();
-}
-
 void HTMLWriter::appendHeader(const Element& element, pugi::xml_node xmlNode) const {
 	auto depth = element.depth();
 	auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
 	auto title = xmlNode.append_child(("h" + headerDepth).c_str());
 	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+}
+
+void HTMLWriter::appendMedia(const Element& element, pugi::xml_node xmlNode) const {
+	std::string name;
+	std::string contentType;
+
+	switch (element.elementType()) {
+	case ElementType::Gifa:
+		name = "img";
+		contentType = "image/gif";
+		break;
+	case ElementType::Hyperpng:
+		name = "img";
+		contentType = "image/png";
+		break;
+	case ElementType::Overlay:
+		name = "img";
+		contentType = "image/png";
+		break;
+	case ElementType::Sound:
+		name = "audio";
+		contentType = "audio/wave";
+		break;
+	default:
+		throw WriteError("unexpected media type: %s", element.elementTypeString());
+	}
+
+	auto container = xmlNode.append_child("div");
+	auto media = container.append_child(name.c_str());
+	auto base64 = Strings::toBase64(element.body());
+	auto dataURI = tfm::format("data:%s;base64,%s", contentType, base64);
+	media.append_attribute("src") = dataURI.c_str();
+
+	if (element.elementType() == ElementType::Hyperpng && element.hasFirstChild()) {
+		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
+	}
 }
 
 void HTMLWriter::appendVisibility(

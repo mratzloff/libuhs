@@ -232,20 +232,21 @@ struct Options {
 namespace Strings {
 
 bool beginsWithAttachedPunctuation(const std::string& s);
+std::string& chomp(std::string& s, char c);
 bool endsWithAttachedPunctuation(const std::string& s);
 bool endsWithFinalPunctuation(const std::string& s);
+const std::string hex(const std::string& s);
+const std::string hex(char s);
 bool isInt(const std::string& s);
-int toInt(const std::string& s);
+std::string join(const std::vector<std::string>& s, const std::string& sep);
 std::string ltrim(const std::string& s, char c);
 std::string rtrim(const std::string& s, char c);
-std::string& chomp(std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
-std::string join(const std::vector<std::string>& s, const std::string& sep);
+std::string toBase64(const std::string& s);
+int toInt(const std::string& s);
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width);
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
     int& numLines, const std::string prefix = "");
-const std::string hex(const std::string& s);
-const std::string hex(char s);
 
 } // namespace Strings
 
@@ -906,8 +907,8 @@ private:
 	void serializeTextElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
 	void appendBody(const Element& element, pugi::xml_node xmlNode) const;
-	void appendData(const Element& element, pugi::xml_node xmlNode) const;
 	void appendHeader(const Element& element, pugi::xml_node xmlNode) const;
+	void appendMedia(const Element& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
 
 	static HTMLWriter::Serializer serializer_;

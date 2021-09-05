@@ -83,6 +83,13 @@ bool beginsWithAttachedPunctuation(const std::string& s) {
 	       || c == '.' || c == ',' || c == ';' || c == ':';
 }
 
+std::string& chomp(std::string& s, char c) {
+	if (s.back() == c) {
+		s.pop_back();
+	}
+	return s;
+}
+
 bool endsWithAttachedPunctuation(const std::string& s) {
 	auto c = s.back();
 	return c == '\'' || c == '"' || c == '(' || c == ' ';
@@ -91,6 +98,29 @@ bool endsWithAttachedPunctuation(const std::string& s) {
 bool endsWithFinalPunctuation(const std::string& s) {
 	auto c = s.back();
 	return c == '?' || c == '!' || c == '.';
+}
+
+const std::string hex(const std::string& s) {
+	std::ostringstream out;
+
+	out << std::hex << std::setfill('0') << std::uppercase;
+	auto i = 0;
+	for (auto c : s) {
+		if (i > 0) {
+			out << ' ';
+		}
+		out << std::setw(2) << (int(c) & ~0xFFFFFF00);
+		++i;
+	}
+	return out.str();
+}
+
+const std::string hex(char c) {
+	std::ostringstream out;
+
+	out << std::hex << std::setfill('0') << std::uppercase;
+	out << std::setw(2) << (int(c) & ~0xFFFFFF00);
+	return out.str();
 }
 
 bool isInt(const std::string& s) {
@@ -105,18 +135,18 @@ bool isInt(const std::string& s) {
 	return true;
 }
 
-int toInt(const std::string& s) {
-	int intVal;
-	std::string::size_type idx;
-	try {
-		intVal = std::stoi(s, &idx);
-		if (idx != s.length()) {
-			throw std::invalid_argument("");
+std::string join(const std::vector<std::string>& items, const std::string& sep) {
+	std::string s;
+	auto i = 0;
+
+	for (const auto& item : items) {
+		if (i > 0) {
+			s += sep;
 		}
-	} catch (const std::invalid_argument& e) {
-		std::throw_with_nested(Error("invalid integer: %s", s));
+		s += item;
+		++i;
 	}
-	return intVal;
+	return s;
 }
 
 std::string ltrim(const std::string& s, char c) {
@@ -131,13 +161,6 @@ std::string rtrim(const std::string& s, char c) {
 	auto pos = s.find_last_not_of(c);
 	if (pos != std::string::npos) {
 		return s.substr(0, pos + 1);
-	}
-	return s;
-}
-
-std::string& chomp(std::string& s, char c) {
-	if (s.back() == c) {
-		s.pop_back();
 	}
 	return s;
 }
@@ -168,18 +191,44 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 	return items;
 }
 
-std::string join(const std::vector<std::string>& items, const std::string& sep) {
-	std::string s;
-	auto i = 0;
+std::string toBase64(const std::string& s) {
+	static const std::string charset =
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	for (const auto& item : items) {
-		if (i > 0) {
-			s += sep;
-		}
-		s += item;
-		++i;
+	size_t end = 0;
+	size_t len = s.length();
+	std::stringstream out;
+
+	for (std::size_t i = 0, end = len - len % 3; i < end; i += 3) {
+		out << charset[(s[i] & 0xFC) >> 2];
+		out << charset[((s[i] & 0x03) << 4) + ((s[i + 1] & 0xF0) >> 4)];
+		out << charset[((s[i + 1] & 0x0F) << 2) + ((s[i + 2] & 0xC0) >> 6)];
+		out << charset[s[i + 2] & 0x3F];
 	}
-	return s;
+
+	if (end < len) {
+		out << charset[(s[end] & 0xFC) >> 2];
+		out << charset[((s[end] & 0x03) << 4)
+		               + (end + 1 < len ? (s[end + 1] & 0xF0) >> 4 : 0)];
+		out << (end + 1 < len ? charset[((s[end + 1] & 0x0F) << 2)] : '=');
+		out << '=';
+	}
+
+	return out.str();
+}
+
+int toInt(const std::string& s) {
+	int intVal;
+	std::string::size_type idx;
+	try {
+		intVal = std::stoi(s, &idx);
+		if (idx != s.length()) {
+			throw std::invalid_argument("");
+		}
+	} catch (const std::invalid_argument& e) {
+		std::throw_with_nested(Error("invalid integer: %s", s));
+	}
+	return intVal;
 }
 
 std::string wrap(const std::string& s, const std::string& sep, std::size_t width) {
@@ -236,29 +285,6 @@ std::string wrap(const std::string& s, const std::string& sep, std::size_t width
 	}
 
 	return lines;
-}
-
-const std::string hex(const std::string& s) {
-	std::ostringstream out;
-
-	out << std::hex << std::setfill('0') << std::uppercase;
-	auto i = 0;
-	for (auto c : s) {
-		if (i > 0) {
-			out << ' ';
-		}
-		out << std::setw(2) << (int(c) & ~0xFFFFFF00);
-		++i;
-	}
-	return out.str();
-}
-
-const std::string hex(char c) {
-	std::ostringstream out;
-
-	out << std::hex << std::setfill('0') << std::uppercase;
-	out << std::setw(2) << (int(c) & ~0xFFFFFF00);
-	return out.str();
 }
 
 } // namespace UHS::Strings
