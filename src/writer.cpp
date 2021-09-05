@@ -462,6 +462,10 @@ void HTMLWriter::appendMedia(const Element& element, pugi::xml_node xmlNode) con
 	if (element.elementType() == ElementType::Hyperpng && element.hasFirstChild()) {
 		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
 	}
+
+	if (element.elementType() == ElementType::Sound) {
+		media.append_attribute("controls");
+	}
 }
 
 void HTMLWriter::appendVisibility(
