@@ -99,6 +99,8 @@ void TreeWriter::drawScaffold(const Node& node) {
 
 //------------------------------- HTMLWriter --------------------------------//
 
+HTMLWriter::Serializer HTMLWriter::serializer_;
+
 HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
 void HTMLWriter::write(const Document& document) {
@@ -108,7 +110,7 @@ void HTMLWriter::write(const Document& document) {
 	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
-void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) const {
+void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	auto html = xml.append_child("html");
 	html.append_attribute("lang") = "en";
 	auto head = html.append_child("head");
@@ -165,7 +167,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) co
 		case NodeType::Element: {
 			const auto& element = static_cast<const Element&>(node);
 			auto xmlNode = parent.append_child("section");
-			this->serializeElement(element, xmlNode, nodeDepth);
+			this->serializeElement(element, xmlNode);
 			break;
 		}
 		case NodeType::Group:
@@ -192,123 +194,136 @@ void HTMLWriter::serializeDocument(
 
 	xmlNode.append_attribute("data-type") = document.nodeTypeString().c_str();
 	xmlNode.append_attribute("data-version") = document.versionString().c_str();
-
-	if (document.visibility() != VisibilityType::All) {
-		xmlNode.append_attribute("class") =
-		    ("visibility-" + document.visibilityString()).c_str();
-	}
+	this->appendVisibility(document, xmlNode);
 }
 
-void HTMLWriter::serializeElement(
-    const Element& element, pugi::xml_node xmlNode, const int depth) const {
-
-	std::string fname;
-	std::ofstream fout;
-
+void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode) {
 	if (const auto id = element.id(); id > 0) {
 		xmlNode.append_attribute("id") = id;
-	}
-
-	if (element.elementType() == ElementType::Link) {
-		auto isLink = false;
-		auto isText = false;
-
-		if (element.hasPreviousSibling()) {
-			auto previousNode = element.previousSibling();
-			if (previousNode->isText()) {
-				isText = true;
-			} else {
-				auto previousElement = static_cast<Element*>(previousNode);
-				isLink = (previousElement->elementType() == ElementType::Link);
-			}
-		}
-
-		if (!element.inlined() && (isText || isLink)) {
-			xmlNode.parent().insert_child_before("br", xmlNode);
-		}
-
-		xmlNode.set_name("a");
-		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
-		xmlNode.append_attribute("inline") = element.inlined();
-		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
-	} else if (element.elementType() == ElementType::Blank) {
-		xmlNode.set_name("hr");
-	} else if (element.title() != "-") {
-		auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
-		auto title = xmlNode.append_child(("h" + headerDepth).c_str());
-		title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
-	}
-
-	if (element.isMedia() && !options_.mediaDir.empty()) {
-		// TODO: Do something about how lazy this is
-		fname = options_.mediaDir + "/" + std::to_string(element.line()) + "."
-		        + element.mediaExt();
-		fout.open(fname, std::ios::out | std::ios::binary);
-		fout << element.body();
-		fout.close();
-		xmlNode.append_attribute("data-src") = fname.c_str();
-	} else if (element.elementType() != ElementType::Link) {
-		const auto& body = element.body();
-		if (!body.empty()) {
-			auto p = xmlNode.append_child("p");
-			p.append_child(pugi::node_pcdata).set_value(body.c_str());
-		}
 	}
 
 	xmlNode.append_attribute("data-type") =
 	    Element::typeString(element.elementType()).c_str();
 
-	if (element.visibility() != VisibilityType::All) {
-		xmlNode.append_attribute("class") =
-		    ("visibility-" + element.visibilityString()).c_str();
-	}
+	this->appendVisibility(element, xmlNode);
 
-	// Build attributes map
 	for (const auto& [k, v] : element.attrs()) {
 		xmlNode.append_attribute(("data-" + k).c_str()) = v.c_str();
 	}
 
-	if (element.elementType() == ElementType::Info) {
-		auto document = element.findDocument();
-		if (document && document->attrs().size() > 0) {
-			xmlNode.append_attribute("id") = "info";
-			auto aboutTitle = xmlNode.append_child("h1");
-			aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
-			auto dl = xmlNode.append_child("dl");
+	serializer_.invoke(*this, element, xmlNode);
+}
 
-			if (auto author = document->attr("author")) {
-				auto authorKey = dl.append_child("dt");
-				authorKey.append_child(pugi::node_pcdata).set_value("Author");
-				auto authorValue = dl.append_child("dd");
-				authorValue.append_child(pugi::node_pcdata)
-				    .set_value(author.value().c_str());
-			}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
+void HTMLWriter::serializeBlankElement(const Element& element, pugi::xml_node xmlNode) {
+	xmlNode.set_name("hr");
+}
+#pragma clang diagnostic pop
 
-			if (auto publisher = document->attr("publisher")) {
-				auto publisherKey = dl.append_child("dt");
-				publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
-				auto publisherValue = dl.append_child("dd");
-				publisherValue.append_child(pugi::node_pcdata)
-				    .set_value(publisher.value().c_str());
-			}
+void HTMLWriter::serializeCommentElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendHeader(element, xmlNode);
+	this->appendBody(element, xmlNode);
+}
 
-			if (auto timestamp = document->attr("timestamp")) {
-				auto timestampKey = dl.append_child("dt");
-				timestampKey.append_child(pugi::node_pcdata).set_value("Date Created");
-				auto timestampValue = dl.append_child("dd");
-				timestampValue.append_child(pugi::node_pcdata)
-				    .set_value(timestamp.value().c_str());
-			}
+void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendData(element, xmlNode);
+}
 
-			if (auto copyright = document->attr("copyright")) {
-				auto copyrightKey = dl.append_child("dt");
-				copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
-				auto copyrightValue = dl.append_child("dd");
-				copyrightValue.append_child(pugi::node_pcdata)
-				    .set_value(copyright.value().c_str());
-			}
+void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendHeader(element, xmlNode);
+}
+
+void HTMLWriter::serializeHyperpngElement(
+    const Element& element, pugi::xml_node xmlNode) {
+
+	this->appendHeader(element, xmlNode);
+	this->appendData(element, xmlNode);
+}
+
+void HTMLWriter::serializeIncentiveElement(
+    const Element& element, pugi::xml_node xmlNode) {
+
+	this->appendBody(element, xmlNode);
+}
+
+void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xmlNode) {
+	auto document = element.findDocument();
+	if (document && document->attrs().size() == 0) {
+		return;
+	}
+
+	xmlNode.append_attribute("id") = "info";
+	auto aboutTitle = xmlNode.append_child("h1");
+	aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
+	auto dl = xmlNode.append_child("dl");
+
+	if (auto author = document->attr("author")) {
+		auto authorKey = dl.append_child("dt");
+		authorKey.append_child(pugi::node_pcdata).set_value("Author");
+		auto authorValue = dl.append_child("dd");
+		authorValue.append_child(pugi::node_pcdata).set_value(author.value().c_str());
+	}
+
+	if (auto publisher = document->attr("publisher")) {
+		auto publisherKey = dl.append_child("dt");
+		publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
+		auto publisherValue = dl.append_child("dd");
+		publisherValue.append_child(pugi::node_pcdata)
+		    .set_value(publisher.value().c_str());
+	}
+
+	if (auto timestamp = document->attr("timestamp")) {
+		auto timestampKey = dl.append_child("dt");
+		timestampKey.append_child(pugi::node_pcdata).set_value("Date Created");
+		auto timestampValue = dl.append_child("dd");
+		timestampValue.append_child(pugi::node_pcdata)
+		    .set_value(timestamp.value().c_str());
+	}
+
+	if (auto copyright = document->attr("copyright")) {
+		auto copyrightKey = dl.append_child("dt");
+		copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
+		auto copyrightValue = dl.append_child("dd");
+		copyrightValue.append_child(pugi::node_pcdata)
+		    .set_value(copyright.value().c_str());
+	}
+}
+
+void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xmlNode) {
+	auto isLink = false;
+	auto isText = false;
+
+	if (element.hasPreviousSibling()) {
+		auto previousNode = element.previousSibling();
+		if (previousNode->isText()) {
+			isText = true;
+		} else {
+			auto previousElement = static_cast<Element*>(previousNode);
+			isLink = (previousElement->elementType() == ElementType::Link);
 		}
 	}
+
+	if (!element.inlined() && (isText || isLink)) {
+		xmlNode.parent().insert_child_before("br", xmlNode);
+	}
+
+	xmlNode.set_name("a");
+	xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
+	xmlNode.append_attribute("inline") = element.inlined();
+	xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+}
+
+void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendData(element, xmlNode);
+}
+
+void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendHeader(element, xmlNode);
+}
+
+void HTMLWriter::serializeTextElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendHeader(element, xmlNode);
 }
 
 void HTMLWriter::serializeTextNode(
@@ -358,6 +373,68 @@ void HTMLWriter::serializeTextNode(
 	if (!classes.empty()) {
 		xmlNode.append_attribute("class") = Strings::join(classes, " ").c_str();
 	}
+}
+
+void HTMLWriter::appendBody(const Element& element, pugi::xml_node xmlNode) const {
+	const auto& body = element.body();
+	if (body.empty()) {
+		return;
+	}
+	auto p = xmlNode.append_child("p");
+	p.append_child(pugi::node_pcdata).set_value(body.c_str());
+}
+
+void HTMLWriter::appendData(const Element& element, pugi::xml_node xmlNode) const {
+	std::ofstream fout;
+
+	// TODO: Do something about how lazy this is
+	auto fname = options_.mediaDir + "/" + std::to_string(element.line()) + "."
+	             + element.mediaExt();
+	fout.open(fname, std::ios::out | std::ios::binary);
+	fout << element.body();
+	fout.close();
+	xmlNode.append_attribute("data-src") = fname.c_str();
+}
+
+void HTMLWriter::appendHeader(const Element& element, pugi::xml_node xmlNode) const {
+	auto depth = element.depth();
+	auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
+	auto title = xmlNode.append_child(("h" + headerDepth).c_str());
+	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+}
+
+void HTMLWriter::appendVisibility(
+    const Traits::Visibility& node, pugi::xml_node xmlNode) const {
+
+	if (node.visibility() == VisibilityType::All) {
+		return;
+	}
+	xmlNode.append_attribute("class") = ("visibility-" + node.visibilityString()).c_str();
+}
+
+HTMLWriter::Serializer::Serializer() {
+	map_.emplace(ElementType::Blank, &HTMLWriter::serializeBlankElement);
+	map_.emplace(ElementType::Comment, &HTMLWriter::serializeCommentElement);
+	map_.emplace(ElementType::Credit, &HTMLWriter::serializeCommentElement);
+	map_.emplace(ElementType::Gifa, &HTMLWriter::serializeDataElement);
+	map_.emplace(ElementType::Hint, &HTMLWriter::serializeHintElement);
+	map_.emplace(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
+	map_.emplace(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);
+	map_.emplace(ElementType::Info, &HTMLWriter::serializeInfoElement);
+	map_.emplace(ElementType::Link, &HTMLWriter::serializeLinkElement);
+	map_.emplace(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
+	map_.emplace(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
+	map_.emplace(ElementType::Sound, &HTMLWriter::serializeDataElement);
+	map_.emplace(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
+	map_.emplace(ElementType::Text, &HTMLWriter::serializeTextElement);
+	map_.emplace(ElementType::Version, &HTMLWriter::serializeCommentElement);
+}
+
+void HTMLWriter::Serializer::invoke(
+    HTMLWriter& writer, const Element& element, pugi::xml_node xmlNode) {
+
+	auto func = map_.at(element.elementType());
+	(writer.*func)(element, xmlNode);
 }
 
 //------------------------------- JSONWriter --------------------------------//
@@ -1518,7 +1595,8 @@ UHSWriter::Serializer::Serializer() {
 }
 
 int UHSWriter::Serializer::invoke(UHSWriter& writer, Element& element, std::string& out) {
-	return (writer.*map_[element.elementType()])(element, out);
+	auto func = map_.at(element.elementType());
+	return (writer.*func)(element, out);
 }
 
 } // namespace UHS

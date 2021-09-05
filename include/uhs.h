@@ -879,11 +879,38 @@ public:
 	void write(const Document& document) override;
 
 private:
-	void serialize(const Document& document, pugi::xml_document& xml) const;
+	class Serializer {
+	public:
+		using Func = void (HTMLWriter::*)(const Element& element, pugi::xml_node xmlNode);
+
+		Serializer();
+		void invoke(HTMLWriter& writer, const Element& element, pugi::xml_node xmlNode);
+
+	private:
+		std::map<const ElementType, Func> map_;
+	};
+
+	void serialize(const Document& document, pugi::xml_document& xml);
 	void serializeDocument(const Document& document, pugi::xml_node root) const;
-	void serializeElement(
-	    const Element& element, pugi::xml_node xmlNode, const int depth) const;
+	void serializeElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeBlankElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeCommentElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeDataElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeHintElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeHyperpngElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeIncentiveElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeInfoElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeLinkElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeOverlayElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeSubjectElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeTextElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
+	void appendBody(const Element& element, pugi::xml_node xmlNode) const;
+	void appendData(const Element& element, pugi::xml_node xmlNode) const;
+	void appendHeader(const Element& element, pugi::xml_node xmlNode) const;
+	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
+
+	static HTMLWriter::Serializer serializer_;
 };
 
 class JSONWriter : public Writer {
