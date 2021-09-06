@@ -34,6 +34,9 @@ set (uhs_sources
 
 set (uhs_bin_sources src/cmd/uhs/main.cpp)
 
+# uhs-js
+add_custom_target(uhs-js COMMAND tsc)
+
 # json.o
 add_library (json OBJECT vendor/jsoncpp/jsoncpp.cpp)
 target_include_directories (json PUBLIC ${json_includes})
@@ -44,6 +47,7 @@ target_include_directories (pugixml PUBLIC ${pugixml_includes})
 
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
+add_dependencies (uhs uhs-js)
 target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
@@ -54,6 +58,7 @@ target_compile_options (uhs PRIVATE -g -Wall -Wextra)
 
 # bin/uhs
 add_executable (uhs-bin src/cmd/uhs/main.cpp)
+add_dependencies (uhs-bin uhs-js)
 set_target_properties (uhs-bin PROPERTIES OUTPUT_NAME uhs)
 target_include_directories (uhs-bin PUBLIC ${argh_includes})
 target_link_libraries (uhs-bin PUBLIC uhs)
