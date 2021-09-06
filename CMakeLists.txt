@@ -5,12 +5,12 @@ project (libuhs CXX)
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
-list (APPEND CMAKE_MODULE_PATH contrib)
+list (APPEND CMAKE_MODULE_PATH vendor)
 
-set (argh_includes contrib/argh)
-set (json_includes contrib/jsoncpp/json)
-set (pugixml_includes contrib/pugixml)
-set (tinyformat_includes contrib/tinyformat)
+set (argh_includes vendor/argh)
+set (json_includes vendor/jsoncpp/json)
+set (pugixml_includes vendor/pugixml)
+set (tinyformat_includes vendor/tinyformat)
 set (uhs_includes include)
 
 set (uhs_sources
@@ -35,11 +35,11 @@ set (uhs_sources
 set (uhs_bin_sources src/cmd/uhs/main.cpp)
 
 # json.o
-add_library (json OBJECT contrib/jsoncpp/jsoncpp.cpp)
+add_library (json OBJECT vendor/jsoncpp/jsoncpp.cpp)
 target_include_directories (json PUBLIC ${json_includes})
 
 # pugixml.o
-add_library (pugixml OBJECT contrib/pugixml/pugixml.cpp)
+add_library (pugixml OBJECT vendor/pugixml/pugixml.cpp)
 target_include_directories (pugixml PUBLIC ${pugixml_includes})
 
 # lib/libuhs.a
