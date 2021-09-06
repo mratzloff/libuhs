@@ -101,7 +101,17 @@ void TreeWriter::drawScaffold(const Node& node) {
 
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
-HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {}
+HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {
+	mediaContentTypes_.emplace(ElementType::Gifa, "image/gif");
+	mediaContentTypes_.emplace(ElementType::Hyperpng, "image/png");
+	mediaContentTypes_.emplace(ElementType::Overlay, "image/png");
+	mediaContentTypes_.emplace(ElementType::Sound, "audio/wave");
+
+	mediaTagTypes_.emplace(ElementType::Gifa, "img");
+	mediaTagTypes_.emplace(ElementType::Hyperpng, "img");
+	mediaTagTypes_.emplace(ElementType::Overlay, "img");
+	mediaTagTypes_.emplace(ElementType::Sound, "audio");
+}
 
 void HTMLWriter::write(const Document& document) {
 	pugi::xml_document xml;
@@ -128,8 +138,12 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	auto style = head.append_child("style");
 	style.append_child(pugi::node_pcdata)
 	    .set_value(
+	        ".hidden { visibility: hidden; }"
+	        ".hyperpng { position: relative; }"
+	        ".image-container { position: relative; }"
 	        ".overflow { white-space: nowrap; }"
 	        ".overflow.monospace { white-space: pre; }"
+	        ".overlay { position: absolute; }"
 	        ".monospace { font-family: monospace; white-space: pre; }"
 	        ".visibility-none { display: none; }\n");
 
@@ -238,7 +252,15 @@ void HTMLWriter::serializeHyperpngElement(
     const Element& element, pugi::xml_node xmlNode) {
 
 	this->appendHeader(element, xmlNode);
-	this->appendMedia(element, xmlNode);
+	auto media = this->appendMedia(element, xmlNode);
+
+	if (element.hasFirstChild()) {
+		auto container = xmlNode.append_child("div");
+		container.append_attribute("class") = "image-container";
+		container.append_move(media);
+		media.append_attribute("class") = "hyperpng";
+		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
+	}
 }
 
 void HTMLWriter::serializeIncentiveElement(
@@ -293,42 +315,13 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xmlNode) {
 	auto isLink = false;
 	auto isText = false;
-	pugi::xml_node map;
 
-	if (auto parentNode = element.parent(); parentNode->isElement()) {
-		auto parentElement = static_cast<Element&>(*parentNode);
-
-		if (parentElement.elementType() == ElementType::Hyperpng) {
-			auto parent = xmlNode.parent();
-			auto id = parentElement.id();
-
-			map =
-			    parent.find_child_by_attribute("map", "name", std::to_string(id).c_str());
-
-			if (!map) {
-				map = parent.append_child("map");
-				map.append_attribute("name") = id;
-			}
-		}
-	}
-
-	if (map) {
-		auto x1 = element.attr("region-top-left-x");
-		auto y1 = element.attr("region-top-left-y");
-		auto x2 = element.attr("region-bottom-right-x");
-		auto y2 = element.attr("region-bottom-right-y");
-
-		if (!x1 || !y1 || !x2 || !y2) {
-			throw WriteError("expected coordinates for hyperpng link");
-		}
-		auto coords = tfm::format("%s,%s,%s,%s", *x1, *y1, *x2, *y2);
-
-		map.append_move(xmlNode);
+	if (auto container = this->findImageContainer(element, xmlNode)) {
 		xmlNode.set_name("area");
-		xmlNode.append_attribute("shape") = "rect";
-		xmlNode.append_attribute("coords") = coords.c_str();
+		auto map = this->findOrCreateMap(element, *container);
+		map.append_move(xmlNode);
+		this->populateArea(element, xmlNode);
 		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
-		xmlNode.append_attribute("alt") = element.title().c_str();
 	} else {
 		if (element.hasPreviousSibling()) {
 			auto previousNode = element.previousSibling();
@@ -352,7 +345,37 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 }
 
 void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendMedia(element, xmlNode);
+	static auto jsTemplate =
+	    "javascript:document.getElementById('%d').classList.remove('hidden')";
+
+	// Re-parent node
+	auto container = findImageContainer(element, xmlNode);
+	if (!container) {
+		throw WriteError("overlay parent must be a hyperpng element");
+	}
+	container->append_move(xmlNode);
+
+	// Set node attributes
+	auto elementType = element.elementType();
+	xmlNode.set_name(mediaTagTypes_.at(elementType).c_str());
+	auto dataURI = this->getDataURI(mediaContentTypes_.at(elementType), element.body());
+	xmlNode.append_attribute("src") = dataURI.c_str();
+	xmlNode.append_attribute("class") = "overlay hidden";
+
+	auto [x, y] = this->getImageSize(element);
+	xmlNode.append_attribute("style") =
+	    tfm::format("left: %dpx; top: %dpx", x, y).c_str();
+
+	// Create area tag for map
+	auto map = this->findOrCreateMap(element, *container);
+	auto area = map.append_child("area");
+	this->populateArea(element, area);
+	area.append_attribute("href") = tfm::format(jsTemplate, element.id()).c_str();
+}
+
+void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xmlNode) {
+	auto media = this->appendMedia(element, xmlNode);
+	media.append_attribute("controls");
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
@@ -412,60 +435,49 @@ void HTMLWriter::serializeTextNode(
 	}
 }
 
-void HTMLWriter::appendBody(const Element& element, pugi::xml_node xmlNode) const {
+std::optional<pugi::xml_node> HTMLWriter::appendBody(
+    const Element& element, pugi::xml_node xmlNode) const {
+
 	const auto& body = element.body();
 	if (body.empty()) {
-		return;
+		return std::nullopt;
 	}
 	auto p = xmlNode.append_child("p");
 	p.append_child(pugi::node_pcdata).set_value(body.c_str());
+
+	return p;
 }
 
-void HTMLWriter::appendHeader(const Element& element, pugi::xml_node xmlNode) const {
+pugi::xml_node HTMLWriter::appendHeader(
+    const Element& element, pugi::xml_node xmlNode) const {
+
 	auto depth = element.depth();
 	auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
 	auto title = xmlNode.append_child(("h" + headerDepth).c_str());
 	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+
+	return title;
 }
 
-void HTMLWriter::appendMedia(const Element& element, pugi::xml_node xmlNode) const {
-	std::string name;
-	std::string contentType;
+pugi::xml_node HTMLWriter::appendMedia(
+    const Element& element, pugi::xml_node xmlNode) const {
 
-	switch (element.elementType()) {
-	case ElementType::Gifa:
-		name = "img";
-		contentType = "image/gif";
-		break;
-	case ElementType::Hyperpng:
-		name = "img";
-		contentType = "image/png";
-		break;
-	case ElementType::Overlay:
-		name = "img";
-		contentType = "image/png";
-		break;
-	case ElementType::Sound:
-		name = "audio";
-		contentType = "audio/wave";
-		break;
-	default:
+	std::string contentType;
+	std::string tagName;
+	auto elementType = element.elementType();
+
+	try {
+		contentType = mediaContentTypes_.at(elementType);
+		tagName = mediaTagTypes_.at(elementType);
+	} catch (const std::out_of_range&) {
 		throw WriteError("unexpected media type: %s", element.elementTypeString());
 	}
 
-	auto container = xmlNode.append_child("div");
-	auto media = container.append_child(name.c_str());
-	auto base64 = Strings::toBase64(element.body());
-	auto dataURI = tfm::format("data:%s;base64,%s", contentType, base64);
+	auto media = xmlNode.append_child(tagName.c_str());
+	auto dataURI = this->getDataURI(contentType, element.body());
 	media.append_attribute("src") = dataURI.c_str();
 
-	if (element.elementType() == ElementType::Hyperpng && element.hasFirstChild()) {
-		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
-	}
-
-	if (element.elementType() == ElementType::Sound) {
-		media.append_attribute("controls");
-	}
+	return media;
 }
 
 void HTMLWriter::appendVisibility(
@@ -475,6 +487,99 @@ void HTMLWriter::appendVisibility(
 		return;
 	}
 	xmlNode.append_attribute("class") = ("visibility-" + node.visibilityString()).c_str();
+}
+
+std::optional<pugi::xml_node> HTMLWriter::findImageContainer(
+    const Element& element, pugi::xml_node xmlNode) const {
+
+	auto parentElement = this->getParentElement(element);
+	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
+		return std::nullopt;
+	}
+
+	auto parent = xmlNode.parent();
+	auto container = parent.find_child_by_attribute("div", "class", "image-container");
+
+	return container;
+}
+
+pugi::xml_node HTMLWriter::findOrCreateMap(
+    const Element& element, pugi::xml_node xmlNode) const {
+
+	auto parentElement = this->getParentElement(element);
+	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
+		throw WriteError(
+		    "expected hyperpng parent; got %s", parentElement->elementTypeString());
+	}
+
+	auto container = this->findImageContainer(element, xmlNode);
+	if (!container) {
+		throw WriteError(
+		    "hyperpng %s must have an image container", element.elementTypeString());
+	}
+
+	auto id = parentElement->id();
+	auto map =
+	    container->find_child_by_attribute("map", "name", std::to_string(id).c_str());
+
+	if (!map) {
+		map = container->append_child("map");
+		map.append_attribute("name") = id;
+	}
+
+	return map;
+}
+
+std::string HTMLWriter::getDataURI(
+    const std::string& contentType, const std::string& data) const {
+
+	return tfm::format("data:%s;base64,%s", contentType, Strings::toBase64(data));
+}
+
+std::tuple<int, int> HTMLWriter::getImageSize(const Element& element) const {
+	auto x = element.attr("image-x");
+	auto y = element.attr("image-y");
+
+	if (!x || !y) {
+		throw WriteError("expected size for %s", element.elementTypeString());
+	}
+
+	return std::make_tuple(Strings::toInt(*x), Strings::toInt(*y));
+}
+
+Element* HTMLWriter::getParentElement(const Element& element) const {
+	auto parentNode = element.parent();
+	if (!parentNode || !parentNode->isElement()) {
+		return nullptr;
+	}
+	return static_cast<Element*>(parentNode);
+}
+
+std::tuple<int, int, int, int> HTMLWriter::getRegionCoordinates(
+    const Element& element) const {
+	auto x1 = element.attr("region-top-left-x");
+	auto y1 = element.attr("region-top-left-y");
+	auto x2 = element.attr("region-bottom-right-x");
+	auto y2 = element.attr("region-bottom-right-y");
+
+	if (!x1 || !y1 || !x2 || !y2) {
+		throw WriteError(
+		    "expected coordinates for hyperpng %s", element.elementTypeString());
+	}
+
+	return std::make_tuple(Strings::toInt(*x1),
+	    Strings::toInt(*y1),
+	    Strings::toInt(*x2),
+	    Strings::toInt(*y2));
+}
+
+void HTMLWriter::populateArea(const Element& element, pugi::xml_node area) const {
+	auto [x1, y1, x2, y2] = this->getRegionCoordinates(element);
+	auto coordsString = tfm::format("%d,%d,%d,%d", x1, y1, x2, y2);
+
+	area.append_attribute("alt") = element.title().c_str();
+	area.append_attribute("coords") = coordsString.c_str();
+	area.append_attribute("shape") = "rect";
 }
 
 HTMLWriter::Serializer::Serializer() {
@@ -489,7 +594,7 @@ HTMLWriter::Serializer::Serializer() {
 	map_.emplace(ElementType::Link, &HTMLWriter::serializeLinkElement);
 	map_.emplace(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
 	map_.emplace(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
-	map_.emplace(ElementType::Sound, &HTMLWriter::serializeDataElement);
+	map_.emplace(ElementType::Sound, &HTMLWriter::serializeSoundElement);
 	map_.emplace(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
 	map_.emplace(ElementType::Text, &HTMLWriter::serializeTextElement);
 	map_.emplace(ElementType::Version, &HTMLWriter::serializeCommentElement);
@@ -974,82 +1079,6 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	return length;
 }
 
-// int UHSWriter::serializeHintElement(Element& element, std::string& out) {
-// 	auto length = InitialElementLength;
-// 	std::string buffer;
-// 	auto childLength = 0;
-// 	std::string textBuffer;
-// 	std::map<const int, TextFormat> formats;
-// 	auto depth = element.depth();
-
-// 	currentLine_ += length;
-// 	const auto elementType = element.elementType();
-
-// 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
-// 		if (node->isElement() && elementType == ElementType::Nesthint) {
-// 			auto& child = static_cast<Element&>(*node);
-// 			auto followsTextNode = false;
-
-// 			if (node->hasPreviousSibling()) {
-// 				auto previousNode = node->previousSibling();
-// 				followsTextNode = previousNode->isText();
-// 			}
-// 			if (!followsTextNode && child.inlined()) {
-// 				textBuffer += Token::InlineBegin;
-// 			}
-// 		}
-
-// 		if (!node->isText() && !textBuffer.empty()) {
-// 			auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
-// 			buffer += this->encodeText(wrapped, elementType);
-// 			length += childLength;
-// 			currentLine_ += childLength;
-// 			textBuffer.clear();
-// 		}
-
-// 		childLength = 0;
-
-// 		if (node->isElement() && elementType == ElementType::Nesthint) {
-// 			auto& child = static_cast<Element&>(*node);
-// 			depth = element.depth();
-
-// 			buffer += Token::NestedElementSep;
-// 			buffer += EOL;
-// 			++length;
-// 			++currentLine_;
-
-// 			childLength += this->serializeElement(child, buffer);
-// 			length += childLength;
-// 		} else if (node->isBreak()) {
-// 			buffer += Token::NestedTextSep;
-// 			buffer += EOL;
-// 			++length;
-// 			++currentLine_;
-// 		} else if (node->isGroup()) {
-// 			// TODO
-// 		} else if (node->isText()) {
-// 			const auto& textNode = static_cast<const TextNode&>(*node);
-// 			textBuffer += this->formatText(textNode, formats[depth]);
-// 			formats[depth] = textNode.format();
-// 		} else {
-// 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
-// 		}
-// 	}
-
-// 	if (!textBuffer.empty()) {
-// 		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
-// 		buffer += this->encodeText(wrapped, elementType);
-// 		length += childLength;
-// 		currentLine_ += childLength;
-// 	}
-
-// 	element.length(length);
-// 	this->serializeElementHeader(element, out);
-// 	out += buffer;
-
-// 	return length;
-// }
-
 int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	const auto& body = element.body();
@@ -1352,8 +1381,8 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 }
 
 void UHSWriter::updateLinkTargets(std::string& out) const {
-	// Because we're shifting characters, we move backwards through the file in order to
-	// reduce the total number of bytes copied within the output buffer.
+	// Because we're shifting characters, we move backwards through the file in
+	// order to reduce the total number of bytes copied within the output buffer.
 	// TODO: I don't think this is actually true
 	const auto end = deferredLinks_.crend();
 	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {

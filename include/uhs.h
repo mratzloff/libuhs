@@ -20,7 +20,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-// #include <unordered_map>
+#include <tuple>
 #include <vector>
 
 #include "json.h"
@@ -903,15 +903,28 @@ private:
 	void serializeInfoElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeLinkElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeOverlayElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeSoundElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeSubjectElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
-	void appendBody(const Element& element, pugi::xml_node xmlNode) const;
-	void appendHeader(const Element& element, pugi::xml_node xmlNode) const;
-	void appendMedia(const Element& element, pugi::xml_node xmlNode) const;
+	std::optional<pugi::xml_node> appendBody(
+	    const Element& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node appendHeader(const Element& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node appendMedia(const Element& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
+	std::optional<pugi::xml_node> findImageContainer(
+	    const Element& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node findOrCreateMap(const Element& element, pugi::xml_node xmlNode) const;
+	std::string getDataURI(const std::string& contentType, const std::string& data) const;
+	std::tuple<int, int> getImageSize(const Element& element) const;
+	Element* getParentElement(const Element& element) const;
+	std::tuple<int, int, int, int> getRegionCoordinates(const Element& element) const;
+	void populateArea(const Element& element, pugi::xml_node area) const;
 
 	static HTMLWriter::Serializer serializer_;
+
+	std::map<const ElementType, std::string> mediaContentTypes_;
+	std::map<const ElementType, std::string> mediaTagTypes_;
 };
 
 class JSONWriter : public Writer {

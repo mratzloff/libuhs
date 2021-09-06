@@ -4,7 +4,7 @@
 
 namespace UHS::Strings {
 
-// const std::unordered_map<const std::string, const std::string> specialChars = {
+// const std::map<const std::string, const std::string> specialChars = {
 //     {"S^", u8"Š"},
 //     {"OE", u8"Œ"},
 //     {"-", u8"–"},
