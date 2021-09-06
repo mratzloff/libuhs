@@ -12,7 +12,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "lib",
+    "outDir": "CMakeFiles/CmakeTmp",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,

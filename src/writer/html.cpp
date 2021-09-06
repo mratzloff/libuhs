@@ -5,6 +5,10 @@ namespace UHS {
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
 HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {
+	js_ =
+#include "js.h"
+	    ;
+
 	mediaContentTypes_.emplace(ElementType::Gifa, "image/gif");
 	mediaContentTypes_.emplace(ElementType::Hyperpng, "image/png");
 	mediaContentTypes_.emplace(ElementType::Overlay, "image/png");
@@ -37,6 +41,9 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		meta2.append_attribute("name") = "author";
 		meta2.append_attribute("content") = author.value().c_str();
 	}
+
+	auto script = head.append_child("script");
+	script.append_child(pugi::node_pcdata).set_value(js_.c_str());
 
 	auto style = head.append_child("style");
 	style.append_child(pugi::node_pcdata)

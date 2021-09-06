@@ -8,5 +8,6 @@ bin/*
 CMakeCache.txt
 CMakeFiles
 cmake_install.cmake
+include/js.h
 Makefile
 lib/*

@@ -11,7 +11,7 @@ set (argh_includes vendor/argh)
 set (json_includes vendor/jsoncpp/json)
 set (pugixml_includes vendor/pugixml)
 set (tinyformat_includes vendor/tinyformat)
-set (uhs_includes include)
+set (uhs_includes include CMakeFiles/CMakeTmp)
 
 set (uhs_sources
 	src/codec.cpp
@@ -34,8 +34,16 @@ set (uhs_sources
 
 set (uhs_bin_sources src/cmd/uhs/main.cpp)
 
-# uhs-js
-add_custom_target(uhs-js COMMAND tsc)
+# js
+add_custom_target(js
+	COMMAND tsc
+	BYPRODUCTS CMakeFiles/CMakeTmp/uhs.js)
+
+# js_includes
+add_custom_target(js_includes
+	COMMAND ${CMAKE_COMMAND} -P cmake/create_js_h.cmake
+	BYPRODUCTS include/js.h)
+add_dependencies (js_includes js)
 
 # json.o
 add_library (json OBJECT vendor/jsoncpp/jsoncpp.cpp)
@@ -47,7 +55,7 @@ target_include_directories (pugixml PUBLIC ${pugixml_includes})
 
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
-add_dependencies (uhs uhs-js)
+add_dependencies (uhs js_includes)
 target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
@@ -57,11 +65,11 @@ target_include_directories (uhs
 target_compile_options (uhs PRIVATE -g -Wall -Wextra)
 
 # bin/uhs
-add_executable (uhs-bin src/cmd/uhs/main.cpp)
-add_dependencies (uhs-bin uhs-js)
-set_target_properties (uhs-bin PROPERTIES OUTPUT_NAME uhs)
-target_include_directories (uhs-bin PUBLIC ${argh_includes})
-target_link_libraries (uhs-bin PUBLIC uhs)
+add_executable (uhs_bin src/cmd/uhs/main.cpp)
+add_dependencies (uhs_bin js_includes)
+set_target_properties (uhs_bin PROPERTIES OUTPUT_NAME uhs)
+target_include_directories (uhs_bin PUBLIC ${argh_includes})
+target_link_libraries (uhs_bin PUBLIC uhs)
 
 # clang-format
 add_custom_target (format
