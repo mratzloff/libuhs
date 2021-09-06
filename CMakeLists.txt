@@ -26,7 +26,11 @@ set (uhs_sources
 	src/token.cpp
 	src/tokenizer.cpp
 	src/traits.cpp
-	src/writer.cpp)
+	src/writer/writer.cpp
+	src/writer/html.cpp
+	src/writer/json.cpp
+	src/writer/tree.cpp
+	src/writer/uhs.cpp)
 
 set (uhs_bin_sources src/cmd/uhs/main.cpp)
 
