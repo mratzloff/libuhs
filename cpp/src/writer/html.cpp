@@ -23,11 +23,11 @@ HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, o
 void HTMLWriter::write(const Document& document) {
 	pugi::xml_document xml;
 	this->serialize(document, xml);
-	out_ << "<!DOCTYPE html>" << std::endl;
 	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
+	xml.append_child(pugi::node_doctype).set_value("html");
 	auto html = xml.append_child("html");
 	html.append_attribute("lang") = "en";
 	auto head = html.append_child("head");
@@ -43,7 +43,8 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	}
 
 	auto script = head.append_child("script");
-	script.append_child(pugi::node_pcdata).set_value(js_.c_str());
+	script.append_child(pugi::node_pcdata).set_value("//");
+	script.append_child(pugi::node_cdata).set_value(js_.c_str());
 
 	auto style = head.append_child("style");
 	style.append_child(pugi::node_pcdata)
