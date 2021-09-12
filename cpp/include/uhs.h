@@ -909,7 +909,7 @@ private:
 	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
 	std::optional<pugi::xml_node> appendBody(
 	    const Element& element, pugi::xml_node xmlNode) const;
-	pugi::xml_node appendHeader(const Element& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node appendHeading(const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node appendMedia(const Element& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
 	std::optional<pugi::xml_node> findImageContainer(

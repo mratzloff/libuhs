@@ -147,7 +147,7 @@ void HTMLWriter::serializeBlankElement(const Element& element, pugi::xml_node xm
 #pragma clang diagnostic pop
 
 void HTMLWriter::serializeCommentElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeader(element, xmlNode);
+	this->appendHeading(element, xmlNode);
 	this->appendBody(element, xmlNode);
 }
 
@@ -156,13 +156,14 @@ void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xml
 }
 
 void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeader(element, xmlNode);
+	this->appendHeading(element, xmlNode);
+	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeHyperpngElement(
     const Element& element, pugi::xml_node xmlNode) {
 
-	this->appendHeader(element, xmlNode);
+	this->appendHeading(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 
 	if (element.hasFirstChild()) {
@@ -290,11 +291,11 @@ void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xm
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeader(element, xmlNode);
+	this->appendHeading(element, xmlNode);
 }
 
 void HTMLWriter::serializeTextElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeader(element, xmlNode);
+	this->appendHeading(element, xmlNode);
 }
 
 void HTMLWriter::serializeTextNode(
@@ -359,7 +360,7 @@ std::optional<pugi::xml_node> HTMLWriter::appendBody(
 	return p;
 }
 
-pugi::xml_node HTMLWriter::appendHeader(
+pugi::xml_node HTMLWriter::appendHeading(
     const Element& element, pugi::xml_node xmlNode) const {
 
 	auto depth = element.depth();
