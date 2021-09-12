@@ -503,7 +503,7 @@ void Parser::parseHintElement(Element& element) {
 		column = token->column();
 
 		if (!group) {
-			group = GroupNode::create(this->offsetLine(line), length - i);
+			group = GroupNode::create(this->offsetLine(line), length - i + 1);
 			element.appendChild(group);
 			this->addNodeToParentIndex(*group);
 		}
@@ -548,7 +548,7 @@ void Parser::parseHintElement(Element& element) {
 			element.appendChild(BreakNode::create());
 
 			if (group->hasFirstChild()) {
-				group = GroupNode::create(this->offsetLine(line), length - i);
+				group = GroupNode::create(this->offsetLine(line), length - i + 1);
 				element.appendChild(group);
 				this->addNodeToParentIndex(*group);
 			}
