@@ -34,6 +34,11 @@ set (uhs_sources
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
+# css_includes
+add_custom_target(css_includes
+	COMMAND ${CMAKE_COMMAND} -P cmake/create_css_h.cmake
+	BYPRODUCTS cpp/include/css.h)
+
 # js
 add_custom_target(js
 	COMMAND tsc
@@ -55,7 +60,7 @@ target_include_directories (pugixml PUBLIC ${pugixml_includes})
 
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
-add_dependencies (uhs js_includes)
+add_dependencies (uhs css_includes js_includes)
 target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
@@ -66,7 +71,7 @@ target_compile_options (uhs PRIVATE -g -Wall -Wextra)
 
 # bin/uhs
 add_executable (uhs_bin cpp/src/cmd/uhs/main.cpp)
-add_dependencies (uhs_bin js_includes)
+add_dependencies (uhs_bin css_includes js_includes)
 set_target_properties (uhs_bin PROPERTIES OUTPUT_NAME uhs)
 target_include_directories (uhs_bin PUBLIC ${argh_includes})
 target_link_libraries (uhs_bin PUBLIC uhs)

@@ -1,0 +1,32 @@
+.hidden {
+    visibility: hidden;
+}
+
+.hyperpng {
+    position: relative;
+}
+
+.image-container {
+    position: relative;
+}
+
+.monospace {
+    font-family: monospace;
+    white-space: pre;
+}
+
+.monospace.overflow {
+    white-space: pre;
+}
+
+.overflow {
+    white-space: nowrap;
+}
+
+.overlay {
+    position: absolute;
+}
+
+.visibility-none {
+    display: none;
+}

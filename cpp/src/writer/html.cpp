@@ -5,6 +5,9 @@ namespace UHS {
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
 HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {
+	css_ =
+#include "css.h"
+	    ;
 	js_ =
 #include "js.h"
 	    ;
@@ -47,16 +50,9 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	script.append_child(pugi::node_cdata).set_value(js_.c_str());
 
 	auto style = head.append_child("style");
-	style.append_child(pugi::node_pcdata)
-	    .set_value(
-	        ".hidden { visibility: hidden; }"
-	        ".hyperpng { position: relative; }"
-	        ".image-container { position: relative; }"
-	        ".overflow { white-space: nowrap; }"
-	        ".overflow.monospace { white-space: pre; }"
-	        ".overlay { position: absolute; }"
-	        ".monospace { font-family: monospace; white-space: pre; }"
-	        ".visibility-none { display: none; }");
+	style.append_child(pugi::node_pcdata).set_value("/*");
+	style.append_child(pugi::node_cdata).set_value(css_.c_str());
+	style.append_child(pugi::node_pcdata).set_value("*/");
 
 	auto body = html.append_child("body");
 	auto root = body.append_child("main");

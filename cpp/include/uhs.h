@@ -923,6 +923,7 @@ private:
 
 	static HTMLWriter::Serializer serializer_;
 
+	std::string css_;
 	std::string js_;
 	std::map<const ElementType, std::string> mediaContentTypes_;
 	std::map<const ElementType, std::string> mediaTagTypes_;
