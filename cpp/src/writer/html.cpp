@@ -56,26 +56,36 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	        ".overflow.monospace { white-space: pre; }"
 	        ".overlay { position: absolute; }"
 	        ".monospace { font-family: monospace; white-space: pre; }"
-	        ".visibility-none { display: none; }\n");
+	        ".visibility-none { display: none; }");
 
 	auto body = html.append_child("body");
 	auto root = body.append_child("main");
+	root.append_attribute("id") = "root";
 
-	pugi::xml_node parents[MaxDepth];
-	pugi::xml_node parent = root;
+	auto viewport = body.append_child("main");
+	viewport.append_attribute("id") = "viewport";
+	viewport.append_attribute("hidden") = "true";
+
+	std::map<const Node*, const pugi::xml_node> parents;
+	auto parent = root;
 	auto depth = 0;
-	parents[depth] = root;
 
 	for (const auto& node : document) {
 		auto nodeDepth = node.depth();
-		if (nodeDepth > depth) { // Down
-			parents[depth] = parent;
-			if (!parent.children().empty()) {
-				parent = parent.last_child();
-			}
-		} else if (nodeDepth < depth) { // Up
-			if (nodeDepth >= 0) {
-				parent = parents[nodeDepth];
+
+		if (nodeDepth != depth) {
+			parent = parents.at(node.parent());
+			auto ol = parent.first_element_by_path("ol");
+			if (nodeDepth < depth) {
+				if (ol) {
+					parent = ol;
+				}
+			} else if (ol) {
+				if (!ol.children().empty()) {
+					parent = ol.last_child();
+				} else {
+					parent = ol;
+				}
 			}
 		}
 
@@ -85,24 +95,53 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			break;
 		case NodeType::Document: {
 			const auto& d = static_cast<const Document&>(node);
-			auto xmlNode = (nodeDepth == 0) ? root : parent.append_child("section");
+			pugi::xml_node xmlNode;
+			if (strcmp(parent.name(), "ol") == 0) {
+				auto li = parent.append_child("li");
+				if (d.visibility() == VisibilityType::None) {
+					li.append_attribute("class") = "visibility-none";
+				}
+				xmlNode = li.append_child("section");
+			} else {
+				xmlNode = parent.append_child("section");
+			}
+			parents.emplace(&node, xmlNode);
 			this->serializeDocument(d, xmlNode);
 			break;
 		}
 		case NodeType::Element: {
 			const auto& element = static_cast<const Element&>(node);
-			auto xmlNode = parent.append_child("section");
+			pugi::xml_node xmlNode;
+			if (strcmp(parent.name(), "ol") == 0) {
+				auto li = parent.append_child("li");
+				if (element.visibility() == VisibilityType::None) {
+					li.append_attribute("class") = "visibility-none";
+				}
+				xmlNode = li.append_child("div");
+			} else {
+				xmlNode = parent.append_child("div");
+			}
+			parents.emplace(&node, xmlNode);
 			this->serializeElement(element, xmlNode);
 			break;
 		}
-		case NodeType::Group:
-			parent.append_child("p");
+		case NodeType::Group: {
+			assert(node.hasParent());
+			pugi::xml_node xmlNode;
+			if (Node::isElementOfType(*node.parent(), ElementType::Text)) {
+				xmlNode = parent.append_child("p");
+			} else {
+				auto li = parent.append_child("li");
+				xmlNode = li.append_child("div");
+			}
+			parents.emplace(&node, xmlNode);
 			break;
+		}
 		case NodeType::Text: {
+			assert(node.hasParent());
 			const auto& textNode = static_cast<const TextNode&>(node);
-			assert(textNode.hasParent());
 			auto childOfGroup = textNode.parent()->nodeType() == NodeType::Group;
-			auto xmlNode = parent.append_child(childOfGroup ? "span" : "p");
+			auto xmlNode = parent.append_child(childOfGroup ? "span" : "li");
 			this->serializeTextNode(textNode, xmlNode);
 			break;
 		}
@@ -120,6 +159,7 @@ void HTMLWriter::serializeDocument(
 	xmlNode.append_attribute("data-type") = document.nodeTypeString().c_str();
 	xmlNode.append_attribute("data-version") = document.versionString().c_str();
 	this->appendVisibility(document, xmlNode);
+	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode) {
@@ -292,6 +332,7 @@ void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xm
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
 	this->appendHeading(element, xmlNode);
+	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeTextElement(const Element& element, pugi::xml_node xmlNode) {
