@@ -880,6 +880,8 @@ public:
 	void write(const Document& document) override;
 
 private:
+	using NodeMap = std::map<const Node*, const pugi::xml_node>;
+
 	class Serializer {
 	public:
 		using Func = void (HTMLWriter::*)(const Element& element, pugi::xml_node xmlNode);
@@ -916,6 +918,8 @@ private:
 	std::optional<pugi::xml_node> findImageContainer(
 	    const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findOrCreateMap(const Element& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node findXMLParent(const Node& node, const pugi::xml_node parent,
+	    const NodeMap parents, const int depth) const;
 	std::string getDataURI(const std::string& contentType, const std::string& data) const;
 	std::tuple<int, int> getImageSize(const Element& element) const;
 	Element* getParentElement(const Element& element) const;

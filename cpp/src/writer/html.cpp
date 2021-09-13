@@ -32,28 +32,13 @@ void HTMLWriter::write(const Document& document) {
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	auto root = this->createHTMLDocument(document, xml);
 
-	std::map<const Node*, const pugi::xml_node> parents;
+	NodeMap parents;
 	auto parent = root;
 	auto depth = 0;
 
 	for (const auto& node : document) {
 		auto nodeDepth = node.depth();
-
-		if (nodeDepth != depth) {
-			parent = parents.at(node.parent());
-			auto ol = parent.first_element_by_path("ol");
-			if (nodeDepth < depth) {
-				if (ol) {
-					parent = ol;
-				}
-			} else if (ol) {
-				if (!ol.children().empty()) {
-					parent = ol.last_child();
-				} else {
-					parent = ol;
-				}
-			}
-		}
+		parent = this->findXMLParent(node, parent, parents, depth);
 
 		// Serialize node
 		switch (node.nodeType()) {
@@ -482,6 +467,33 @@ pugi::xml_node HTMLWriter::findOrCreateMap(
 	}
 
 	return map;
+}
+
+pugi::xml_node HTMLWriter::findXMLParent(const Node& node, const pugi::xml_node parent,
+    const NodeMap parents, const int depth) const {
+
+	auto nodeDepth = node.depth();
+	auto nodeParent = parent;
+
+	if (nodeDepth == depth) {
+		return nodeParent;
+	}
+
+	nodeParent = parents.at(node.parent());
+	auto ol = nodeParent.first_element_by_path("ol");
+	if (nodeDepth < depth) {
+		if (ol) {
+			nodeParent = ol;
+		}
+	} else if (ol) {
+		if (!ol.children().empty()) {
+			nodeParent = ol.last_child();
+		} else {
+			nodeParent = ol;
+		}
+	}
+
+	return nodeParent;
 }
 
 std::string HTMLWriter::getDataURI(
