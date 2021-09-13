@@ -30,37 +30,7 @@ void HTMLWriter::write(const Document& document) {
 }
 
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
-	xml.append_child(pugi::node_doctype).set_value("html");
-	auto html = xml.append_child("html");
-	html.append_attribute("lang") = "en";
-	auto head = html.append_child("head");
-	auto title = head.append_child("title");
-	title.append_child(pugi::node_pcdata).set_value(document.title().c_str());
-	auto meta1 = head.append_child("meta");
-	meta1.append_attribute("charset") = "utf-8";
-
-	if (auto author = document.attr("author")) {
-		auto meta2 = head.append_child("meta");
-		meta2.append_attribute("name") = "author";
-		meta2.append_attribute("content") = author.value().c_str();
-	}
-
-	auto script = head.append_child("script");
-	script.append_child(pugi::node_pcdata).set_value("//");
-	script.append_child(pugi::node_cdata).set_value(js_.c_str());
-
-	auto style = head.append_child("style");
-	style.append_child(pugi::node_pcdata).set_value("/*");
-	style.append_child(pugi::node_cdata).set_value(css_.c_str());
-	style.append_child(pugi::node_pcdata).set_value("*/");
-
-	auto body = html.append_child("body");
-	auto root = body.append_child("main");
-	root.append_attribute("id") = "root";
-
-	auto viewport = body.append_child("main");
-	viewport.append_attribute("id") = "viewport";
-	viewport.append_attribute("hidden") = "true";
+	auto root = this->createHTMLDocument(document, xml);
 
 	std::map<const Node*, const pugi::xml_node> parents;
 	auto parent = root;
@@ -433,6 +403,44 @@ void HTMLWriter::appendVisibility(
 		return;
 	}
 	xmlNode.append_attribute("class") = ("visibility-" + node.visibilityString()).c_str();
+}
+
+pugi::xml_node HTMLWriter::createHTMLDocument(
+    const Document& document, pugi::xml_document& xml) {
+
+	xml.append_child(pugi::node_doctype).set_value("html");
+	auto html = xml.append_child("html");
+	html.append_attribute("lang") = "en";
+	auto head = html.append_child("head");
+	auto title = head.append_child("title");
+	title.append_child(pugi::node_pcdata).set_value(document.title().c_str());
+	auto meta1 = head.append_child("meta");
+	meta1.append_attribute("charset") = "utf-8";
+
+	if (auto author = document.attr("author")) {
+		auto meta2 = head.append_child("meta");
+		meta2.append_attribute("name") = "author";
+		meta2.append_attribute("content") = author.value().c_str();
+	}
+
+	auto script = head.append_child("script");
+	script.append_child(pugi::node_pcdata).set_value("//");
+	script.append_child(pugi::node_cdata).set_value(js_.c_str());
+
+	auto style = head.append_child("style");
+	style.append_child(pugi::node_pcdata).set_value("/*");
+	style.append_child(pugi::node_cdata).set_value(css_.c_str());
+	style.append_child(pugi::node_pcdata).set_value("*/");
+
+	auto body = html.append_child("body");
+	auto root = body.append_child("main");
+	root.append_attribute("id") = "root";
+
+	auto viewport = body.append_child("main");
+	viewport.append_attribute("id") = "viewport";
+	viewport.append_attribute("hidden") = "true";
+
+	return root;
 }
 
 std::optional<pugi::xml_node> HTMLWriter::findImageContainer(
