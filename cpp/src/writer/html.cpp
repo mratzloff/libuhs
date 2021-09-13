@@ -187,7 +187,7 @@ void HTMLWriter::serializeBlankElement(const Element& element, pugi::xml_node xm
 #pragma clang diagnostic pop
 
 void HTMLWriter::serializeCommentElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeading(element, xmlNode);
+	this->appendTitle(element, xmlNode);
 	this->appendBody(element, xmlNode);
 }
 
@@ -196,14 +196,14 @@ void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xml
 }
 
 void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeading(element, xmlNode);
+	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeHyperpngElement(
     const Element& element, pugi::xml_node xmlNode) {
 
-	this->appendHeading(element, xmlNode);
+	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 
 	if (element.hasFirstChild()) {
@@ -228,8 +228,6 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 	}
 
 	xmlNode.append_attribute("id") = "info";
-	auto aboutTitle = xmlNode.append_child("h1");
-	aboutTitle.append_child(pugi::node_pcdata).set_value("File Information");
 	auto dl = xmlNode.append_child("dl");
 
 	if (auto author = document->attr("author")) {
@@ -331,12 +329,12 @@ void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xm
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeading(element, xmlNode);
+	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeTextElement(const Element& element, pugi::xml_node xmlNode) {
-	this->appendHeading(element, xmlNode);
+	this->appendTitle(element, xmlNode);
 }
 
 void HTMLWriter::serializeTextNode(
@@ -401,12 +399,11 @@ std::optional<pugi::xml_node> HTMLWriter::appendBody(
 	return p;
 }
 
-pugi::xml_node HTMLWriter::appendHeading(
+pugi::xml_node HTMLWriter::appendTitle(
     const Element& element, pugi::xml_node xmlNode) const {
 
-	auto depth = element.depth();
-	auto headerDepth = std::to_string((depth <= 6) ? depth : 6);
-	auto title = xmlNode.append_child(("h" + headerDepth).c_str());
+	auto title = xmlNode.append_child("p");
+	title.append_attribute("class") = "title";
 	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 
 	return title;
