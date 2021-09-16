@@ -335,6 +335,7 @@ void HTMLWriter::serializeTextNode(
 			body = "http://" + body;
 		}
 		xmlNode.append_attribute("href") = body.c_str();
+		xmlNode.append_attribute("class") = "hyperlink";
 	}
 
 	std::vector<std::string> classes;

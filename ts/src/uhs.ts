@@ -35,7 +35,7 @@ class Viewport {
     }
 
     private createLinkClickHandlers(container: HTMLElement): void {
-        const links = container.querySelectorAll("a[href], area[href]");
+        const links = container.querySelectorAll("a[href]:not(.hyperlink), area[href]");
         links.forEach(link => {
             const targetId = link.getAttribute("data-target");
             if (!targetId) {
@@ -52,6 +52,7 @@ class Viewport {
                 link.addEventListener("click", () => this.view(targetId, this.viewport), {capture: false});
                 link.classList.add("clickable");
             }
+
             link.removeAttribute("href");
         });
     }
@@ -63,6 +64,7 @@ class Viewport {
             if (!targetId) {
                 throw new Error("could not find overlay target ID");
             }
+
             overlay.addEventListener("click", () => this.showOverlay(targetId, this.viewport), {capture: false});
             overlay.classList.add("clickable");
         });
@@ -123,6 +125,7 @@ class Viewport {
         if (!title || title.textContent === null) {
             throw new Error("could not find title");
         }
+
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(title.textContent));
         title!.parentNode?.replaceChild(heading, title);
