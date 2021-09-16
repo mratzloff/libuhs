@@ -1,12 +1,32 @@
-.hidden {
-    visibility: hidden;
+a {
+    cursor: pointer;
 }
 
-.hyperpng {
+hr {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+ol {
+    padding-left: 0;
+}
+
+.clickable {
+    color: #0000ee;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+area.clickable {
+    display: block;
+}
+
+.hyperpng-background {
     position: relative;
 }
 
-.image-container {
+.hyperpng-container {
     position: relative;
 }
 
@@ -25,6 +45,10 @@
 
 .overlay {
     position: absolute;
+}
+
+.title {
+    display: inline-block;
 }
 
 .visibility-none {

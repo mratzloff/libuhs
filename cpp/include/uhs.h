@@ -915,7 +915,7 @@ private:
 	pugi::xml_node appendMedia(const Element& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
 	pugi::xml_node createHTMLDocument(const Document& document, pugi::xml_document& xml);
-	std::optional<pugi::xml_node> findImageContainer(
+	std::optional<pugi::xml_node> findHyperpngContainer(
 	    const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findOrCreateMap(const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findXMLParent(const Node& node, const pugi::xml_node parent,

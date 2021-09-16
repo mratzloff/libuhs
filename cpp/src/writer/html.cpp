@@ -115,7 +115,18 @@ void HTMLWriter::serializeDocument(
 
 void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode) {
 	if (const auto id = element.id(); id > 0) {
-		xmlNode.append_attribute("id") = id;
+		xmlNode.append_attribute("data-id") = id;
+
+		const auto parentDocument = element.findDocument();
+		if (!parentDocument) {
+			throw new WriteError(
+			    "no document found for element with ID %d", element.id());
+		}
+
+		auto inHeaderDocument = (parentDocument->findDocument() != nullptr);
+		if (!inHeaderDocument) {
+			xmlNode.append_attribute("id") = id;
+		}
 	}
 
 	xmlNode.append_attribute("data-type") =
@@ -159,9 +170,9 @@ void HTMLWriter::serializeHyperpngElement(
 
 	if (element.hasFirstChild()) {
 		auto container = xmlNode.append_child("div");
-		container.append_attribute("class") = "image-container";
+		container.append_attribute("class") = "hyperpng-container";
 		container.append_move(media);
-		media.append_attribute("class") = "hyperpng";
+		media.append_attribute("class") = "hyperpng-background";
 		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
 	}
 }
@@ -217,12 +228,11 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 	auto isLink = false;
 	auto isText = false;
 
-	if (auto container = this->findImageContainer(element, xmlNode)) {
+	if (auto container = this->findHyperpngContainer(element, xmlNode)) {
 		xmlNode.set_name("area");
 		auto map = this->findOrCreateMap(element, *container);
 		map.append_move(xmlNode);
 		this->populateArea(element, xmlNode);
-		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
 	} else {
 		if (element.hasPreviousSibling()) {
 			auto previousNode = element.previousSibling();
@@ -239,18 +249,18 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 		}
 
 		xmlNode.set_name("a");
-		xmlNode.append_attribute("href") = ("#" + element.body()).c_str();
 		xmlNode.append_attribute("inline") = element.inlined();
 		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 	}
+
+	auto target = element.body();
+	xmlNode.append_attribute("data-target") = target.c_str();
+	xmlNode.append_attribute("href") = ("#" + target).c_str();
 }
 
 void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node xmlNode) {
-	static auto jsTemplate =
-	    "javascript:document.getElementById('%d').classList.remove('hidden')";
-
 	// Re-parent node
-	auto container = findImageContainer(element, xmlNode);
+	auto container = findHyperpngContainer(element, xmlNode);
 	if (!container) {
 		throw WriteError("overlay parent must be a hyperpng element");
 	}
@@ -261,7 +271,8 @@ void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node 
 	xmlNode.set_name(mediaTagTypes_.at(elementType).c_str());
 	auto dataURI = this->getDataURI(mediaContentTypes_.at(elementType), element.body());
 	xmlNode.append_attribute("src") = dataURI.c_str();
-	xmlNode.append_attribute("class") = "overlay hidden";
+	xmlNode.append_attribute("class") = "overlay";
+	xmlNode.append_attribute("hidden");
 
 	auto [x, y] = this->getImageSize(element);
 	xmlNode.append_attribute("style") =
@@ -271,12 +282,14 @@ void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node 
 	auto map = this->findOrCreateMap(element, *container);
 	auto area = map.append_child("area");
 	this->populateArea(element, area);
-	area.append_attribute("href") = tfm::format(jsTemplate, element.id()).c_str();
+	area.append_attribute("data-overlay") = element.id();
 }
 
 void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("controls");
+	media.append_attribute("class") = "sound";
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
@@ -353,7 +366,8 @@ std::optional<pugi::xml_node> HTMLWriter::appendBody(
 pugi::xml_node HTMLWriter::appendTitle(
     const Element& element, pugi::xml_node xmlNode) const {
 
-	auto title = xmlNode.append_child("p");
+	auto div = xmlNode.append_child("div");
+	auto title = div.append_child("span");
 	title.append_attribute("class") = "title";
 	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 
@@ -420,15 +434,12 @@ pugi::xml_node HTMLWriter::createHTMLDocument(
 	auto body = html.append_child("body");
 	auto root = body.append_child("main");
 	root.append_attribute("id") = "root";
-
-	auto viewport = body.append_child("main");
-	viewport.append_attribute("id") = "viewport";
-	viewport.append_attribute("hidden") = "true";
+	root.append_attribute("hidden");
 
 	return root;
 }
 
-std::optional<pugi::xml_node> HTMLWriter::findImageContainer(
+std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
     const Element& element, pugi::xml_node xmlNode) const {
 
 	auto parentElement = this->getParentElement(element);
@@ -437,7 +448,7 @@ std::optional<pugi::xml_node> HTMLWriter::findImageContainer(
 	}
 
 	auto parent = xmlNode.parent();
-	auto container = parent.find_child_by_attribute("div", "class", "image-container");
+	auto container = parent.find_child_by_attribute("div", "class", "hyperpng-container");
 
 	return container;
 }
@@ -451,7 +462,7 @@ pugi::xml_node HTMLWriter::findOrCreateMap(
 		    "expected hyperpng parent; got %s", parentElement->elementTypeString());
 	}
 
-	auto container = this->findImageContainer(element, xmlNode);
+	auto container = this->findHyperpngContainer(element, xmlNode);
 	if (!container) {
 		throw WriteError(
 		    "hyperpng %s must have an image container", element.elementTypeString());
