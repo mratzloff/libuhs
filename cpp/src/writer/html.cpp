@@ -157,6 +157,12 @@ void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xml
 	this->appendMedia(element, xmlNode);
 }
 
+void HTMLWriter::serializeGifaElement(const Element& element, pugi::xml_node xmlNode) {
+	this->appendTitle(element, xmlNode);
+	auto media = this->appendMedia(element, xmlNode);
+	media.append_attribute("class") = "media gifa";
+}
+
 void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
@@ -170,7 +176,7 @@ void HTMLWriter::serializeHyperpngElement(
 
 	if (element.hasFirstChild()) {
 		auto container = xmlNode.append_child("div");
-		container.append_attribute("class") = "hyperpng-container";
+		container.append_attribute("class") = "media hyperpng-container";
 		container.append_move(media);
 		media.append_attribute("class") = "hyperpng-background";
 		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
@@ -271,7 +277,7 @@ void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node 
 	xmlNode.set_name(mediaTagTypes_.at(elementType).c_str());
 	auto dataURI = this->getDataURI(mediaContentTypes_.at(elementType), element.body());
 	xmlNode.append_attribute("src") = dataURI.c_str();
-	xmlNode.append_attribute("class") = "overlay";
+	xmlNode.append_attribute("class") = "media overlay";
 	xmlNode.append_attribute("hidden");
 
 	auto [x, y] = this->getImageSize(element);
@@ -289,7 +295,7 @@ void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xm
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("controls");
-	media.append_attribute("class") = "sound";
+	media.append_attribute("class") = "media sound";
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
@@ -564,7 +570,7 @@ HTMLWriter::Serializer::Serializer() {
 	map_.emplace(ElementType::Blank, &HTMLWriter::serializeBlankElement);
 	map_.emplace(ElementType::Comment, &HTMLWriter::serializeCommentElement);
 	map_.emplace(ElementType::Credit, &HTMLWriter::serializeCommentElement);
-	map_.emplace(ElementType::Gifa, &HTMLWriter::serializeDataElement);
+	map_.emplace(ElementType::Gifa, &HTMLWriter::serializeGifaElement);
 	map_.emplace(ElementType::Hint, &HTMLWriter::serializeHintElement);
 	map_.emplace(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
 	map_.emplace(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);

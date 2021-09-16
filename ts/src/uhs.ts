@@ -20,14 +20,6 @@ class Viewport {
         this.view(id, this.viewport);
     }
 
-    private showOverlay(id: string, viewport: HTMLElement): void {
-        const overlay = viewport.querySelector(`[data-id="${id}"]`);
-        if (!overlay) {
-            throw new Error("could not find overlay");
-        }
-        overlay.removeAttribute("hidden");
-    }
-
     private cloneEntryPoint(id: string): HTMLElement {
         const originalEntry = document.getElementById(id);
         if (!originalEntry) {
@@ -113,7 +105,15 @@ class Viewport {
             item.hidden = true;
         }
 
-        this.createShowNextHintButton(container, items);
+        if (items.length > 1) {
+            this.createShowNextHintButton(container, items);
+        }
+    }
+
+    private processLeafNode(container: HTMLElement): void {
+        this.replaceIdsWithDataAttributes(container);
+        this.updateImageMapAnchor(container);
+        this.createOverlayClickHandler(container);
     }
 
     private processListNode(container: HTMLElement): void {
@@ -126,12 +126,6 @@ class Viewport {
         this.createTitleClickHandlers(container);
     }
 
-    private processLeafNode(container: HTMLElement): void {
-        this.replaceIdsWithDataAttributes(container);
-        this.updateImageMapAnchor(container);
-        this.createOverlayClickHandler(container);
-    }
-
     private removeShowNextHintButton(): void {
         const buttonContainer = document.getElementById(Viewport.showNextHintButtonContainerId);
         buttonContainer?.remove();
@@ -139,10 +133,13 @@ class Viewport {
 
     private removeUnnecessaryElements(container: HTMLElement): void {
         container.querySelector("p:not(.title)")?.remove();
-        container.querySelector(".hyperpng-container")?.remove();
-        container.querySelector(".sound")?.remove();
+        container.querySelector(".media")?.remove();
         const lists = container.querySelectorAll("ol");
         lists.forEach(list => list.remove());
+    }
+
+    private render(container: HTMLElement): void {
+        this.viewport.appendChild(container);
     }
 
     private replaceIdsWithDataAttributes(container: HTMLElement): void {
@@ -164,10 +161,6 @@ class Viewport {
         title!.parentNode?.replaceChild(heading, title);
     }
 
-    private render(container: HTMLElement): void {
-        this.viewport.appendChild(container);
-    }
-
     private reset(): void {
         while (this.viewport.lastChild) {
             this.viewport.removeChild(this.viewport.lastChild);
@@ -184,6 +177,14 @@ class Viewport {
                 return;
             }
         }
+    }
+
+    private showOverlay(id: string, viewport: HTMLElement): void {
+        const overlay = viewport.querySelector(`[data-id="${id}"]`);
+        if (!overlay) {
+            throw new Error("could not find overlay");
+        }
+        overlay.removeAttribute("hidden");
     }
 
     private updateImageMapAnchor(container: HTMLElement): void {

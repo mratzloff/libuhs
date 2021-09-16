@@ -899,6 +899,7 @@ private:
 	void serializeBlankElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeCommentElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeDataElement(const Element& element, pugi::xml_node xmlNode);
+	void serializeGifaElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeHintElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeHyperpngElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeIncentiveElement(const Element& element, pugi::xml_node xmlNode);
