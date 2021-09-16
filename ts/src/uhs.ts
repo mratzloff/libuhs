@@ -1,4 +1,7 @@
 class Viewport {
+    private static showNextHintButtonContainerId = "show-next-hint-button-container";
+    private static showNextHintButtonId = "show-next-hint-button";
+
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -70,6 +73,17 @@ class Viewport {
         });
     }
 
+    private createShowNextHintButton(container: HTMLElement, items: HTMLElement[]): void {
+        const buttonContainer = document.createElement("div");
+        buttonContainer.id = Viewport.showNextHintButtonContainerId;
+        const button = document.createElement("button");
+        button.id = Viewport.showNextHintButtonId;
+        button.appendChild(document.createTextNode("Show next hint"));
+        button.addEventListener("click", () => this.showNextHint(items));
+        buttonContainer.appendChild(button);
+        container.appendChild(buttonContainer);
+    }
+
     private createTitleClickHandlers(container: HTMLElement): void {
         const titles = container.querySelectorAll(".title");
         titles.forEach(title => {
@@ -88,7 +102,21 @@ class Viewport {
         return container.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
     }
 
-    private processBranchNode(container: HTMLElement): void {
+    private processHintNode(container: HTMLElement): void {
+        const type = container.getAttribute("data-type");
+        if (type != "hint" && type != "nesthint") {
+            return;
+        }
+
+        const items = Array.from(this.findListItemChildren(container));
+        for (const item of items.slice(1)) {
+            item.hidden = true;
+        }
+
+        this.createShowNextHintButton(container, items);
+    }
+
+    private processListNode(container: HTMLElement): void {
         if (!container.firstChild) {
             throw new Error("empty list item");
         }
@@ -102,6 +130,11 @@ class Viewport {
         this.replaceIdsWithDataAttributes(container);
         this.updateImageMapAnchor(container);
         this.createOverlayClickHandler(container);
+    }
+
+    private removeShowNextHintButton(): void {
+        const buttonContainer = document.getElementById(Viewport.showNextHintButtonContainerId);
+        buttonContainer?.remove();
     }
 
     private removeUnnecessaryElements(container: HTMLElement): void {
@@ -141,6 +174,18 @@ class Viewport {
         }
     }
 
+    private showNextHint(items: HTMLElement[]): void {
+        for (const item of items) {
+            if (item.hidden) {
+                item.removeAttribute("hidden");
+                if (item === items[items.length - 1]) {
+                    this.removeShowNextHintButton();
+                }
+                return;
+            }
+        }
+    }
+
     private updateImageMapAnchor(container: HTMLElement): void {
         const map = container.querySelector("map");
         if (map) {
@@ -164,12 +209,13 @@ class Viewport {
         const items = this.findListItemChildren(entry);
 
         if (items.length > 0) {
-            items.forEach(item => this.processBranchNode(item));
+            items.forEach(item => this.processListNode(item));
         } else {
             this.processLeafNode(entry);
         }
 
         this.createLinkClickHandlers(entry);
+        this.processHintNode(entry);
         this.render(entry);
     }
 }

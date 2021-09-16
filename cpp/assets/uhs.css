@@ -39,9 +39,9 @@ area.clickable {
     white-space: pre;
 }
 
-.overflow {
+/* .overflow {
     white-space: nowrap;
-}
+} */
 
 .overlay {
     position: absolute;
