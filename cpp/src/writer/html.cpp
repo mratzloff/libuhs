@@ -50,7 +50,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (d.visibility() == VisibilityType::None) {
-					li.append_attribute("class") = "visibility-none";
+					this->appendClassNames(li, {"visibility-none"});
 				}
 				xmlNode = li.append_child("section");
 			} else {
@@ -66,7 +66,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (element.visibility() == VisibilityType::None) {
-					li.append_attribute("class") = "visibility-none";
+					this->appendClassNames(li, {"visibility-none"});
 				}
 				xmlNode = li.append_child("div");
 			} else {
@@ -138,6 +138,10 @@ void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode
 		xmlNode.append_attribute(("data-" + k).c_str()) = v.c_str();
 	}
 
+	if (element.inlined()) {
+		this->appendClassNames(xmlNode, {"inline"});
+	}
+
 	serializer_.invoke(*this, element, xmlNode);
 }
 
@@ -160,7 +164,8 @@ void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xml
 void HTMLWriter::serializeGifaElement(const Element& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
-	media.append_attribute("class") = "media gifa";
+	media.append_attribute("alt") = element.title().c_str();
+	this->appendClassNames(media, {"media", "gifa"});
 }
 
 void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
@@ -173,12 +178,14 @@ void HTMLWriter::serializeHyperpngElement(
 
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
+	media.append_attribute("alt") = element.title().c_str();
+	this->appendClassNames(media, {"media", "hyperpng"});
 
 	if (element.hasFirstChild()) {
 		auto container = xmlNode.append_child("div");
-		container.append_attribute("class") = "media hyperpng-container";
+		this->appendClassNames(container, {"media", "hyperpng-container"});
 		container.append_move(media);
-		media.append_attribute("class") = "hyperpng-background";
+		this->appendClassNames(media, {"media", "hyperpng-background"});
 		media.append_attribute("usemap") = tfm::format("#%d", element.id()).c_str();
 	}
 }
@@ -255,7 +262,9 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 		}
 
 		xmlNode.set_name("a");
-		xmlNode.append_attribute("inline") = element.inlined();
+		if (element.inlined()) {
+			this->appendClassNames(xmlNode, {"inline"});
+		}
 		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 	}
 
@@ -277,7 +286,7 @@ void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node 
 	xmlNode.set_name(mediaTagTypes_.at(elementType).c_str());
 	auto dataURI = this->getDataURI(mediaContentTypes_.at(elementType), element.body());
 	xmlNode.append_attribute("src") = dataURI.c_str();
-	xmlNode.append_attribute("class") = "media overlay";
+	this->appendClassNames(xmlNode, {"media", "overlay"});
 	xmlNode.append_attribute("hidden");
 
 	auto [x, y] = this->getImageSize(element);
@@ -295,7 +304,7 @@ void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xm
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("controls");
-	media.append_attribute("class") = "media sound";
+	this->appendClassNames(media, {"media", "sound"});
 }
 
 void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
@@ -341,19 +350,19 @@ void HTMLWriter::serializeTextNode(
 			body = "http://" + body;
 		}
 		xmlNode.append_attribute("href") = body.c_str();
-		xmlNode.append_attribute("class") = "hyperlink";
+		this->appendClassNames(xmlNode, {"hyperlink"});
 	}
 
-	std::vector<std::string> classes;
+	std::vector<std::string> classNames;
 
 	if (textNode.hasFormat(TextFormat::Overflow)) {
-		classes.push_back("overflow");
+		classNames.push_back("overflow");
 	}
 	if (textNode.hasFormat(TextFormat::Monospace)) {
-		classes.push_back("monospace");
+		classNames.push_back("monospace");
 	}
-	if (!classes.empty()) {
-		xmlNode.append_attribute("class") = Strings::join(classes, " ").c_str();
+	if (!classNames.empty()) {
+		this->appendClassNames(xmlNode, classNames);
 	}
 }
 
@@ -370,12 +379,33 @@ std::optional<pugi::xml_node> HTMLWriter::appendBody(
 	return p;
 }
 
+void HTMLWriter::appendClassNames(
+    pugi::xml_node xmlNode, std::vector<std::string> classNames) const {
+
+	auto attr = xmlNode.attribute("class");
+	if (!attr) {
+		xmlNode.append_attribute("class");
+	}
+
+	const auto value = std::string{attr.value()};
+	if (!value.empty()) {
+		auto oldClassNames = Strings::split(value, " ");
+		for (const auto& className : oldClassNames) {
+			classNames.emplace_back(className);
+		}
+		std::sort(classNames.begin(), classNames.end());
+		std::unique(classNames.begin(), classNames.end());
+	}
+
+	xmlNode.attribute("class") = Strings::join(classNames, " ").c_str();
+}
+
 pugi::xml_node HTMLWriter::appendTitle(
     const Element& element, pugi::xml_node xmlNode) const {
 
 	auto div = xmlNode.append_child("div");
 	auto title = div.append_child("span");
-	title.append_attribute("class") = "title";
+	this->appendClassNames(title, {"title"});
 	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
 
 	return title;
@@ -408,7 +438,8 @@ void HTMLWriter::appendVisibility(
 	if (node.visibility() == VisibilityType::All) {
 		return;
 	}
-	xmlNode.append_attribute("class") = ("visibility-" + node.visibilityString()).c_str();
+
+	this->appendClassNames(xmlNode, {"visibility-" + node.visibilityString()});
 }
 
 pugi::xml_node HTMLWriter::createHTMLDocument(

@@ -30,6 +30,11 @@ area.clickable {
     position: relative;
 }
 
+.inline,
+.inline > div {
+    display: inline;
+}
+
 .monospace {
     font-family: monospace;
     white-space: pre;
