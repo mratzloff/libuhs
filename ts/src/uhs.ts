@@ -9,15 +9,19 @@ class Viewport {
     }
 
     public constructor() {
+        // Create viewport
         this.viewport = document.createElement("div");
         this.viewport.id = "viewport";
         document.body.appendChild(this.viewport);
 
+        // Go to initial entry point
         const rootDocument = document.querySelector(`#root > section[data-type="document"]`);
         const version = rootDocument?.getAttribute("data-version");
         const id = (version === "88a") ? "5" : "1";
+        this.view(id);
 
-        this.view(id, this.viewport);
+        // Support back button
+        window.addEventListener("popstate", (event) => this.view(event.state ?? id));
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -44,7 +48,7 @@ class Viewport {
             }
 
             if (clickable) {
-                link.addEventListener("click", () => this.view(targetId, this.viewport), {capture: false});
+                link.addEventListener("click", () => this.go(targetId), {capture: false});
                 link.classList.add("clickable");
             }
 
@@ -60,7 +64,7 @@ class Viewport {
                 throw new Error("could not find overlay target ID");
             }
 
-            overlay.addEventListener("click", () => this.showOverlay(targetId, this.viewport), {capture: false});
+            overlay.addEventListener("click", () => this.showOverlay(targetId), {capture: false});
             overlay.classList.add("clickable");
         });
     }
@@ -85,13 +89,18 @@ class Viewport {
             }
 
             const id = container.getAttribute("data-id")!;
-            title.addEventListener("click", () => this.view(id, this.viewport), {capture: false});
+            title.addEventListener("click", () => this.go(id), {capture: false});
             title.classList.add("clickable");
         });
     }
 
     private findListItemChildren(container: HTMLElement): NodeListOf<HTMLElement> {
         return container.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
+    }
+
+    private go(id: string): void {
+        history.pushState(id, "");
+        this.view(id);
     }
 
     private processHintNode(container: HTMLElement): void {
@@ -179,8 +188,8 @@ class Viewport {
         }
     }
 
-    private showOverlay(id: string, viewport: HTMLElement): void {
-        const overlay = viewport.querySelector(`[data-id="${id}"]`);
+    private showOverlay(id: string): void {
+        const overlay = this.viewport.querySelector(`[data-id="${id}"]`);
         if (!overlay) {
             throw new Error("could not find overlay");
         }
@@ -203,8 +212,9 @@ class Viewport {
         }
     }
 
-    private view(id: string, viewport: HTMLElement): void {
+    private view(id: string): void {
         this.reset();
+
         const entry = this.cloneEntryPoint(id);
         this.replaceTitleWithHeading(entry);
         const items = this.findListItemChildren(entry);
