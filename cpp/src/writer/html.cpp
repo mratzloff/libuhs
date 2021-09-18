@@ -47,6 +47,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		case NodeType::Document: {
 			const auto& d = static_cast<const Document&>(node);
 			pugi::xml_node xmlNode;
+
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (d.visibility() == VisibilityType::None) {
@@ -56,6 +57,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			} else {
 				xmlNode = parent.append_child("section");
 			}
+
 			parents.emplace(&node, xmlNode);
 			this->serializeDocument(d, xmlNode);
 			break;
@@ -63,6 +65,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		case NodeType::Element: {
 			const auto& element = static_cast<const Element&>(node);
 			pugi::xml_node xmlNode;
+
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (element.visibility() == VisibilityType::None) {
@@ -72,25 +75,41 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			} else {
 				xmlNode = parent.append_child("div");
 			}
+
 			parents.emplace(&node, xmlNode);
 			this->serializeElement(element, xmlNode);
 			break;
 		}
 		case NodeType::Group: {
-			assert(node.hasParent());
 			pugi::xml_node xmlNode;
-			if (Node::isElementOfType(*node.parent(), ElementType::Text)) {
+			ElementType parentElementType = ElementType::Unknown;
+			assert(node.hasParent());
+			auto nodeParent = node.parent();
+
+			if (nodeParent->isElement()) {
+				auto parentElement = static_cast<const Element&>(*nodeParent);
+				parentElementType = parentElement.elementType();
+			}
+
+			if (parentElementType == ElementType::Text) {
 				xmlNode = parent.append_child("p");
 			} else {
 				auto li = parent.append_child("li");
 				xmlNode = li.append_child("div");
 			}
+
+			if (parentElementType == ElementType::Hint
+			    || parentElementType == ElementType::Nesthint) {
+
+				this->appendClassNames(xmlNode, {"hint"});
+			}
+
 			parents.emplace(&node, xmlNode);
 			break;
 		}
 		case NodeType::Text: {
-			assert(node.hasParent());
 			const auto& textNode = static_cast<const TextNode&>(node);
+			assert(node.hasParent());
 			auto childOfGroup = textNode.parent()->nodeType() == NodeType::Group;
 			auto xmlNode = parent.append_child(childOfGroup ? "span" : "li");
 			this->serializeTextNode(textNode, xmlNode);

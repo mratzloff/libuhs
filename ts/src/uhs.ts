@@ -1,7 +1,4 @@
 class Viewport {
-    private static showNextHintButtonContainerId = "show-next-hint-button-container";
-    private static showNextHintButtonId = "show-next-hint-button";
-
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -31,6 +28,27 @@ class Viewport {
         }
 
         return originalEntry.cloneNode(true) as HTMLElement;
+    }
+
+    private createFooter(items: HTMLElement[]): void {
+        const footer = document.createElement("footer");
+        footer.id = "footer";
+
+        const progressContainer = document.createElement("div");
+        progressContainer.id = "progress-container";
+        const progress = document.createElement("div");
+        progress.id = "progress";
+        progressContainer.appendChild(progress);
+        footer.appendChild(progressContainer);
+
+        const button = document.createElement("button");
+        button.id = "button";
+        const buttonText = (items.length == 1) ? "Back" : "Show next hint";
+        button.textContent = buttonText;
+        button.addEventListener("click", () => this.onButtonClick(items));
+        footer.appendChild(button);
+
+        document.body.appendChild(footer);
     }
 
     private createLinkClickHandlers(container: HTMLElement): void {
@@ -69,17 +87,6 @@ class Viewport {
         });
     }
 
-    private createShowNextHintButton(container: HTMLElement, items: HTMLElement[]): void {
-        const buttonContainer = document.createElement("div");
-        buttonContainer.id = Viewport.showNextHintButtonContainerId;
-        const button = document.createElement("button");
-        button.id = Viewport.showNextHintButtonId;
-        button.appendChild(document.createTextNode("Show next hint"));
-        button.addEventListener("click", () => this.showNextHint(items));
-        buttonContainer.appendChild(button);
-        container.appendChild(buttonContainer);
-    }
-
     private createTitleClickHandlers(container: HTMLElement): void {
         const titles = container.querySelectorAll(".title");
         titles.forEach(title => {
@@ -99,8 +106,30 @@ class Viewport {
     }
 
     private go(id: string): void {
-        history.pushState(id, "");
+        window.history.pushState(id, "");
         this.view(id);
+    }
+
+    private onButtonClick(items: HTMLElement[]): void {
+        for (let i = 0; i < items.length; ++i) {
+            const item = items[i];
+            if (!item.hidden) {
+                continue;
+            }
+
+            item.removeAttribute("hidden");
+            this.updateHintProgress((i + 1) / items.length);
+            window.scrollTo(0, document.body.scrollHeight);
+
+            if (i + 1 == items.length) {
+                this.setButtonText("Back");
+            }
+
+            return;
+        }
+
+        this.removeFooter();
+        window.history.back();
     }
 
     private processHintNode(container: HTMLElement): void {
@@ -114,9 +143,8 @@ class Viewport {
             item.hidden = true;
         }
 
-        if (items.length > 1) {
-            this.createShowNextHintButton(container, items);
-        }
+        this.createFooter(items);
+        this.updateHintProgress(1 / items.length);
     }
 
     private processLeafNode(container: HTMLElement): void {
@@ -135,9 +163,9 @@ class Viewport {
         this.createTitleClickHandlers(container);
     }
 
-    private removeShowNextHintButton(): void {
-        const buttonContainer = document.getElementById(Viewport.showNextHintButtonContainerId);
-        buttonContainer?.remove();
+    private removeFooter(): void {
+        const footer = document.getElementById("footer");
+        footer?.remove();
     }
 
     private removeUnnecessaryElements(container: HTMLElement): void {
@@ -174,18 +202,15 @@ class Viewport {
         while (this.viewport.lastChild) {
             this.viewport.removeChild(this.viewport.lastChild);
         }
+        this.removeFooter();
     }
 
-    private showNextHint(items: HTMLElement[]): void {
-        for (const item of items) {
-            if (item.hidden) {
-                item.removeAttribute("hidden");
-                if (item === items[items.length - 1]) {
-                    this.removeShowNextHintButton();
-                }
-                return;
-            }
+    private setButtonText(text: string): void {
+        const button = document.getElementById("button");
+        if (!button) {
+            throw new Error("could not find button");
         }
+        button.textContent = text;
     }
 
     private showOverlay(id: string): void {
@@ -196,19 +221,26 @@ class Viewport {
         overlay.removeAttribute("hidden");
     }
 
+    private updateHintProgress(value: number): void {
+        const progress = document.getElementById("progress");
+        progress?.style.setProperty("width", `${value * 100}%`);
+    }
+
     private updateImageMapAnchor(container: HTMLElement): void {
         const map = container.querySelector("map");
-        if (map) {
-            const name = map.getAttribute("name");
-            if (!name) {
-                throw new Error("could not find map name");
-            }
-            map.setAttribute("name", `${name}_`);
+        if (!map) {
+            return;
+        }
 
-            const hyperpng = container.querySelector(`img.hyperpng-background`);
-            if (hyperpng) {
-                hyperpng.setAttribute("usemap", `#${name}_`);
-            }
+        const name = map.getAttribute("name");
+        if (!name) {
+            throw new Error("could not find map name");
+        }
+        map.setAttribute("name", `${name}_`);
+
+        const hyperpng = container.querySelector(`img.hyperpng-background`);
+        if (hyperpng) {
+            hyperpng.setAttribute("usemap", `#${name}_`);
         }
     }
 
