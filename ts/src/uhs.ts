@@ -170,7 +170,8 @@ class Viewport {
 
     private removeUnnecessaryElements(container: HTMLElement): void {
         container.querySelector("p:not(.title)")?.remove();
-        container.querySelector(".media")?.remove();
+        const mediaFiles = container.querySelectorAll(".media");
+        mediaFiles.forEach(mediaFile => mediaFile.remove());
         const lists = container.querySelectorAll("ol");
         lists.forEach(list => list.remove());
     }
