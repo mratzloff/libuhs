@@ -413,7 +413,8 @@ void HTMLWriter::appendClassNames(
 			classNames.emplace_back(className);
 		}
 		std::sort(classNames.begin(), classNames.end());
-		std::unique(classNames.begin(), classNames.end());
+		auto duplicates = std::unique(classNames.begin(), classNames.end());
+		classNames.erase(duplicates, classNames.end());
 	}
 
 	xmlNode.attribute("class") = Strings::join(classNames, " ").c_str();
