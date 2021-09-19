@@ -30,7 +30,7 @@ class Viewport {
         return originalEntry.cloneNode(true) as HTMLElement;
     }
 
-    private createFooter(items: HTMLElement[]): void {
+    private createFooter(items: HTMLElement[], elementId: string): void {
         const footer = document.createElement("footer");
         footer.id = "footer";
 
@@ -43,16 +43,20 @@ class Viewport {
 
         const button = document.createElement("button");
         button.id = "button";
-        const buttonText = (items.length == 1) ? "Back" : "Show next hint";
-        button.textContent = buttonText;
-        button.addEventListener("click", () => this.onButtonClick(items));
+        const index = this.getCachedIndexForHint(elementId);
+        if (items.length == 1 || index + 1 == items.length) {
+            button.textContent = "Back";
+        } else {
+            button.textContent = "Show next hint";
+        }
+        button.addEventListener("click", () => this.onButtonClick(items, elementId));
         footer.appendChild(button);
 
         document.body.appendChild(footer);
     }
 
-    private createLinkClickHandlers(container: HTMLElement): void {
-        const links = container.querySelectorAll("a[href]:not(.hyperlink), area[href]");
+    private createLinkClickHandlers(element: HTMLElement): void {
+        const links = element.querySelectorAll("a[href]:not(.hyperlink), area[href]");
         links.forEach(link => {
             const targetId = link.getAttribute("data-target");
             if (!targetId) {
@@ -74,8 +78,8 @@ class Viewport {
         });
     }
 
-    private createOverlayClickHandler(container: HTMLElement): void {
-        const overlays = container.querySelectorAll("area[data-overlay]");
+    private createOverlayClickHandler(element: HTMLElement): void {
+        const overlays = element.querySelectorAll("area[data-overlay]");
         overlays.forEach(overlay => {
             const targetId = overlay.getAttribute("data-overlay");
             if (!targetId) {
@@ -87,22 +91,37 @@ class Viewport {
         });
     }
 
-    private createTitleClickHandlers(container: HTMLElement): void {
-        const titles = container.querySelectorAll(".title");
+    private createTitleClickHandlers(element: HTMLElement): void {
+        const titles = element.querySelectorAll(".title");
         titles.forEach(title => {
-            const container = title.parentElement?.parentElement;
-            if (!container) {
-                throw new Error("could not find title container");
+            const element = title.parentElement?.parentElement;
+            if (!element) {
+                throw new Error("could not find title element");
             }
 
-            const id = container.getAttribute("data-id")!;
+            const id = element.getAttribute("data-id")!;
             title.addEventListener("click", () => this.go(id), {capture: false});
             title.classList.add("clickable");
         });
     }
 
-    private findListItemChildren(container: HTMLElement): NodeListOf<HTMLElement> {
-        return container.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
+    private findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
+        return element.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
+    }
+
+    private getCachedIndexForHint(elementId: string): number {
+        let index = 0;
+        const cacheValue = window.localStorage.getItem(elementId);
+
+        if (cacheValue) {
+            const parsed = parseInt(cacheValue, 10);
+            if (parsed === NaN) {
+                window.localStorage.removeItem(elementId);
+            };
+            index = parsed;
+        }
+
+        return index;
     }
 
     private go(id: string): void {
@@ -110,7 +129,7 @@ class Viewport {
         this.view(id);
     }
 
-    private onButtonClick(items: HTMLElement[]): void {
+    private onButtonClick(items: HTMLElement[], elementId: string): void {
         for (let i = 0; i < items.length; ++i) {
             const item = items[i];
             if (!item.hidden) {
@@ -119,6 +138,7 @@ class Viewport {
 
             item.removeAttribute("hidden");
             this.updateHintProgress((i + 1) / items.length);
+            this.updateHintCache(elementId, i);
             window.scrollTo(0, document.body.scrollHeight);
 
             if (i + 1 == items.length) {
@@ -132,35 +152,36 @@ class Viewport {
         window.history.back();
     }
 
-    private processHintNode(container: HTMLElement): void {
-        const type = container.getAttribute("data-type");
+    private processHintNode(element: HTMLElement): void {
+        const type = element.getAttribute("data-type");
         if (type != "hint" && type != "nesthint") {
             return;
         }
 
-        const items = Array.from(this.findListItemChildren(container));
-        for (const item of items.slice(1)) {
-            item.hidden = true;
+        const index = this.getCachedIndexForHint(element.id);
+        const items = Array.from(this.findListItemChildren(element));
+        for (let i = index + 1; i < items.length; ++i) {
+            items[i].hidden = true;
         }
 
-        this.createFooter(items);
-        this.updateHintProgress(1 / items.length);
+        this.createFooter(items, element.id);
+        this.updateHintProgress((index + 1) / items.length);
     }
 
-    private processLeafNode(container: HTMLElement): void {
-        this.replaceIdsWithDataAttributes(container);
-        this.updateImageMapAnchor(container);
-        this.createOverlayClickHandler(container);
+    private processLeafNode(element: HTMLElement): void {
+        this.replaceIdsWithDataAttributes(element);
+        this.updateImageMapAnchor(element);
+        this.createOverlayClickHandler(element);
     }
 
-    private processListNode(container: HTMLElement): void {
-        if (!container.firstChild) {
+    private processListNode(element: HTMLElement): void {
+        if (!element.firstChild) {
             throw new Error("empty list item");
         }
 
-        this.removeUnnecessaryElements(container);
-        this.replaceIdsWithDataAttributes(container);
-        this.createTitleClickHandlers(container);
+        this.removeUnnecessaryElements(element);
+        this.replaceIdsWithDataAttributes(element);
+        this.createTitleClickHandlers(element);
     }
 
     private removeFooter(): void {
@@ -168,28 +189,28 @@ class Viewport {
         footer?.remove();
     }
 
-    private removeUnnecessaryElements(container: HTMLElement): void {
-        container.querySelector("p:not(.title)")?.remove();
-        const mediaFiles = container.querySelectorAll(".media");
+    private removeUnnecessaryElements(element: HTMLElement): void {
+        element.querySelector("p:not(.title)")?.remove();
+        const mediaFiles = element.querySelectorAll(".media");
         mediaFiles.forEach(mediaFile => mediaFile.remove());
-        const lists = container.querySelectorAll("ol");
+        const lists = element.querySelectorAll("ol");
         lists.forEach(list => list.remove());
     }
 
-    private render(container: HTMLElement): void {
-        this.viewport.appendChild(container);
+    private render(element: HTMLElement): void {
+        this.viewport.appendChild(element);
     }
 
-    private replaceIdsWithDataAttributes(container: HTMLElement): void {
-        const elements = container.querySelectorAll("[id]");
-        elements.forEach(element => {
-            element.setAttribute("data-id", element.id);
-            element.removeAttribute("id");
+    private replaceIdsWithDataAttributes(element: HTMLElement): void {
+        const children = element.querySelectorAll("[id]");
+        children.forEach(child => {
+            child.setAttribute("data-id", child.id);
+            child.removeAttribute("id");
         });
     }
 
-    private replaceTitleWithHeading(container: HTMLElement): void {
-        const title = container.querySelector(".title");
+    private replaceTitleWithHeading(element: HTMLElement): void {
+        const title = element.querySelector(".title");
         if (!title || title.textContent === null) {
             throw new Error("could not find title");
         }
@@ -222,13 +243,17 @@ class Viewport {
         overlay.removeAttribute("hidden");
     }
 
+    private updateHintCache(elementId: string, value: number): void {
+        window.localStorage.setItem(elementId, value.toString());
+    }
+
     private updateHintProgress(value: number): void {
         const progress = document.getElementById("progress");
         progress?.style.setProperty("width", `${value * 100}%`);
     }
 
-    private updateImageMapAnchor(container: HTMLElement): void {
-        const map = container.querySelector("map");
+    private updateImageMapAnchor(element: HTMLElement): void {
+        const map = element.querySelector("map");
         if (!map) {
             return;
         }
@@ -239,7 +264,7 @@ class Viewport {
         }
         map.setAttribute("name", `${name}_`);
 
-        const hyperpng = container.querySelector(`img.hyperpng-background`);
+        const hyperpng = element.querySelector(`img.hyperpng-background`);
         if (hyperpng) {
             hyperpng.setAttribute("usemap", `#${name}_`);
         }
