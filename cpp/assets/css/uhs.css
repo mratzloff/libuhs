@@ -8,21 +8,6 @@ body {
     text-rendering: optimizeLegibility;
 }
 
-footer {
-    bottom: 0;
-    height: 40px;
-    position: fixed;
-    width: 100%;
-}
-
-footer button {
-    font-family: system-ui;
-    font-size: 13px;
-    font-weight: 300;
-    height: calc(100% - 5px);
-    width: 100%;
-}
-
 h1 {
     font-family: RobotoCondensed-Regular;
     font-size: 24px;
@@ -99,6 +84,78 @@ area.clickable {
     display: none;
 }
 
+#footer {
+    bottom: 0;
+    height: 60px;
+    position: fixed;
+    width: 100%;
+}
+
+#footer button {
+    cursor: pointer;
+    font-family: system-ui;
+    font-size: 14px;
+    font-weight: 300;
+    height: calc(100% - 5px);
+    width: 100%;
+}
+
+#nav {
+    background: linear-gradient(35deg, rgb(0, 180, 255), rgb(100, 15, 185));
+    display: flex;
+    height: 60px;
+    justify-content: space-between;
+}
+
+#nav button {
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    height: 100%;
+    width: 60px;
+}
+
+#nav button#back {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 512'%3E%3Cpath d='M192 127.338v257.324c0 17.818-21.543 26.741-34.142 14.142L29.196 270.142c-7.81-7.81-7.81-20.474 0-28.284l128.662-128.662c12.599-12.6 34.142-3.676 34.142 14.142z'/%3E%3C/svg%3E")
+            no-repeat right 26px center/9px,
+        linear-gradient(to left, rgba(255, 255, 255, 0.05) 60px, rgba(255, 255, 255, 0) 60px);
+}
+
+#nav button#back.disabled {
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.05) 60px, rgba(255, 255, 255, 0) 60px);
+}
+
+#nav button#forward {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 512'%3E%3Cpath d='M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z'/%3E%3C/svg%3E")
+        no-repeat right 24px center/9px;
+}
+
+#nav button#forward.disabled {
+    background: transparent;
+}
+
+#nav select {
+    -webkit-appearance: none;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M31.3 192h257.3c17.8 0 26.7 21.5 14.1 34.1L174.1 354.8c-7.8 7.8-20.5 7.8-28.3 0L17.2 226.1C4.6 213.5 13.5 192 31.3 192z'/%3E%3C/svg%3E")
+            no-repeat right 23px center/14px,
+        linear-gradient(to left, rgba(255, 255, 255, 0.05) 60px, rgba(255, 255, 255, 0) 60px);
+    border: none;
+    border-radius: initial;
+    color: white;
+    cursor: pointer;
+    font-family: system-ui;
+    font-size: 14px;
+    font-weight: 300;
+    height: 100%;
+    outline: none;
+    padding: 0 60px 0 20px;
+    width: calc(100% - 120px);
+}
+
+#nav select.disabled {
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.05) 60px, rgba(255, 255, 255, 0) 60px);
+}
+
 #progress {
     background-color: rgb(0, 180, 255);
     height: 100%;
@@ -110,7 +167,7 @@ area.clickable {
 }
 
 #viewport {
-    padding: 15px 25px 40px;
+    padding: 15px 25px 60px;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -1,4 +1,5 @@
 class Viewport {
+    private nav: HTMLElement;
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -6,6 +7,29 @@ class Viewport {
     }
 
     public constructor() {
+        // Create nav
+        this.nav = document.createElement("nav");
+        this.nav.id = "nav";
+        const backButton = document.createElement("button");
+        backButton.id = "back";
+        backButton.addEventListener("click", () => window.history.back());
+        this.nav.appendChild(backButton);
+
+        const history = document.createElement("select");
+        const option1 = document.createElement("option");
+        option1.textContent = "This is a test option";
+        history.appendChild(option1);
+        const option2 = document.createElement("option");
+        option2.textContent = "And another test option";
+        history.appendChild(option2);
+        this.nav.appendChild(history);
+
+        const forwardButton = document.createElement("button");
+        forwardButton.id = "forward";
+        forwardButton.addEventListener("click", () => window.history.forward());
+        this.nav.appendChild(forwardButton);
+        document.body.appendChild(this.nav);
+
         // Create viewport
         this.viewport = document.createElement("div");
         this.viewport.id = "viewport";
