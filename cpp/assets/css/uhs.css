@@ -49,6 +49,7 @@ ol {
 }
 
 area.clickable {
+    border-bottom: none;
     display: block;
 }
 

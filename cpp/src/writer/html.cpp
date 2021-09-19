@@ -412,10 +412,11 @@ void HTMLWriter::appendClassNames(
 		for (const auto& className : oldClassNames) {
 			classNames.emplace_back(className);
 		}
-		std::sort(classNames.begin(), classNames.end());
-		auto duplicates = std::unique(classNames.begin(), classNames.end());
-		classNames.erase(duplicates, classNames.end());
 	}
+
+	std::sort(classNames.begin(), classNames.end());
+	auto duplicates = std::unique(classNames.begin(), classNames.end());
+	classNames.erase(duplicates, classNames.end());
 
 	xmlNode.attribute("class") = Strings::join(classNames, " ").c_str();
 }
@@ -506,7 +507,8 @@ std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
 	}
 
 	auto parent = xmlNode.parent();
-	auto container = parent.find_child_by_attribute("div", "class", "hyperpng-container");
+	auto container =
+	    parent.find_child_by_attribute("div", "class", "hyperpng-container media");
 
 	return container;
 }
