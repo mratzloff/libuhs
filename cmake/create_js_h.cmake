@@ -1,6 +1,6 @@
 function(create_js_h)
-	file(READ ts/build/uhs.js data)
-	file(WRITE cpp/include/js.h "R\"\"\"(\n${data}\n//)\"\"\";")
+	file(READ ts/build/uhs.min.js data)
+	file(WRITE cpp/include/js.h "R\"\"\"(\n${data}//)\"\"\";")
 endfunction()
 
 create_js_h()

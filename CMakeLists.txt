@@ -34,21 +34,34 @@ set (uhs_sources
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
+# css_minified
+file(MAKE_DIRECTORY cpp/assets/build)
+add_custom_target(css_minified
+	COMMAND minify cpp/assets/css/uhs.css > cpp/assets/build/uhs.min.css
+	BYPRODUCTS cpp/assets/build/uhs.min.css)
+
 # css_includes
 add_custom_target(css_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_css_h.cmake
 	BYPRODUCTS cpp/include/css.h)
+add_dependencies (css_includes css_minified)
 
 # js
 add_custom_target(js
 	COMMAND tsc
 	BYPRODUCTS ts/build/uhs.js)
 
+# js_minified
+add_custom_target(js_minified
+	COMMAND minify ts/build/uhs.js > ts/build/uhs.min.js
+	BYPRODUCTS ts/build/uhs.min.js)
+add_dependencies (js_minified js)
+
 # js_includes
 add_custom_target(js_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_js_h.cmake
 	BYPRODUCTS cpp/include/js.h)
-add_dependencies (js_includes js)
+add_dependencies (js_includes js_minified)
 
 # json.o
 add_library (json OBJECT cpp/vendor/jsoncpp/jsoncpp.cpp)
