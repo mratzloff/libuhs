@@ -481,6 +481,9 @@ pugi::xml_node HTMLWriter::createHTMLDocument(
 		meta2.append_attribute("content") = author.value().c_str();
 	}
 
+	auto nccHack = head.append_child("script");
+	nccHack.append_child(pugi::node_pcdata).set_value(R"(var __dirname="",module={})");
+
 	auto script = head.append_child("script");
 	script.append_child(pugi::node_pcdata).set_value("//");
 	script.append_child(pugi::node_cdata).set_value(js_.c_str());

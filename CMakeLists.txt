@@ -7,6 +7,7 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY cpp/lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 
+set (bin node_modules/.bin)
 set (argh_includes cpp/vendor/argh)
 set (json_includes cpp/vendor/jsoncpp/json)
 set (pugixml_includes cpp/vendor/pugixml)
@@ -35,9 +36,9 @@ set (uhs_sources
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
 # css_minified
-file(MAKE_DIRECTORY cpp/assets/build)
+file (MAKE_DIRECTORY cpp/assets/build)
 add_custom_target(css_minified
-	COMMAND minify cpp/assets/css/uhs.css > cpp/assets/build/uhs.min.css
+	COMMAND ${bin}/minify cpp/assets/css/uhs.css > cpp/assets/build/uhs.min.css
 	BYPRODUCTS cpp/assets/build/uhs.min.css)
 
 # css_includes
@@ -48,14 +49,20 @@ add_dependencies (css_includes css_minified)
 
 # js
 add_custom_target(js
-	COMMAND tsc
-	BYPRODUCTS ts/build/uhs.js)
+	COMMAND ${bin}/tsc
+	BYPRODUCTS ts/build/history.js ts/build/viewport.js)
+
+# js_combined
+add_custom_target(js_combined
+	COMMAND ${bin}/ncc build ts/src/index.ts --out ts/build --no-source-map-register --quiet
+	BYPRODUCTS ts/build/index.js)
+add_dependencies (js_combined js)
 
 # js_minified
 add_custom_target(js_minified
-	COMMAND minify ts/build/uhs.js > ts/build/uhs.min.js
-	BYPRODUCTS ts/build/uhs.min.js)
-add_dependencies (js_minified js)
+	COMMAND ${bin}/minify ts/build/index.js > ts/build/index.min.js
+	BYPRODUCTS ts/build/index.min.js)
+add_dependencies (js_minified js_combined)
 
 # js_includes
 add_custom_target(js_includes

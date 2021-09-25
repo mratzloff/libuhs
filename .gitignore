@@ -13,4 +13,5 @@ cpp/include/css.h
 cpp/include/js.h
 cpp/lib/*
 Makefile
+node_modules/*
 ts/build/*
