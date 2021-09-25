@@ -315,17 +315,17 @@ class Viewport {
         button.textContent = text;
     }
 
+    private setHintCacheIndex(elementId: string, value: number): void {
+        const key = this.getHintCacheKey(elementId);
+        window.localStorage.setItem(key, value.toString());
+    }
+
     private showOverlay(id: string): void {
         const overlay = this.viewport.querySelector(`[data-id="${id}"]`);
         if (!overlay) {
             throw new Error("could not find overlay");
         }
         overlay.removeAttribute("hidden");
-    }
-
-    private setHintCacheIndex(elementId: string, value: number): void {
-        const key = this.getHintCacheKey(elementId);
-        window.localStorage.setItem(key, value.toString());
     }
 
     private updateHintProgress(value: number): void {

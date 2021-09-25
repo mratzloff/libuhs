@@ -183,6 +183,12 @@ area.clickable {
     .hint {
         border-color: rgb(68, 68, 68);
     }
+
+    #footer button {
+        background-color: rgb(41, 41, 41);
+        border: 1px outset rgb(41, 41, 41);
+        color: rgb(224, 224, 224);
+    }
 }
 
 @font-face {
