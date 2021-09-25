@@ -51,7 +51,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (d.visibility() == VisibilityType::None) {
-					this->appendClassNames(li, {"visibility-none"});
+					li.append_attribute("hidden");
 				}
 				xmlNode = li.append_child("section");
 			} else {
@@ -69,7 +69,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
 				if (element.visibility() == VisibilityType::None) {
-					this->appendClassNames(li, {"visibility-none"});
+					li.append_attribute("hidden");
 				}
 				xmlNode = li.append_child("div");
 			} else {
@@ -460,7 +460,7 @@ void HTMLWriter::appendVisibility(
 		return;
 	}
 
-	this->appendClassNames(xmlNode, {"visibility-" + node.visibilityString()});
+	xmlNode.append_attribute("data-visibility") = node.visibilityString().c_str();
 }
 
 pugi::xml_node HTMLWriter::createHTMLDocument(

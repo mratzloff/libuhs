@@ -1,4 +1,8 @@
 class Viewport {
+    private backButton: HTMLElement;
+    private forwardButton: HTMLElement;
+    private history: History;
+    private homeId: string;
     private nav: HTMLElement;
     private viewport: HTMLElement;
 
@@ -7,42 +11,56 @@ class Viewport {
     }
 
     public constructor() {
+        this.history = new History;
+        this.homeId = this.findHomeId();
+
         // Create nav
         this.nav = document.createElement("nav");
         this.nav.id = "nav";
-        const backButton = document.createElement("button");
-        backButton.id = "back";
-        backButton.addEventListener("click", () => window.history.back());
-        this.nav.appendChild(backButton);
 
-        const history = document.createElement("select");
-        const option1 = document.createElement("option");
-        option1.textContent = "This is a test option";
-        history.appendChild(option1);
-        const option2 = document.createElement("option");
-        option2.textContent = "And another test option";
-        history.appendChild(option2);
-        this.nav.appendChild(history);
+        // Create back button
+        this.backButton = document.createElement("button");
+        this.backButton.id = "back";
+        this.backButton.setAttribute("disabled", "true");
+        this.backButton.addEventListener("click", () => this.back());
+        this.nav.appendChild(this.backButton);
 
-        const forwardButton = document.createElement("button");
-        forwardButton.id = "forward";
-        forwardButton.addEventListener("click", () => window.history.forward());
-        this.nav.appendChild(forwardButton);
+        // Create forward button
+        this.forwardButton = document.createElement("button");
+        this.forwardButton.id = "forward";
+        this.forwardButton.setAttribute("disabled", "true");
+        this.forwardButton.addEventListener("click", () => this.forward());
+        this.nav.appendChild(this.forwardButton);
+
+        // Create home button
+        const homeButton = document.createElement("button");
+        homeButton.id = "home";
+        homeButton.addEventListener("click", () => this.home());
+        this.nav.appendChild(homeButton);
+
         document.body.appendChild(this.nav);
+
+        const search = document.createElement("input");
+        search.type = "search";
+        this.nav.appendChild(search);
 
         // Create viewport
         this.viewport = document.createElement("div");
         this.viewport.id = "viewport";
         document.body.appendChild(this.viewport);
 
-        // Go to initial entry point
-        const rootDocument = document.querySelector(`#root > section[data-type="document"]`);
-        const version = rootDocument?.getAttribute("data-version");
-        const id = (version === "88a") ? "5" : "1";
-        this.view(id);
+        // Handle history changes
+        this.history.addEventListener("change", (event) => {
+            this.view((event as CustomEvent).detail);
+        });
 
-        // Support back button
-        window.addEventListener("popstate", (event) => this.view(event.state ?? id));
+        // Go to home view
+        this.home();
+    }
+
+    private back(): void {
+        this.history.back();
+        this.refreshHistoryButtons();
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -67,7 +85,7 @@ class Viewport {
 
         const button = document.createElement("button");
         button.id = "button";
-        const index = this.getCachedIndexForHint(elementId);
+        const index = this.getHintCacheIndex(elementId);
         if (items.length == 1 || index + 1 == items.length) {
             button.textContent = "Back";
         } else {
@@ -129,18 +147,31 @@ class Viewport {
         });
     }
 
+    private findHomeId(): string {
+        const rootDocument = document.querySelector(`#root > section[data-type="document"]`);
+        const version = rootDocument?.getAttribute("data-version");
+        return (version == "88a") ? "5" : "1";
+    }
+
     private findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
         return element.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
     }
 
-    private getCachedIndexForHint(elementId: string): number {
+    private forward(): void {
+        this.history.forward();
+        this.refreshHistoryButtons();
+    }
+
+    private getHintCacheIndex(elementId: string): number {
         let index = 0;
-        const cacheValue = window.localStorage.getItem(elementId);
+
+        const key = this.getHintCacheKey(elementId);
+        const cacheValue = window.localStorage.getItem(key);
 
         if (cacheValue) {
             const parsed = parseInt(cacheValue, 10);
             if (parsed === NaN) {
-                window.localStorage.removeItem(elementId);
+                window.localStorage.removeItem(key);
             };
             index = parsed;
         }
@@ -148,9 +179,18 @@ class Viewport {
         return index;
     }
 
+    private getHintCacheKey(elementId: string): string {
+        return `hint.${elementId}`;
+    }
+
     private go(id: string): void {
-        window.history.pushState(id, "");
+        this.history.pushState(id);
         this.view(id);
+        this.refreshHistoryButtons();
+    }
+
+    private home(): void {
+        this.go(this.homeId);
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -162,7 +202,7 @@ class Viewport {
 
             item.removeAttribute("hidden");
             this.updateHintProgress((i + 1) / items.length);
-            this.updateHintCache(elementId, i);
+            this.setHintCacheIndex(elementId, i);
             window.scrollTo(0, document.body.scrollHeight);
 
             if (i + 1 == items.length) {
@@ -173,7 +213,7 @@ class Viewport {
         }
 
         this.removeFooter();
-        window.history.back();
+        this.back();
     }
 
     private processHintNode(element: HTMLElement): void {
@@ -182,7 +222,7 @@ class Viewport {
             return;
         }
 
-        const index = this.getCachedIndexForHint(element.id);
+        const index = this.getHintCacheIndex(element.id);
         const items = Array.from(this.findListItemChildren(element));
         for (let i = index + 1; i < items.length; ++i) {
             items[i].hidden = true;
@@ -206,6 +246,20 @@ class Viewport {
         this.removeUnnecessaryElements(element);
         this.replaceIdsWithDataAttributes(element);
         this.createTitleClickHandlers(element);
+    }
+
+    private refreshHistoryButtons() {
+        if (this.history.hasPrevious()) {
+            this.backButton.removeAttribute("disabled");
+        } else {
+            this.backButton.setAttribute("disabled", "true");
+        }
+
+        if (this.history.hasNext()) {
+            this.forwardButton.removeAttribute("disabled");
+        } else {
+            this.forwardButton.setAttribute("disabled", "true");
+        }
     }
 
     private removeFooter(): void {
@@ -267,8 +321,9 @@ class Viewport {
         overlay.removeAttribute("hidden");
     }
 
-    private updateHintCache(elementId: string, value: number): void {
-        window.localStorage.setItem(elementId, value.toString());
+    private setHintCacheIndex(elementId: string, value: number): void {
+        const key = this.getHintCacheKey(elementId);
+        window.localStorage.setItem(key, value.toString());
     }
 
     private updateHintProgress(value: number): void {
@@ -310,6 +365,136 @@ class Viewport {
         this.createLinkClickHandlers(entry);
         this.processHintNode(entry);
         this.render(entry);
+    }
+}
+
+class History implements EventTarget {
+    readonly indexKey = "history.index";
+    readonly stateKey = "history.state";
+
+    private listeners: {[type: string]: ((event: Event) => void)[];} = {};
+
+    constructor() {
+        this.clear();
+    }
+
+    public addEventListener(type: string, callback: (event: Event) => void): void {
+        if (!(type in this.listeners)) {
+            this.listeners[type] = [];
+        }
+        this.listeners[type].push(callback);
+    }
+
+    public back(): void {
+        this.go(-1);
+    }
+
+    public clear(): void {
+        window.sessionStorage.removeItem(this.indexKey);
+        window.sessionStorage.removeItem(this.stateKey);
+    }
+
+    public dispatchEvent(event: Event): boolean {
+        if (!(event.type in this.listeners)) {
+            return true;
+        }
+
+        const stack = this.listeners[event.type].slice();
+        for (let i = 0; i < stack.length; ++i) {
+            stack[i].call(this, event);
+        }
+
+        return !event.defaultPrevented;
+    }
+
+    public forward(): void {
+        this.go(1);
+    }
+
+    public go(delta: number): void {
+        const index = this.getIndex();
+        const state = this.getState();
+        const newIndex = index + delta;
+
+        if (newIndex < 0 || newIndex == state.length) {
+            return;
+        }
+
+        this.setIndex(newIndex);
+        this.dispatchEvent(new CustomEvent("change", {detail: state[newIndex]}));
+    }
+
+    public hasNext(): boolean {
+        const index = this.getIndex();
+        const state = this.getState();
+        return index + 1 < state.length;
+    }
+
+    public hasPrevious(): boolean {
+        const index = this.getIndex();
+        return index > 0;
+    }
+
+    public pushState(id: string): void {
+        const index = this.getIndex();
+        let state = this.getState();
+        state = state.slice(0, index + 1);
+        state.push(id);
+        this.setState(state);
+        this.setIndex(state.length - 1);
+    }
+
+    private getIndex(): number {
+        let index = 0;
+
+        const indexValue = window.sessionStorage.getItem(this.indexKey);
+        if (indexValue) {
+            const parsed = parseInt(indexValue, 10);
+            if (parsed === NaN) {
+                window.sessionStorage.removeItem(this.indexKey);
+            } else {
+                index = parsed;
+            }
+        }
+
+        return index;
+    }
+
+    private getState(): string[] {
+        let state: string[] = [];
+
+        const stateValue = window.sessionStorage.getItem(this.stateKey);
+        if (stateValue) {
+            try {
+                state = JSON.parse(stateValue);
+            } catch (error) {
+                window.sessionStorage.removeItem(this.stateKey);
+            }
+        }
+
+        return state;
+    }
+
+    public removeEventListener(type: string, callback: (event: Event) => void): void {
+        if (!(type in this.listeners)) {
+            return;
+        }
+
+        const stack = this.listeners[type];
+        for (let i = 0; i < stack.length; ++i) {
+            if (stack[i] === callback) {
+                stack.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    private setIndex(index: number): void {
+        window.sessionStorage.setItem(this.indexKey, index.toString());
+    }
+
+    private setState(state: string[]): void {
+        window.sessionStorage.setItem(this.stateKey, JSON.stringify(state));
     }
 }
 
