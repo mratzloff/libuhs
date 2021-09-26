@@ -84,6 +84,7 @@ ParseError::ParseError(int line, int column, const std::string& message)
     : ParseError(line, column, message.data()) {}
 
 ParseError::ParseError(int line, int column, const char* message) : Error() {
+	// TODO: Review for slice
 	static_cast<Error&>(*this) = Error(this->format("%s", line, column, message));
 }
 

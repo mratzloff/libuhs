@@ -12,6 +12,7 @@ set (argh_includes cpp/vendor/argh)
 set (json_includes cpp/vendor/jsoncpp/json)
 set (pugixml_includes cpp/vendor/pugixml)
 set (tinyformat_includes cpp/vendor/tinyformat)
+set (tsl_includes cpp/vendor/tsl)
 set (uhs_includes cpp/include)
 
 set (uhs_sources
@@ -86,8 +87,9 @@ target_include_directories (uhs
 	PUBLIC ${json_includes}
 		   ${pugixml_includes}
 	       ${tinyformat_includes}
+		   ${tsl_includes}
 	       ${uhs_includes})
-target_compile_options (uhs PRIVATE -g -Wall -Wextra)
+target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
 
 # bin/uhs
 add_executable (uhs_bin cpp/src/cmd/uhs/main.cpp)
@@ -113,6 +115,7 @@ add_custom_target (lint
 		-I${json_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
+		-I${tsl_includes}
 		-I${uhs_includes}
 		-std=c++20
 		${uhs_sources} ${uhs_bin_sources})

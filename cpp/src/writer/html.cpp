@@ -32,9 +32,9 @@ void HTMLWriter::write(const Document& document) {
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	auto root = this->createHTMLDocument(document, xml);
 
-	NodeMap parents;
-	auto parent = root;
 	auto depth = 0;
+	auto parent = root;
+	NodeMap parents;
 
 	for (const auto& node : document) {
 		auto nodeDepth = node.depth();
@@ -87,8 +87,8 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			auto nodeParent = node.parent();
 
 			if (nodeParent->isElement()) {
-				auto parentElement = static_cast<const Element&>(*nodeParent);
-				parentElementType = parentElement.elementType();
+				auto parentElement = static_cast<const Element*>(nodeParent);
+				parentElementType = parentElement->elementType();
 			}
 
 			if (parentElementType == ElementType::Text) {
@@ -341,10 +341,10 @@ void HTMLWriter::serializeTextNode(
 	if (textNode.hasPreviousSibling()) {
 		auto previousNode = textNode.previousSibling();
 		if (previousNode->isElement()) {
-			auto previousElement = static_cast<Element&>(*previousNode);
-			auto isLink = (previousElement.elementType() == ElementType::Link);
+			auto previousElement = static_cast<Element*>(previousNode);
+			auto isLink = (previousElement->elementType() == ElementType::Link);
 
-			if (!previousElement.inlined() && isLink) {
+			if (!previousElement->inlined() && isLink) {
 				xmlNode.parent().insert_child_before("br", xmlNode);
 			}
 		}

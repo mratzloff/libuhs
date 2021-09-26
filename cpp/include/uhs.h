@@ -23,6 +23,7 @@
 #include <tuple>
 #include <vector>
 
+#include "hopscotch_map.h"
 #include "json.h"
 #include "pugixml.hpp"
 #pragma clang diagnostic push
@@ -168,6 +169,7 @@ public:
 	template<typename... Args>
 	Error(const char* format, Args... args) : Error() {
 		auto message = tfm::format(format, args...);
+		// TODO: Review for slice
 		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
 	}
 
@@ -207,6 +209,7 @@ public:
 
 	template<typename... Args>
 	ParseError(int line, int column, const char* format, Args... args) : Error() {
+		// TODO: Review for slice
 		static_cast<Error&>(*this) = Error(this->format(format, line, column, args...));
 	}
 
@@ -880,7 +883,7 @@ public:
 	void write(const Document& document) override;
 
 private:
-	using NodeMap = std::map<const Node*, const pugi::xml_node>;
+	using NodeMap = tsl::hopscotch_map<const Node*, const pugi::xml_node>;
 
 	class Serializer {
 	public:
