@@ -27,10 +27,12 @@ ol {
     padding-left: 0;
 }
 
-.clickable {
+.clickable,
+.hyperlink {
     color: rgb(0, 150, 255);
     cursor: pointer;
     border-bottom: 1px solid rgba(0, 150, 255, 0.5);
+    text-decoration: none;
 }
 
 area.clickable {
