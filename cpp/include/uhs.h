@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <ctime>
 #include <exception>
+#include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <istream>
 #include <iterator>
 #include <map>
@@ -747,6 +749,7 @@ class Parser {
 public:
 	explicit Parser(const Options options = {});
 	std::shared_ptr<Document> parse(std::istream& in);
+	std::shared_ptr<Document> parseFile(const std::string& filename);
 	void reset();
 
 private:

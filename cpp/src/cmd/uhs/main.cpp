@@ -1,8 +1,3 @@
-#include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-
 #include "argh.h"
 #include "uhs.h"
 
@@ -137,8 +132,7 @@ int main(const int argc, char* argv[]) {
 
 	try {
 		Parser p{options};
-		std::ifstream in{infile, std::ios::in | std::ios::binary};
-		auto document = p.parse(in);
+		const auto document = p.parseFile(infile);
 
 		std::ofstream fout;
 		if (!outfile.empty()) {

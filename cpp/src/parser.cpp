@@ -50,6 +50,29 @@ std::shared_ptr<Document> Parser::parse(std::istream& in) {
 	}
 }
 
+std::shared_ptr<Document> Parser::parseFile(const std::string& infile) {
+	std::filesystem::path infilePath{infile};
+
+	if (!std::filesystem::exists(infilePath)) {
+		throw new Error("invalid file: %s", infile);
+	}
+
+	std::shared_ptr<Document> document;
+	const auto size = std::filesystem::file_size(infilePath);
+	std::ifstream in{infile, std::ios::in | std::ios::binary};
+
+	if (size < 1'000'000) { // 1 MB
+		std::stringstream buffer;
+		buffer << in.rdbuf();
+		in.close();
+		document = this->parse(buffer);
+	} else {
+		document = this->parse(in);
+	}
+
+	return document;
+}
+
 void Parser::reset() {
 	crc_.reset();
 	dataHandlers_.clear();
