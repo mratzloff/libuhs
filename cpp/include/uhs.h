@@ -795,8 +795,13 @@ private:
 		    DataCallback func);
 	};
 
-	static const auto HeaderLength = 4;
 	static const auto FormatTokenLength = 3;
+	static const auto HeaderLength = 4;
+
+	// Fix for bad 88a backwards-compatibility header found in 401 files
+	static constexpr auto BadHeaderTitle = "Why aren't there any more hints here?";
+	static const auto BadHeaderFirstChildLine = HeaderLength + 16;
+	static const auto GoodHeaderFirstChildLine = HeaderLength + 15;
 
 	Codec codec_;
 	std::unique_ptr<CRC> crc_ = nullptr;
@@ -841,6 +846,7 @@ private:
 	    int line, int column, std::size_t offset, std::size_t length, DataCallback func);
 	void checkCRC();
 	Node* findParent(ContainerNode& node);
+	int fixHeaderFirstChildLine(std::string title, int firstChildLine) const;
 	void addNodeToParentIndex(ContainerNode& node);
 	int offsetLine(int line);
 	void parseData(std::unique_ptr<const Token> token);
@@ -913,6 +919,7 @@ private:
 	void serializeSubjectElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextElement(const Element& element, pugi::xml_node xmlNode);
 	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
+	std::shared_ptr<Document> addEntryPointTo88aDocument(const Document& document) const;
 	std::optional<pugi::xml_node> appendBody(
 	    const Element& element, pugi::xml_node xmlNode) const;
 	void appendClassNames(
@@ -920,7 +927,8 @@ private:
 	pugi::xml_node appendTitle(const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node appendMedia(const Element& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
-	pugi::xml_node createHTMLDocument(const Document& document, pugi::xml_document& xml);
+	pugi::xml_node createHTMLDocument(
+	    const Document& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
 	    const Element& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findOrCreateMap(const Element& element, pugi::xml_node xmlNode) const;

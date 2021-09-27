@@ -4,7 +4,6 @@ class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
     private history: History;
-    private homeId: string;
     private nav: HTMLElement;
     private viewport: HTMLElement;
 
@@ -14,7 +13,6 @@ class Viewport {
 
     public constructor() {
         this.history = new History;
-        this.homeId = this.findHomeId();
 
         // Create nav
         this.nav = document.createElement("nav");
@@ -149,12 +147,6 @@ class Viewport {
         });
     }
 
-    private findHomeId(): string {
-        const rootDocument = document.querySelector(`#root > section[data-type="document"]`);
-        const version = rootDocument?.getAttribute("data-version");
-        return (version == "88a") ? "5" : "1";
-    }
-
     private findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
         return element.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
     }
@@ -192,7 +184,7 @@ class Viewport {
     }
 
     private home(): void {
-        this.go(this.homeId);
+        this.go("1");
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {

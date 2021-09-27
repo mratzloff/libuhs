@@ -30,13 +30,20 @@ void HTMLWriter::write(const Document& document) {
 }
 
 void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
-	auto root = this->createHTMLDocument(document, xml);
-
 	auto depth = 0;
-	auto parent = root;
 	NodeMap parents;
 
-	for (const auto& node : document) {
+	auto d = &document;
+	std::shared_ptr<Document> copy; // Keep object in scope
+	if (document.isVersion(VersionType::Version88a)) {
+		copy = this->addEntryPointTo88aDocument(document); // Copy and modify
+		d = copy.get();
+	}
+
+	auto root = this->createHTMLDocument(*d, xml);
+	auto parent = root;
+
+	for (const auto& node : *d) {
 		auto nodeDepth = node.depth();
 		parent = this->findXMLParent(node, parent, parents, depth);
 
@@ -109,9 +116,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		}
 		case NodeType::Text: {
 			const auto& textNode = static_cast<const TextNode&>(node);
-			assert(node.hasParent());
-			auto childOfGroup = textNode.parent()->nodeType() == NodeType::Group;
-			auto xmlNode = parent.append_child(childOfGroup ? "span" : "li");
+			auto xmlNode = parent.append_child("span");
 			this->serializeTextNode(textNode, xmlNode);
 			break;
 		}
@@ -385,6 +390,24 @@ void HTMLWriter::serializeTextNode(
 	}
 }
 
+std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
+    const Document& document) const {
+
+	auto copy = document.clone(); // Expensive, but 88a files are very small
+	auto container = Element::create(ElementType::Subject, 1);
+
+	container->title(copy->title());
+	for (auto node = copy->firstChild(); node; node = copy->firstChild()) {
+		if (node->nodeType() != NodeType::Element) {
+			throw WriteError("expected element, found %s node", node->nodeTypeString());
+		}
+		container->appendChild(copy->removeChild(node));
+	}
+	copy->appendChild(container);
+
+	return copy;
+}
+
 std::optional<pugi::xml_node> HTMLWriter::appendBody(
     const Element& element, pugi::xml_node xmlNode) const {
 
@@ -464,7 +487,7 @@ void HTMLWriter::appendVisibility(
 }
 
 pugi::xml_node HTMLWriter::createHTMLDocument(
-    const Document& document, pugi::xml_document& xml) {
+    const Document& document, pugi::xml_document& xml) const {
 
 	xml.append_child(pugi::node_doctype).set_value("html");
 	auto html = xml.append_child("html");

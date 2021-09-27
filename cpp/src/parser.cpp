@@ -137,8 +137,7 @@ void Parser::parse88a() {
 
 // This (correctly) errors out on sq4g.uhs, which appears to be miscompiled
 // from the original 88a precompile format. The official Windows reader
-// doesn't support it, and as far as I can tell no one bothered to ever check
-// it. It mostly works in the DOS reader, but it looks glitchy.
+// doesn't support it. It mostly works in the DOS reader, but it looks glitchy.
 void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 	auto elementType = ElementType::Subject;
 
@@ -192,6 +191,8 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		}
 		e->title(title);
 
+		firstChildLine = this->fixHeaderFirstChildLine(title, firstChildLine);
+
 		if (line < firstHintTextLine) {
 			parents[firstChildLine] = e;
 		}
@@ -226,12 +227,15 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 			    parent->nodeTypeString());
 		}
 
-		auto& element = static_cast<Element&>(*parent);
+		auto element = static_cast<Element*>(parent);
 		auto body = codec_.decode88a(token->value());
 		if (options_.debug) {
 			tfm::printf("\"%s\"\n", body);
 		}
-		element.appendChild(body);
+
+		auto group = GroupNode::create(line, 1);
+		group->appendChild(body);
+		element->appendChild(group);
 	} while (line < lastHintTextLine);
 }
 
@@ -275,6 +279,7 @@ void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
 		done_ = true;
 		return;
 	}
+
 	// 96a element line numbers don't include compatibility header
 	lineOffset_ = token->line();
 }
@@ -989,6 +994,15 @@ Node* Parser::findParent(ContainerNode& node) {
 	return parent;
 }
 
+// Most UHS files have a header with an off-by-one error in the (invisible) 88a header.
+// This is a small fix to address that should someone use --mode=88a.
+int Parser::fixHeaderFirstChildLine(std::string title, int firstChildLine) const {
+	if (title == BadHeaderTitle && firstChildLine == BadHeaderFirstChildLine) {
+		return GoodHeaderFirstChildLine;
+	}
+	return firstChildLine;
+}
+
 void Parser::addNodeToParentIndex(ContainerNode& node) {
 	auto min = node.line();
 	auto max = min + node.length();
@@ -1299,8 +1313,8 @@ void Parser::processLinks() {
 			// purposes.
 			if (target = document_->find(targetLine + 1); target) {
 				if (const auto parent = target->parent()) {
-					const auto& parentElement = static_cast<Element&>(*parent);
-					if (parentElement.elementType() == ElementType::Hyperpng) {
+					const auto parentElement = static_cast<Element*>(parent);
+					if (parentElement->elementType() == ElementType::Hyperpng) {
 						link.body(targetLine + 1);
 						link.attr("unmodified-target", targetLine);
 					} else {
@@ -1324,7 +1338,7 @@ void Parser::processVisibility() {
 				continue;
 			}
 
-			Element& targetElement = static_cast<Element&>(*target);
+			auto targetElement = static_cast<Element*>(target);
 			if (!options_.preserve) {
 				switch (visibility) {
 				case VisibilityType::RegisteredOnly:
@@ -1340,7 +1354,7 @@ void Parser::processVisibility() {
 				}
 			}
 
-			targetElement.visibility(visibility);
+			targetElement->visibility(visibility);
 		} else {
 			// TODO: Warn
 		}
