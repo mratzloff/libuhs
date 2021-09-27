@@ -14,7 +14,7 @@ Parser::Parser(const Options options) : options_{options} {
 	// _tzset(); // MSVC
 }
 
-std::shared_ptr<Document> Parser::parse(std::ifstream& in) {
+std::shared_ptr<Document> Parser::parse(std::istream& in) {
 	auto pipe = std::make_unique<Pipe>(in);
 	tokenizer_ = std::make_unique<Tokenizer>(*pipe);
 	crc_ = std::make_unique<CRC>();

@@ -332,7 +332,7 @@ class Pipe {
 public:
 	using Handler = std::function<void(const char*, std::streamsize n)>;
 
-	explicit Pipe(std::ifstream& in);
+	explicit Pipe(std::istream& in);
 	void addHandler(Handler func);
 	std::exception_ptr error();
 	void read();
@@ -342,7 +342,7 @@ public:
 private:
 	static const std::size_t ReadLength = 1024;
 
-	std::ifstream& in_;
+	std::istream& in_;
 	std::size_t offset_ = 0;
 	std::vector<Handler> handlers_;
 	std::exception_ptr err_ = nullptr;
@@ -746,7 +746,7 @@ private:
 class Parser {
 public:
 	explicit Parser(const Options options = {});
-	std::shared_ptr<Document> parse(std::ifstream& in);
+	std::shared_ptr<Document> parse(std::istream& in);
 	void reset();
 
 private:
