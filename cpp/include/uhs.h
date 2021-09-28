@@ -236,78 +236,8 @@ struct Options {
 
 namespace Strings {
 
-const std::map<const std::string, const std::string> specialChars = {
-    {"S^", "Š"},
-    {"OE", "Œ"},
-    {"-", "–"},
-    {"--", "—"},
-    {"TM", "™"},
-    {"s^", "š"},
-    {"oe", "œ"},
-    {"Y:", "Ÿ"},
-    {"(C)", "©"},
-    {"(R)", "®"},
-    {"A`", "À"},
-    {"A'", "Á"},
-    {"A^", "Â"},
-    {"A~", "Ã"},
-    {"A:", "Ä"},
-    {"Ao", "Å"},
-    {"AE", "Æ"},
-    {"C,", "Ç"},
-    {"E`", "È"},
-    {"E'", "É"},
-    {"E^", "Ê"},
-    {"E:", "Ë"},
-    {"I`", "Ì"},
-    {"I'", "Í"},
-    {"I^", "Î"},
-    {"I:", "Ï"},
-    {"D-", "Ð"},
-    {"N~", "Ñ"},
-    {"O`", "Ò"},
-    {"O'", "Ó"},
-    {"O^", "Ô"},
-    {"O~", "Õ"},
-    {"O:", "Ö"},
-    {"O/", "Ø"},
-    {"U`", "Ù"},
-    {"U'", "Ú"},
-    {"U^", "Û"},
-    {"U:", "Ü"},
-    {"Y'", "Ý"},
-    {"ss", "ß"},
-    {"a`", "à"},
-    {"a'", "á"},
-    {"a^", "â"},
-    {"a~", "ã"},
-    {"a:", "ä"},
-    {"ao", "å"},
-    {"ae", "æ"},
-    {"c,", "ç"},
-    {"e`", "è"},
-    {"e'", "é"},
-    {"e^", "ê"},
-    {"e:", "ë"},
-    {"i`", "ì"},
-    {"i'", "í"},
-    {"i^", "î"},
-    {"i:", "ï"},
-    {"d-", "ð"},
-    {"n~", "ñ"},
-    {"o`", "ò"},
-    {"o'", "ó"},
-    {"o^", "ô"},
-    {"o~", "õ"},
-    {"o:", "ö"},
-    {"o/", "ø"},
-    {"u`", "ù"},
-    {"u'", "ú"},
-    {"u^", "û"},
-    {"u:", "ü"},
-    {"y'", "ý"},
-    {"y:", "ÿ"},
-};
+static const char AsciiStart = 0x20;
+static const char AsciiEnd = 0x7F;
 
 bool beginsWithAttachedPunctuation(const std::string& s);
 std::string& chomp(std::string& s, char c);
@@ -316,9 +246,9 @@ bool endsWithFinalPunctuation(const std::string& s);
 const std::string hex(const std::string& s);
 const std::string hex(char s);
 bool isInt(const std::string& s);
+bool isPrintable(int c);
 std::string join(const std::vector<std::string>& s, const std::string& sep);
 std::string ltrim(const std::string& s, char c);
-std::string replaceSpecialChars(const std::string& text);
 std::string rtrim(const std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
 std::string toBase64(const std::string& s);
@@ -800,22 +730,170 @@ private:
 
 class Codec {
 public:
+	const std::string createKey(std::string secret) const;
 	const std::string decode88a(std::string encoded) const;
-	const std::string encode88a(std::string decoded) const;
 	const std::string decode96a(
 	    std::string encoded, std::string key, bool isTextElement) const;
+	const std::string decodeSpecialChars(const std::string& encoded) const;
+	const std::string encode88a(std::string decoded) const;
 	const std::string encode96a(
 	    std::string encoded, std::string key, bool isTextElement) const;
-	const std::string createKey(std::string secret) const;
+	const std::string encodeSpecialChars(const std::string& decoded) const;
 
 private:
-	static const char AsciiStart = 0x20;
-	static const char AsciiEnd = 0x7F;
+	using UnicodeToAsciiMap = const std::map<const char32_t, const std::string>;
+	using AsciiToUnicodeMap = const std::map<const std::string, const std::string>;
+
 	static constexpr auto KeySeed = "key";
+
+	UnicodeToAsciiMap fromChars_ = {
+	    {U'Š', "S^"},
+	    {U'Œ', "OE"},
+	    {U'–', "-"},
+	    {U'—', "--"},
+	    {U'™', "TM"},
+	    {U'š', "s^"},
+	    {U'œ', "oe"},
+	    {U'Ÿ', "Y:"},
+	    {U'©', "(C)"},
+	    {U'®', "(R)"},
+	    {U'À', "A`"},
+	    {U'Á', "A'"},
+	    {U'Â', "A^"},
+	    {U'Ã', "A~"},
+	    {U'Ä', "A:"},
+	    {U'Å', "Ao"},
+	    {U'Æ', "AE"},
+	    {U'Ç', "C,"},
+	    {U'È', "E`"},
+	    {U'É', "E'"},
+	    {U'Ê', "E^"},
+	    {U'Ë', "E:"},
+	    {U'Ì', "I`"},
+	    {U'Í', "I'"},
+	    {U'Î', "I^"},
+	    {U'Ï', "I:"},
+	    {U'Ð', "D-"},
+	    {U'Ñ', "N~"},
+	    {U'Ò', "O`"},
+	    {U'Ó', "O'"},
+	    {U'Ô', "O^"},
+	    {U'Õ', "O~"},
+	    {U'Ö', "O:"},
+	    {U'Ø', "O/"},
+	    {U'Ù', "U`"},
+	    {U'Ú', "U'"},
+	    {U'Û', "U^"},
+	    {U'Ü', "U:"},
+	    {U'Ý', "Y'"},
+	    {U'ß', "ss"},
+	    {U'à', "a`"},
+	    {U'á', "a'"},
+	    {U'â', "a^"},
+	    {U'ã', "a~"},
+	    {U'ä', "a:"},
+	    {U'å', "ao"},
+	    {U'æ', "ae"},
+	    {U'ç', "c,"},
+	    {U'è', "e`"},
+	    {U'é', "e'"},
+	    {U'ê', "e^"},
+	    {U'ë', "e:"},
+	    {U'ì', "i`"},
+	    {U'í', "i'"},
+	    {U'î', "i^"},
+	    {U'ï', "i:"},
+	    {U'ð', "d-"},
+	    {U'ñ', "n~"},
+	    {U'ò', "o`"},
+	    {U'ó', "o'"},
+	    {U'ô', "o^"},
+	    {U'õ', "o~"},
+	    {U'ö', "o:"},
+	    {U'ø', "o/"},
+	    {U'ù', "u`"},
+	    {U'ú', "u'"},
+	    {U'û', "u^"},
+	    {U'ü', "u:"},
+	    {U'ý', "y'"},
+	    {U'ÿ', "y:"},
+	};
+
+	AsciiToUnicodeMap toChars_ = {
+	    {"S^", "Š"},
+	    {"OE", "Œ"},
+	    {"-", "–"},
+	    {"--", "—"},
+	    {"TM", "™"},
+	    {"s^", "š"},
+	    {"oe", "œ"},
+	    {"Y:", "Ÿ"},
+	    {"(C)", "©"},
+	    {"(R)", "®"},
+	    {"A`", "À"},
+	    {"A'", "Á"},
+	    {"A^", "Â"},
+	    {"A~", "Ã"},
+	    {"A:", "Ä"},
+	    {"Ao", "Å"},
+	    {"AE", "Æ"},
+	    {"C,", "Ç"},
+	    {"E`", "È"},
+	    {"E'", "É"},
+	    {"E^", "Ê"},
+	    {"E:", "Ë"},
+	    {"I`", "Ì"},
+	    {"I'", "Í"},
+	    {"I^", "Î"},
+	    {"I:", "Ï"},
+	    {"D-", "Ð"},
+	    {"N~", "Ñ"},
+	    {"O`", "Ò"},
+	    {"O'", "Ó"},
+	    {"O^", "Ô"},
+	    {"O~", "Õ"},
+	    {"O:", "Ö"},
+	    {"O/", "Ø"},
+	    {"U`", "Ù"},
+	    {"U'", "Ú"},
+	    {"U^", "Û"},
+	    {"U:", "Ü"},
+	    {"Y'", "Ý"},
+	    {"ss", "ß"},
+	    {"a`", "à"},
+	    {"a'", "á"},
+	    {"a^", "â"},
+	    {"a~", "ã"},
+	    {"a:", "ä"},
+	    {"ao", "å"},
+	    {"ae", "æ"},
+	    {"c,", "ç"},
+	    {"e`", "è"},
+	    {"e'", "é"},
+	    {"e^", "ê"},
+	    {"e:", "ë"},
+	    {"i`", "ì"},
+	    {"i'", "í"},
+	    {"i^", "î"},
+	    {"i:", "ï"},
+	    {"d-", "ð"},
+	    {"n~", "ñ"},
+	    {"o`", "ò"},
+	    {"o'", "ó"},
+	    {"o^", "ô"},
+	    {"o~", "õ"},
+	    {"o:", "ö"},
+	    {"o/", "ø"},
+	    {"u`", "ù"},
+	    {"u'", "ú"},
+	    {"u^", "û"},
+	    {"u:", "ü"},
+	    {"y'", "ý"},
+	    {"y:", "ÿ"},
+	};
 
 	int keystream(
 	    std::string key, std::size_t keyLength, std::size_t line, bool isText) const;
-	bool isPrintable(int c) const;
 	char toPrintable(int c) const;
 };
 

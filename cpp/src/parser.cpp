@@ -377,7 +377,7 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token
 
 	// Title
 	token = this->expect(TokenType::String);
-	element->title(token->value());
+	element->title(codec_.decodeSpecialChars(token->value()));
 
 	switch (elementType) {
 	case ElementType::Unknown: /* No further processing required */
@@ -864,8 +864,8 @@ void Parser::parseSubjectElement(Element& element) {
 	std::unique_ptr<const Token> token;
 
 	if (!isTitleSet_) {
-		document_->title(element.title());
-		key_ = codec_.createKey(document_->title());
+		document_->title(codec_.decodeSpecialChars(element.title()));
+		key_ = codec_.createKey(element.title());
 		isTitleSet_ = true;
 	}
 
@@ -1148,14 +1148,15 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 void Parser::parseWithFormat(const std::string& text, TextFormat& format,
     ContainerNode& node, ElementType elementType) {
 
-	auto length = text.length();
+	const auto s = codec_.decodeSpecialChars(text);
+	auto length = s.length();
 	std::string segment;
 
 	for (std::size_t i = 0; i < length; ++i) {
-		switch (text[i]) { // TODO: Move this to a function map once logic is accurate
+		switch (s[i]) { // TODO: Move this to a function map once logic is accurate
 		case '\n':
-			if (text.substr(i + 1, 2) == " \n") {
-				for (std::size_t j = i; j < length && text.substr(j + 1, 2) == " \n";
+			if (s.substr(i + 1, 2) == " \n") {
+				for (std::size_t j = i; j < length && s.substr(j + 1, 2) == " \n";
 				     j += 2, i = j) {
 
 					segment += '\n';
@@ -1164,30 +1165,30 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 			} else if (elementType == ElementType::Text
 			           || hasFormat(format, TextFormat::Overflow)
 			           || hasFormat(format, TextFormat::Monospace)) {
-				segment += text[i];
+				segment += s[i];
 			} else {
-				auto pos = text.find_last_of('\n', i - 1);
+				auto pos = s.find_last_of('\n', i - 1);
 				if (pos == std::string::npos) {
 					pos = -1;
 				}
-				if (text.substr(pos + 1, 2) == "  ") {
+				if (s.substr(pos + 1, 2) == "  ") {
 					segment += '\n';
-				} else if (i > 0 && text[i - 1] != ' ' && i + 1 < length) {
+				} else if (i > 0 && s[i - 1] != ' ' && i + 1 < length) {
 					segment += ' ';
 				}
 			}
 			break;
 		case Token::Escape:
-			if (i + 1 < length && text[i + 1] == Token::Escape) {
+			if (i + 1 < length && s[i + 1] == Token::Escape) {
 				i += 1;
 				segment += '#';
 			} else if (i + 2 < length) {
-				switch (text[i + 1]) {
+				switch (s[i + 1]) {
 				case 'a':
-					segment += text[i];
+					segment += s[i];
 					break;
 				case 'h':
-					switch (text[i + 2]) {
+					switch (s[i + 2]) {
 					case '+':
 						if (hasFormat(format, TextFormat::Hyperlink)) {
 							// TODO: Warn: unexpected sequence
@@ -1222,7 +1223,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					}
 					break;
 				case 'p':
-					switch (text[i + 2]) {
+					switch (s[i + 2]) {
 					case '-':
 						if (hasFormat(format, TextFormat::Monospace)) {
 							// TODO: Warn: unexpected sequence
@@ -1256,7 +1257,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					}
 					break;
 				case 'w':
-					switch (text[i + 2]) {
+					switch (s[i + 2]) {
 					case '-':
 						// Append previous segment
 						if (!segment.empty()) {
@@ -1301,7 +1302,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 			}
 			break;
 		default:
-			segment += text[i];
+			segment += s[i];
 		}
 	}
 

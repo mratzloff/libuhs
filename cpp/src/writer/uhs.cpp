@@ -195,9 +195,11 @@ int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
 
-	if (const auto& body = element.body(); !body.empty()) {
+	const auto& body = codec_.encodeSpecialChars(element.body());
+	if (!body.empty()) {
 		buffer += Strings::wrap(body, EOL, LineLength, length) + EOL;
 	}
+
 	currentLine_ += length;
 	element.length(length);
 
@@ -246,8 +248,9 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 	}
 
 	if (!node.isText() && !textBuffer.empty()) {
+		const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
 		auto childLength = 0;
-		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
+		const auto wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
 		out += this->encodeText(wrapped, elementType);
 		length += childLength;
 		currentLine_ += childLength;
@@ -300,8 +303,9 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	}
 
 	if (!textBuffer.empty()) {
+		const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
 		auto childLength = 0;
-		auto wrapped = Strings::wrap(textBuffer, "\n", LineLength, childLength);
+		const auto wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
 		buffer += this->encodeText(wrapped, elementType);
 		length += childLength;
 		currentLine_ += childLength;
@@ -460,13 +464,15 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 
 	for (const auto& [key, value] : document_->attrs()) {
 		if (whitelisted[key] && !value.empty()) {
-			buffer += Strings::wrap(value, EOL, LineLength, length, key + "=");
+			const auto scEncoded = codec_.encodeSpecialChars(value);
+			buffer += Strings::wrap(scEncoded, EOL, LineLength, length, key + "=");
 			buffer += EOL;
 		}
 	}
 
 	if (auto notice = document_->attr("notice")) {
-		buffer += Strings::wrap(*notice, EOL, LineLength, length, Token::NoticePrefix);
+		const auto scEncoded = codec_.encodeSpecialChars(*notice);
+		buffer += Strings::wrap(scEncoded, EOL, LineLength, length, Token::NoticePrefix);
 		buffer += EOL;
 	}
 
@@ -584,7 +590,8 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 		}
 	}
 
-	auto body = this->encodeText(textBuffer, elementType);
+	const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
+	auto body = this->encodeText(scEncoded, elementType);
 
 	const auto textFormat = ((*element.attr("typeface") == "monospace") ? "1 " : "0 ");
 	buffer += this->createDataAddress(body.length(), textFormat);
@@ -607,7 +614,9 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 	out += element.elementTypeString();
 	out += EOL;
 
-	if (const auto& title = element.title(); title.empty()) {
+	const auto title = codec_.encodeSpecialChars(element.title());
+
+	if (title.empty()) {
 		out += '-';
 	} else {
 		out += title;

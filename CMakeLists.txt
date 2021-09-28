@@ -12,6 +12,7 @@ set (argh_includes cpp/vendor/argh)
 set (json_includes cpp/vendor/jsoncpp/json)
 set (pugixml_includes cpp/vendor/pugixml)
 set (tinyformat_includes cpp/vendor/tinyformat)
+set (tinyutf8_includes cpp/vendor/tinyutf8)
 set (tsl_includes cpp/vendor/tsl)
 set (uhs_includes cpp/include)
 
@@ -87,6 +88,7 @@ target_include_directories (uhs
 	PUBLIC ${json_includes}
 		   ${pugixml_includes}
 	       ${tinyformat_includes}
+		   ${tinyutf8_includes}
 		   ${tsl_includes}
 	       ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
@@ -115,6 +117,7 @@ add_custom_target (lint
 		-I${json_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
+		-I${tinyutf8_includes}
 		-I${tsl_includes}
 		-I${uhs_includes}
 		-std=c++20

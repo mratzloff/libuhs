@@ -1,6 +1,11 @@
+#include "tinyutf8.h"
 #include "uhs.h"
 
 namespace UHS {
+
+const std::string Codec::createKey(std::string secret) const {
+	return this->encode96a(secret, KeySeed, false);
+}
 
 const std::string Codec::decode88a(std::string encoded) const {
 	std::string& decoded = encoded;
@@ -8,28 +13,14 @@ const std::string Codec::decode88a(std::string encoded) const {
 
 	for (std::size_t i = 0; i < length; ++i) {
 		char c = encoded[i];
-		if (this->isPrintable(c)) {
-			int offset = (c < 80) ? AsciiStart : AsciiEnd;
+		if (Strings::isPrintable(c)) {
+			int offset = (c < 80) ? Strings::AsciiStart : Strings::AsciiEnd;
 			decoded[i] = static_cast<char>(static_cast<int>(c) * 2 - offset);
 		} else {
 			decoded[i] = '?';
 		}
 	}
 	return decoded;
-}
-
-const std::string Codec::encode88a(std::string decoded) const {
-	std::string& encoded = decoded;
-	const std::size_t length = encoded.length();
-
-	for (std::size_t i = 0; i < length; ++i) {
-		char c = decoded[i];
-		if (this->isPrintable(c)) {
-			int offset = (c % 2 == 0) ? AsciiStart : AsciiEnd;
-			encoded[i] = static_cast<char>((static_cast<int>(c) + offset) / 2);
-		}
-	}
-	return encoded;
 }
 
 const std::string Codec::decode96a(
@@ -46,6 +37,62 @@ const std::string Codec::decode96a(
 	return decoded;
 }
 
+const std::string Codec::decodeSpecialChars(const std::string& encoded) const {
+	std::string segment;
+	auto length = encoded.length();
+
+	for (std::size_t i = 0; i < length; ++i) {
+		if (i + 3 > length || encoded.substr(i, 2) != "#a") {
+			segment += encoded[i];
+			continue;
+		}
+
+		if (encoded[i + 3] == '-') {
+			// TODO: Warn: unexpected sequence
+			segment += encoded[i];
+			continue;
+		}
+
+		const auto offset = i + 3;
+		auto pos = encoded.find("#a-", offset);
+
+		if (pos == std::string::npos) {
+			// TODO: Warn: unexpected sequence
+			segment += encoded[i];
+			continue;
+		}
+
+		const auto length = pos - offset;
+		const auto value = encoded.substr(offset, length);
+
+		try {
+			segment += this->toChars_.at(value);
+		} catch (const std::out_of_range& err) {
+			// TODO: Warn: unexpected sequence
+			segment += encoded[i];
+			break;
+		}
+
+		i += length + 5; // Advance to "-" of "#a-" (will increment next loop)
+	}
+
+	return segment;
+}
+
+const std::string Codec::encode88a(std::string decoded) const {
+	std::string& encoded = decoded;
+	const std::size_t length = encoded.length();
+
+	for (std::size_t i = 0; i < length; ++i) {
+		char c = decoded[i];
+		if (Strings::isPrintable(c)) {
+			int offset = (c % 2 == 0) ? Strings::AsciiStart : Strings::AsciiEnd;
+			encoded[i] = static_cast<char>((static_cast<int>(c) + offset) / 2);
+		}
+	}
+	return encoded;
+}
+
 const std::string Codec::encode96a(
     std::string decoded, std::string key, bool isTextElement) const {
 
@@ -60,8 +107,25 @@ const std::string Codec::encode96a(
 	return encoded;
 }
 
-const std::string Codec::createKey(std::string secret) const {
-	return this->encode96a(secret, KeySeed, false);
+const std::string Codec::encodeSpecialChars(const std::string& decoded) const {
+	std::string segment;
+	tiny_utf8::string utf8String = decoded;
+	auto length = utf8String.length();
+
+	for (std::size_t i = 0; i < length; ++i) {
+		std::string sequence;
+		try {
+			const auto c = (char32_t) utf8String[i];
+			sequence = this->fromChars_.at(c);
+			segment += Token::AsciiEncBegin;
+			segment += sequence;
+			segment += Token::AsciiEncEnd;
+		} catch (const std::out_of_range& err) {
+			segment += utf8String[i];
+		}
+	}
+
+	return segment;
 }
 
 int Codec::keystream(
@@ -72,17 +136,13 @@ int Codec::keystream(
 	return int(key[offset]) ^ ((isTextElement ? offset : intIndex) + 40);
 }
 
-bool Codec::isPrintable(int c) const {
-	return c >= AsciiStart && c <= AsciiEnd;
-}
-
 char Codec::toPrintable(int c) const {
-	const int step = AsciiEnd - AsciiStart + 1;
+	const int step = Strings::AsciiEnd - Strings::AsciiStart + 1;
 
-	while (!this->isPrintable(c)) {
-		if (c < AsciiStart) {
+	while (!Strings::isPrintable(c)) {
+		if (c < Strings::AsciiStart) {
 			c += step;
-		} else if (c > AsciiEnd) {
+		} else if (c > Strings::AsciiEnd) {
 			c -= step;
 		} else {
 			break;

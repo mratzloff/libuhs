@@ -76,7 +76,7 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 }
 
 void JSONWriter::serializeDocument(const Document& document, Json::Value& object) const {
-	object["title"] = Strings::replaceSpecialChars(document.title());
+	object["title"] = document.title();
 	object["version"] = document.versionString();
 
 	if (document.version() > VersionType::Version88a) {
@@ -97,7 +97,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 	std::string fname;
 	std::ofstream fout;
 
-	object["title"] = Strings::replaceSpecialChars(element.title());
+	object["title"] = element.title();
 	if (const auto id = element.id(); id > 0) {
 		object["id"] = id;
 	}
@@ -111,7 +111,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 		fout.close();
 		object["body"] = fname;
 	} else {
-		const auto& body = Strings::replaceSpecialChars(element.body());
+		const auto& body = element.body();
 		if (!body.empty()) {
 			object["body"] = body;
 		}
@@ -131,7 +131,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 }
 
 void JSONWriter::serializeTextNode(const TextNode& textNode, Json::Value& object) const {
-	object["body"] = Strings::replaceSpecialChars(textNode.body());
+	object["body"] = textNode.body();
 
 	auto attributes = Json::Value(Json::objectValue);
 	attributes["overflow"] = textNode.hasFormat(TextFormat::Overflow);
@@ -155,7 +155,7 @@ void JSONWriter::serializeMap(
 				object[k] = v;
 			}
 		} else {
-			object[k] = Strings::replaceSpecialChars(v); // String value
+			object[k] = v; // String value
 		}
 	}
 }

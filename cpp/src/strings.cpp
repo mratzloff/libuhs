@@ -62,6 +62,10 @@ bool isInt(const std::string& s) {
 	return true;
 }
 
+bool isPrintable(int c) {
+	return c >= AsciiStart && c <= AsciiEnd;
+}
+
 std::string join(const std::vector<std::string>& items, const std::string& sep) {
 	std::string s;
 	auto i = 0;
@@ -82,48 +86,6 @@ std::string ltrim(const std::string& s, char c) {
 		return s.substr(pos);
 	}
 	return s;
-}
-
-std::string replaceSpecialChars(const std::string& s) {
-	auto length = s.length();
-	std::string segment;
-
-	for (std::size_t i = 0; i < length; ++i) {
-		if (i + 3 > length || s.substr(i, 2) != "#a") {
-			segment += s[i];
-			continue;
-		}
-
-		if (s[i + 3] == '-') {
-			// TODO: Warn: unexpected sequence
-			segment += s[i];
-			continue;
-		}
-
-		const auto offset = i + 3;
-		auto pos = s.find("#a-", offset);
-
-		if (pos == std::string::npos) {
-			// TODO: Warn: unexpected sequence
-			segment += s[i];
-			continue;
-		}
-
-		const auto length = pos - offset;
-		const auto value = s.substr(offset, length);
-
-		try {
-			segment += Strings::specialChars.at(value);
-		} catch (const std::out_of_range& err) {
-			// TODO: Warn: unexpected sequence
-			segment += s[i];
-			break;
-		}
-
-		i += length + 5; // Advance to "-" of "#a-" (will increment next loop)
-	}
-
-	return segment;
 }
 
 std::string rtrim(const std::string& s, char c) {
