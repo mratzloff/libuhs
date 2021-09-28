@@ -236,6 +236,79 @@ struct Options {
 
 namespace Strings {
 
+const std::map<const std::string, const std::string> specialChars = {
+    {"S^", "Š"},
+    {"OE", "Œ"},
+    {"-", "–"},
+    {"--", "—"},
+    {"TM", "™"},
+    {"s^", "š"},
+    {"oe", "œ"},
+    {"Y:", "Ÿ"},
+    {"(C)", "©"},
+    {"(R)", "®"},
+    {"A`", "À"},
+    {"A'", "Á"},
+    {"A^", "Â"},
+    {"A~", "Ã"},
+    {"A:", "Ä"},
+    {"Ao", "Å"},
+    {"AE", "Æ"},
+    {"C,", "Ç"},
+    {"E`", "È"},
+    {"E'", "É"},
+    {"E^", "Ê"},
+    {"E:", "Ë"},
+    {"I`", "Ì"},
+    {"I'", "Í"},
+    {"I^", "Î"},
+    {"I:", "Ï"},
+    {"D-", "Ð"},
+    {"N~", "Ñ"},
+    {"O`", "Ò"},
+    {"O'", "Ó"},
+    {"O^", "Ô"},
+    {"O~", "Õ"},
+    {"O:", "Ö"},
+    {"O/", "Ø"},
+    {"U`", "Ù"},
+    {"U'", "Ú"},
+    {"U^", "Û"},
+    {"U:", "Ü"},
+    {"Y'", "Ý"},
+    {"ss", "ß"},
+    {"a`", "à"},
+    {"a'", "á"},
+    {"a^", "â"},
+    {"a~", "ã"},
+    {"a:", "ä"},
+    {"ao", "å"},
+    {"ae", "æ"},
+    {"c,", "ç"},
+    {"e`", "è"},
+    {"e'", "é"},
+    {"e^", "ê"},
+    {"e:", "ë"},
+    {"i`", "ì"},
+    {"i'", "í"},
+    {"i^", "î"},
+    {"i:", "ï"},
+    {"d-", "ð"},
+    {"n~", "ñ"},
+    {"o`", "ò"},
+    {"o'", "ó"},
+    {"o^", "ô"},
+    {"o~", "õ"},
+    {"o:", "ö"},
+    {"o/", "ø"},
+    {"u`", "ù"},
+    {"u'", "ú"},
+    {"u^", "û"},
+    {"u:", "ü"},
+    {"y'", "ý"},
+    {"y:", "ÿ"},
+};
+
 bool beginsWithAttachedPunctuation(const std::string& s);
 std::string& chomp(std::string& s, char c);
 bool endsWithAttachedPunctuation(const std::string& s);
@@ -245,6 +318,7 @@ const std::string hex(char s);
 bool isInt(const std::string& s);
 std::string join(const std::vector<std::string>& s, const std::string& sep);
 std::string ltrim(const std::string& s, char c);
+std::string replaceSpecialChars(const std::string& text);
 std::string rtrim(const std::string& s, char c);
 std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
 std::string toBase64(const std::string& s);

@@ -35,14 +35,14 @@ void TreeWriter::write(const Document& document) {
 
 void TreeWriter::draw(const Document& document) {
 	this->drawScaffold(document);
-	out_ << "[" << document.nodeTypeString() << "] \"" << document.title() << "\""
-	     << std::endl;
+	out_ << "[" << document.nodeTypeString() << "] \""
+	     << Strings::replaceSpecialChars(document.title()) << "\"" << std::endl;
 }
 
 void TreeWriter::draw(const Element& element) {
 	this->drawScaffold(element);
-	out_ << "[" << element.elementTypeString() << "] \"" << element.title() << "\""
-	     << std::endl;
+	out_ << "[" << element.elementTypeString() << "] \""
+	     << Strings::replaceSpecialChars(element.title()) << "\"" << std::endl;
 }
 
 void TreeWriter::draw(const GroupNode& groupNode) {
@@ -54,6 +54,8 @@ void TreeWriter::draw(const TextNode& textNode) {
 	this->drawScaffold(textNode);
 	auto body = textNode.body();
 	std::replace(body.begin(), body.end(), '\n', ' ');
+	body = Strings::replaceSpecialChars(body);
+
 	if (body.length() > 76) {
 		body = body.substr(0, 73) + "...";
 	}

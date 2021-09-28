@@ -233,7 +233,8 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 		auto authorKey = dl.append_child("dt");
 		authorKey.append_child(pugi::node_pcdata).set_value("Author");
 		auto authorValue = dl.append_child("dd");
-		authorValue.append_child(pugi::node_pcdata).set_value(author.value().c_str());
+		authorValue.append_child(pugi::node_pcdata)
+		    .set_value(Strings::replaceSpecialChars(author.value()).c_str());
 	}
 
 	if (auto publisher = document->attr("publisher")) {
@@ -241,7 +242,7 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 		publisherKey.append_child(pugi::node_pcdata).set_value("Game Publisher");
 		auto publisherValue = dl.append_child("dd");
 		publisherValue.append_child(pugi::node_pcdata)
-		    .set_value(publisher.value().c_str());
+		    .set_value(Strings::replaceSpecialChars(publisher.value()).c_str());
 	}
 
 	if (auto timestamp = document->attr("timestamp")) {
@@ -257,7 +258,7 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 		copyrightKey.append_child(pugi::node_pcdata).set_value("Copyright");
 		auto copyrightValue = dl.append_child("dd");
 		copyrightValue.append_child(pugi::node_pcdata)
-		    .set_value(copyright.value().c_str());
+		    .set_value(Strings::replaceSpecialChars(copyright.value()).c_str());
 	}
 }
 
@@ -289,7 +290,8 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 		if (element.inlined()) {
 			this->appendClassNames(xmlNode, {"inline"});
 		}
-		xmlNode.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+		xmlNode.append_child(pugi::node_pcdata)
+		    .set_value(Strings::replaceSpecialChars(element.title()).c_str());
 	}
 
 	auto target = element.body();
@@ -355,7 +357,7 @@ void HTMLWriter::serializeTextNode(
 		}
 	}
 
-	auto body = textNode.body();
+	auto body = Strings::replaceSpecialChars(textNode.body());
 	auto lines = Strings::split(body, "\n");
 
 	for (std::size_t i = 0; i < lines.size(); ++i) {
@@ -411,7 +413,7 @@ std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
 std::optional<pugi::xml_node> HTMLWriter::appendBody(
     const Element& element, pugi::xml_node xmlNode) const {
 
-	const auto& body = element.body();
+	const auto& body = Strings::replaceSpecialChars(element.body());
 	if (body.empty()) {
 		return std::nullopt;
 	}
@@ -450,7 +452,8 @@ pugi::xml_node HTMLWriter::appendTitle(
 	auto div = xmlNode.append_child("div");
 	auto title = div.append_child("span");
 	this->appendClassNames(title, {"title"});
-	title.append_child(pugi::node_pcdata).set_value(element.title().c_str());
+	title.append_child(pugi::node_pcdata)
+	    .set_value(Strings::replaceSpecialChars(element.title()).c_str());
 
 	return title;
 }
@@ -494,7 +497,8 @@ pugi::xml_node HTMLWriter::createHTMLDocument(
 	html.append_attribute("lang") = "en";
 	auto head = html.append_child("head");
 	auto title = head.append_child("title");
-	title.append_child(pugi::node_pcdata).set_value(document.title().c_str());
+	title.append_child(pugi::node_pcdata)
+	    .set_value(Strings::replaceSpecialChars(document.title()).c_str());
 	auto meta1 = head.append_child("meta");
 	meta1.append_attribute("charset") = "utf-8";
 

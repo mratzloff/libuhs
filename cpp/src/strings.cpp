@@ -4,79 +4,6 @@
 
 namespace UHS::Strings {
 
-// const std::map<const std::string, const std::string> specialChars = {
-//     {"S^", u8"Š"},
-//     {"OE", u8"Œ"},
-//     {"-", u8"–"},
-//     {"--", u8"—"},
-//     {"TM", u8"™"},
-//     {"s^", u8"š"},
-//     {"oe", u8"œ"},
-//     {"Y:", u8"Ÿ"},
-//     {"(C)", u8"©"},
-//     {"(R)", u8"®"},
-//     {"A`", u8"À"},
-//     {"A'", u8"Á"},
-//     {"A^", u8"Â"},
-//     {"A~", u8"Ã"},
-//     {"A:", u8"Ä"},
-//     {"Ao", u8"Å"},
-//     {"AE", u8"Æ"},
-//     {"C,", u8"Ç"},
-//     {"E`", u8"È"},
-//     {"E'", u8"É"},
-//     {"E^", u8"Ê"},
-//     {"E:", u8"Ë"},
-//     {"I`", u8"Ì"},
-//     {"I'", u8"Í"},
-//     {"I^", u8"Î"},
-//     {"I:", u8"Ï"},
-//     {"D-", u8"Ð"},
-//     {"N~", u8"Ñ"},
-//     {"O`", u8"Ò"},
-//     {"O'", u8"Ó"},
-//     {"O^", u8"Ô"},
-//     {"O~", u8"Õ"},
-//     {"O:", u8"Ö"},
-//     {"O/", u8"Ø"},
-//     {"U`", u8"Ù"},
-//     {"U'", u8"Ú"},
-//     {"U^", u8"Û"},
-//     {"U:", u8"Ü"},
-//     {"Y'", u8"Ý"},
-//     {"ss", u8"ß"},
-//     {"a`", u8"à"},
-//     {"a'", u8"á"},
-//     {"a^", u8"â"},
-//     {"a~", u8"ã"},
-//     {"a:", u8"ä"},
-//     {"ao", u8"å"},
-//     {"ae", u8"æ"},
-//     {"c,", u8"ç"},
-//     {"e`", u8"è"},
-//     {"e'", u8"é"},
-//     {"e^", u8"ê"},
-//     {"e:", u8"ë"},
-//     {"i`", u8"ì"},
-//     {"i'", u8"í"},
-//     {"i^", u8"î"},
-//     {"i:", u8"ï"},
-//     {"d-", u8"ð"},
-//     {"n~", u8"ñ"},
-//     {"o`", u8"ò"},
-//     {"o'", u8"ó"},
-//     {"o^", u8"ô"},
-//     {"o~", u8"õ"},
-//     {"o:", u8"ö"},
-//     {"o/", u8"ø"},
-//     {"u`", u8"ù"},
-//     {"u'", u8"ú"},
-//     {"u^", u8"û"},
-//     {"u:", u8"ü"},
-//     {"y'", u8"ý"},
-//     {"y:", u8"ÿ"},
-// };
-
 bool beginsWithAttachedPunctuation(const std::string& s) {
 	auto c = s.front();
 	return c == '\'' || c == '"' || c == ')' || c == ' ' || c == '?' || c == '!'
@@ -155,6 +82,48 @@ std::string ltrim(const std::string& s, char c) {
 		return s.substr(pos);
 	}
 	return s;
+}
+
+std::string replaceSpecialChars(const std::string& s) {
+	auto length = s.length();
+	std::string segment;
+
+	for (std::size_t i = 0; i < length; ++i) {
+		if (i + 3 > length || s.substr(i, 2) != "#a") {
+			segment += s[i];
+			continue;
+		}
+
+		if (s[i + 3] == '-') {
+			// TODO: Warn: unexpected sequence
+			segment += s[i];
+			continue;
+		}
+
+		const auto offset = i + 3;
+		auto pos = s.find("#a-", offset);
+
+		if (pos == std::string::npos) {
+			// TODO: Warn: unexpected sequence
+			segment += s[i];
+			continue;
+		}
+
+		const auto length = pos - offset;
+		const auto value = s.substr(offset, length);
+
+		try {
+			segment += Strings::specialChars.at(value);
+		} catch (const std::out_of_range& err) {
+			// TODO: Warn: unexpected sequence
+			segment += s[i];
+			break;
+		}
+
+		i += length + 5; // Advance to "-" of "#a-" (will increment next loop)
+	}
+
+	return segment;
 }
 
 std::string rtrim(const std::string& s, char c) {
