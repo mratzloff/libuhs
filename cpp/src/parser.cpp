@@ -906,7 +906,7 @@ void Parser::parseTextElement(Element& element) {
 
 	if (formatType == TextElementType::Monospace
 	    || formatType == TextElementType::MonospaceAlt) {
-		element.attr("typeface", "monospace");
+		element.attr("monospace", "true");
 	}
 
 	// Offset

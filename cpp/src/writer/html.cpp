@@ -89,17 +89,21 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		}
 		case NodeType::Group: {
 			pugi::xml_node xmlNode;
+			const Element* parentElement;
 			ElementType parentElementType = ElementType::Unknown;
 			assert(node.hasParent());
 			auto nodeParent = node.parent();
 
 			if (nodeParent->isElement()) {
-				auto parentElement = static_cast<const Element*>(nodeParent);
+				parentElement = static_cast<const Element*>(nodeParent);
 				parentElementType = parentElement->elementType();
 			}
 
 			if (parentElementType == ElementType::Text) {
 				xmlNode = parent.append_child("p");
+				if (parentElement->attr("monospace")) {
+					this->appendClassNames(xmlNode, {"monospace"});
+				}
 			} else {
 				auto li = parent.append_child("li");
 				xmlNode = li.append_child("div");
