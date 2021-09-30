@@ -887,6 +887,7 @@ void Parser::parseTextElement(Element& element) {
 	auto line = token->line();
 	auto column = token->column();
 
+	// Format
 	int formatByte;
 	try {
 		formatByte = Strings::toInt(token->value());
@@ -902,12 +903,8 @@ void Parser::parseTextElement(Element& element) {
 		    "text format byte must be between 0 and 3; found %d",
 		    formatByte);
 	}
-	const auto formatType = static_cast<TextElementType>(formatByte);
-
-	if (formatType == TextElementType::Monospace
-	    || formatType == TextElementType::MonospaceAlt) {
-		element.attr("monospace", "true");
-	}
+	const auto format = static_cast<TextFormat>(formatByte);
+	element.attr("format", (int) format);
 
 	// Offset
 	token = this->expect(TokenType::DataOffset);
@@ -947,12 +944,12 @@ void Parser::parseTextElement(Element& element) {
 
 		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
 		if (!body.empty()) {
-			TextFormat format = TextFormat::None;
 			auto group = GroupNode::create(element.line(), element.length());
 			element.appendChild(group);
 
 			try {
-				this->parseWithFormat(body, format, *group, element.elementType());
+				auto fmt = format;
+				this->parseWithFormat(body, fmt, *group, element.elementType());
 			} catch (const Error& err) {
 				std::throw_with_nested(
 				    ParseError(line, column, "could not parse formatted string"));

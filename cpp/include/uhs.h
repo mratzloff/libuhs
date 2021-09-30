@@ -56,17 +56,10 @@ enum class ElementType {
 	Version,
 };
 
-enum class TextElementType {
-	None, // Also used for binary data
-	Monospace,
-	NoneAlt,      // Probably overflow?
-	MonospaceAlt, // Probably both?
-};
-
 enum class TextFormat : uint8_t {
-	None = 0,
-	Overflow = 1,
-	Monospace = 2,
+	None = 0, // Also used for binary data
+	Monospace = 1,
+	Overflow = 2,
 	Hyperlink = 4,
 };
 

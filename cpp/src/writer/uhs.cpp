@@ -579,22 +579,29 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	std::string textBuffer;
 	std::string buffer;
 	auto previousFormat = TextFormat::None;
+	const auto message = "unexpected node type: %s";
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
-		if (node->isText()) {
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			textBuffer += this->formatText(textNode, previousFormat);
-			previousFormat = textNode.format();
-		} else if (!node->isGroup()) {
-			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+		if (node->isGroup()) {
+			for (auto child = node->firstChild(); child; child = child->nextSibling()) {
+				if (child->isText()) {
+					const auto textNode = static_cast<const TextNode*>(child);
+					textBuffer += this->formatText(*textNode, previousFormat);
+					previousFormat = textNode->format();
+				} else {
+					throw WriteError(message, child->nodeTypeString());
+				}
+			}
+		} else {
+			throw WriteError(message, node->nodeTypeString());
 		}
 	}
 
 	const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
 	auto body = this->encodeText(scEncoded, elementType);
 
-	const auto textFormat = ((*element.attr("typeface") == "monospace") ? "1 " : "0 ");
-	buffer += this->createDataAddress(body.length(), textFormat);
+	const auto format = element.attr("format");
+	buffer += this->createDataAddress(body.length(), format ? *format : "0");
 	++length;
 
 	data_.emplace(std::make_pair(elementType, body));
@@ -829,7 +836,7 @@ std::string UHSWriter::createDataAddress(
 
 	out += DataAddressMarker;
 	out += ' ';
-	out += textFormat;
+	out += (textFormat.empty() ? "" : textFormat + ' ');
 	out += std::string(FileSizeLength, '0');
 	out += ' ';
 	std::ostringstream buffer;
