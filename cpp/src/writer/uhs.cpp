@@ -513,7 +513,7 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 	buffer += EOL;
 	++length;
 
-	int targetID;
+	int targetID = 0;
 	try {
 		targetID = Strings::toInt(element.body());
 		if (targetID < 0) {

@@ -149,7 +149,7 @@ std::string toBase64(const std::string& s) {
 }
 
 int toInt(const std::string& s) {
-	int intVal;
+	int intVal = 0;
 	std::string::size_type idx;
 	try {
 		intVal = std::stoi(s, &idx);

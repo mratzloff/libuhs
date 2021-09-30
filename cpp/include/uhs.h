@@ -932,7 +932,7 @@ private:
 	};
 
 	struct VisibilityData {
-		int targetLine;
+		int targetLine = 0;
 		VisibilityType visibility;
 
 		VisibilityData(int targetLine, VisibilityType visibility);

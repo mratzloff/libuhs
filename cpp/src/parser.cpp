@@ -98,7 +98,7 @@ void Parser::parse88a() {
 
 	// First hint line
 	token = this->expect(TokenType::Line);
-	int firstHintTextLine;
+	int firstHintTextLine = 0;
 	try {
 		firstHintTextLine = Strings::toInt(token->value());
 		if (firstHintTextLine < 0) {
@@ -112,7 +112,7 @@ void Parser::parse88a() {
 
 	// Last hint line
 	token = this->expect(TokenType::Line);
-	int lastHintTextLine;
+	int lastHintTextLine = 0;
 	try {
 		lastHintTextLine = Strings::toInt(token->value());
 		if (lastHintTextLine < 0) {
@@ -170,7 +170,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		auto line = token->line();
 
 		token = this->expect(TokenType::Line);
-		int firstChildLine;
+		int firstChildLine = 0;
 		try {
 			firstChildLine = Strings::toInt(token->value());
 			if (firstChildLine < 0) {
@@ -342,7 +342,7 @@ done:
 // Elements are automatically appended to their parents
 std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token) {
 	// Length
-	int length;
+	int length = 0;
 	try {
 		length = Strings::toInt(token->value());
 		if (length < 0) {
@@ -476,7 +476,7 @@ void Parser::parseDataElement(Element& element) {
 
 		switch (token->type()) {
 		case TokenType::DataOffset:
-			int intOffset;
+			int intOffset = 0;
 			try {
 				intOffset = Strings::toInt(token->value());
 				if (intOffset < 0) {
@@ -498,7 +498,7 @@ void Parser::parseDataElement(Element& element) {
 expectDataLength:
 	// Length
 	auto token = this->expect(TokenType::DataLength);
-	int intLength;
+	int intLength = 0;
 	try {
 		intLength = Strings::toInt(token->value());
 		if (intLength < 0) {
@@ -735,7 +735,7 @@ void Parser::parseIncentiveElement(Element& element) {
 			continue; // TODO: Warn
 		}
 
-		int id;
+		int id = 0;
 		try {
 			id = Strings::toInt(instruction.substr(0, instructionLength - 1));
 			if (id < 0) {
@@ -791,7 +791,7 @@ void Parser::parseInfoElement(Element& element) {
 		}
 
 		if (key == "length") {
-			int fileLength;
+			int fileLength = 0;
 			try {
 				fileLength = Strings::toInt(value);
 				if (fileLength < 0) {
@@ -888,7 +888,7 @@ void Parser::parseTextElement(Element& element) {
 	auto column = token->column();
 
 	// Format
-	int formatByte;
+	int formatByte = 0;
 	try {
 		formatByte = Strings::toInt(token->value());
 		if (formatByte < 0) {
@@ -908,7 +908,7 @@ void Parser::parseTextElement(Element& element) {
 
 	// Offset
 	token = this->expect(TokenType::DataOffset);
-	int intOffset;
+	int intOffset = 0;
 	try {
 		intOffset = Strings::toInt(token->value());
 		if (intOffset < 0) {
@@ -921,7 +921,7 @@ void Parser::parseTextElement(Element& element) {
 
 	// Length
 	token = this->expect(TokenType::DataLength);
-	int intLength;
+	int intLength = 0;
 	try {
 		intLength = Strings::toInt(token->value());
 		if (intLength < 0) {
@@ -1046,7 +1046,7 @@ void Parser::parseData(std::unique_ptr<const Token> token) {
 void Parser::parseDate(const std::string& date, std::tm& tm) const {
 	auto parts = Strings::split(date, "-", 3);
 
-	int year;
+	int year = 0;
 	try {
 		year = Strings::toInt(parts[2]);
 		if (year < 0) {
@@ -1059,7 +1059,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 		year += 100;
 	}
 
-	int month;
+	int month = 0;
 	if (parts[1] == "Jan") {
 		month = 0;
 	} else if (parts[1] == "Feb") {
@@ -1088,7 +1088,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 		throw Error("invalid month: %d", parts[1]);
 	}
 
-	int day;
+	int day = 0;
 	try {
 		day = Strings::toInt(parts[0]);
 		if (day < 1 || day > 31) {
@@ -1107,7 +1107,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 void Parser::parseTime(const std::string& time, std::tm& tm) const {
 	auto parts = Strings::split(time, ":", 3);
 
-	int hour;
+	int hour = 0;
 	try {
 		hour = Strings::toInt(parts[0]);
 		if (hour < 0 || hour > 23) {
@@ -1117,7 +1117,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 		throw Error("invalid hour: %d", hour);
 	}
 
-	int min;
+	int min = 0;
 	try {
 		min = Strings::toInt(parts[1]);
 		if (min < 0 || min > 59) {
@@ -1127,7 +1127,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 		throw Error("invalid minute: %d", min);
 	}
 
-	int sec;
+	int sec = 0;
 	try {
 		sec = Strings::toInt(parts[2]);
 		if (sec < 0 || sec > 59) {
@@ -1311,7 +1311,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 void Parser::processLinks() {
 	for (const auto& [link, line, column] : deferredLinks_) {
 		const auto& body = link.body();
-		int targetLine;
+		int targetLine = 0;
 		try {
 			targetLine = Strings::toInt(body);
 			if (targetLine < 0) {
