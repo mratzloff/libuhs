@@ -8,15 +8,29 @@ UHSWriter::Serializer UHSWriter::serializer_;
 
 UHSWriter::UHSWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
-void UHSWriter::write(const Document& document) {
+void UHSWriter::write(const std::shared_ptr<Document> document) {
 	std::string buffer;
 	buffer.reserve(InitialBufferLength);
+	document_ = document;
+	const auto is88a = document_->isVersion(VersionType::Version88a);
 
-	if (options_.mode == VersionType::Version88a) {
-		this->serialize88a(document, buffer);
-	} else {
-		document_ = document.clone();
+	switch (options_.mode) {
+	case ModeType::Auto:
+		if (is88a) {
+			this->serialize88a(*document, buffer);
+		} else {
+			this->serialize96a(buffer);
+		}
+		break;
+	case ModeType::Version88a:
+		this->serialize88a(*document, buffer);
+		break;
+	case ModeType::Version96a:
+		if (is88a) {
+			throw WriteError("conversion from 88a to 96a is unimplemented");
+		}
 		this->serialize96a(buffer);
+		break;
 	}
 
 	out_ << buffer;
@@ -52,23 +66,26 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 		queue.pop();
 
 		switch (node->nodeType()) {
+		case NodeType::Document:
+			numPreviousChildren = node->numChildren();
+			break;
 		case NodeType::Element: {
-			const auto& element = static_cast<const Element&>(*node);
-			const auto elementType = element.elementType();
+			const auto element = static_cast<const Element*>(node);
+			const auto elementType = element->elementType();
 			std::string title;
 
 			switch (elementType) {
+			case ElementType::Subject:
+				line += numPreviousChildren * 2;
+				title = element->title();
+				break;
 			case ElementType::Hint:
 				if (previousType == ElementType::Subject) {
 					line += numPreviousChildren * 2;
 				} else {
 					line += numPreviousChildren;
 				}
-				title = Strings::rtrim(element.title(), '?');
-				break;
-			case ElementType::Subject:
-				line += numPreviousChildren * 2;
-				title = element.title();
+				title = Strings::rtrim(element->title(), '?');
 				break;
 			default:
 				throw WriteError(
@@ -84,11 +101,19 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			buffer += EOL;
 
 			previousType = elementType;
+			numPreviousChildren = node->numChildren();
 			break;
 		}
+		case NodeType::Group:
+			line += numPreviousChildren - 1; // Simplifies to -1 after first pass
+			if (lastHintTextLine == 0) {
+				lastHintTextLine = line;
+			}
+			numPreviousChildren = node->numChildren();
+			break;
 		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			auto body = textNode.body();
+			const auto& textNode = static_cast<const TextNode*>(node);
+			auto body = textNode->body();
 
 			if (!options_.debug) {
 				body = codec_.encode88a(body);
@@ -96,19 +121,13 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			buffer += body;
 			buffer += EOL;
 
-			line += numPreviousChildren - 1; // Simplifies to line -= 1 after first pass
-
-			if (lastHintTextLine == 0) {
-				lastHintTextLine = line;
-			}
-			firstHintTextLine = line; // Work backwards from last
+			firstHintTextLine = line;
+			--line;
 			break;
 		}
 		default:
 			break; // Ignore
 		}
-
-		numPreviousChildren = node->numChildren();
 
 		if (auto n = node->firstChild()) {
 			queue.push(n);
@@ -134,9 +153,10 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 }
 
 void UHSWriter::serialize96a(std::string& out) {
-	if (document_->isVersion(VersionType::Version88a)) {
-		this->convertTo91a();
-	}
+	// TODO: Fix hint separators in convertTo96a() before enabling
+	// if (document_->isVersion(VersionType::Version88a)) {
+	// 	this->convertTo96a();
+	// }
 
 	key_ = codec_.createKey(document_->title());
 
@@ -145,25 +165,25 @@ void UHSWriter::serialize96a(std::string& out) {
 		case NodeType::Break:
 			throw WriteError("unexpected break node");
 		case NodeType::Document: {
-			const auto& document = static_cast<const Document&>(*node);
-			if (!document.isVersion(VersionType::Version88a)) {
+			const auto document = static_cast<const Document*>(node);
+			if (!document->isVersion(VersionType::Version88a)) {
 				continue;
 			}
-			this->serialize88a(document, out);
+			this->serialize88a(*document, out);
 			out += Token::HeaderSep;
 			out += EOL;
 			break;
 		}
 		case NodeType::Element: {
-			auto& element = static_cast<Element&>(*node);
-			this->serializeElement(element, out);
+			const auto element = static_cast<Element*>(node);
+			this->serializeElement(*element, out);
 			break;
 		}
 		case NodeType::Group:
 			throw WriteError("unexpected group node");
 		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(*node);
-			throw WriteError("unexpected text node: %s", textNode.body());
+			const auto textNode = static_cast<const TextNode*>(node);
+			throw WriteError("unexpected text node: %s", textNode->body());
 		}
 		}
 	}
@@ -332,7 +352,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
 
-		auto& child = static_cast<Element&>(*node);
+		auto child = static_cast<Element*>(node);
 
 		std::vector<std::pair<std::string, int>> coords{
 		    {"region-top-left-x", 0},
@@ -341,7 +361,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 		    {"region-bottom-right-y", 0},
 		};
 		for (auto& [attr, coord] : coords) {
-			if (auto value = child.attr(attr)) {
+			if (auto value = child->attr(attr)) {
 				try {
 					coord = Strings::toInt(*value);
 				} catch (const Error& err) {
@@ -359,7 +379,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 		++length;
 		++currentLine_;
 
-		length += this->serializeElement(child, buffer);
+		length += this->serializeElement(*child, buffer);
 	}
 
 	element.length(length);
@@ -562,8 +582,8 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
-		auto& child = static_cast<Element&>(*node);
-		length += this->serializeElement(child, buffer);
+		const auto child = static_cast<Element*>(node);
+		length += this->serializeElement(*child, buffer);
 	}
 	element.length(length);
 
@@ -645,9 +665,9 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 			continue;
 		}
 
-		auto targetElement = static_cast<Element&>(*target);
+		auto targetElement = static_cast<Element*>(target);
 		const auto pos = out.rfind(LinkMarker);
-		const auto targetLine = std::to_string(targetElement.line());
+		const auto targetLine = std::to_string(targetElement->line());
 		const auto length = targetLine.length();
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);
@@ -752,8 +772,8 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasNextSibling()) {
 		if (auto node = textNode.nextSibling(); node->isElement()) {
-			auto& nextElement = static_cast<Element&>(*node);
-			if (nextElement.inlined()) {
+			const auto nextElement = static_cast<Element*>(node);
+			if (nextElement->inlined()) {
 				if (body.length() > 0 && !Strings::endsWithAttachedPunctuation(body)) {
 					body += ' ';
 				}
@@ -764,8 +784,8 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasPreviousSibling()) {
 		if (auto node = textNode.previousSibling(); node->isElement()) {
-			auto& previousElement = static_cast<Element&>(*node);
-			if (previousElement.inlined()) {
+			const auto previousElement = static_cast<Element*>(node);
+			if (previousElement->inlined()) {
 				std::string temp;
 				temp += Token::InlineEnd;
 
@@ -887,7 +907,7 @@ std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
 	return buffer.str();
 }
 
-void UHSWriter::convertTo91a() {
+void UHSWriter::convertTo96a() {
 	// Re-parent under subject node
 	auto container = Element::create(ElementType::Subject);
 	container->title(document_->title());
@@ -899,7 +919,7 @@ void UHSWriter::convertTo91a() {
 	}
 	document_->appendChild(container);
 
-	// Prepend minimal 88a header
+	// Prepend minimal header
 	auto header = Document::create(VersionType::Version88a);
 	header->title("-");
 	auto subject = Element::create(ElementType::Subject);
@@ -911,10 +931,10 @@ void UHSWriter::convertTo91a() {
 	header->appendChild(subject);
 	document_->insertBefore(header, document_->firstChild());
 
-	// Set version to 91a
-	document_->version(VersionType::Version91a);
+	// Set version to 96a
+	document_->version(VersionType::Version96a);
 	auto version = Element::create(ElementType::Version);
-	version->title("91a");
+	version->title("96a");
 	if (auto notice = document_->attr("notice")) {
 		version->body(*notice);
 	}

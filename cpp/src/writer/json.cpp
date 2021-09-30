@@ -4,9 +4,9 @@ namespace UHS {
 
 JSONWriter::JSONWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
-void JSONWriter::write(const Document& document) {
+void JSONWriter::write(const std::shared_ptr<Document> document) {
 	Json::Value root{Json::objectValue};
-	this->serialize(document, root);
+	this->serialize(*document, root);
 	out_ << root << std::endl;
 }
 

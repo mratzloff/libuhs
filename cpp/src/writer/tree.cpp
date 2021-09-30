@@ -4,8 +4,8 @@ namespace UHS {
 
 TreeWriter::TreeWriter(std::ostream& out, const Options options) : Writer(out, options) {}
 
-void TreeWriter::write(const Document& document) {
-	for (const auto& node : document) {
+void TreeWriter::write(const std::shared_ptr<Document> document) {
+	for (const auto& node : *document) {
 		switch (node.nodeType()) {
 		case NodeType::Document: {
 			const auto& d = static_cast<const Document&>(node);

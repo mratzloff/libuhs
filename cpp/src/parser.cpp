@@ -29,7 +29,7 @@ std::shared_ptr<Document> Parser::parse(std::istream& in) {
 
 		this->parse88a();
 
-		if (!done_ && options_.mode == VersionType::Version96a) {
+		if (!done_ && options_.mode != ModeType::Version88a) {
 			// Set 88a header as first (hidden) child of 96a document
 			document_->visibility(VisibilityType::None);
 
@@ -54,7 +54,7 @@ std::shared_ptr<Document> Parser::parseFile(const std::string& infile) {
 	std::filesystem::path infilePath{infile};
 
 	if (!std::filesystem::exists(infilePath)) {
-		throw new Error("invalid file: %s", infile);
+		throw ReadError("invalid file: %s", infile);
 	}
 
 	std::shared_ptr<Document> document;
@@ -298,7 +298,7 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> token) {
 }
 
 void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
-	if (options_.mode == VersionType::Version88a) {
+	if (options_.mode == ModeType::Version88a) {
 		done_ = true;
 		return;
 	}

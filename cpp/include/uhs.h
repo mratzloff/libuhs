@@ -71,6 +71,12 @@ enum class NodeType {
 	Text,
 };
 
+enum class ModeType {
+	Auto,
+	Version88a,
+	Version96a,
+};
+
 enum class TokenType {
 	CRC,
 	CoordX,
@@ -223,7 +229,7 @@ class WriteError : public Error {
 struct Options {
 	bool debug = false;
 	std::string mediaDir;
-	VersionType mode = VersionType::Version96a;
+	ModeType mode;
 	bool preserve = false;
 };
 
@@ -1010,7 +1016,7 @@ class Writer {
 public:
 	Writer(std::ostream& out, const Options options = {});
 	virtual ~Writer() = default;
-	virtual void write(const Document& document) = 0;
+	virtual void write(const std::shared_ptr<Document> document) = 0;
 	virtual void reset();
 
 protected:
@@ -1021,7 +1027,7 @@ protected:
 class TreeWriter : public Writer {
 public:
 	TreeWriter(std::ostream& out, const Options options = {});
-	void write(const Document& document) override;
+	void write(const std::shared_ptr<Document> document) override;
 
 private:
 	void draw(const Document& document);
@@ -1034,7 +1040,7 @@ private:
 class HTMLWriter : public Writer {
 public:
 	HTMLWriter(std::ostream& out, const Options options = {});
-	void write(const Document& document) override;
+	void write(const std::shared_ptr<Document> document) override;
 
 private:
 	using NodeMap = tsl::hopscotch_map<const Node*, const pugi::xml_node>;
@@ -1099,7 +1105,7 @@ private:
 class JSONWriter : public Writer {
 public:
 	JSONWriter(std::ostream& out, const Options options = {});
-	void write(const Document& document) override;
+	void write(const std::shared_ptr<Document> document) override;
 
 private:
 	void serialize(const Document& document, Json::Value& root) const;
@@ -1117,7 +1123,7 @@ public:
 	static const std::size_t LineLength = 76;
 
 	UHSWriter(std::ostream& out, const Options options = {});
-	void write(const Document& document) override;
+	void write(const std::shared_ptr<Document> document) override;
 	void reset() override;
 
 private:
@@ -1171,7 +1177,7 @@ private:
 	    std::size_t bodyLength, std::string textFormat = "") const;
 	std::string createOverlayAddress(std::size_t bodyLength, int x, int y) const;
 	std::string createRegion(int x1, int y1, int x2, int y2) const;
-	void convertTo91a();
+	void convertTo96a();
 
 	static UHSWriter::Serializer serializer_;
 

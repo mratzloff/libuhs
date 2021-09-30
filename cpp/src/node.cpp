@@ -268,19 +268,19 @@ void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Break:
-			this->appendChild(static_cast<BreakNode&>(*node).clone(), true);
+			this->appendChild(static_cast<BreakNode*>(node)->clone(), true);
 			break;
 		case NodeType::Document:
-			this->appendChild(static_cast<Document&>(*node).clone(), true);
+			this->appendChild(static_cast<Document*>(node)->clone(), true);
 			break;
 		case NodeType::Element:
-			this->appendChild(static_cast<Element&>(*node).clone(), true);
+			this->appendChild(static_cast<Element*>(node)->clone(), true);
 			break;
 		case NodeType::Group:
-			this->appendChild(static_cast<GroupNode&>(*node).clone(), true);
+			this->appendChild(static_cast<GroupNode*>(node)->clone(), true);
 			break;
 		case NodeType::Text:
-			this->appendChild(static_cast<TextNode&>(*node).clone(), true);
+			this->appendChild(static_cast<TextNode*>(node)->clone(), true);
 			break;
 		}
 	}
@@ -291,8 +291,8 @@ void Node::didRemove() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		auto& element = static_cast<Element&>(*this);
-		document->elementRemoved(element);
+		const auto element = static_cast<Element*>(this);
+		document->elementRemoved(*element);
 	}
 }
 
@@ -301,8 +301,8 @@ void Node::didAdd() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		auto& element = static_cast<Element&>(*this);
-		document->elementAdded(element);
+		const auto element = static_cast<Element*>(this);
+		document->elementAdded(*element);
 	}
 }
 

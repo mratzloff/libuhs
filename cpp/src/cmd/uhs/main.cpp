@@ -27,7 +27,8 @@ void printHelp() {
 	    "  -o <file>, --output=<file>  Output file\n"
 	    "  -m <dir>,  --media=<dir>    Image and audio directory (JSON output only)\n"
 	    "             --mode=<mode>    Read and write mode\n"
-	    "                              ●  96a   2000s-era reader and writer (default)\n"
+	    "                              ●  auto  Choose mode based on input file (default)\n"
+	    "                              ○  96a   2000s-era reader and writer\n"
 	    "                              ○  88a   1980s-era reader and writer\n\n"
 	    "             --preserve       Preserve unregistered content restrictions\n"
 	    "  -d,        --debug          Print debugging statements\n"
@@ -100,14 +101,17 @@ int main(const int argc, char* argv[]) {
 
 	// Read and write mode
 	std::string mode;
-	args({"--mode"}, "96a") >> mode;
+	args({"--mode"}, "auto") >> mode;
 
-	if (mode != "96a" && mode != "88a") {
+	if (mode == "auto") {
+		options.mode = ModeType::Auto;
+	} else if (mode == "88a") {
+		options.mode = ModeType::Version88a;
+	} else if (mode == "96a") {
+		options.mode = ModeType::Version96a;
+	} else {
 		printError("unknown option for --mode: " + mode);
 		return Err;
-	}
-	if (mode == "88a") {
-		options.mode = VersionType::Version88a;
 	}
 
 	// Preserve unregistered content restrictions
@@ -142,17 +146,26 @@ int main(const int argc, char* argv[]) {
 
 		if (format == "uhs") {
 			UHSWriter w{out, options};
-			w.write(*document);
+			w.write(document);
 		} else if (format == "html") {
 			HTMLWriter w{out, options};
-			w.write(*document);
+			w.write(document);
 		} else if (format == "json") {
 			JSONWriter w{out, options};
-			w.write(*document);
+			w.write(document);
 		} else if (format == "tree") {
 			TreeWriter w{out, options};
-			w.write(*document);
+			w.write(document);
 		}
+	} catch (const ReadError& err) {
+		printError(err.string());
+		return Err;
+	} catch (const ParseError& err) {
+		printError(err.string());
+		return Err;
+	} catch (const WriteError& err) {
+		printError(err.string());
+		return Err;
 	} catch (const Error& err) {
 		printError(err.string());
 		return Err;

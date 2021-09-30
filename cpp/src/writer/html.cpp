@@ -23,9 +23,9 @@ HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, o
 	mediaTagTypes_.emplace(ElementType::Sound, "audio");
 }
 
-void HTMLWriter::write(const Document& document) {
+void HTMLWriter::write(const std::shared_ptr<Document> document) {
 	pugi::xml_document xml;
-	this->serialize(document, xml);
+	this->serialize(*document, xml);
 	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
@@ -147,8 +147,7 @@ void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode
 
 		const auto parentDocument = element.findDocument();
 		if (!parentDocument) {
-			throw new WriteError(
-			    "no document found for element with ID %d", element.id());
+			throw WriteError("no document found for element with ID %d", element.id());
 		}
 
 		auto inHeaderDocument = (parentDocument->findDocument() != nullptr);
