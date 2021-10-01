@@ -130,10 +130,10 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 		}
 
 		if (auto n = node->firstChild()) {
-			queue.push(n);
+			queue.push(n.get());
 
 			while ((n = n->nextSibling())) {
-				queue.push(n);
+				queue.push(n.get());
 			}
 		}
 	}
@@ -165,7 +165,7 @@ void UHSWriter::serialize96a(std::string& out) {
 		case NodeType::Break:
 			throw WriteError("unexpected break node");
 		case NodeType::Document: {
-			const auto document = static_cast<const Document*>(node);
+			const auto document = static_pointer_cast<const Document>(node);
 			if (!document->isVersion(VersionType::Version88a)) {
 				continue;
 			}
@@ -175,14 +175,14 @@ void UHSWriter::serialize96a(std::string& out) {
 			break;
 		}
 		case NodeType::Element: {
-			const auto element = static_cast<Element*>(node);
+			const auto element = static_pointer_cast<Element>(node);
 			this->serializeElement(*element, out);
 			break;
 		}
 		case NodeType::Group:
 			throw WriteError("unexpected group node");
 		case NodeType::Text: {
-			const auto textNode = static_cast<const TextNode*>(node);
+			const auto textNode = static_pointer_cast<TextNode>(node);
 			throw WriteError("unexpected text node: %s", textNode->body());
 		}
 		}
@@ -352,7 +352,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
 
-		auto child = static_cast<Element*>(node);
+		auto child = static_pointer_cast<Element>(node);
 
 		std::vector<std::pair<std::string, int>> coords{
 		    {"region-top-left-x", 0},
@@ -582,7 +582,7 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
-		const auto child = static_cast<Element*>(node);
+		const auto child = static_pointer_cast<Element>(node);
 		length += this->serializeElement(*child, buffer);
 	}
 	element.length(length);
@@ -605,7 +605,7 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 		if (node->isGroup()) {
 			for (auto child = node->firstChild(); child; child = child->nextSibling()) {
 				if (child->isText()) {
-					const auto textNode = static_cast<const TextNode*>(child);
+					const auto textNode = static_pointer_cast<const TextNode>(child);
 					textBuffer += this->formatText(*textNode, previousFormat);
 					previousFormat = textNode->format();
 				} else {
@@ -772,7 +772,7 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasNextSibling()) {
 		if (auto node = textNode.nextSibling(); node->isElement()) {
-			const auto nextElement = static_cast<Element*>(node);
+			const auto nextElement = static_pointer_cast<Element>(node);
 			if (nextElement->inlined()) {
 				if (body.length() > 0 && !Strings::endsWithAttachedPunctuation(body)) {
 					body += ' ';
@@ -915,7 +915,8 @@ void UHSWriter::convertTo96a() {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("expected element, found %s node", node->nodeTypeString());
 		}
-		container->appendChild(document_->removeChild(node));
+		document_->removeChild(node);
+		container->appendChild(node);
 	}
 	document_->appendChild(container);
 
@@ -929,7 +930,7 @@ void UHSWriter::convertTo96a() {
 	hint->appendChild(codec_.decode88a("-"));
 	subject->appendChild(hint);
 	header->appendChild(subject);
-	document_->insertBefore(header, document_->firstChild());
+	document_->insertBefore(header, document_->firstChild().get());
 
 	// Set version to 96a
 	document_->version(VersionType::Version96a);

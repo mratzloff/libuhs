@@ -86,37 +86,32 @@ void Node::detachParent() {
 	parent_ = nullptr;
 }
 
-std::shared_ptr<Node> Node::removeChild(Node* node) {
+void Node::removeChild(std::shared_ptr<Node> node) {
 	assert(node);
-
-	node->parent_ = nullptr;
+	node->detachParent();
 	--numChildren_;
 
-	if (node == this->firstChild()) {
-		auto detachedNode = std::move(firstChild_);
-		if (node->hasNextSibling()) {
-			firstChild_ = std::move(node->nextSibling_);
+	if (node == firstChild_) {
+		if (node->nextSibling_) {
+			firstChild_ = node->nextSibling_;
+			node->previousSibling_ = nullptr;
 		} else {
+			firstChild_ = nullptr;
 			lastChild_ = nullptr;
 		}
 		node->didRemove();
-
-		return detachedNode;
-	} else if (node->hasPreviousSibling()) {
-		auto previous = node->previousSibling();
-		auto detachedNode = std::move(previous->nextSibling_);
-
-		if (node->hasNextSibling()) {
-			previous->nextSibling_ = std::move(node->nextSibling_);
+	} else if (node->previousSibling_) {
+		auto previous = node->previousSibling_;
+		if (node->nextSibling_) {
+			auto next = node->nextSibling_;
+			next->previousSibling_ = previous;
+			previous->nextSibling_ = next;
 		} else {
+			previous->nextSibling_ = nullptr;
 			lastChild_ = nullptr;
 		}
 		node->didRemove();
-
-		return detachedNode;
 	}
-
-	return nullptr;
 }
 
 void Node::appendChild(std::shared_ptr<Node> node) {
@@ -132,21 +127,32 @@ void Node::appendChild(std::shared_ptr<Node> node) {
 void Node::appendChild(std::shared_ptr<Node> node, bool) {
 	assert(node);
 
-	auto n = node.get();
-	if (this->hasLastChild()) {
+	if (lastChild_) {
 		node->previousSibling_ = lastChild_;
 		lastChild_->nextSibling_ = node;
 	} else {
 		firstChild_ = node;
 	}
-	lastChild_ = n;
-	n->parent_ = this;
+	lastChild_ = node.get();
+	node->parent_ = this;
 
-	for (auto& child : *n) {
+	for (auto& child : *node) {
 		assert(child.parent_);
 		child.depth_ = child.parent_->depth_ + 1;
 	}
 	++numChildren_;
+}
+
+std::shared_ptr<Node> Node::pointer() const {
+	if (parent_) {
+		for (auto node = parent_->firstChild(); node; node = node->nextSibling()) {
+			if (this == node.get()) {
+				return node;
+			}
+		}
+	}
+
+	return nullptr;
 }
 
 // See note for appendChild() regarding depth.
@@ -160,7 +166,7 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 
 	auto n = node.get();
 
-	if (ref == this->firstChild()) {
+	if (ref == firstChild_.get()) {
 		node->nextSibling_ = firstChild_;
 		firstChild_ = node;
 	} else {
@@ -203,16 +209,16 @@ bool Node::hasNextSibling() const {
 	return nextSibling_ != nullptr;
 }
 
-Node* Node::nextSibling() const {
-	return nextSibling_.get();
+std::shared_ptr<Node> Node::nextSibling() const {
+	return nextSibling_;
 }
 
 bool Node::hasFirstChild() const {
 	return firstChild_ != nullptr;
 }
 
-Node* Node::firstChild() const {
-	return firstChild_.get();
+std::shared_ptr<Node> Node::firstChild() const {
+	return firstChild_;
 }
 
 bool Node::hasLastChild() const {
@@ -268,19 +274,19 @@ void Node::cloneChildren(const Node& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Break:
-			this->appendChild(static_cast<BreakNode*>(node)->clone(), true);
+			this->appendChild(std::static_pointer_cast<BreakNode>(node)->clone(), true);
 			break;
 		case NodeType::Document:
-			this->appendChild(static_cast<Document*>(node)->clone(), true);
+			this->appendChild(std::static_pointer_cast<Document>(node)->clone(), true);
 			break;
 		case NodeType::Element:
-			this->appendChild(static_cast<Element*>(node)->clone(), true);
+			this->appendChild(std::static_pointer_cast<Element>(node)->clone(), true);
 			break;
 		case NodeType::Group:
-			this->appendChild(static_cast<GroupNode*>(node)->clone(), true);
+			this->appendChild(std::static_pointer_cast<GroupNode>(node)->clone(), true);
 			break;
 		case NodeType::Text:
-			this->appendChild(static_cast<TextNode*>(node)->clone(), true);
+			this->appendChild(std::static_pointer_cast<TextNode>(node)->clone(), true);
 			break;
 		}
 	}
@@ -377,10 +383,10 @@ NodeIterator<T>& NodeIterator<T>::operator++() {
 			break;
 		}
 		if (current_->hasFirstChild() && !visited_) { // Down
-			current_ = current_->firstChild();
+			current_ = current_->firstChild().get();
 			visited_ = false;
 		} else if (current_->hasNextSibling()) { // Next
-			current_ = current_->nextSibling();
+			current_ = current_->nextSibling().get();
 			visited_ = false;
 		} else { // Up
 			current_ = current_->parent();

@@ -475,7 +475,7 @@ void Parser::parseDataElement(Element& element) {
 		column = token->column();
 
 		switch (token->type()) {
-		case TokenType::DataOffset:
+		case TokenType::DataOffset: {
 			int intOffset = 0;
 			try {
 				intOffset = Strings::toInt(token->value());
@@ -488,6 +488,7 @@ void Parser::parseDataElement(Element& element) {
 			}
 			offset = intOffset;
 			goto expectDataLength;
+		}
 		case TokenType::TextFormat:
 			continue; // Ignore
 		default:
@@ -1365,11 +1366,14 @@ void Parser::processVisibility() {
 				case VisibilityType::RegisteredOnly:
 					visibility = VisibilityType::All;
 					break;
-				case VisibilityType::UnregisteredOnly:
-					if (target->hasParent()) {
-						target->parent()->removeChild(target);
+				case VisibilityType::UnregisteredOnly: {
+					auto node = target->pointer();
+					if (!target->hasParent() || !node) {
+						throw Error("cannot remove orphaned node");
 					}
+					target->parent()->removeChild(node);
 					break;
+				}
 				default:
 					break; // No change
 				}

@@ -45,7 +45,12 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 
 	for (const auto& node : *d) {
 		auto nodeDepth = node.depth();
-		parent = this->findXMLParent(node, parent, parents, depth);
+
+		try {
+			parent = this->findXMLParent(node, parent, parents, depth);
+		} catch (const std::out_of_range& err) {
+			throw WriteError("could not find XML parent");
+		}
 
 		// Serialize node
 		switch (node.nodeType()) {
@@ -404,7 +409,8 @@ std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("expected element, found %s node", node->nodeTypeString());
 		}
-		container->appendChild(copy->removeChild(node));
+		copy->removeChild(node);
+		container->appendChild(node);
 	}
 	copy->appendChild(container);
 
@@ -579,7 +585,12 @@ pugi::xml_node HTMLWriter::findXMLParent(const Node& node, const pugi::xml_node 
 		return nodeParent;
 	}
 
-	nodeParent = parents.at(node.parent());
+	try {
+		nodeParent = parents.at(node.parent());
+	} catch (const std::out_of_range& err) {
+		throw WriteError("could not find HTML parent node");
+	}
+
 	auto ol = nodeParent.first_element_by_path("ol");
 	if (nodeDepth < depth) {
 		if (ol) {
