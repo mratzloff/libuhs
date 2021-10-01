@@ -927,7 +927,7 @@ void UHSWriter::convertTo96a() {
 	subject->title(codec_.decode88a("-"));
 	auto hint = Element::create(ElementType::Hint);
 	hint->title(codec_.decode88a("-"));
-	hint->appendChild(codec_.decode88a("-"));
+	hint->appendChild(TextNode::create(codec_.decode88a("-")));
 	subject->appendChild(hint);
 	header->appendChild(subject);
 	document_->insertBefore(header, document_->firstChild().get());

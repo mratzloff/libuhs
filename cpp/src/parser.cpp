@@ -257,7 +257,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		}
 
 		auto group = GroupNode::create(line, 1);
-		group->appendChild(body);
+		group->appendChild(TextNode::create(body));
 		element->appendChild(group);
 	} while (line < lastHintTextLine);
 }
@@ -1197,7 +1197,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1211,7 +1212,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1232,7 +1234,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1246,7 +1249,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1262,7 +1266,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					case '-':
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1272,7 +1277,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					case '+':
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1282,7 +1288,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					case '.':
 						// Append previous segment
 						if (!segment.empty()) {
-							node.appendChild(segment, format);
+							auto textNode = TextNode::create(segment, format);
+							node.appendChild(textNode);
 							segment.clear();
 						}
 
@@ -1308,7 +1315,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 	}
 
 	if (!segment.empty()) {
-		node.appendChild(segment, format);
+		auto textNode = TextNode::create(segment, format);
+		node.appendChild(textNode);
 	}
 }
 

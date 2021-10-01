@@ -575,8 +575,6 @@ public:
 	ContainerNode& operator=(ContainerNode other);
 	virtual ~ContainerNode() = default;
 	friend void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept;
-	void appendChild(const std::string body);
-	void appendChild(const std::string body, TextFormat format);
 	int line() const;
 	void line(int line);
 	int length() const;

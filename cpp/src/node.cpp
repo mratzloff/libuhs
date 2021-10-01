@@ -334,14 +334,6 @@ void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept {
 	swap(lhs.length_, rhs.length_);
 }
 
-void ContainerNode::appendChild(const std::string body) {
-	Node::appendChild(TextNode::create(body));
-}
-
-void ContainerNode::appendChild(const std::string body, TextFormat format) {
-	Node::appendChild(TextNode::create(body, format));
-}
-
 int ContainerNode::line() const {
 	return line_;
 }
