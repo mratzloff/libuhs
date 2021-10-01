@@ -1002,6 +1002,16 @@ void Parser::addDataCallback(
 	dataHandlers_.emplace_back(line, column, offset, length, func);
 }
 
+void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& node) {
+	if (text.empty()) {
+		return;
+	}
+
+	auto textNode = TextNode::create(text, format);
+	node.appendChild(textNode);
+	text.clear();
+}
+
 void Parser::checkCRC() {
 	document_->validChecksum(crc_->valid());
 }
@@ -1195,13 +1205,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 							// TODO: Warn: unexpected sequence
 						}
 
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
@@ -1210,13 +1214,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 							// TODO: Warn: unexpected sequence
 						}
 
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
@@ -1232,13 +1230,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 							// TODO: Warn: unexpected sequence
 						}
 
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Monospace);
 						i += 2;
 						break;
@@ -1247,13 +1239,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 							// TODO: Warn: unexpected sequence
 						}
 
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Monospace);
 						i += 2;
 						break;
@@ -1264,35 +1250,17 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 				case 'w':
 					switch (s[i + 2]) {
 					case '-':
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Overflow);
 						i += 2;
 						break;
 					case '+':
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Overflow);
 						i += 2;
 						break;
 					case '.':
-						// Append previous segment
-						if (!segment.empty()) {
-							auto textNode = TextNode::create(segment, format);
-							node.appendChild(textNode);
-							segment.clear();
-						}
-
+						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Overflow);
 						i += 2;
 						break;
@@ -1314,10 +1282,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 		}
 	}
 
-	if (!segment.empty()) {
-		auto textNode = TextNode::create(segment, format);
-		node.appendChild(textNode);
-	}
+	this->appendText(segment, format, node);
 }
 
 void Parser::processLinks() {

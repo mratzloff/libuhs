@@ -997,6 +997,7 @@ private:
 	std::unique_ptr<const Token> expect(TokenType expected);
 	void addDataCallback(
 	    int line, int column, std::size_t offset, std::size_t length, DataCallback func);
+	void appendText(std::string& text, TextFormat& format, ContainerNode& node);
 	void checkCRC();
 	Node* findParent(ContainerNode& node);
 	int fixHeaderFirstChildLine(std::string title, int firstChildLine) const;
