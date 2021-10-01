@@ -113,7 +113,7 @@ enum class VisibilityType {
 };
 
 static constexpr auto EOL = "\r\n";
-static const auto MaxDepth = 16;
+static const auto MaxDepth = 24;
 static constexpr auto Version = UHS_VERSION;
 
 inline constexpr TextFormat operator&(TextFormat lhs, TextFormat rhs) {

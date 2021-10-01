@@ -23,11 +23,12 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 
 		if (nodeDepth > depth) { // Down
 			parents[depth] = parent;
-			if ((*parent)["children"].empty()) {
-				Json::Value a{Json::arrayValue};
-				(*parent)["children"] = a;
+			auto& children = (*parent)["children"];
+
+			if (children.empty()) {
+				(*parent)["children"] = Json::arrayValue;
 			} else {
-				parent = &((*parent)["children"][(*parent)["children"].size() - 1]);
+				parent = &(children[children.size() - 1]);
 			}
 		} else if (nodeDepth < depth) { // Up
 			if (nodeDepth >= 0) {
@@ -36,7 +37,7 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 		}
 
 		// Serialize node
-		Json::Value object{Json::objectValue};
+		Json::Value object = Json::objectValue;
 
 		switch (node.nodeType()) {
 		case NodeType::Break:
