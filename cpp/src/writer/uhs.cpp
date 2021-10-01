@@ -770,30 +770,20 @@ std::string UHSWriter::formatText(
 		body = Token::OverflowEnd + body;
 	}
 
-	if (textNode.hasNextSibling()) {
-		if (auto node = textNode.nextSibling(); node->isElement()) {
-			const auto nextElement = static_pointer_cast<Element>(node);
-			if (nextElement->inlined()) {
-				if (body.length() > 0 && !Strings::endsWithAttachedPunctuation(body)) {
-					body += ' ';
-				}
-				body += Token::InlineBegin;
-			}
-		}
-	}
-
 	if (textNode.hasPreviousSibling()) {
 		if (auto node = textNode.previousSibling(); node->isElement()) {
 			const auto previousElement = static_cast<Element*>(node);
 			if (previousElement->inlined()) {
-				std::string temp;
-				temp += Token::InlineEnd;
+				body = Token::InlineEnd + body;
+			}
+		}
+	}
 
-				if (body.length() > 0 && !Strings::beginsWithAttachedPunctuation(body)) {
-					temp += ' ';
-				}
-				temp += body;
-				body = temp;
+	if (textNode.hasNextSibling()) {
+		if (auto node = textNode.nextSibling(); node->isElement()) {
+			const auto nextElement = static_pointer_cast<Element>(node);
+			if (nextElement->inlined()) {
+				body += Token::InlineBegin;
 			}
 		}
 	}

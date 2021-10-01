@@ -543,11 +543,11 @@ void Parser::parseHintElement(Element& element) {
 
 			if (element.elementType() == ElementType::Nesthint) {
 				text = codec_.decode96a(token->value(), key_, false);
-				if (text.ends_with(Token::InlineBegin)) {
-					inlined = true;
-				}
 				if (text.starts_with(Token::InlineEnd)) {
 					inlined = false;
+				}
+				if (text.ends_with(Token::InlineBegin)) {
+					inlined = true;
 				}
 			} else {
 				text = codec_.decode88a(token->value());
@@ -616,6 +616,17 @@ void Parser::parseHintElement(Element& element) {
 
 			if (inlined) {
 				child->inlined(true);
+			}
+
+			// Add a trailing space to the previous child's text if necessary
+			if (inlined && child->hasPreviousSibling()) {
+				const auto previous = child->previousSibling();
+				if (previous->isText()) {
+					auto previousTextNode = static_cast<TextNode*>(previous);
+					if (!Strings::endsWithAttachedPunctuation(previousTextNode->body())) {
+						previousTextNode->body(previousTextNode->body() + " ");
+					}
+				}
 			}
 
 			break;
@@ -1009,6 +1020,17 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 
 	auto textNode = TextNode::create(text, format);
 	node.appendChild(textNode);
+
+	// Add a leading space to the text if necessary
+	if (!Strings::beginsWithAttachedPunctuation(text) && textNode->hasPreviousSibling()) {
+		if (auto previous = textNode->previousSibling(); previous->isElement()) {
+			const auto previousElement = static_cast<Element*>(previous);
+			if (previousElement->inlined()) {
+				textNode->body(" " + text);
+			}
+		}
+	}
+
 	text.clear();
 }
 
