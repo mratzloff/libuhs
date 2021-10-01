@@ -88,6 +88,8 @@ const std::string Visibility::visibilityString() const {
 		return "registered";
 	case VisibilityType::UnregisteredOnly:
 		return "unregistered";
+	default:
+		throw Error("invalid visibility");
 	}
 }
 

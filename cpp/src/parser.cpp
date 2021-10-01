@@ -753,6 +753,9 @@ void Parser::parseIncentiveElement(Element& element) {
 			visibility = VisibilityType::RegisteredOnly;
 		} else if (flag == Token::UnregisteredOnly) {
 			visibility = VisibilityType::UnregisteredOnly;
+		} else {
+			// TODO: Warn
+			continue;
 		}
 
 		// Defer visibility processing to guarantee all nodes have been parsed.
@@ -1361,10 +1364,12 @@ void Parser::processVisibility() {
 			}
 
 			auto targetElement = static_cast<Element*>(target);
+			targetElement->visibility(visibility);
+
 			if (!options_.preserve) {
 				switch (visibility) {
 				case VisibilityType::RegisteredOnly:
-					visibility = VisibilityType::All;
+					targetElement->visibility(VisibilityType::All);
 					break;
 				case VisibilityType::UnregisteredOnly: {
 					auto node = target->pointer();
@@ -1378,8 +1383,6 @@ void Parser::processVisibility() {
 					break; // No change
 				}
 			}
-
-			targetElement->visibility(visibility);
 		} else {
 			// TODO: Warn
 		}

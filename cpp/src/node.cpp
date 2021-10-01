@@ -14,6 +14,8 @@ const std::string Node::typeString(NodeType type) {
 		return "group";
 	case NodeType::Text:
 		return "text";
+	default:
+		throw Error("invalid node type");
 	}
 }
 

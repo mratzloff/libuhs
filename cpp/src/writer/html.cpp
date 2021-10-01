@@ -491,7 +491,6 @@ void HTMLWriter::appendVisibility(
 	if (node.visibility() == VisibilityType::All) {
 		return;
 	}
-
 	xmlNode.append_attribute("data-visibility") = node.visibilityString().c_str();
 }
 

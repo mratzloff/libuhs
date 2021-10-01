@@ -79,6 +79,8 @@ const std::string Document::versionString() const {
 		return "95a";
 	case VersionType::Version96a:
 		return "96a";
+	default:
+		throw Error("invalid version");
 	}
 }
 
