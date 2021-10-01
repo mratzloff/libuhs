@@ -274,13 +274,17 @@ class Viewport {
     }
 
     private replaceIdsWithDataAttributes(element: HTMLElement): void {
-        element.setAttribute("data-id", element.id);
-        element.removeAttribute("id");
+        if (element.id) {
+            element.setAttribute("data-id", element.id);
+            element.removeAttribute("id");
+        }
 
         const children = element.querySelectorAll("[id]");
         children.forEach(child => {
-            child.setAttribute("data-id", child.id);
-            child.removeAttribute("id");
+            if (child.id) {
+                child.setAttribute("data-id", child.id);
+                child.removeAttribute("id");
+            }
         });
     }
 
