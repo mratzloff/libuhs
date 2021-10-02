@@ -543,7 +543,9 @@ void Parser::parseHintElement(Element& element) {
 
 			if (element.elementType() == ElementType::Nesthint) {
 				text = codec_.decode96a(token->value(), key_, false);
-				if (text.starts_with(Token::InlineEnd)) {
+				if (text.starts_with(Token::InlineEnd)
+				    || text.starts_with(Token::OverflowBegin)) {
+
 					inlined = false;
 				}
 				if (text.ends_with(Token::InlineBegin)) {
@@ -598,9 +600,7 @@ void Parser::parseHintElement(Element& element) {
 					Strings::chomp(body, '\n');
 				}
 				try {
-					auto childFormat = TextFormat::None;
-					this->parseWithFormat(
-					    body, childFormat, *group, element.elementType());
+					this->parseWithFormat(body, format, *group, element.elementType());
 				} catch (const Error& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
@@ -1034,7 +1034,9 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 			}
 
 			// Append text with the same formatting to the previous node
-			if (previousTextNode->format() == format) {
+			if (previousTextNode->format() == format
+			    || previousTextNode->hasFormat(TextFormat::Overflow)) {
+
 				previousTextBody += text;
 				previousTextNode->body(previousTextBody);
 
