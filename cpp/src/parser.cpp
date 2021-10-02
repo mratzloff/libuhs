@@ -1018,19 +1018,43 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 		return;
 	}
 
-	auto textNode = TextNode::create(text, format);
-	node.appendChild(textNode);
+	if (node.hasLastChild()) {
+		auto previous = node.lastChild();
 
-	// Add a leading space to the text if necessary
-	if (!Strings::beginsWithAttachedPunctuation(text) && textNode->hasPreviousSibling()) {
-		if (auto previous = textNode->previousSibling(); previous->isElement()) {
+		if (previous->isText()) {
+			auto previousTextNode = static_cast<TextNode*>(previous);
+			auto previousTextBody = previousTextNode->body();
+
+			// Append space to previous node if it does end in whitespace
+			if (!previousTextBody.ends_with(' ') && !previousTextBody.ends_with('\n')
+			    && !Strings::beginsWithAttachedPunctuation(text)) {
+
+				previousTextBody += ' ';
+				previousTextNode->body(previousTextBody);
+			}
+
+			// Append text with the same formatting to the previous node
+			if (previousTextNode->format() == format) {
+				previousTextBody += text;
+				previousTextNode->body(previousTextBody);
+
+				text.clear();
+				return;
+			}
+		} else if (previous->isElement()) {
 			const auto previousElement = static_cast<Element*>(previous);
-			if (previousElement->inlined()) {
-				textNode->body(" " + text);
+
+			// Prepend space to text if it follows an inline element
+			if (previousElement->inlined()
+			    && !Strings::beginsWithAttachedPunctuation(text)) {
+
+				text = " " + text;
 			}
 		}
 	}
 
+	auto textNode = TextNode::create(text, format);
+	node.appendChild(textNode);
 	text.clear();
 }
 
@@ -1189,25 +1213,31 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 		switch (s[i]) { // TODO: Move this to a function map once logic is accurate
 		case '\n':
 			if (s.substr(i + 1, 2) == " \n") {
+				// Handle paragraph breaks
 				for (std::size_t j = i; j < length && s.substr(j + 1, 2) == " \n";
 				     j += 2, i = j) {
 
 					segment += '\n';
 				}
 				segment += '\n';
+
 			} else if (elementType == ElementType::Text
-			           || hasFormat(format, TextFormat::Overflow)
-			           || hasFormat(format, TextFormat::Monospace)) {
+			           || hasFormat(format, TextFormat::Monospace)
+			           || hasFormat(format, TextFormat::Overflow)) {
+				// Preserve newlines for text elements and relevant formats
 				segment += s[i];
 			} else {
+				// Find the preceding newline
 				auto pos = s.find_last_of('\n', i - 1);
 				if (pos == std::string::npos) {
 					pos = -1;
 				}
+
 				if (s.substr(pos + 1, 2) == "  ") {
-					segment += '\n';
-				} else if (i > 0 && s[i - 1] != ' ' && i + 1 < length) {
-					segment += ' ';
+					// Preserve any newline at the end of an indented line
+					segment += s[i];
+				} else {
+					this->appendText(segment, format, node);
 				}
 			}
 			break;
