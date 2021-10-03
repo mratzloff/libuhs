@@ -667,6 +667,10 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 
 		auto targetElement = static_cast<Element*>(target);
 		const auto pos = out.rfind(LinkMarker);
+		if (pos == std::string::npos) {
+			throw WriteError("could not find link marker");
+		}
+
 		const auto targetLine = std::to_string(targetElement->line());
 		const auto length = targetLine.length();
 		out.replace(pos, length, targetLine);
