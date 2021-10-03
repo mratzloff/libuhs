@@ -255,19 +255,21 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 	const auto elementType = parentElement.elementType();
 
 	if (node.isElement() && elementType == ElementType::Nesthint) {
-		auto& child = static_cast<Element&>(node);
+		// Outputs to text buffer
+		auto& element = static_cast<Element&>(node);
 		auto followsTextNode = false;
 
 		if (node.hasPreviousSibling()) {
 			auto previousNode = node.previousSibling();
 			followsTextNode = previousNode->isText();
 		}
-		if (!followsTextNode && child.inlined()) {
+		if (!followsTextNode && element.inlined()) {
 			textBuffer += Token::InlineBegin;
 		}
 	}
 
 	if (!node.isText() && !textBuffer.empty()) {
+		// Outputs directly to main buffer
 		const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
 		auto childLength = 0;
 		const auto wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
@@ -278,7 +280,8 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 	}
 
 	if (node.isElement() && elementType == ElementType::Nesthint) {
-		auto& child = static_cast<Element&>(node);
+		// Outputs directly to main buffer
+		auto& element = static_cast<Element&>(node);
 		depth = parentElement.depth();
 
 		out += Token::NestedElementSep;
@@ -286,19 +289,21 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 		++length;
 		++currentLine_;
 
-		auto childLength = this->serializeElement(child, out);
-		length += childLength;
+		length += this->serializeElement(element, out);
 	} else if (node.isBreak()) {
+		// Outputs directly to main buffer
 		out += Token::NestedTextSep;
 		out += EOL;
 		++length;
 		++currentLine_;
 	} else if (node.isGroup()) {
+		// Outputs directly to main buffer
 		for (auto child = node.firstChild(); child; child = child->nextSibling()) {
 			length +=
 			    this->serializeHintChild(*child, parentElement, formats, textBuffer, out);
 		}
 	} else if (node.isText()) {
+		// Outputs to text buffer
 		const auto& textNode = static_cast<const TextNode&>(node);
 		textBuffer += this->formatText(textNode, formats[depth]);
 		formats[depth] = textNode.format();
