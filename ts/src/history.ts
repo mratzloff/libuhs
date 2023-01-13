@@ -80,7 +80,7 @@ class History implements EventTarget {
         const indexValue = window.sessionStorage.getItem(this.indexKey);
         if (indexValue) {
             const parsed = parseInt(indexValue, 10);
-            if (parsed === NaN) {
+            if (Number.isNaN(parsed)) {
                 window.sessionStorage.removeItem(this.indexKey);
             } else {
                 index = parsed;

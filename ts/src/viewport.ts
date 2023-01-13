@@ -1,4 +1,4 @@
-import History from './history';
+import History from "./history";
 
 class Viewport {
     private backButton: HTMLElement;
@@ -164,7 +164,7 @@ class Viewport {
 
         if (cacheValue) {
             const parsed = parseInt(cacheValue, 10);
-            if (parsed === NaN) {
+            if (Number.isNaN(parsed)) {
                 window.localStorage.removeItem(key);
             };
             index = parsed;
