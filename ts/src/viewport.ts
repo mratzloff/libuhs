@@ -1,10 +1,11 @@
 import History from "./history";
+import search from "./search";
 
 class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
     private history: History;
-    private nav: HTMLElement;
+    private searchResultsOverlay: HTMLElement;
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -15,34 +16,97 @@ class Viewport {
         this.history = new History;
 
         // Create nav
-        this.nav = document.createElement("nav");
-        this.nav.id = "nav";
+        const nav = document.createElement("nav");
+        nav.id = "nav";
 
         // Create back button
         this.backButton = document.createElement("button");
         this.backButton.id = "back";
         this.backButton.setAttribute("disabled", "true");
         this.backButton.addEventListener("click", () => this.back());
-        this.nav.appendChild(this.backButton);
+        nav.appendChild(this.backButton);
 
         // Create forward button
         this.forwardButton = document.createElement("button");
         this.forwardButton.id = "forward";
         this.forwardButton.setAttribute("disabled", "true");
         this.forwardButton.addEventListener("click", () => this.forward());
-        this.nav.appendChild(this.forwardButton);
+        nav.appendChild(this.forwardButton);
 
         // Create home button
         const homeButton = document.createElement("button");
         homeButton.id = "home";
         homeButton.addEventListener("click", () => this.home());
-        this.nav.appendChild(homeButton);
+        nav.appendChild(homeButton);
 
-        document.body.appendChild(this.nav);
+        // Create search field
+        const searchField = document.createElement("input");
+        searchField.type = "search";
 
-        const search = document.createElement("input");
-        search.type = "search";
-        this.nav.appendChild(search);
+        searchField.addEventListener("search", e => {
+            while (this.searchResultsOverlay.lastChild) {
+                this.searchResultsOverlay.removeChild(this.searchResultsOverlay.lastChild);
+            }
+
+            const keywords = (e.target as HTMLInputElement).value;
+
+            if (keywords.trim().length == 0) {
+                this.hideSearchResults();
+                return;
+            }
+
+            const results = search(keywords);
+
+            if (results.length == 0) {
+                return;
+            }
+
+            const heading = document.createElement("h1");
+            heading.appendChild(document.createTextNode("Search results"));
+            this.searchResultsOverlay.appendChild(heading);
+
+            const list = document.createElement("ol");
+
+            results.forEach(result => {
+                const titleNode = result.querySelector(":scope > div > span.title");
+                const title = titleNode?.textContent || "";
+
+                if (!title) {
+                    return;
+                }
+
+                const id = result.getAttribute("data-id");
+                if (!id) {
+                    throw new Error("could not find search result ID");
+                }
+
+                // Create search result link
+                const item = document.createElement("li");
+                const linkContainer = document.createElement("div");
+                const link = document.createElement("span");
+                link.addEventListener("click", () => this.go(id), {capture: false});
+                link.classList.add("title", "clickable");
+                link.textContent = title;
+
+                // Append elements
+                linkContainer.appendChild(link);
+                item.appendChild(linkContainer);
+                list.appendChild(item);
+            });
+
+            this.searchResultsOverlay.appendChild(list);
+            this.showSearchResults();
+        });
+
+        nav.appendChild(searchField);
+
+        // Append nav
+        document.body.appendChild(nav);
+
+        // Create search results overlay
+        this.searchResultsOverlay = document.createElement("div");
+        this.searchResultsOverlay.id = "search-results";
+        document.body.appendChild(this.searchResultsOverlay);
 
         // Create viewport
         this.viewport = document.createElement("div");
@@ -61,6 +125,7 @@ class Viewport {
     private back(): void {
         this.history.back();
         this.refreshHistoryButtons();
+        this.hideSearchResults();
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -154,6 +219,7 @@ class Viewport {
     private forward(): void {
         this.history.forward();
         this.refreshHistoryButtons();
+        this.hideSearchResults();
     }
 
     private getHintCacheIndex(elementId: string): number {
@@ -179,8 +245,14 @@ class Viewport {
 
     private go(id: string): void {
         this.history.pushState(id);
-        this.view(id);
         this.refreshHistoryButtons();
+        this.view(id);
+        this.hideSearchResults();
+    }
+
+    private hideSearchResults(): void {
+        this.searchResultsOverlay.style.display = "none";
+        this.viewport.style.display = "block";
     }
 
     private home(): void {
@@ -325,6 +397,11 @@ class Viewport {
             throw new Error("could not find overlay");
         }
         overlay.removeAttribute("hidden");
+    }
+
+    private showSearchResults(): void {
+        this.searchResultsOverlay.style.display = "block";
+        this.viewport.style.display = "none";
     }
 
     private updateHintProgress(value: number): void {

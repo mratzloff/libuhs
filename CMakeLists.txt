@@ -52,7 +52,7 @@ add_dependencies (css_includes css_minified)
 # js
 add_custom_target(js
 	COMMAND ${bin}/tsc
-	BYPRODUCTS ts/build/history.js ts/build/viewport.js)
+	BYPRODUCTS ts/build/history.js ts/build/search.js ts/build/viewport.js)
 
 # js_combined
 add_custom_target(js_combined

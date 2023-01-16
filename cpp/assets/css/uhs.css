@@ -142,6 +142,7 @@ area.clickable {
     background: linear-gradient(to left, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
     border: none;
     border-radius: initial;
+    box-sizing: border-box;
     color: white;
     cursor: pointer;
     font-family: system-ui;
@@ -150,7 +151,7 @@ area.clickable {
     height: 100%;
     outline: none;
     padding: 0 20px;
-    width: calc(100% - 120px);
+    width: calc(100% - 80px);
 }
 
 #nav select.disabled {
@@ -167,7 +168,16 @@ area.clickable {
     height: 5px;
 }
 
+#search-results {
+    box-sizing: border-box;
+    display: none;
+    min-height: 100%;
+    padding: 15px 25px 60px;
+}
+
 #viewport {
+    box-sizing: border-box;
+    min-width: 100%;
     padding: 15px 25px 60px;
 }
 

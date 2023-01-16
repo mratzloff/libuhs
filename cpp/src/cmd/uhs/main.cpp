@@ -22,7 +22,7 @@ void printHelp() {
 	    "  -f <fmt>,  --format=<fmt>   Output format\n"
 	    "                              ●  uhs   UHS file (default)\n"
 	    "                              ○  html  HTML file\n"
-	    "                              ○  json  JSON file\n\n"
+	    "                              ○  json  JSON file\n"
 	    "                              ○  tree  Tree representation of file\n\n"
 	    "  -o <file>, --output=<file>  Output file\n"
 	    "  -m <dir>,  --media=<dir>    Image and audio directory (JSON output only)\n"

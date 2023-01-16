@@ -1,3 +1,3 @@
-import Viewport from './viewport';
+import Viewport from "./viewport";
 
 Viewport.initOnReady();
