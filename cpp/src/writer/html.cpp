@@ -497,34 +497,58 @@ void HTMLWriter::appendVisibility(
 pugi::xml_node HTMLWriter::createHTMLDocument(
     const Document& document, pugi::xml_document& xml) const {
 
+	// <!DOCTYPE html>
 	xml.append_child(pugi::node_doctype).set_value("html");
+
+	// <html>
 	auto html = xml.append_child("html");
 	html.append_attribute("lang") = "en";
+
+	// <head>
 	auto head = html.append_child("head");
+
+	// <title>
 	auto title = head.append_child("title");
 	title.append_child(pugi::node_pcdata).set_value(document.title().c_str());
-	auto meta1 = head.append_child("meta");
-	meta1.append_attribute("charset") = "utf-8";
 
-	if (auto author = document.attr("author")) {
-		auto meta2 = head.append_child("meta");
-		meta2.append_attribute("name") = "author";
-		meta2.append_attribute("content") = author.value().c_str();
+	// <meta>
+	auto charset = head.append_child("meta");
+	charset.append_attribute("charset") = "utf-8";
+
+	// <meta>
+	auto viewport = head.append_child("meta");
+	viewport.append_attribute("name") = "viewport";
+	viewport.append_attribute("content") =
+	    "initial-scale=1, "
+	    "maximum-scale=1, "
+	    "width=device-width";
+
+	// <meta>
+	if (auto name = document.attr("author")) {
+		auto author = head.append_child("meta");
+		author.append_attribute("name") = "author";
+		author.append_attribute("content") = name.value().c_str();
 	}
 
+	// <script>
 	auto nccHack = head.append_child("script");
 	nccHack.append_child(pugi::node_pcdata).set_value(R"(var __dirname="",module={})");
 
+	// <script>
 	auto script = head.append_child("script");
 	script.append_child(pugi::node_pcdata).set_value("//");
 	script.append_child(pugi::node_cdata).set_value(js_.c_str());
 
+	// <style>
 	auto style = head.append_child("style");
 	style.append_child(pugi::node_pcdata).set_value("/*");
 	style.append_child(pugi::node_cdata).set_value(css_.c_str());
 	style.append_child(pugi::node_pcdata).set_value("*/");
 
+	// <body>
 	auto body = html.append_child("body");
+
+	// <main>
 	auto root = body.append_child("main");
 	root.append_attribute("id") = "root";
 	root.append_attribute("hidden");

@@ -20,8 +20,8 @@ class History implements EventTarget {
     }
 
     public clear(): void {
-        window.sessionStorage.removeItem(this.indexKey);
-        window.sessionStorage.removeItem(this.stateKey);
+        sessionStorage.removeItem(this.indexKey);
+        sessionStorage.removeItem(this.stateKey);
     }
 
     public dispatchEvent(event: Event): boolean {
@@ -77,11 +77,11 @@ class History implements EventTarget {
     private getIndex(): number {
         let index = 0;
 
-        const indexValue = window.sessionStorage.getItem(this.indexKey);
+        const indexValue = sessionStorage.getItem(this.indexKey);
         if (indexValue) {
             const parsed = parseInt(indexValue, 10);
             if (Number.isNaN(parsed)) {
-                window.sessionStorage.removeItem(this.indexKey);
+                sessionStorage.removeItem(this.indexKey);
             } else {
                 index = parsed;
             }
@@ -93,12 +93,12 @@ class History implements EventTarget {
     private getState(): string[] {
         let state: string[] = [];
 
-        const stateValue = window.sessionStorage.getItem(this.stateKey);
+        const stateValue = sessionStorage.getItem(this.stateKey);
         if (stateValue) {
             try {
                 state = JSON.parse(stateValue);
             } catch (error) {
-                window.sessionStorage.removeItem(this.stateKey);
+                sessionStorage.removeItem(this.stateKey);
             }
         }
 
@@ -120,11 +120,11 @@ class History implements EventTarget {
     }
 
     private setIndex(index: number): void {
-        window.sessionStorage.setItem(this.indexKey, index.toString());
+        sessionStorage.setItem(this.indexKey, index.toString());
     }
 
     private setState(state: string[]): void {
-        window.sessionStorage.setItem(this.stateKey, JSON.stringify(state));
+        sessionStorage.setItem(this.stateKey, JSON.stringify(state));
     }
 }
 

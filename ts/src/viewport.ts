@@ -103,6 +103,8 @@ class Viewport {
         // Append nav
         document.body.appendChild(nav);
 
+
+
         // Create search results overlay
         this.searchResultsOverlay = document.createElement("div");
         this.searchResultsOverlay.id = "search-results";
@@ -126,6 +128,7 @@ class Viewport {
         this.history.back();
         this.refreshHistoryButtons();
         this.hideSearchResults();
+        this.scrollToTop();
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -220,18 +223,19 @@ class Viewport {
         this.history.forward();
         this.refreshHistoryButtons();
         this.hideSearchResults();
+        this.scrollToTop();
     }
 
     private getHintCacheIndex(elementId: string): number {
         let index = 0;
 
         const key = this.getHintCacheKey(elementId);
-        const cacheValue = window.localStorage.getItem(key);
+        const cacheValue = sessionStorage.getItem(key);
 
         if (cacheValue) {
             const parsed = parseInt(cacheValue, 10);
             if (Number.isNaN(parsed)) {
-                window.localStorage.removeItem(key);
+                sessionStorage.removeItem(key);
             };
             index = parsed;
         }
@@ -248,6 +252,7 @@ class Viewport {
         this.refreshHistoryButtons();
         this.view(id);
         this.hideSearchResults();
+        this.scrollToTop();
     }
 
     private hideSearchResults(): void {
@@ -269,7 +274,7 @@ class Viewport {
             item.removeAttribute("hidden");
             this.updateHintProgress((i + 1) / items.length);
             this.setHintCacheIndex(elementId, i);
-            window.scrollTo(0, document.body.scrollHeight);
+            this.scrollToBottom();
 
             if (i + 1 == items.length) {
                 this.setButtonText("Back");
@@ -388,7 +393,7 @@ class Viewport {
 
     private setHintCacheIndex(elementId: string, value: number): void {
         const key = this.getHintCacheKey(elementId);
-        window.localStorage.setItem(key, value.toString());
+        sessionStorage.setItem(key, value.toString());
     }
 
     private showOverlay(id: string): void {
@@ -402,6 +407,14 @@ class Viewport {
     private showSearchResults(): void {
         this.searchResultsOverlay.style.display = "block";
         this.viewport.style.display = "none";
+    }
+
+    private scrollToBottom(): void {
+        scrollTo(0, document.body.scrollHeight);
+    }
+
+    private scrollToTop(): void {
+        scrollTo(0, 0);
     }
 
     private updateHintProgress(value: number): void {
@@ -443,6 +456,7 @@ class Viewport {
         this.createLinkClickHandlers(entry);
         this.processHintNode(entry);
         this.render(entry);
+        this.scrollToTop();
     }
 }
 
