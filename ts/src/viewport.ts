@@ -1,6 +1,11 @@
 import History from "./history";
 import search from "./search";
 
+const ViewType = {
+    Hint: "hint",
+    Search: "search",
+};
+
 class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
@@ -42,68 +47,16 @@ class Viewport {
         // Create search field
         const searchField = document.createElement("input");
         searchField.type = "search";
-
         searchField.addEventListener("search", e => {
-            while (this.searchResultsOverlay.lastChild) {
-                this.searchResultsOverlay.removeChild(this.searchResultsOverlay.lastChild);
+            const keywords = (e.target as HTMLInputElement).value.trim();
+            if (keywords.length > 0) {
+                this.go({type: ViewType.Search, locator: keywords});
             }
-
-            const keywords = (e.target as HTMLInputElement).value;
-
-            if (keywords.trim().length == 0) {
-                this.hideSearchResults();
-                return;
-            }
-
-            const results = search(keywords);
-
-            if (results.length == 0) {
-                return;
-            }
-
-            const heading = document.createElement("h1");
-            heading.appendChild(document.createTextNode("Search results"));
-            this.searchResultsOverlay.appendChild(heading);
-
-            const list = document.createElement("ol");
-
-            results.forEach(result => {
-                const titleNode = result.querySelector(":scope > div > span.title");
-                const title = titleNode?.textContent || "";
-
-                if (!title) {
-                    return;
-                }
-
-                const id = result.getAttribute("data-id");
-                if (!id) {
-                    throw new Error("could not find search result ID");
-                }
-
-                // Create search result link
-                const item = document.createElement("li");
-                const linkContainer = document.createElement("div");
-                const link = document.createElement("span");
-                link.addEventListener("click", () => this.go(id), {capture: false});
-                link.classList.add("title", "clickable");
-                link.textContent = title;
-
-                // Append elements
-                linkContainer.appendChild(link);
-                item.appendChild(linkContainer);
-                list.appendChild(item);
-            });
-
-            this.searchResultsOverlay.appendChild(list);
-            this.showSearchResults();
         });
-
         nav.appendChild(searchField);
 
         // Append nav
         document.body.appendChild(nav);
-
-
 
         // Create search results overlay
         this.searchResultsOverlay = document.createElement("div");
@@ -125,9 +78,9 @@ class Viewport {
     }
 
     private back(): void {
+        this.hideSearchResults();
         this.history.back();
         this.refreshHistoryButtons();
-        this.hideSearchResults();
         this.scrollToTop();
     }
 
@@ -180,7 +133,8 @@ class Viewport {
             }
 
             if (clickable) {
-                link.addEventListener("click", () => this.go(targetId), {capture: false});
+                const state = {type: ViewType.Hint, locator: targetId};
+                link.addEventListener("click", () => this.go(state), {capture: false});
                 link.classList.add("clickable");
             }
 
@@ -209,8 +163,11 @@ class Viewport {
                 throw new Error("could not find title element");
             }
 
-            const id = element.getAttribute("data-id")!;
-            title.addEventListener("click", () => this.go(id), {capture: false});
+            const state = {
+                type: ViewType.Hint,
+                locator: element.getAttribute("data-id")!,
+            };
+            title.addEventListener("click", () => this.go(state), {capture: false});
             title.classList.add("clickable");
         });
     }
@@ -220,9 +177,9 @@ class Viewport {
     }
 
     private forward(): void {
+        this.hideSearchResults();
         this.history.forward();
         this.refreshHistoryButtons();
-        this.hideSearchResults();
         this.scrollToTop();
     }
 
@@ -247,11 +204,11 @@ class Viewport {
         return `hint.${elementId}`;
     }
 
-    private go(id: string): void {
-        this.history.pushState(id);
-        this.refreshHistoryButtons();
-        this.view(id);
+    private go(state: State): void {
         this.hideSearchResults();
+        this.history.pushState(state);
+        this.refreshHistoryButtons();
+        this.view(state);
         this.scrollToTop();
     }
 
@@ -261,7 +218,7 @@ class Viewport {
     }
 
     private home(): void {
-        this.go("1");
+        this.go({type: ViewType.Hint, locator: "1"});
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -346,7 +303,7 @@ class Viewport {
         lists.forEach(list => list.remove());
     }
 
-    private render(element: HTMLElement): void {
+    private renderElement(element: HTMLElement): void {
         this.viewport.appendChild(element);
     }
 
@@ -381,6 +338,58 @@ class Viewport {
             this.viewport.removeChild(this.viewport.lastChild);
         }
         this.removeFooter();
+    }
+
+    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
+        const titleNode = result.querySelector(":scope > div > span.title");
+        const title = titleNode?.textContent || "";
+
+        if (!title) {
+            return;
+        }
+
+        const id = result.getAttribute("data-id");
+        if (!id) {
+            throw new Error("could not find search result ID");
+        }
+
+        // Create search result link
+        const item = document.createElement("li");
+        const linkContainer = document.createElement("div");
+        const link = document.createElement("span");
+        const state = {type: ViewType.Hint, locator: id};
+        link.addEventListener("click", () => this.go(state), {capture: false});
+        link.classList.add("title", "clickable");
+        link.textContent = title;
+
+        // Append elements
+        linkContainer.appendChild(link);
+        item.appendChild(linkContainer);
+        list.appendChild(item);
+    }
+
+    private search(keywords: string): void {
+        while (this.searchResultsOverlay.lastChild) {
+            this.searchResultsOverlay.removeChild(this.searchResultsOverlay.lastChild);
+        }
+
+        if (keywords.trim().length == 0) {
+            this.hideSearchResults();
+            return;
+        }
+
+        const results = search(keywords);
+        if (results.length == 0) {
+            return;
+        }
+
+        const heading = document.createElement("h1");
+        heading.appendChild(document.createTextNode(`Search: ${keywords}`));
+        this.searchResultsOverlay.appendChild(heading);
+        const list = document.createElement("ol");
+        results.forEach(result => this.renderSearchResult(result, list));
+        this.searchResultsOverlay.appendChild(list);
+        this.showSearchResults();
     }
 
     private setButtonText(text: string): void {
@@ -440,22 +449,30 @@ class Viewport {
         }
     }
 
-    private view(id: string): void {
+    private view(state: State): void {
         this.reset();
 
-        const entry = this.cloneEntryPoint(id);
-        this.replaceTitleWithHeading(entry);
-        const items = this.findListItemChildren(entry);
-
-        if (items.length > 0) {
-            items.forEach(item => this.processListNode(item));
-        } else {
-            this.processLeafNode(entry);
+        switch (state.type) {
+        case ViewType.Search:
+            this.search(state.locator);
+            break;
+        case ViewType.Hint:
+            const entry = this.cloneEntryPoint(state.locator);
+            this.replaceTitleWithHeading(entry);
+            const items = this.findListItemChildren(entry);
+    
+            if (items.length > 0) {
+                items.forEach(item => this.processListNode(item));
+            } else {
+                this.processLeafNode(entry);
+            }
+    
+            this.createLinkClickHandlers(entry);
+            this.processHintNode(entry);
+            this.renderElement(entry);
+            break;
         }
 
-        this.createLinkClickHandlers(entry);
-        this.processHintNode(entry);
-        this.render(entry);
         this.scrollToTop();
     }
 }

@@ -1,6 +1,6 @@
 class History implements EventTarget {
     readonly indexKey = "history.index";
-    readonly stateKey = "history.state";
+    readonly statesKey = "history.states";
 
     private listeners: {[type: string]: ((event: Event) => void)[];} = {};
 
@@ -21,7 +21,7 @@ class History implements EventTarget {
 
     public clear(): void {
         sessionStorage.removeItem(this.indexKey);
-        sessionStorage.removeItem(this.stateKey);
+        sessionStorage.removeItem(this.statesKey);
     }
 
     public dispatchEvent(event: Event): boolean {
@@ -43,21 +43,21 @@ class History implements EventTarget {
 
     public go(delta: number): void {
         const index = this.getIndex();
-        const state = this.getState();
+        const states = this.getStates();
         const newIndex = index + delta;
 
-        if (newIndex < 0 || newIndex == state.length) {
+        if (newIndex < 0 || newIndex >= states.length) {
             return;
         }
 
         this.setIndex(newIndex);
-        this.dispatchEvent(new CustomEvent("change", {detail: state[newIndex]}));
+        this.dispatchEvent(new CustomEvent("change", {detail: states[newIndex]}));
     }
 
     public hasNext(): boolean {
         const index = this.getIndex();
-        const state = this.getState();
-        return index + 1 < state.length;
+        const states = this.getStates();
+        return index + 1 < states.length;
     }
 
     public hasPrevious(): boolean {
@@ -65,13 +65,27 @@ class History implements EventTarget {
         return index > 0;
     }
 
-    public pushState(id: string): void {
+    public pushState(state: State): void {
         const index = this.getIndex();
-        let state = this.getState();
-        state = state.slice(0, index + 1);
-        state.push(id);
-        this.setState(state);
-        this.setIndex(state.length - 1);
+        let states = this.getStates();
+        states = states.slice(0, index + 1);
+        states.push(state);
+        this.setStates(states);
+        this.setIndex(states.length - 1);
+    }
+
+    public removeEventListener(type: string, callback: (event: Event) => void): void {
+        if (!(type in this.listeners)) {
+            return;
+        }
+
+        const stack = this.listeners[type];
+        for (let i = 0; i < stack.length; ++i) {
+            if (stack[i] === callback) {
+                stack.splice(i, 1);
+                return;
+            }
+        }
     }
 
     private getIndex(): number {
@@ -90,41 +104,27 @@ class History implements EventTarget {
         return index;
     }
 
-    private getState(): string[] {
-        let state: string[] = [];
+    private getStates(): State[] {
+        let states: State[] = [];
 
-        const stateValue = sessionStorage.getItem(this.stateKey);
-        if (stateValue) {
+        const statesValue = sessionStorage.getItem(this.statesKey);
+        if (statesValue) {
             try {
-                state = JSON.parse(stateValue);
+                states = JSON.parse(statesValue);
             } catch (error) {
-                sessionStorage.removeItem(this.stateKey);
+                sessionStorage.removeItem(this.statesKey);
             }
         }
 
-        return state;
-    }
-
-    public removeEventListener(type: string, callback: (event: Event) => void): void {
-        if (!(type in this.listeners)) {
-            return;
-        }
-
-        const stack = this.listeners[type];
-        for (let i = 0; i < stack.length; ++i) {
-            if (stack[i] === callback) {
-                stack.splice(i, 1);
-                return;
-            }
-        }
+        return states;
     }
 
     private setIndex(index: number): void {
         sessionStorage.setItem(this.indexKey, index.toString());
     }
 
-    private setState(state: string[]): void {
-        sessionStorage.setItem(this.stateKey, JSON.stringify(state));
+    private setStates(states: State[]): void {
+        sessionStorage.setItem(this.statesKey, JSON.stringify(states));
     }
 }
 
