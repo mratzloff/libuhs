@@ -78,7 +78,6 @@ class Viewport {
     }
 
     private back(): void {
-        this.hideSearchResults();
         this.history.back();
         this.refreshHistoryButtons();
         this.scrollToTop();
@@ -177,7 +176,6 @@ class Viewport {
     }
 
     private forward(): void {
-        this.hideSearchResults();
         this.history.forward();
         this.refreshHistoryButtons();
         this.scrollToTop();
@@ -205,16 +203,15 @@ class Viewport {
     }
 
     private go(state: State): void {
-        this.hideSearchResults();
         this.history.pushState(state);
         this.refreshHistoryButtons();
         this.view(state);
         this.scrollToTop();
     }
 
-    private hideSearchResults(): void {
+    private hide(): void {
         this.searchResultsOverlay.style.display = "none";
-        this.viewport.style.display = "block";
+        this.viewport.style.display = "none";
     }
 
     private home(): void {
@@ -307,6 +304,34 @@ class Viewport {
         this.viewport.appendChild(element);
     }
 
+    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
+        const titleNode = result.querySelector(":scope > div > span.title");
+        const title = titleNode?.textContent || "";
+
+        if (!title) {
+            return;
+        }
+
+        const id = result.getAttribute("data-id");
+        if (!id) {
+            throw new Error("could not find search result ID");
+        }
+
+        // Create search result link
+        const item = document.createElement("li");
+        const linkContainer = document.createElement("div");
+        const link = document.createElement("span");
+        const state = {type: ViewType.Hint, locator: id};
+        link.addEventListener("click", () => this.go(state), {capture: false});
+        link.classList.add("title", "clickable");
+        link.textContent = title;
+
+        // Append elements
+        linkContainer.appendChild(link);
+        item.appendChild(linkContainer);
+        list.appendChild(item);
+    }
+
     private replaceIdsWithDataAttributes(element: HTMLElement): void {
         if (element.id) {
             element.setAttribute("data-id", element.id);
@@ -340,41 +365,12 @@ class Viewport {
         this.removeFooter();
     }
 
-    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
-        const titleNode = result.querySelector(":scope > div > span.title");
-        const title = titleNode?.textContent || "";
-
-        if (!title) {
-            return;
-        }
-
-        const id = result.getAttribute("data-id");
-        if (!id) {
-            throw new Error("could not find search result ID");
-        }
-
-        // Create search result link
-        const item = document.createElement("li");
-        const linkContainer = document.createElement("div");
-        const link = document.createElement("span");
-        const state = {type: ViewType.Hint, locator: id};
-        link.addEventListener("click", () => this.go(state), {capture: false});
-        link.classList.add("title", "clickable");
-        link.textContent = title;
-
-        // Append elements
-        linkContainer.appendChild(link);
-        item.appendChild(linkContainer);
-        list.appendChild(item);
-    }
-
     private search(keywords: string): void {
         while (this.searchResultsOverlay.lastChild) {
             this.searchResultsOverlay.removeChild(this.searchResultsOverlay.lastChild);
         }
 
         if (keywords.trim().length == 0) {
-            this.hideSearchResults();
             return;
         }
 
@@ -415,7 +411,10 @@ class Viewport {
 
     private showSearchResults(): void {
         this.searchResultsOverlay.style.display = "block";
-        this.viewport.style.display = "none";
+    }
+
+    private showViewport(): void {
+        this.viewport.style.display = "block";
     }
 
     private scrollToBottom(): void {
@@ -450,11 +449,13 @@ class Viewport {
     }
 
     private view(state: State): void {
+        this.hide();
         this.reset();
 
         switch (state.type) {
         case ViewType.Search:
             this.search(state.locator);
+            this.showSearchResults();
             break;
         case ViewType.Hint:
             const entry = this.cloneEntryPoint(state.locator);
@@ -470,6 +471,7 @@ class Viewport {
             this.createLinkClickHandlers(entry);
             this.processHintNode(entry);
             this.renderElement(entry);
+            this.showViewport();
             break;
         }
 
