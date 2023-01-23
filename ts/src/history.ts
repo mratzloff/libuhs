@@ -74,6 +74,13 @@ class History implements EventTarget {
         const index = this.getIndex();
         let states = this.getStates();
         states = states.slice(0, index + 1);
+
+        // Don't push same state twice
+        const last = states[index];
+        if (last && this.isStateEqual(last, state)) {
+            states = states.slice(0, -1);
+        }
+
         states.push(state);
         this.setStates(states);
         this.setIndex(states.length - 1);
@@ -122,6 +129,10 @@ class History implements EventTarget {
         }
 
         return states;
+    }
+
+    private isStateEqual(a: HistoryState, b: HistoryState): boolean {
+        return a.type == b.type && a.locator == b.locator;
     }
 
     private setIndex(index: number): void {
