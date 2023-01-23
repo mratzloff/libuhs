@@ -1,3 +1,8 @@
+export interface HistoryState {
+    type: string;
+    locator: string;
+}
+
 class History implements EventTarget {
     readonly indexKey = "history.index";
     readonly statesKey = "history.states";
@@ -128,4 +133,4 @@ class History implements EventTarget {
     }
 }
 
-export default History;
+export {History};

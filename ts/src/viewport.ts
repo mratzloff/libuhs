@@ -1,4 +1,4 @@
-import History from "./history";
+import {History, HistoryState} from "./history";
 import search from "./search";
 
 const ViewType = {
