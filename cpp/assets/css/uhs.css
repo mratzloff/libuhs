@@ -188,7 +188,6 @@ area.clickable {
     height: 5px;
 }
 
-#search-results,
 #viewport {
     box-sizing: border-box;
     display: none;

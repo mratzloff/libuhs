@@ -10,7 +10,6 @@ class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
     private history: History;
-    private searchResultsOverlay: HTMLElement;
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -63,11 +62,6 @@ class Viewport {
 
         // Append nav
         document.body.appendChild(nav);
-
-        // Create search results overlay
-        this.searchResultsOverlay = document.createElement("div");
-        this.searchResultsOverlay.id = "search-results";
-        document.body.appendChild(this.searchResultsOverlay);
 
         // Create viewport
         this.viewport = document.createElement("div");
@@ -216,7 +210,6 @@ class Viewport {
     }
 
     private hide(): void {
-        this.searchResultsOverlay.style.display = "none";
         this.viewport.style.display = "none";
     }
 
@@ -372,8 +365,8 @@ class Viewport {
     }
 
     private search(keywords: string): void {
-        while (this.searchResultsOverlay.lastChild) {
-            this.searchResultsOverlay.removeChild(this.searchResultsOverlay.lastChild);
+        while (this.viewport.lastChild) {
+            this.viewport.removeChild(this.viewport.lastChild);
         }
 
         if (keywords.trim().length == 0) {
@@ -383,18 +376,18 @@ class Viewport {
         const results = search(keywords);
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(`Search: ${keywords}`));
-        this.searchResultsOverlay.appendChild(heading);
+        this.viewport.appendChild(heading);
 
         if (results.length > 0) {
             const list = document.createElement("ol");
             results.forEach(result => this.renderSearchResult(result, list));
-            this.searchResultsOverlay.appendChild(list);
+            this.viewport.appendChild(list);
         } else {
             const text = document.createTextNode("No results found.");
-            this.searchResultsOverlay.appendChild(text);
+            this.viewport.appendChild(text);
         }
 
-        this.showSearchResults();
+        this.show();
     }
 
     private setButtonText(text: string): void {
@@ -418,11 +411,7 @@ class Viewport {
         overlay.removeAttribute("hidden");
     }
 
-    private showSearchResults(): void {
-        this.searchResultsOverlay.style.display = "block";
-    }
-
-    private showViewport(): void {
+    private show(): void {
         this.viewport.style.display = "block";
     }
 
@@ -464,7 +453,7 @@ class Viewport {
         switch (state.type) {
         case ViewType.Search:
             this.search(state.locator);
-            this.showSearchResults();
+            this.show();
             break;
         case ViewType.Hint:
             const entry = this.cloneEntryPoint(state.locator);
@@ -480,7 +469,7 @@ class Viewport {
             this.createLinkClickHandlers(entry);
             this.processHintNode(entry);
             this.renderElement(entry);
-            this.showViewport();
+            this.show();
             break;
         }
 
