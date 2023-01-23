@@ -65,7 +65,7 @@ class History implements EventTarget {
         return index > 0;
     }
 
-    public pushState(state: State): void {
+    public pushState(state: HistoryState): void {
         const index = this.getIndex();
         let states = this.getStates();
         states = states.slice(0, index + 1);
@@ -104,8 +104,8 @@ class History implements EventTarget {
         return index;
     }
 
-    private getStates(): State[] {
-        let states: State[] = [];
+    private getStates(): HistoryState[] {
+        let states: HistoryState[] = [];
 
         const statesValue = sessionStorage.getItem(this.statesKey);
         if (statesValue) {
@@ -123,7 +123,7 @@ class History implements EventTarget {
         sessionStorage.setItem(this.indexKey, index.toString());
     }
 
-    private setStates(states: State[]): void {
+    private setStates(states: HistoryState[]): void {
         sessionStorage.setItem(this.statesKey, JSON.stringify(states));
     }
 }

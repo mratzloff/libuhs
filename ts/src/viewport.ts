@@ -208,7 +208,7 @@ class Viewport {
         return `hint.${elementId}`;
     }
 
-    private go(state: State): void {
+    private go(state: HistoryState): void {
         this.history.pushState(state);
         this.refreshHistoryButtons();
         this.view(state);
@@ -457,7 +457,7 @@ class Viewport {
         }
     }
 
-    private view(state: State): void {
+    private view(state: HistoryState): void {
         this.hide();
         this.reset();
 
