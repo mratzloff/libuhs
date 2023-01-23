@@ -44,9 +44,15 @@ class Viewport {
         homeButton.addEventListener("click", () => this.home());
         nav.appendChild(homeButton);
 
+        // Create spacer
+        const spacer = document.createElement("div");
+        spacer.classList.add("spacer");
+        nav.appendChild(spacer);
+
         // Create search field
         const searchField = document.createElement("input");
         searchField.type = "search";
+        searchField.placeholder = "Search";
         searchField.addEventListener("search", e => {
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
@@ -375,16 +381,19 @@ class Viewport {
         }
 
         const results = search(keywords);
-        if (results.length == 0) {
-            return;
-        }
-
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(`Search: ${keywords}`));
         this.searchResultsOverlay.appendChild(heading);
-        const list = document.createElement("ol");
-        results.forEach(result => this.renderSearchResult(result, list));
-        this.searchResultsOverlay.appendChild(list);
+
+        if (results.length > 0) {
+            const list = document.createElement("ol");
+            results.forEach(result => this.renderSearchResult(result, list));
+            this.searchResultsOverlay.appendChild(list);
+        } else {
+            const text = document.createTextNode("No results found.");
+            this.searchResultsOverlay.appendChild(text);
+        }
+
         this.showSearchResults();
     }
 

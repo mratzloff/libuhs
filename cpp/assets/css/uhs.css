@@ -81,6 +81,10 @@ area.clickable {
     position: absolute;
 }
 
+.spacer {
+    flex-grow: 1;
+}
+
 .title {
     display: inline-block;
     height: 25px;
@@ -118,44 +122,56 @@ area.clickable {
     border: none;
     cursor: pointer;
     height: 100%;
-    width: 60px;
+    width: 50px;
 }
 
 #nav button[disabled] {
     cursor: pointer;
-    filter: opacity(20%);
+    filter: opacity(0.2);
 }
 
 #nav button#back {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 512'%3E%3Cpath d='M192 127.338v257.324c0 17.818-21.543 26.741-34.142 14.142L29.196 270.142c-7.81-7.81-7.81-20.474 0-28.284l128.662-128.662c12.599-12.6 34.142-3.676 34.142 14.142z'/%3E%3C/svg%3E")
-        no-repeat right 26px center/9px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z'/%3E%3C/svg%3E")
+        no-repeat center/13px;
+    margin-left: 7px;
 }
 
 #nav button#forward {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 512'%3E%3Cpath d='M0 384.662V127.338c0-17.818 21.543-26.741 34.142-14.142l128.662 128.662c7.81 7.81 7.81 20.474 0 28.284L34.142 398.804C21.543 411.404 0 402.48 0 384.662z'/%3E%3C/svg%3E")
-        no-repeat right 24px center/9px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z'/%3E%3C/svg%3E")
+        no-repeat center/13px;
 }
 
 #nav button#home {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cpath d='M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z'/%3E%3C/svg%3E")
-        no-repeat right 20px center/18px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cpath d='M575.8 255.5c0 18-15 32.1-32 32.1h-32l.7 160.2c0 2.7-.2 5.4-.5 8.1V472c0 22.1-17.9 40-40 40H456c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1H416 392c-22.1 0-40-17.9-40-40V448 384c0-17.7-14.3-32-32-32H256c-17.7 0-32 14.3-32 32v64 24c0 22.1-17.9 40-40 40H160 128.1c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2H104c-22.1 0-40-17.9-40-40V360c0-.9 0-1.9 .1-2.8V287.6H32c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z'/%3E%3C/svg%3E")
+        no-repeat center/18px;
 }
 
-#nav input {
+#nav input[type="search"] {
     appearance: none;
-    background: linear-gradient(to left, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
-    border: none;
-    border-radius: initial;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z' fill='rgba(255,255,255,.3)'/%3E%3C/svg%3E")
+        no-repeat 14px/12px transparent;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
     box-sizing: border-box;
     color: white;
     cursor: pointer;
     font-family: system-ui;
     font-size: 16px;
     font-weight: 300;
-    height: 100%;
+    height: 40px;
+    margin: 10px;
+    margin-right: 15px;
     outline: none;
-    padding: 0 20px;
-    width: calc(100% - 80px);
+    padding: 0 10px 0 35px;
+    width: 40%;
+}
+
+#nav input[type="search"]::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+#nav input[type="search"]::-webkit-search-cancel-button {
+    filter: invert(1) opacity(0.3);
 }
 
 #nav select.disabled {
