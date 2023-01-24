@@ -18,22 +18,24 @@ void printHelp() {
 	    "A utility to read and write Universal Hint System game hint files\n\n"
 	    "\033[1mUSAGE\033[0m\n"
 	    "  $ uhs -f <fmt> [options] <file>\n\n"
+	    "\033[1mEXAMPLE\033[0m\n"
+	    "  $ uhs -f html -o example.html example.uhs\n\n"
 	    "\033[1mOPTIONS\033[0m\n"
+	    "  -d,        --debug          Print debugging statements\n"
 	    "  -f <fmt>,  --format=<fmt>   Output format\n"
 	    "                              ●  uhs   UHS file (default)\n"
 	    "                              ○  html  HTML file\n"
 	    "                              ○  json  JSON file\n"
 	    "                              ○  tree  Tree representation of file\n\n"
-	    "  -o <file>, --output=<file>  Output file\n"
-	    "  -m <dir>,  --media=<dir>    Image and audio directory (JSON output only)\n"
+	    "  -h,        --help           Print this help statement\n"
+	    "  -m <dir>,  --media=<dir>    Image and audio write directory (JSON output only)\n"
 	    "             --mode=<mode>    Read and write mode\n"
 	    "                              ●  auto  Choose mode based on input file (default)\n"
 	    "                              ○  96a   2000s-era reader and writer\n"
 	    "                              ○  88a   1980s-era reader and writer\n\n"
+	    "  -o <file>, --output=<file>  Output file\n"
 	    "             --preserve       Preserve unregistered content restrictions\n"
-	    "  -d,        --debug          Print debugging statements\n"
-	    "  -v,        --version        Print the version\n"
-	    "  -h,        --help           Print this help statement\n";
+	    "  -v,        --version        Print the version\n";
 
 	tfm::printf(help, Version);
 }
@@ -60,6 +62,9 @@ int main(const int argc, char* argv[]) {
 		return OK;
 	}
 
+	// Debug
+	options.debug = args[{"-d", "--debug"}];
+
 	// Output format
 	std::string format;
 
@@ -70,19 +75,6 @@ int main(const int argc, char* argv[]) {
 	if (format != "uhs" && format != "html" && format != "json" && format != "tree") {
 		printError("unknown option for --format: " + format);
 		return Err;
-	}
-
-	// Output file
-	std::string outfile;
-	args({"-o", "--output"}) >> outfile;
-
-	if (outfile.length() > 0) {
-		std::filesystem::path path{outfile};
-		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
-
-			printError("invalid output file: " + outfile);
-			return Err;
-		}
 	}
 
 	// Media directory
@@ -114,11 +106,21 @@ int main(const int argc, char* argv[]) {
 		return Err;
 	}
 
+	// Output file
+	std::string outfile;
+	args({"-o", "--output"}) >> outfile;
+
+	if (outfile.length() > 0) {
+		std::filesystem::path path{outfile};
+		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
+
+			printError("invalid output file: " + outfile);
+			return Err;
+		}
+	}
+
 	// Preserve unregistered content restrictions
 	options.preserve = args[{"--preserve"}];
-
-	// Debug
-	options.debug = args[{"-d", "--debug"}];
 
 	// Input file
 	if (argc < 2) {
