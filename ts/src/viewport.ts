@@ -1,6 +1,8 @@
 import {History, HistoryState} from "./history";
 import search from "./search";
 
+const HOME_ID = "1";
+
 const ViewType = {
     Hint: "hint",
     Search: "search",
@@ -214,7 +216,7 @@ class Viewport {
     }
 
     private home(): void {
-        this.go({type: ViewType.Hint, locator: "1"});
+        this.go({type: ViewType.Hint, locator: HOME_ID});
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -303,12 +305,37 @@ class Viewport {
         this.viewport.appendChild(element);
     }
 
-    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
-        const titleNode = result.querySelector(":scope > div > span.title");
-        const title = titleNode?.textContent || "";
+    private findBreadcrumbs(element: HTMLElement): string[] {
+        let ancestors: string[] = [];
+        let ancestor: HTMLElement | null | undefined = element;
 
+        while (ancestor?.parentElement) {
+            ancestor = ancestor.parentElement;
+
+            const id = ancestor.getAttribute("data-id");
+            if (id == HOME_ID) {
+                break;
+            }
+            if (id) {
+                const title = this.findNodeTitle(ancestor);
+                if (title) {
+                    ancestors.push(title);
+                }
+            }
+        }
+
+        return ancestors.reverse();
+    }
+
+    private findNodeTitle(element: HTMLElement): string | null {
+        const titleNode = element.querySelector(":scope > div > span.title");
+        return titleNode?.textContent || null;
+    }
+
+    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
+        const title = this.findNodeTitle(result);
         if (!title) {
-            return;
+            throw new Error("could not find search result title");
         }
 
         const id = result.getAttribute("data-id");
@@ -316,7 +343,7 @@ class Viewport {
             throw new Error("could not find search result ID");
         }
 
-        // Create search result link
+        // Render search result link
         const item = document.createElement("li");
         const linkContainer = document.createElement("div");
         const link = document.createElement("span");
@@ -324,10 +351,23 @@ class Viewport {
         link.addEventListener("click", () => this.go(state), {capture: false});
         link.classList.add("title", "clickable");
         link.textContent = title;
-
-        // Append elements
         linkContainer.appendChild(link);
         item.appendChild(linkContainer);
+
+        // Render breadcrumb
+        const breadcrumbs = this.findBreadcrumbs(result);
+        if (breadcrumbs.length > 0) {
+            const bcList = document.createElement("ul");
+            bcList.classList.add("breadcrumbs");
+            breadcrumbs.forEach(breadcrumb => {
+                const bcItem = document.createElement("li");
+                bcItem.appendChild(document.createTextNode(breadcrumb));
+                bcList.appendChild(bcItem);
+            });
+            item.appendChild(bcList);
+        }
+
+        // Add list item
         list.appendChild(item);
     }
 
@@ -377,6 +417,7 @@ class Viewport {
 
         if (results.length > 0) {
             const list = document.createElement("ol");
+            list.classList.add("search-results");
             results.forEach(result => this.renderSearchResult(result, list));
             this.viewport.appendChild(list);
         } else {
