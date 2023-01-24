@@ -80,7 +80,7 @@ class Viewport {
     private back(): void {
         this.history.back();
         this.refreshHistoryButtons();
-        this.scrollToTop();
+        this.scrollTop();
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -178,7 +178,7 @@ class Viewport {
     private forward(): void {
         this.history.forward();
         this.refreshHistoryButtons();
-        this.scrollToTop();
+        this.scrollTop();
     }
 
     private getHintCacheIndex(elementId: string): number {
@@ -206,7 +206,7 @@ class Viewport {
         this.history.pushState(state);
         this.refreshHistoryButtons();
         this.view(state);
-        this.scrollToTop();
+        this.scrollTop();
     }
 
     private hide(): void {
@@ -227,7 +227,7 @@ class Viewport {
             item.removeAttribute("hidden");
             this.updateHintProgress((i + 1) / items.length);
             this.setHintCacheIndex(elementId, i);
-            this.scrollToBottom();
+            this.scrollBottom();
 
             if (i + 1 == items.length) {
                 this.setButtonText("Back");
@@ -365,14 +365,11 @@ class Viewport {
     }
 
     private search(keywords: string): void {
-        while (this.viewport.lastChild) {
-            this.viewport.removeChild(this.viewport.lastChild);
-        }
-
         if (keywords.trim().length == 0) {
             return;
         }
 
+        this.reset();
         const results = search(keywords);
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(`Search: ${keywords}`));
@@ -386,8 +383,6 @@ class Viewport {
             const text = document.createTextNode("No results found.");
             this.viewport.appendChild(text);
         }
-
-        this.show();
     }
 
     private setButtonText(text: string): void {
@@ -415,11 +410,11 @@ class Viewport {
         this.viewport.style.display = "block";
     }
 
-    private scrollToBottom(): void {
+    private scrollBottom(): void {
         scrollTo(0, document.body.scrollHeight);
     }
 
-    private scrollToTop(): void {
+    private scrollTop(): void {
         scrollTo(0, 0);
     }
 
@@ -453,7 +448,6 @@ class Viewport {
         switch (state.type) {
         case ViewType.Search:
             this.search(state.locator);
-            this.show();
             break;
         case ViewType.Hint:
             const entry = this.cloneEntryPoint(state.locator);
@@ -469,11 +463,11 @@ class Viewport {
             this.createLinkClickHandlers(entry);
             this.processHintNode(entry);
             this.renderElement(entry);
-            this.show();
             break;
         }
 
-        this.scrollToTop();
+        this.scrollTop();
+        this.show();
     }
 }
 
