@@ -332,7 +332,7 @@ class Viewport {
         return titleNode?.textContent || null;
     }
 
-    private renderSearchResult(result: HTMLElement, list: HTMLOListElement): void {
+    private renderSearchResult(result: HTMLElement): HTMLLIElement {
         const title = this.findNodeTitle(result);
         if (!title) {
             throw new Error("could not find search result title");
@@ -354,21 +354,30 @@ class Viewport {
         linkContainer.appendChild(link);
         item.appendChild(linkContainer);
 
-        // Render breadcrumb
-        const breadcrumbs = this.findBreadcrumbs(result);
-        if (breadcrumbs.length > 0) {
-            const bcList = document.createElement("ul");
-            bcList.classList.add("breadcrumbs");
-            breadcrumbs.forEach(breadcrumb => {
-                const bcItem = document.createElement("li");
-                bcItem.appendChild(document.createTextNode(breadcrumb));
-                bcList.appendChild(bcItem);
-            });
-            item.appendChild(bcList);
+        // Render breadcrumbs
+        const breadcrumbs = this.renderBreadcrumbs(result);
+        if (breadcrumbs) {
+            item.appendChild(breadcrumbs);
         }
 
-        // Add list item
-        list.appendChild(item);
+        return item;
+    }
+
+    private renderBreadcrumbs(element: HTMLElement): HTMLUListElement | null {
+        const breadcrumbs = this.findBreadcrumbs(element);
+        if (breadcrumbs.length == 0) {
+            return null;
+        }
+
+        const list = document.createElement("ul");
+        list.classList.add("breadcrumbs");
+        breadcrumbs.forEach(breadcrumb => {
+            const item = document.createElement("li");
+            item.appendChild(document.createTextNode(breadcrumb));
+            list.appendChild(item);
+        });
+
+        return list;
     }
 
     private replaceIdsWithDataAttributes(element: HTMLElement): void {
@@ -418,7 +427,7 @@ class Viewport {
         if (results.length > 0) {
             const list = document.createElement("ol");
             list.classList.add("search-results");
-            results.forEach(result => this.renderSearchResult(result, list));
+            results.forEach(result => list.appendChild(this.renderSearchResult(result)));
             this.viewport.appendChild(list);
         } else {
             const text = document.createTextNode("No results found.");
@@ -490,9 +499,19 @@ class Viewport {
         case ViewType.Search:
             this.search(state.locator);
             break;
-        case ViewType.Hint:
+        case ViewType.Hint:        
             const entry = this.cloneEntryPoint(state.locator);
+
+            const element = document.getElementById(state.locator)!;
+            const headingContainer = entry.querySelector(":scope > div");
+            if (headingContainer) {
+                const breadcrumbs = this.renderBreadcrumbs(element);
+                if (breadcrumbs) {
+                    headingContainer.prepend(breadcrumbs);
+                }
+            }
             this.replaceTitleWithHeading(entry);
+
             const items = this.findListItemChildren(entry);
     
             if (items.length > 0) {

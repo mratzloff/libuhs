@@ -13,6 +13,7 @@ h1 {
     font-size: 24px;
     line-height: 1.5;
     margin-bottom: 25px;
+    margin-top: 15px;
     text-rendering: optimizeLegibility;
 }
 
@@ -28,9 +29,14 @@ ol {
 }
 
 ul.breadcrumbs {
-    line-height: 16px;
     list-style-type: none;
+    margin-bottom: 0;
+    margin-top: 15px;
     padding-left: 0;
+}
+
+ul.breadcrumbs + h1 {
+    margin-top: 5px;
 }
 
 ul.breadcrumbs li {
@@ -99,8 +105,13 @@ area.clickable {
     position: absolute;
 }
 
+ol.search-results div + ul.breadcrumbs {
+    line-height: 20px;
+    margin-top: 0;
+}
+
 ol.search-results > li + li {
-    padding-top: 15px;
+    padding-top: 20px;
 }
 
 .spacer {
