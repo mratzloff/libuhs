@@ -1033,27 +1033,32 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 				previousTextNode->body(previousTextBody);
 			}
 
-			if (previousTextNode->hasFormat(TextFormat::Overflow)
-			    && !hasFormat(format, TextFormat::Overflow) && text == " ") {
-				// Handle `#w+ #w-` sequence
+			auto previousHasOverflow = previousTextNode->hasFormat(TextFormat::Overflow);
+			auto sameFormatSansOverflow =
+			    withoutFormat(previousTextNode->format(), TextFormat::Overflow)
+			    == withoutFormat(format, TextFormat::Overflow);
 
+			if (previousHasOverflow && !hasFormat(format, TextFormat::Overflow)
+			    && text == " ") {
+
+				// Handle `#w+ #w-` sequence
 				format = withFormat(format, TextFormat::Overflow);
 				previousTextNode->body(Strings::chomp(previousTextBody, '\n'));
 				text.clear();
 				return;
 			} else if (previousTextNode->format() == format
-			           || previousTextNode->hasFormat(TextFormat::Overflow)) {
-				// Append text with the same formatting to the previous node
+			           || (previousHasOverflow && sameFormatSansOverflow)) {
 
+				// Append text with the same formatting to the previous node
 				previousTextBody += text;
 				previousTextNode->body(previousTextBody);
 				text.clear();
 				return;
 			}
 		} else if (previous->isElement()) {
+			// Prepend space to text if it follows an inline element
 			const auto previousElement = static_cast<Element*>(previous);
 
-			// Prepend space to text if it follows an inline element
 			if (previousElement->inlined()
 			    && !Strings::beginsWithAttachedPunctuation(text)) {
 
