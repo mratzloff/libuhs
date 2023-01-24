@@ -1033,13 +1033,20 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 				previousTextNode->body(previousTextBody);
 			}
 
-			// Append text with the same formatting to the previous node
-			if (previousTextNode->format() == format
-			    || previousTextNode->hasFormat(TextFormat::Overflow)) {
+			if (previousTextNode->hasFormat(TextFormat::Overflow)
+			    && !hasFormat(format, TextFormat::Overflow) && text == " ") {
+				// Handle `#w+ #w-` sequence
+
+				format = withFormat(format, TextFormat::Overflow);
+				previousTextNode->body(Strings::chomp(previousTextBody, '\n'));
+				text.clear();
+				return;
+			} else if (previousTextNode->format() == format
+			           || previousTextNode->hasFormat(TextFormat::Overflow)) {
+				// Append text with the same formatting to the previous node
 
 				previousTextBody += text;
 				previousTextNode->body(previousTextBody);
-
 				text.clear();
 				return;
 			}
