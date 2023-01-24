@@ -34,15 +34,15 @@ ul.breadcrumbs {
 }
 
 ul.breadcrumbs li {
-    color: rgb(200, 200, 200);
+    color: rgb(160, 160, 160);
     display: inline;
     font-size: 14px;
 }
 
 ul.breadcrumbs li + li {
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z' fill='rgba(255,255,255,.7)'/%3E%3C/svg%3E")
-        no-repeat 7px / 5px;
-    padding-left: 19px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z' fill='rgba(160,160,160,0.99)'/%3E%3C/svg%3E")
+        no-repeat 5px / 5px;
+    padding-left: 15px;
 }
 
 .clickable,
@@ -221,6 +221,14 @@ ol.search-results > li + li {
     body {
         background-color: rgb(28, 28, 28);
         color: rgb(224, 224, 224);
+    }
+
+    ul.breadcrumbs li {
+        color: rgb(200, 200, 200);
+    }
+    
+    ul.breadcrumbs li + li {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z' fill='rgba(255,255,255,.7)'/%3E%3C/svg%3E");
     }
 
     .clickable {
