@@ -1,7 +1,6 @@
+import {HOME_ID} from "./constants";
 import {History, HistoryState} from "./history";
 import search from "./search";
-
-const HOME_ID = "1";
 
 const ViewType = {
     Hint: "hint",

@@ -52,7 +52,10 @@ add_dependencies (css_includes css_minified)
 # js
 add_custom_target(js
 	COMMAND ${bin}/tsc
-	BYPRODUCTS ts/build/history.js ts/build/search.js ts/build/viewport.js)
+	BYPRODUCTS ts/build/constants.js
+	           ts/build/history.js
+	           ts/build/search.js
+	           ts/build/viewport.js)
 
 # js_combined
 add_custom_target(js_combined
@@ -86,10 +89,10 @@ add_dependencies (uhs css_includes js_includes)
 target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
-		   ${pugixml_includes}
+	       ${pugixml_includes}
 	       ${tinyformat_includes}
-		   ${tinyutf8_includes}
-		   ${tsl_includes}
+	       ${tinyutf8_includes}
+	       ${tsl_includes}
 	       ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
 

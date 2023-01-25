@@ -1,3 +1,5 @@
+import {HOME_ID} from "./constants";
+
 const DEFAULT_BOOST = 1;
 const TITLE_BOOST = 10;
 
@@ -18,28 +20,40 @@ function search(keywords: string): HTMLElement[] {
 
     const elements = root.querySelectorAll("[data-type]");
     elements.forEach(element => {
-        if (element.hasAttribute("hidden")) {
+        const id = element.getAttribute("data-id");
+
+        if (id == HOME_ID || element.getAttribute("data-type") == "document") {
             return;
         }
 
+        let ancestor: Element | null = element;
+        do {
+            if (ancestor === root) {
+                break;
+            }
+            if (ancestor?.getAttribute("data-visibility") == "none") {
+                return;
+            }
+            ancestor = ancestor?.parentElement;
+        } while (ancestor);
+
+        // Search title
         const title = element.querySelector(":scope > div > .title");
         const haystack = title?.textContent?.toLowerCase();
-        if (haystack?.includes(needle)) {
-            const id = element.getAttribute("data-id");
-            if (id) {
-                const match = matchMap.get(id);
-                if (match) {
-                    match.score += TITLE_BOOST;
-                } else {
-                    matchMap.set(id, {
-                        element: element as HTMLElement,
-                        score: TITLE_BOOST,
-                    });
-                }
+        if (haystack?.includes(needle) && id) {
+            const match = matchMap.get(id);
+            if (match) {
+                match.score += TITLE_BOOST;
+            } else {
+                matchMap.set(id, {
+                    element: element as HTMLElement,
+                    score: TITLE_BOOST,
+                });
             }
         }
 
         if (element.getAttribute("data-type") == "text") {
+            // Search text body
             const body = element.querySelector(":scope > p");
             const haystack = body?.textContent?.toLowerCase();
             const pattern = new RegExp(needle);
@@ -61,6 +75,7 @@ function search(keywords: string): HTMLElement[] {
                 }
             }
         } else {
+            // Search hints
             const hints = element.querySelectorAll(":scope > ol > li > .hint");
             hints?.forEach(hint => {
                 const haystack = hint.textContent?.toLowerCase();
