@@ -740,6 +740,7 @@ void Parser::parseIncentiveElement(Element& element) {
 
 	// Process instructions
 	auto instructions = Strings::split(body, " ");
+	auto message = "invalid visibility instruction: %s";
 
 	for (const auto& instruction : instructions) {
 		auto instructionLength = instruction.length();
@@ -747,7 +748,7 @@ void Parser::parseIncentiveElement(Element& element) {
 		// Split instruction (e.g., "3Z")
 		if (instructionLength < 2) {
 			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: %s", instruction);
+				logger_.warn(message, instruction);
 			}
 			continue;
 		}
@@ -760,7 +761,7 @@ void Parser::parseIncentiveElement(Element& element) {
 			}
 		} catch (const Error& err) {
 			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: %s", instruction);
+				logger_.warn(message, instruction);
 			}
 			continue;
 		}
@@ -774,7 +775,7 @@ void Parser::parseIncentiveElement(Element& element) {
 			visibility = VisibilityType::UnregisteredOnly;
 		} else {
 			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: %s", instruction);
+				logger_.warn(message, instruction);
 			}
 			continue;
 		}
@@ -1278,7 +1279,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					switch (s[i + 2]) {
 					case '+':
 						if (hasFormat(format, TextFormat::Hyperlink) && !options_.quiet) {
-							logger_.warn("unexpected sequence: #h+");
+							logger_.warn("unexpected formatting sequence: #h+");
 						}
 
 						this->appendText(segment, format, node);
@@ -1289,7 +1290,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						if (!hasFormat(format, TextFormat::Hyperlink)
 						    && !options_.quiet) {
 
-							logger_.warn("unexpected sequence: #h-");
+							logger_.warn("unexpected formatting sequence: #h-");
 						}
 
 						this->appendText(segment, format, node);
@@ -1298,7 +1299,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						break;
 					default:
 						if (!options_.quiet) {
-							logger_.warn("unexpected sequence: #h%c", s[i + 2]);
+							logger_.warn(
+							    "unexpected formatting sequence: #h%c", s[i + 2]);
 						}
 						break;
 					}
@@ -1307,7 +1309,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					switch (s[i + 2]) {
 					case '-':
 						if (hasFormat(format, TextFormat::Monospace) && !options_.quiet) {
-							logger_.warn("unexpected sequence: #p-");
+							logger_.warn("unexpected formatting sequence: #p-");
 						}
 
 						this->appendText(segment, format, node);
@@ -1318,7 +1320,7 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						if (!hasFormat(format, TextFormat::Monospace)
 						    && !options_.quiet) {
 
-							logger_.warn("unexpected sequence: #p+");
+							logger_.warn("unexpected formatting sequence: #p+");
 						}
 
 						this->appendText(segment, format, node);
@@ -1327,7 +1329,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						break;
 					default:
 						if (!options_.quiet) {
-							logger_.warn("unexpected sequence: #p%c", s[i + 2]);
+							logger_.warn(
+							    "unexpected formatting sequence: #p%c", s[i + 2]);
 						}
 						break;
 					}
@@ -1351,19 +1354,13 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						break;
 					default:
 						if (!options_.quiet) {
-							logger_.warn("unexpected sequence: #w%c", s[i + 2]);
+							logger_.warn(
+							    "unexpected formatting sequence: #w%c", s[i + 2]);
 						}
 						break;
 					}
 					break;
-				default:
-					if (!options_.quiet) {
-						logger_.warn("unexpected sequence: #%c", s[i + 1]);
-					}
-					break;
 				}
-			} else if (!options_.quiet) {
-				logger_.warn("unexpected sequence: #");
 			}
 			break;
 		default:
@@ -1412,7 +1409,7 @@ void Parser::processLinks() {
 		}
 		if (!target) {
 			if (!options_.quiet) {
-				logger_.warn("target not found: %d", targetLine);
+				logger_.warn("link target not found: %d", targetLine);
 			}
 			// throw ParseError(line, column, "target not found: %d", targetLine);
 		}
@@ -1424,7 +1421,7 @@ void Parser::processVisibility() {
 		if (auto target = document_->find(targetLine)) {
 			if (!target->isElement()) {
 				if (!options_.quiet) {
-					logger_.warn("could not set visibility for non-element node");
+					logger_.warn("could not set visibility: non-element node");
 				}
 				continue;
 			}
@@ -1453,7 +1450,8 @@ void Parser::processVisibility() {
 				}
 			}
 		} else if (!options_.quiet) {
-			logger_.warn("no element found at line %d", targetLine);
+			logger_.warn(
+			    "could not set visibility: no element found at line %d", targetLine);
 		}
 	}
 }

@@ -49,14 +49,6 @@ const std::string Codec::decodeSpecialChars(const std::string& encoded) const {
 			continue;
 		}
 
-		if (encoded[i + 3] == '-') {
-			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: #a-");
-			}
-			segment += encoded[i];
-			continue;
-		}
-
 		const auto offset = i + 3;
 		auto pos = encoded.find("#a-", offset);
 
