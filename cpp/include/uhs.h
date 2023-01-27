@@ -226,11 +226,47 @@ class WriteError : public Error {
 	using Error::Error;
 };
 
+class Logger {
+public:
+	void error(const char* message) const { this->error("%s", message); }
+
+	void error(const Error& err) const { this->error("%s", err.string().c_str()); }
+
+	template<typename... Args>
+	void error(const char* format, Args... args) const {
+		this->log(std::cout, "error: ", format, args...);
+	}
+
+	void warn(const char* message) const { this->warn("%s", message); }
+
+	void warn(const Error& err) const { this->warn("%s", err.string().c_str()); }
+
+	template<typename... Args>
+	void warn(const char* format, Args... args) const {
+		this->log(std::cout, "warning: ", format, args...);
+	}
+
+private:
+	template<typename... Args>
+	void log(std::ostream& ostream, const char* prefix, const char* format,
+	    Args... args) const {
+
+		std::string buffer;
+		buffer += "uhs: ";
+		buffer += prefix;
+		buffer += format;
+		buffer += '\n';
+
+		tfm::format(ostream, buffer.c_str(), args...);
+	}
+};
+
 struct Options {
 	bool debug = false;
 	std::string mediaDir;
 	ModeType mode;
 	bool preserve = false;
+	bool quiet = false;
 };
 
 namespace Strings {
@@ -728,6 +764,7 @@ private:
 
 class Codec {
 public:
+	Codec(const Options options = {});
 	const std::string createKey(std::string secret) const;
 	const std::string decode88a(std::string encoded) const;
 	const std::string decode96a(
@@ -817,6 +854,9 @@ private:
 	    {U'ÿ', "y:"},
 	};
 
+	Logger logger_;
+	const Options options_;
+
 	AsciiToUnicodeMap toChars_ = {
 	    {"S^", "Š"},
 	    {"OE", "Œ"},
@@ -897,7 +937,7 @@ private:
 
 class Parser {
 public:
-	explicit Parser(const Options options = {});
+	explicit Parser(const Logger logger, const Options options = {});
 	std::shared_ptr<Document> parse(std::istream& in);
 	std::shared_ptr<Document> parseFile(const std::string& filename);
 	void reset();
@@ -966,6 +1006,7 @@ private:
 	bool isTitleSet_ = false;
 	std::string key_;
 	int lineOffset_ = 0;
+	Logger logger_;
 	const Options options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
@@ -1014,19 +1055,21 @@ private:
 
 class Writer {
 public:
-	Writer(std::ostream& out, const Options options = {});
+	Writer(const Logger logger, std::ostream& out, const Options options = {});
 	virtual ~Writer() = default;
 	virtual void write(const std::shared_ptr<Document> document) = 0;
 	virtual void reset();
 
 protected:
+	Codec codec_;
+	Logger logger_;
 	std::ostream& out_;
 	const Options options_;
 };
 
 class TreeWriter : public Writer {
 public:
-	TreeWriter(std::ostream& out, const Options options = {});
+	TreeWriter(const Logger logger, std::ostream& out, const Options options = {});
 	void write(const std::shared_ptr<Document> document) override;
 
 private:
@@ -1039,7 +1082,7 @@ private:
 
 class HTMLWriter : public Writer {
 public:
-	HTMLWriter(std::ostream& out, const Options options = {});
+	HTMLWriter(const Logger logger, std::ostream& out, const Options options = {});
 	void write(const std::shared_ptr<Document> document) override;
 
 private:
@@ -1104,7 +1147,7 @@ private:
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(std::ostream& out, const Options options = {});
+	JSONWriter(const Logger logger, std::ostream& out, const Options options = {});
 	void write(const std::shared_ptr<Document> document) override;
 
 private:
@@ -1122,7 +1165,7 @@ public:
 	// within the standard 80-character window (with border and padding).
 	static const std::size_t LineLength = 76;
 
-	UHSWriter(std::ostream& out, const Options options = {});
+	UHSWriter(const Logger logger, std::ostream& out, const Options options = {});
 	void write(const std::shared_ptr<Document> document) override;
 	void reset() override;
 

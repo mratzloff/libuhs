@@ -6,7 +6,9 @@
 
 namespace UHS {
 
-Parser::Parser(const Options options) : options_{options} {
+Parser::Parser(const Logger logger, const Options options)
+    : codec_{options}, logger_{logger}, options_{options} {
+
 	// TODO: Guard these by platform
 	setenv("TZ", "", 1);
 	tzset();
@@ -744,7 +746,10 @@ void Parser::parseIncentiveElement(Element& element) {
 
 		// Split instruction (e.g., "3Z")
 		if (instructionLength < 2) {
-			continue; // TODO: Warn
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: %s", instruction);
+			}
+			continue;
 		}
 
 		int id = 0;
@@ -754,7 +759,10 @@ void Parser::parseIncentiveElement(Element& element) {
 				throw Error();
 			}
 		} catch (const Error& err) {
-			continue; // TODO: Warn
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: %s", instruction);
+			}
+			continue;
 		}
 
 		auto flag = instruction.substr(instructionLength - 1, 1);
@@ -765,7 +773,9 @@ void Parser::parseIncentiveElement(Element& element) {
 		} else if (flag == Token::UnregisteredOnly) {
 			visibility = VisibilityType::UnregisteredOnly;
 		} else {
-			// TODO: Warn
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: %s", instruction);
+			}
 			continue;
 		}
 
@@ -1267,8 +1277,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 				case 'h':
 					switch (s[i + 2]) {
 					case '+':
-						if (hasFormat(format, TextFormat::Hyperlink)) {
-							// TODO: Warn: unexpected sequence
+						if (hasFormat(format, TextFormat::Hyperlink) && !options_.quiet) {
+							logger_.warn("unexpected sequence: #h+");
 						}
 
 						this->appendText(segment, format, node);
@@ -1276,8 +1286,10 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						i += 2;
 						break;
 					case '-':
-						if (!hasFormat(format, TextFormat::Hyperlink)) {
-							// TODO: Warn: unexpected sequence
+						if (!hasFormat(format, TextFormat::Hyperlink)
+						    && !options_.quiet) {
+
+							logger_.warn("unexpected sequence: #h-");
 						}
 
 						this->appendText(segment, format, node);
@@ -1285,15 +1297,17 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						i += 2;
 						break;
 					default:
-						// TODO: Warn: unexpected sequence
+						if (!options_.quiet) {
+							logger_.warn("unexpected sequence: #h%c", s[i + 2]);
+						}
 						break;
 					}
 					break;
 				case 'p':
 					switch (s[i + 2]) {
 					case '-':
-						if (hasFormat(format, TextFormat::Monospace)) {
-							// TODO: Warn: unexpected sequence
+						if (hasFormat(format, TextFormat::Monospace) && !options_.quiet) {
+							logger_.warn("unexpected sequence: #p-");
 						}
 
 						this->appendText(segment, format, node);
@@ -1301,8 +1315,10 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						i += 2;
 						break;
 					case '+':
-						if (!hasFormat(format, TextFormat::Monospace)) {
-							// TODO: Warn: unexpected sequence
+						if (!hasFormat(format, TextFormat::Monospace)
+						    && !options_.quiet) {
+
+							logger_.warn("unexpected sequence: #p+");
 						}
 
 						this->appendText(segment, format, node);
@@ -1310,7 +1326,10 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						i += 2;
 						break;
 					default:
-						break; // TODO: Warn
+						if (!options_.quiet) {
+							logger_.warn("unexpected sequence: #p%c", s[i + 2]);
+						}
+						break;
 					}
 					break;
 				case 'w':
@@ -1331,16 +1350,20 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 						i += 2;
 						break;
 					default:
-						// TODO: Warn
+						if (!options_.quiet) {
+							logger_.warn("unexpected sequence: #w%c", s[i + 2]);
+						}
 						break;
 					}
 					break;
 				default:
-					// TODO: Warn
+					if (!options_.quiet) {
+						logger_.warn("unexpected sequence: #%c", s[i + 1]);
+					}
 					break;
 				}
-			} else {
-				// TODO: Warn
+			} else if (!options_.quiet) {
+				logger_.warn("unexpected sequence: #");
 			}
 			break;
 		default:
@@ -1388,8 +1411,10 @@ void Parser::processLinks() {
 			}
 		}
 		if (!target) {
-			// TODO: Warn using line and column
-			throw ParseError(line, column, "target not found: %d", targetLine);
+			if (!options_.quiet) {
+				logger_.warn("target not found: %d", targetLine);
+			}
+			// throw ParseError(line, column, "target not found: %d", targetLine);
 		}
 	}
 }
@@ -1398,7 +1423,9 @@ void Parser::processVisibility() {
 	for (auto [targetLine, visibility] : deferredVisibilities_) {
 		if (auto target = document_->find(targetLine)) {
 			if (!target->isElement()) {
-				// TODO: Warn
+				if (!options_.quiet) {
+					logger_.warn("could not set visibility for non-element node");
+				}
 				continue;
 			}
 
@@ -1413,7 +1440,10 @@ void Parser::processVisibility() {
 				case VisibilityType::UnregisteredOnly: {
 					auto node = target->pointer();
 					if (!target->hasParent() || !node) {
-						throw Error("cannot remove orphaned node");
+						if (!options_.quiet) {
+							logger_.warn("could not remove orphaned node");
+						}
+						continue;
 					}
 					target->parent()->removeChild(node);
 					break;
@@ -1422,8 +1452,8 @@ void Parser::processVisibility() {
 					break; // No change
 				}
 			}
-		} else {
-			// TODO: Warn
+		} else if (!options_.quiet) {
+			logger_.warn("no element found at line %d", targetLine);
 		}
 	}
 }

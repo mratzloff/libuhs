@@ -3,6 +3,8 @@
 
 namespace UHS {
 
+Codec::Codec(const Options options) : options_{options} {}
+
 const std::string Codec::createKey(std::string secret) const {
 	return this->encode96a(secret, KeySeed, false);
 }
@@ -48,7 +50,9 @@ const std::string Codec::decodeSpecialChars(const std::string& encoded) const {
 		}
 
 		if (encoded[i + 3] == '-') {
-			// TODO: Warn: unexpected sequence
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: #a-");
+			}
 			segment += encoded[i];
 			continue;
 		}
@@ -57,7 +61,9 @@ const std::string Codec::decodeSpecialChars(const std::string& encoded) const {
 		auto pos = encoded.find("#a-", offset);
 
 		if (pos == std::string::npos) {
-			// TODO: Warn: unexpected sequence
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: expected #a-");
+			}
 			segment += encoded[i];
 			continue;
 		}
@@ -68,7 +74,9 @@ const std::string Codec::decodeSpecialChars(const std::string& encoded) const {
 		try {
 			segment += this->toChars_.at(value);
 		} catch (const std::out_of_range& err) {
-			// TODO: Warn: unexpected sequence
+			if (!options_.quiet) {
+				logger_.warn("unexpected sequence: %s", value);
+			}
 			segment += encoded[i];
 			break;
 		}

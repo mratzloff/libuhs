@@ -173,8 +173,7 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 		firstChild_ = node;
 	} else {
 		if (!ref->hasPreviousSibling()) {
-			// TODO: Warn about data inconsistency
-			return;
+			throw Error("expected previous sibling for node");
 		}
 
 		auto previous = ref->previousSibling();

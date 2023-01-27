@@ -8,10 +8,6 @@ enum Status {
 	OK = 0,
 };
 
-void printError(const std::string message) {
-	tfm::format(std::cerr, "uhs: error: %s\n", message);
-}
-
 void printHelp() {
 	auto help =
 	    "uhs %s\n"
@@ -35,6 +31,7 @@ void printHelp() {
 	    "                              ○  88a   1980s-era reader and writer\n\n"
 	    "  -o <file>, --output=<file>  Output file\n"
 	    "             --preserve       Preserve unregistered content restrictions\n"
+	    "  -q,        --quiet          Suppress errors and warnings\n"
 	    "  -v,        --version        Print the version\n";
 
 	tfm::printf(help, Version);
@@ -45,6 +42,7 @@ void printVersion() {
 }
 
 int main(const int argc, char* argv[]) {
+	Logger logger;
 	Options options;
 
 	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
@@ -69,11 +67,11 @@ int main(const int argc, char* argv[]) {
 	std::string format;
 
 	if (!(args({"-f", "--format"}, "uhs") >> format)) {
-		printError("--format (-f) is required");
+		logger.error("--format (-f) is required");
 		return Err;
 	};
 	if (format != "uhs" && format != "html" && format != "json" && format != "tree") {
-		printError("unknown option for --format: " + format);
+		logger.error("unknown option for --format: %s", format);
 		return Err;
 	}
 
@@ -84,8 +82,7 @@ int main(const int argc, char* argv[]) {
 	if (mediaDir.length() > 0) {
 		std::filesystem::path path{mediaDir};
 		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
-
-			printError("invalid media directory: " + mediaDir);
+			logger.error("invalid media directory: %s", mediaDir);
 			return Err;
 		}
 		options.mediaDir = mediaDir;
@@ -102,7 +99,7 @@ int main(const int argc, char* argv[]) {
 	} else if (mode == "96a") {
 		options.mode = ModeType::Version96a;
 	} else {
-		printError("unknown option for --mode: " + mode);
+		logger.error("unknown option for --mode: %s", mode);
 		return Err;
 	}
 
@@ -113,8 +110,7 @@ int main(const int argc, char* argv[]) {
 	if (outfile.length() > 0) {
 		std::filesystem::path path{outfile};
 		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
-
-			printError("invalid output file: " + outfile);
+			logger.error("invalid output file: %s", outfile);
 			return Err;
 		}
 	}
@@ -122,9 +118,12 @@ int main(const int argc, char* argv[]) {
 	// Preserve unregistered content restrictions
 	options.preserve = args[{"--preserve"}];
 
+	// Suppress errors and warnings
+	options.quiet = args[{"-q", "--quiet"}];
+
 	// Input file
 	if (argc < 2) {
-		printError("no input file specified");
+		logger.error("no input file specified");
 		return Err;
 	}
 
@@ -132,12 +131,12 @@ int main(const int argc, char* argv[]) {
 	std::filesystem::path infilePath{infile};
 
 	if (!std::filesystem::exists(infilePath)) {
-		printError("invalid file: " + infile);
+		logger.error("invalid file: %s", infile);
 		return Err;
 	}
 
 	try {
-		Parser p{options};
+		Parser p{logger, options};
 		const auto document = p.parseFile(infile);
 
 		std::ofstream fout;
@@ -147,32 +146,42 @@ int main(const int argc, char* argv[]) {
 		std::ostream& out = (outfile.empty()) ? std::cout : fout;
 
 		if (format == "uhs") {
-			UHSWriter w{out, options};
+			UHSWriter w{logger, out, options};
 			w.write(document);
 		} else if (format == "html") {
-			HTMLWriter w{out, options};
+			HTMLWriter w{logger, out, options};
 			w.write(document);
 		} else if (format == "json") {
-			JSONWriter w{out, options};
+			JSONWriter w{logger, out, options};
 			w.write(document);
 		} else if (format == "tree") {
-			TreeWriter w{out, options};
+			TreeWriter w{logger, out, options};
 			w.write(document);
 		}
 	} catch (const ReadError& err) {
-		printError(err.string());
+		if (!options.quiet) {
+			logger.error(err);
+		}
 		return Err;
 	} catch (const ParseError& err) {
-		printError(err.string());
+		if (!options.quiet) {
+			logger.error(err);
+		}
 		return Err;
 	} catch (const WriteError& err) {
-		printError(err.string());
+		if (!options.quiet) {
+			logger.error(err);
+		}
 		return Err;
 	} catch (const Error& err) {
-		printError(err.string());
+		if (!options.quiet) {
+			logger.error(err);
+		}
 		return Err;
 	} catch (const std::exception& err) {
-		std::cerr << "uhs: unexpected error: " << err.what() << std::endl;
+		if (!options.quiet) {
+			logger.error(err.what());
+		}
 		return Err;
 	}
 

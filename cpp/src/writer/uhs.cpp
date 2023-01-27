@@ -6,7 +6,8 @@ namespace UHS {
 
 UHSWriter::Serializer UHSWriter::serializer_;
 
-UHSWriter::UHSWriter(std::ostream& out, const Options options) : Writer(out, options) {}
+UHSWriter::UHSWriter(const Logger logger, std::ostream& out, const Options options)
+    : Writer(logger, out, options) {}
 
 void UHSWriter::write(const std::shared_ptr<Document> document) {
 	std::string buffer;
@@ -659,14 +660,15 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 void UHSWriter::updateLinkTargets(std::string& out) const {
 	// Because we're shifting characters, we move backwards through the file in
 	// order to reduce the total number of bytes copied within the output buffer.
-	// TODO: I don't think this is actually true
 	const auto end = deferredLinks_.crend();
 	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {
 		const auto target = *it;
 		assert(target);
 
 		if (!target->isElement()) {
-			// TODO: Warn
+			if (!options_.quiet) {
+				logger_.warn("link target is not an element");
+			}
 			continue;
 		}
 

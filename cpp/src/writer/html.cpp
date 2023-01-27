@@ -4,7 +4,9 @@ namespace UHS {
 
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
-HTMLWriter::HTMLWriter(std::ostream& out, const Options options) : Writer(out, options) {
+HTMLWriter::HTMLWriter(const Logger logger, std::ostream& out, const Options options)
+    : Writer(logger, out, options) {
+
 	css_ =
 #include "css.h"
 	    ;
