@@ -430,7 +430,6 @@ public:
 	static constexpr auto AsciiEncEnd = "#a-";
 	static constexpr auto CreditSep = "CREDITS:";
 	static const auto DataSep = '\x1A';
-	static const auto Escape = '#';
 	static constexpr auto HyperlinkBegin = "#h+";
 	static constexpr auto HyperlinkEnd = "#h-";
 	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";

@@ -1266,8 +1266,8 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 				}
 			}
 			break;
-		case Token::Escape:
-			if (i + 1 < length && s[i + 1] == Token::Escape) {
+		case '#':
+			if (i + 1 < length && s[i + 1] == '#') {
 				i += 1;
 				segment += '#';
 			} else if (i + 2 < length) {
@@ -1277,86 +1277,72 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 					break;
 				case 'h':
 					switch (s[i + 2]) {
-					case '+':
+					case '+': // Token::HyperlinkBegin
 						if (hasFormat(format, TextFormat::Hyperlink) && !options_.quiet) {
-							logger_.warn("unexpected formatting sequence: #h+");
+							logger_.warn("unexpected formatting sequence: %s",
+							    Token::HyperlinkBegin);
 						}
 
 						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
-					case '-':
+					case '-': // Token::HyperlinkEnd
 						if (!hasFormat(format, TextFormat::Hyperlink)
 						    && !options_.quiet) {
 
-							logger_.warn("unexpected formatting sequence: #h-");
+							logger_.warn("unexpected formatting sequence: %s",
+							    Token::HyperlinkEnd);
 						}
 
 						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Hyperlink);
 						i += 2;
 						break;
-					default:
-						if (!options_.quiet) {
-							logger_.warn(
-							    "unexpected formatting sequence: #h%c", s[i + 2]);
-						}
-						break;
 					}
 					break;
 				case 'p':
 					switch (s[i + 2]) {
-					case '-':
+					case '-': // Token::MonospaceBegin
 						if (hasFormat(format, TextFormat::Monospace) && !options_.quiet) {
-							logger_.warn("unexpected formatting sequence: #p-");
+							logger_.warn("unexpected formatting sequence: %s",
+							    Token::MonospaceBegin);
 						}
 
 						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Monospace);
 						i += 2;
 						break;
-					case '+':
+					case '+': // Token::MonospaceEnd
 						if (!hasFormat(format, TextFormat::Monospace)
 						    && !options_.quiet) {
 
-							logger_.warn("unexpected formatting sequence: #p+");
+							logger_.warn("unexpected formatting sequence: %s",
+							    Token::MonospaceEnd);
 						}
 
 						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Monospace);
 						i += 2;
 						break;
-					default:
-						if (!options_.quiet) {
-							logger_.warn(
-							    "unexpected formatting sequence: #p%c", s[i + 2]);
-						}
-						break;
 					}
 					break;
 				case 'w':
 					switch (s[i + 2]) {
-					case '-':
+					case '-': // Token::OverflowBegin
 						this->appendText(segment, format, node);
 						format = withFormat(format, TextFormat::Overflow);
 						i += 2;
 						break;
-					case '+':
+					case '+': // Token::OverflowEnd / Token::InlineBegin
 						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Overflow);
 						i += 2;
 						break;
-					case '.':
+					case '.': // Token::InlineEnd
 						this->appendText(segment, format, node);
 						format = withoutFormat(format, TextFormat::Overflow);
 						i += 2;
-						break;
-					default:
-						if (!options_.quiet) {
-							logger_.warn(
-							    "unexpected formatting sequence: #w%c", s[i + 2]);
-						}
 						break;
 					}
 					break;
