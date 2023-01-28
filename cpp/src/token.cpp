@@ -4,7 +4,7 @@ namespace UHS {
 
 Token::TypeMap Token::typeMap_;
 
-const std::string Token::typeString(TokenType type) {
+std::string const Token::typeString(TokenType type) {
 	return Token::typeMap_.findByType(type);
 }
 
@@ -12,7 +12,7 @@ Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_
     std::string value)
     : type_{tokenType}, line_{line}, column_{column}, offset_{offset}, value_{value} {}
 
-std::ostream& operator<<(std::ostream& out, const Token& t) {
+std::ostream& operator<<(std::ostream& out, Token const& t) {
 	out << t.string();
 	return out;
 }
@@ -33,15 +33,15 @@ std::size_t Token::offset() const {
 	return offset_;
 }
 
-const std::string& Token::value() const {
+std::string const& Token::value() const {
 	return value_;
 }
 
-const std::string Token::typeString() const {
+std::string const Token::typeString() const {
 	return Token::typeString(type_);
 }
 
-const std::string Token::string() const {
+std::string const Token::string() const {
 	auto buffer = "("s;
 	buffer += this->formatToken();
 
@@ -79,7 +79,7 @@ const std::string Token::string() const {
 	return buffer;
 }
 
-const std::string Token::formatToken() const {
+std::string const Token::formatToken() const {
 	auto buffer = typeString();
 	buffer += ' ';
 	buffer += std::to_string(line_);
@@ -91,11 +91,11 @@ const std::string Token::formatToken() const {
 	return buffer;
 }
 
-const std::string Token::formatIntValue() const {
+std::string const Token::formatIntValue() const {
 	return this->formatStringValue();
 }
 
-const std::string Token::formatStringValue() const {
+std::string const Token::formatStringValue() const {
 	auto buffer = " ["s;
 	buffer += value_;
 	buffer += ']';
@@ -103,7 +103,7 @@ const std::string Token::formatStringValue() const {
 	return buffer;
 }
 
-const std::string Token::formatByteValue() const {
+std::string const Token::formatByteValue() const {
 	auto buffer = " ["s;
 	buffer += Strings::hex(value_);
 	buffer += ']';
@@ -132,7 +132,7 @@ Token::TypeMap::TypeMap() {
 	map_.emplace(TokenType::TextFormat, "TextFormat");
 }
 
-const std::string Token::TypeMap::findByType(const TokenType type) const {
+std::string const Token::TypeMap::findByType(const TokenType type) const {
 	return map_.at(type);
 }
 

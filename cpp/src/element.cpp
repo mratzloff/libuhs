@@ -8,18 +8,18 @@ std::shared_ptr<Element> Element::create(ElementType type, int id) {
 	return std::make_shared<Element>(type, id);
 }
 
-ElementType Element::elementType(const std::string& typeString) {
+ElementType Element::elementType(std::string const& typeString) {
 	return Element::typeMap_.findByString(typeString);
 }
 
-const std::string Element::typeString(ElementType type) {
+std::string const Element::typeString(ElementType type) {
 	return Element::typeMap_.findByType(type);
 }
 
 Element::Element(ElementType type, int id)
     : ContainerNode(NodeType::Element), elementType_{type}, id_{id} {}
 
-Element::Element(const Element& other)
+Element::Element(Element const& other)
     : ContainerNode(other)
     , Traits::Attributes(other)
     , Traits::Body(other)
@@ -58,7 +58,7 @@ ElementType Element::elementType() const {
 	return elementType_;
 }
 
-const std::string Element::elementTypeString() const {
+std::string const Element::elementTypeString() const {
 	return Element::typeString(elementType_);
 }
 
@@ -72,7 +72,7 @@ bool Element::isMedia() const {
 	        || elementType_ == ElementType::Sound);
 }
 
-const std::string Element::mediaExt() const {
+std::string const Element::mediaExt() const {
 	switch (elementType_) {
 	case ElementType::Gifa:
 		return "gif";
@@ -88,7 +88,7 @@ const std::string Element::mediaExt() const {
 }
 
 Element::TypeMap::TypeMap() {
-	const std::vector<std::pair<const ElementType, const std::string>> list = {
+	std::vector<std::pair<ElementType const, std::string const>> const list = {
 	    std::make_pair(ElementType::Unknown, "unknown"),
 	    std::make_pair(ElementType::Blank, "blank"),
 	    std::make_pair(ElementType::Comment, "comment"),
@@ -107,20 +107,20 @@ Element::TypeMap::TypeMap() {
 	    std::make_pair(ElementType::Version, "version"),
 	};
 
-	for (const auto& pair : list) {
+	for (auto const& pair : list) {
 		byType_.emplace(pair);
 		byString_.emplace(std::make_pair(pair.second, pair.first));
 	}
 }
 
-const std::string Element::TypeMap::findByType(const ElementType type) const {
+std::string const Element::TypeMap::findByType(ElementType const type) const {
 	return byType_.at(type);
 }
 
-ElementType Element::TypeMap::findByString(const std::string& string) const {
+ElementType Element::TypeMap::findByString(std::string const& string) const {
 	try {
 		return byString_.at(string);
-	} catch (const std::out_of_range&) {
+	} catch (std::out_of_range const&) {
 		return ElementType::Unknown;
 	}
 }

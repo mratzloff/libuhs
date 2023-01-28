@@ -8,7 +8,7 @@ std::shared_ptr<Document> Document::create(VersionType version) {
 
 Document::Document(VersionType version) : Node(NodeType::Document), version_{version} {}
 
-Document::Document(const Document& other)
+Document::Document(Document const& other)
     : Node(other)
     , Traits::Attributes(other)
     , Traits::Title(other)
@@ -39,13 +39,13 @@ void swap(Document& lhs, Document& rhs) noexcept {
 	lhs.reindex();
 }
 
-Node* Document::find(const int id) {
+Node* Document::find(int const id) {
 	if (!indexed_) {
 		this->reindex();
 	}
 	try {
 		return index_.at(id);
-	} catch (const std::out_of_range& err) {
+	} catch (std::out_of_range const& err) {
 		return nullptr;
 	}
 }
@@ -69,7 +69,7 @@ bool Document::isVersion(VersionType v) const {
 	return version_ == v;
 }
 
-const std::string Document::versionString() const {
+std::string const Document::versionString() const {
 	switch (version_) {
 	case VersionType::Version88a:
 		return "88a";
@@ -93,13 +93,13 @@ bool Document::validChecksum() const {
 }
 
 void Document::elementRemoved(Element& element) {
-	if (const auto id = element.id(); id > 0) {
+	if (auto const id = element.id(); id > 0) {
 		index_.erase(id);
 	}
 }
 
 void Document::elementAdded(Element& element) {
-	if (const auto id = element.id(); id > 0) {
+	if (auto const id = element.id(); id > 0) {
 		index_[id] = &element;
 	}
 }

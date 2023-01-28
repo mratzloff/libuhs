@@ -4,7 +4,7 @@
 
 namespace UHS::Strings {
 
-bool beginsWithAttachedPunctuation(const std::string& s) {
+bool beginsWithAttachedPunctuation(std::string const& s) {
 	auto c = s.front();
 	return c == '\'' || c == '"' || c == ')' || c == ' ' || c == '?' || c == '!'
 	       || c == '.' || c == ',' || c == ';' || c == ':';
@@ -17,17 +17,17 @@ std::string& chomp(std::string& s, char c) {
 	return s;
 }
 
-bool endsWithAttachedPunctuation(const std::string& s) {
+bool endsWithAttachedPunctuation(std::string const& s) {
 	auto c = s.back();
 	return c == '\'' || c == '"' || c == '(' || c == ' ';
 }
 
-bool endsWithFinalPunctuation(const std::string& s) {
+bool endsWithFinalPunctuation(std::string const& s) {
 	auto c = s.back();
 	return c == '?' || c == '!' || c == '.';
 }
 
-const std::string hex(const std::string& s) {
+std::string const hex(std::string const& s) {
 	std::ostringstream out;
 
 	out << std::hex << std::setfill('0') << std::uppercase;
@@ -42,7 +42,7 @@ const std::string hex(const std::string& s) {
 	return out.str();
 }
 
-const std::string hex(char c) {
+std::string const hex(char c) {
 	std::ostringstream out;
 
 	out << std::hex << std::setfill('0') << std::uppercase;
@@ -50,7 +50,7 @@ const std::string hex(char c) {
 	return out.str();
 }
 
-bool isInt(const std::string& s) {
+bool isInt(std::string const& s) {
 	if (s.length() == 0) {
 		return false;
 	}
@@ -66,11 +66,11 @@ bool isPrintable(int c) {
 	return c >= AsciiStart && c <= AsciiEnd;
 }
 
-std::string join(const std::vector<std::string>& items, const std::string& sep) {
+std::string join(std::vector<std::string> const& items, std::string const& sep) {
 	std::string s;
 	auto i = 0;
 
-	for (const auto& item : items) {
+	for (auto const& item : items) {
 		if (i > 0) {
 			s += sep;
 		}
@@ -80,7 +80,7 @@ std::string join(const std::vector<std::string>& items, const std::string& sep) 
 	return s;
 }
 
-std::string ltrim(const std::string& s, char c) {
+std::string ltrim(std::string const& s, char c) {
 	auto pos = s.find_first_not_of(c);
 	if (pos != std::string::npos) {
 		return s.substr(pos);
@@ -88,7 +88,7 @@ std::string ltrim(const std::string& s, char c) {
 	return s;
 }
 
-std::string rtrim(const std::string& s, char c) {
+std::string rtrim(std::string const& s, char c) {
 	auto pos = s.find_last_not_of(c);
 	if (pos != std::string::npos) {
 		return s.substr(0, pos + 1);
@@ -96,7 +96,7 @@ std::string rtrim(const std::string& s, char c) {
 	return s;
 }
 
-std::vector<std::string> split(const std::string& s, const std::string& sep, int n) {
+std::vector<std::string> split(std::string const& s, std::string const& sep, int n) {
 	std::vector<std::string> items;
 	std::size_t from = 0;
 	std::size_t to;
@@ -122,7 +122,7 @@ std::vector<std::string> split(const std::string& s, const std::string& sep, int
 	return items;
 }
 
-std::string toBase64(const std::string& s) {
+std::string toBase64(std::string const& s) {
 	static const std::string charset =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -148,7 +148,7 @@ std::string toBase64(const std::string& s) {
 	return out.str();
 }
 
-int toInt(const std::string& s) {
+int toInt(std::string const& s) {
 	int intVal = 0;
 	std::string::size_type idx;
 	try {
@@ -156,19 +156,19 @@ int toInt(const std::string& s) {
 		if (idx != s.length()) {
 			throw std::invalid_argument("");
 		}
-	} catch (const std::invalid_argument& e) {
+	} catch (std::invalid_argument const& e) {
 		std::throw_with_nested(Error("invalid integer: %s", s));
 	}
 	return intVal;
 }
 
-std::string wrap(const std::string& s, const std::string& sep, std::size_t width) {
+std::string wrap(std::string const& s, std::string const& sep, std::size_t width) {
 	auto numLines = 0;
 	return wrap(s, sep, width, numLines);
 }
 
-std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
-    int& numLines, const std::string prefix) {
+std::string wrap(std::string const& s, std::string const& sep, std::size_t width,
+    int& numLines, std::string const prefix) {
 
 	std::string lines;
 	std::size_t cutpoint = 0;

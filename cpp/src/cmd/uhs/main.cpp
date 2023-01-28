@@ -41,7 +41,7 @@ void printVersion() {
 	std::cout << Version << std::endl;
 }
 
-int main(const int argc, char* argv[]) {
+int main(int const argc, char* argv[]) {
 	Logger logger;
 	Options options;
 
@@ -137,7 +137,7 @@ int main(const int argc, char* argv[]) {
 
 	try {
 		Parser p{logger, options};
-		const auto document = p.parseFile(infile);
+		auto const document = p.parseFile(infile);
 
 		std::ofstream fout;
 		if (!outfile.empty()) {
@@ -158,27 +158,27 @@ int main(const int argc, char* argv[]) {
 			TreeWriter w{logger, out, options};
 			w.write(document);
 		}
-	} catch (const ReadError& err) {
+	} catch (ReadError const& err) {
 		if (!options.quiet) {
 			logger.error(err);
 		}
 		return Err;
-	} catch (const ParseError& err) {
+	} catch (ParseError const& err) {
 		if (!options.quiet) {
 			logger.error(err);
 		}
 		return Err;
-	} catch (const WriteError& err) {
+	} catch (WriteError const& err) {
 		if (!options.quiet) {
 			logger.error(err);
 		}
 		return Err;
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		if (!options.quiet) {
 			logger.error(err);
 		}
 		return Err;
-	} catch (const std::exception& err) {
+	} catch (std::exception const& err) {
 		if (!options.quiet) {
 			logger.error(err.what());
 		}

@@ -4,43 +4,43 @@ namespace UHS::Traits {
 
 //-------------------------------- Attributes -------------------------------//
 
-const Attributes::Type& Attributes::attrs() const {
+Attributes::Type const& Attributes::attrs() const {
 	return attrs_;
 }
 
-std::optional<const std::string> Attributes::attr(const std::string key) const {
+std::optional<std::string const> Attributes::attr(std::string const key) const {
 	std::string s;
 	try {
 		s = attrs_.at(key);
-	} catch (const std::out_of_range&) {
+	} catch (std::out_of_range const&) {
 		return std::nullopt;
 	}
 	return s;
 }
 
-void Attributes::attr(const std::string key, const std::string value) {
+void Attributes::attr(std::string const key, std::string const value) {
 	attrs_[key] = value;
 }
 
-void Attributes::attr(const std::string key, const int value) {
+void Attributes::attr(std::string const key, int const value) {
 	this->attr(key, std::to_string(value));
 }
 
 //---------------------------------- Body -----------------------------------//
 
-Body::Body(const std::string body) : body_{body} {}
+Body::Body(std::string const body) : body_{body} {}
 
-Body::Body(const int body) : Body(std::to_string(body)) {}
+Body::Body(int const body) : Body(std::to_string(body)) {}
 
-const std::string& Body::body() const {
+std::string const& Body::body() const {
 	return body_;
 }
 
-void Body::body(const std::string body) {
+void Body::body(std::string const body) {
 	body_ = body;
 }
 
-void Body::body(const int body) {
+void Body::body(int const body) {
 	this->body(std::to_string(body));
 }
 
@@ -58,9 +58,9 @@ void Inlined::inlined(bool inlined) {
 
 //---------------------------------- Title ----------------------------------//
 
-Title::Title(const std::string title) : title_{title} {}
+Title::Title(std::string const title) : title_{title} {}
 
-const std::string& Title::title() const {
+std::string const& Title::title() const {
 	return title_;
 }
 
@@ -78,7 +78,7 @@ void Visibility::visibility(VisibilityType visibility) {
 	visibility_ = visibility;
 }
 
-const std::string Visibility::visibilityString() const {
+std::string const Visibility::visibilityString() const {
 	switch (visibility_) {
 	case VisibilityType::All:
 		return "all";

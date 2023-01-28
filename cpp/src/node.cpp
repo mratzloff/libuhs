@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-const std::string Node::typeString(NodeType type) {
+std::string const Node::typeString(NodeType type) {
 	switch (type) {
 	case NodeType::Break:
 		return "break";
@@ -19,9 +19,9 @@ const std::string Node::typeString(NodeType type) {
 	}
 }
 
-bool Node::isElementOfType(const Node& node, ElementType type) {
+bool Node::isElementOfType(Node const& node, ElementType type) {
 	if (node.isElement()) {
-		const auto& element = static_cast<const Element&>(node);
+		auto const& element = static_cast<Element const&>(node);
 		return (element.elementType() == type);
 	}
 	return false;
@@ -29,7 +29,7 @@ bool Node::isElementOfType(const Node& node, ElementType type) {
 
 Node::Node(NodeType type) : nodeType_{type} {}
 
-Node::Node(const Node& other)
+Node::Node(Node const& other)
     : nodeType_{other.nodeType_}
     , parent_{other.parent_}
     , previousSibling_{other.previousSibling_}
@@ -60,7 +60,7 @@ NodeType Node::nodeType() const {
 	return nodeType_;
 }
 
-const std::string Node::nodeTypeString() const {
+std::string const Node::nodeTypeString() const {
 	return Node::typeString(nodeType_);
 }
 
@@ -271,7 +271,7 @@ Document* Node::findDocument() const {
 	return nullptr; // Orphaned element
 }
 
-void Node::cloneChildren(const Node& other) {
+void Node::cloneChildren(Node const& other) {
 	for (auto node = other.firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Break:
@@ -298,7 +298,7 @@ void Node::didRemove() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		const auto element = static_cast<Element*>(this);
+		auto const element = static_cast<Element*>(this);
 		document->elementRemoved(*element);
 	}
 }
@@ -308,7 +308,7 @@ void Node::didAdd() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		const auto element = static_cast<Element*>(this);
+		auto const element = static_cast<Element*>(this);
 		document->elementAdded(*element);
 	}
 }
@@ -317,7 +317,7 @@ void Node::didAdd() {
 
 ContainerNode::ContainerNode(NodeType type) : Node(type) {}
 
-ContainerNode::ContainerNode(const ContainerNode& other)
+ContainerNode::ContainerNode(ContainerNode const& other)
     : Node(other), line_{other.line_}, length_{other.length_} {}
 
 ContainerNode& ContainerNode::operator=(ContainerNode other) {
@@ -337,7 +337,7 @@ int ContainerNode::line() const {
 	return line_;
 }
 
-void ContainerNode::line(const int line) {
+void ContainerNode::line(int const line) {
 	line_ = line;
 }
 
@@ -346,7 +346,7 @@ int ContainerNode::length() const {
 	return length_;
 }
 
-void ContainerNode::length(const int length) {
+void ContainerNode::length(int const length) {
 	length_ = length;
 }
 
@@ -403,17 +403,17 @@ NodeIterator<T> NodeIterator<T>::operator++(int) {
 }
 
 template<typename T>
-bool NodeIterator<T>::operator==(const NodeIterator<T>& rhs) const {
+bool NodeIterator<T>::operator==(NodeIterator<T> const& rhs) const {
 	return current_ == rhs.current_;
 }
 
 template<typename T>
-bool NodeIterator<T>::operator!=(const NodeIterator<T>& rhs) const {
+bool NodeIterator<T>::operator!=(NodeIterator<T> const& rhs) const {
 	return !(*this == rhs);
 }
 
 template class NodeIterator<Node>;
-template class NodeIterator<const Node>;
+template class NodeIterator<Node const>;
 
 //------------------------------- BreakNode --------------------------------//
 
@@ -423,7 +423,7 @@ std::shared_ptr<BreakNode> BreakNode::create() {
 
 BreakNode::BreakNode() : Node(NodeType::Break) {}
 
-BreakNode::BreakNode(const BreakNode& other) : Node(other) {}
+BreakNode::BreakNode(BreakNode const& other) : Node(other) {}
 
 BreakNode& BreakNode::operator=(BreakNode other) {
 	std::swap(*this, other);
@@ -445,7 +445,7 @@ GroupNode::GroupNode(int line, int length) : ContainerNode(NodeType::Group) {
 	length_ = length;
 }
 
-GroupNode::GroupNode(const GroupNode& other) : ContainerNode(other) {}
+GroupNode::GroupNode(GroupNode const& other) : ContainerNode(other) {}
 
 GroupNode& GroupNode::operator=(GroupNode other) {
 	swap(*this, other);
@@ -478,7 +478,7 @@ TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
 TextNode::TextNode(const std::string body, TextFormat format)
     : Node(NodeType::Text), Body(body), format_{format} {}
 
-TextNode::TextNode(const TextNode& other)
+TextNode::TextNode(TextNode const& other)
     : Node(other), Traits::Body(other), format_{other.format_} {}
 
 TextNode& TextNode::operator=(TextNode other) {
@@ -501,7 +501,7 @@ std::shared_ptr<TextNode> TextNode::clone() const {
 	return textNode;
 }
 
-const std::string& TextNode::string() const {
+std::string const& TextNode::string() const {
 	return this->body();
 }
 

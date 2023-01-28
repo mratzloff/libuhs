@@ -16,12 +16,12 @@ CRC::CRC() {
 
 void CRC::upstream(Pipe& pipe) {
 	pipe_ = &pipe;
-	pipe.addHandler([=](const char* buffer, std::streamsize length) {
+	pipe.addHandler([=](char const* buffer, std::streamsize length) {
 		this->calculate(buffer, length, true);
 	});
 }
 
-void CRC::calculate(const char* buffer, std::streamsize length) {
+void CRC::calculate(char const* buffer, std::streamsize length) {
 	for (auto i = 0; i < length; ++i) {
 		auto byte = this->reflectByte(buffer[i] & 0xFF);
 		remainder_ = (remainder_ ^ (byte << 8)) & CastMask;
@@ -31,7 +31,7 @@ void CRC::calculate(const char* buffer, std::streamsize length) {
 	}
 }
 
-void CRC::calculate(const char* buffer, std::streamsize length, bool) {
+void CRC::calculate(char const* buffer, std::streamsize length, bool) {
 	switch (length) {
 	case 0:
 		return;

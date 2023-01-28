@@ -6,7 +6,7 @@
 
 namespace UHS {
 
-Parser::Parser(const Logger logger, const Options options)
+Parser::Parser(Logger const logger, Options const options)
     : codec_{options}, logger_{logger}, options_{options} {
 
 	// TODO: Guard these by platform
@@ -46,13 +46,13 @@ std::shared_ptr<Document> Parser::parse(std::istream& in) {
 
 		thread.join();
 		return std::move(document_);
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		thread.join();
 		throw;
 	}
 }
 
-std::shared_ptr<Document> Parser::parseFile(const std::string& infile) {
+std::shared_ptr<Document> Parser::parseFile(std::string const& infile) {
 	std::filesystem::path infilePath{infile};
 
 	if (!std::filesystem::exists(infilePath)) {
@@ -60,7 +60,7 @@ std::shared_ptr<Document> Parser::parseFile(const std::string& infile) {
 	}
 
 	std::shared_ptr<Document> document;
-	const auto size = std::filesystem::file_size(infilePath);
+	auto const size = std::filesystem::file_size(infilePath);
 	std::ifstream in{infile, std::ios::in | std::ios::binary};
 
 	if (size < 1'000'000) { // 1 MB
@@ -106,7 +106,7 @@ void Parser::parse88a() {
 		if (firstHintTextLine < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(
 		    token->line(), token->column(), ParseError::Uint, token->value());
 	}
@@ -120,7 +120,7 @@ void Parser::parse88a() {
 		if (lastHintTextLine < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(
 		    token->line(), token->column(), ParseError::Uint, token->value());
 	}
@@ -178,7 +178,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			if (firstChildLine < 0) {
 				throw Error();
 			}
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(
 			    token->line(), token->column(), ParseError::Uint, token->value());
 		}
@@ -264,7 +264,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 	} while (line < lastHintTextLine);
 }
 
-void Parser::parse88aCredits(std::unique_ptr<const Token> token) {
+void Parser::parse88aCredits(std::unique_ptr<Token const> token) {
 	std::string body;
 	auto continuation = false;
 
@@ -299,7 +299,7 @@ void Parser::parse88aCredits(std::unique_ptr<const Token> token) {
 	}
 }
 
-void Parser::parseHeaderSep(std::unique_ptr<const Token> token) {
+void Parser::parseHeaderSep(std::unique_ptr<Token const> token) {
 	if (options_.mode == ModeType::Version88a) {
 		done_ = true;
 		return;
@@ -342,7 +342,7 @@ done:
 }
 
 // Elements are automatically appended to their parents
-std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token) {
+std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<Token const> token) {
 	// Length
 	int length = 0;
 	try {
@@ -350,14 +350,14 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token
 		if (length < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(
 		    token->line(), token->column(), ParseError::Uint, token->value());
 	}
 
 	// Ident
 	token = this->expect(TokenType::Ident);
-	const auto& ident = token->value();
+	auto const& ident = token->value();
 
 	// Create element
 	auto elementType = Element::elementType(ident);
@@ -370,7 +370,7 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<const Token> token
 		auto parent = this->findParent(*element);
 		this->addNodeToParentIndex(*element);
 		parent->appendChild(element);
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		std::throw_with_nested(ParseError(token->line(),
 		    token->column(),
 		    "orphaned element: %s",
@@ -484,7 +484,7 @@ void Parser::parseDataElement(Element& element) {
 				if (intOffset < 0) {
 					throw Error();
 				}
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				throw ParseError::badValue(
 				    line, column, ParseError::Uint, token->value());
 			}
@@ -507,7 +507,7 @@ expectDataLength:
 		if (intLength < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t length = intLength;
@@ -572,7 +572,7 @@ void Parser::parseHintElement(Element& element) {
 				}
 				try {
 					this->parseWithFormat(body, format, *group, element.elementType());
-				} catch (const Error& err) {
+				} catch (Error const& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
 				body.clear();
@@ -603,7 +603,7 @@ void Parser::parseHintElement(Element& element) {
 				}
 				try {
 					this->parseWithFormat(body, format, *group, element.elementType());
-				} catch (const Error& err) {
+				} catch (Error const& err) {
 					std::throw_with_nested(ParseError(line, column, message));
 				}
 				body.clear();
@@ -613,7 +613,7 @@ void Parser::parseHintElement(Element& element) {
 			token = this->expect(TokenType::Length);
 
 			// Child element
-			const auto child = this->parseElement(std::move(token));
+			auto const child = this->parseElement(std::move(token));
 			i += child->length();
 
 			if (inlined) {
@@ -622,7 +622,7 @@ void Parser::parseHintElement(Element& element) {
 
 			// Add a trailing space to the previous child's text if necessary
 			if (inlined && child->hasPreviousSibling()) {
-				const auto previous = child->previousSibling();
+				auto const previous = child->previousSibling();
 				if (previous->isText()) {
 					auto previousTextNode = static_cast<TextNode*>(previous);
 					if (!Strings::endsWithAttachedPunctuation(previousTextNode->body())) {
@@ -641,7 +641,7 @@ void Parser::parseHintElement(Element& element) {
 	if (!body.empty()) {
 		try {
 			this->parseWithFormat(body, format, *group, element.elementType());
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			std::throw_with_nested(ParseError(line, column, message));
 		}
 	}
@@ -660,7 +660,7 @@ void Parser::parseHyperpngElement(Element& element) {
 		auto x1 = token->value();
 		try {
 			Strings::toInt(x1);
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(
 			    token->line(), token->column(), ParseError::Int, x1);
 		}
@@ -670,7 +670,7 @@ void Parser::parseHyperpngElement(Element& element) {
 		auto y1 = token->value();
 		try {
 			Strings::toInt(y1);
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(
 			    token->line(), token->column(), ParseError::Int, y1);
 		}
@@ -680,7 +680,7 @@ void Parser::parseHyperpngElement(Element& element) {
 		auto x2 = token->value();
 		try {
 			Strings::toInt(x2);
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(
 			    token->line(), token->column(), ParseError::Int, x2);
 		}
@@ -690,14 +690,14 @@ void Parser::parseHyperpngElement(Element& element) {
 		auto y2 = token->value();
 		try {
 			Strings::toInt(y2);
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(
 			    token->line(), token->column(), ParseError::Int, y2);
 		}
 
 		// Child element (overlay or link)
 		token = this->expect(TokenType::Length);
-		const auto child = this->parseElement(std::move(token));
+		auto const child = this->parseElement(std::move(token));
 		childLength = child->length();
 
 		// Backfill coordinates
@@ -742,7 +742,7 @@ void Parser::parseIncentiveElement(Element& element) {
 	auto instructions = Strings::split(body, " ");
 	auto message = "invalid visibility instruction: %s";
 
-	for (const auto& instruction : instructions) {
+	for (auto const& instruction : instructions) {
 		auto instructionLength = instruction.length();
 
 		// Split instruction (e.g., "3Z")
@@ -759,7 +759,7 @@ void Parser::parseIncentiveElement(Element& element) {
 			if (id < 0) {
 				throw Error();
 			}
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			if (!options_.quiet) {
 				logger_.warn(message, instruction);
 			}
@@ -823,7 +823,7 @@ void Parser::parseInfoElement(Element& element) {
 				if (fileLength < 0) {
 					throw Error();
 				}
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				throw ParseError::badValue(
 				    token->line(), token->column(), ParseError::Uint, value);
 			}
@@ -831,14 +831,14 @@ void Parser::parseInfoElement(Element& element) {
 		} else if (key == "date") {
 			try {
 				this->parseDate(value, tm);
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				std::throw_with_nested(ParseError::badValue(
 				    token->line(), token->column(), ParseError::Date, value));
 			}
 		} else if (key == "time") {
 			try {
 				this->parseTime(value, tm);
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				std::throw_with_nested(ParseError::badValue(
 				    token->line(), token->column(), ParseError::Time, value));
 			}
@@ -870,7 +870,7 @@ void Parser::parseOverlayElement(Element& element) {
 	auto x = token->value();
 	try {
 		Strings::toInt(x);
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, x);
 	}
 	element.attr("image-x", x);
@@ -880,14 +880,14 @@ void Parser::parseOverlayElement(Element& element) {
 	auto y = token->value();
 	try {
 		Strings::toInt(y);
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(token->line(), token->column(), ParseError::Int, y);
 	}
 	element.attr("image-y", y);
 }
 
 void Parser::parseSubjectElement(Element& element) {
-	std::unique_ptr<const Token> token;
+	std::unique_ptr<Token const> token;
 
 	if (!isTitleSet_) {
 		document_->title(codec_.decodeSpecialChars(element.title()));
@@ -895,7 +895,7 @@ void Parser::parseSubjectElement(Element& element) {
 		isTitleSet_ = true;
 	}
 
-	const auto length = element.length();
+	auto const length = element.length();
 	auto childLength = 0;
 
 	for (auto i = 3; i <= length; i += childLength) {
@@ -903,7 +903,7 @@ void Parser::parseSubjectElement(Element& element) {
 		auto token = this->expect(TokenType::Length);
 
 		// Child element
-		const auto child = this->parseElement(std::move(token));
+		auto const child = this->parseElement(std::move(token));
 		childLength = child->length();
 	}
 }
@@ -920,7 +920,7 @@ void Parser::parseTextElement(Element& element) {
 		if (formatByte < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	if (formatByte > 3) {
@@ -929,7 +929,7 @@ void Parser::parseTextElement(Element& element) {
 		    "text format byte must be between 0 and 3; found %d",
 		    formatByte);
 	}
-	const auto format = static_cast<TextFormat>(formatByte);
+	auto const format = static_cast<TextFormat>(formatByte);
 	element.attr("format", (int) format);
 
 	// Offset
@@ -940,7 +940,7 @@ void Parser::parseTextElement(Element& element) {
 		if (intOffset < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t offset = intOffset;
@@ -953,7 +953,7 @@ void Parser::parseTextElement(Element& element) {
 		if (intLength < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
 	}
 	std::size_t length = intLength;
@@ -996,7 +996,7 @@ void Parser::parseVersionElement(Element& element) {
 	}
 }
 
-std::unique_ptr<const Token> Parser::next() {
+std::unique_ptr<Token const> Parser::next() {
 	auto token = tokenizer_->next();
 
 	if (options_.debug) {
@@ -1005,7 +1005,7 @@ std::unique_ptr<const Token> Parser::next() {
 	return token;
 }
 
-std::unique_ptr<const Token> Parser::expect(TokenType expected) {
+std::unique_ptr<Token const> Parser::expect(TokenType expected) {
 	auto token = this->next();
 	auto tokenType = token->type();
 
@@ -1068,7 +1068,7 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 			}
 		} else if (previous->isElement()) {
 			// Prepend space to text if it follows an inline element
-			const auto previousElement = static_cast<Element*>(previous);
+			auto const previousElement = static_cast<Element*>(previous);
 
 			if (previousElement->inlined()
 			    && !Strings::beginsWithAttachedPunctuation(text)) {
@@ -1118,17 +1118,17 @@ int Parser::offsetLine(int line) {
 	return line - lineOffset_;
 }
 
-void Parser::parseData(std::unique_ptr<const Token> token) {
+void Parser::parseData(std::unique_ptr<Token const> token) {
 	std::size_t offset;
 
-	for (const auto& handler : dataHandlers_) {
+	for (auto const& handler : dataHandlers_) {
 		offset = handler.offset - token->offset();
 		handler.func(token->value().substr(offset, handler.length));
 	}
 }
 
 // Format: DD-Mon-YY
-void Parser::parseDate(const std::string& date, std::tm& tm) const {
+void Parser::parseDate(std::string const& date, std::tm& tm) const {
 	auto parts = Strings::split(date, "-", 3);
 
 	int year = 0;
@@ -1137,7 +1137,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 		if (year < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw Error("invalid year: %d", year);
 	}
 	if (year < 95) { // Info elements were introduced in 1995
@@ -1179,7 +1179,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 		if (day < 1 || day > 31) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw Error("invalid day: %d", day);
 	}
 
@@ -1189,7 +1189,7 @@ void Parser::parseDate(const std::string& date, std::tm& tm) const {
 }
 
 // Format: HH:MM:SS
-void Parser::parseTime(const std::string& time, std::tm& tm) const {
+void Parser::parseTime(std::string const& time, std::tm& tm) const {
 	auto parts = Strings::split(time, ":", 3);
 
 	int hour = 0;
@@ -1198,7 +1198,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 		if (hour < 0 || hour > 23) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw Error("invalid hour: %d", hour);
 	}
 
@@ -1208,7 +1208,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 		if (min < 0 || min > 59) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw Error("invalid minute: %d", min);
 	}
 
@@ -1218,7 +1218,7 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 		if (sec < 0 || sec > 59) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw Error("invalid second: %d", sec);
 	}
 
@@ -1227,10 +1227,10 @@ void Parser::parseTime(const std::string& time, std::tm& tm) const {
 	tm.tm_sec = sec;
 }
 
-void Parser::parseWithFormat(const std::string& text, TextFormat& format,
+void Parser::parseWithFormat(std::string const& text, TextFormat& format,
     ContainerNode& node, ElementType elementType) {
 
-	const auto s = codec_.decodeSpecialChars(text);
+	auto const s = codec_.decodeSpecialChars(text);
 	auto length = s.length();
 	std::string segment;
 
@@ -1358,15 +1358,15 @@ void Parser::parseWithFormat(const std::string& text, TextFormat& format,
 }
 
 void Parser::processLinks() {
-	for (const auto& [link, line, column] : deferredLinks_) {
-		const auto& body = link.body();
+	for (auto const& [link, line, column] : deferredLinks_) {
+		auto const& body = link.body();
 		int targetLine = 0;
 		try {
 			targetLine = Strings::toInt(body);
 			if (targetLine < 0) {
 				throw Error();
 			}
-		} catch (const Error& err) {
+		} catch (Error const& err) {
 			throw ParseError::badValue(line, column, ParseError::Uint, body);
 		}
 
@@ -1382,8 +1382,8 @@ void Parser::processLinks() {
 			// is to modify the link body. However, we leave a trail for debugging
 			// purposes.
 			if (target = document_->find(targetLine + 1); target) {
-				if (const auto parent = target->parent()) {
-					const auto parentElement = static_cast<Element*>(parent);
+				if (auto const parent = target->parent()) {
+					auto const parentElement = static_cast<Element*>(parent);
 					if (parentElement->elementType() == ElementType::Hyperpng) {
 						link.body(targetLine + 1);
 						link.attr("unmodified-target", targetLine);
@@ -1442,13 +1442,13 @@ void Parser::processVisibility() {
 	}
 }
 
-Parser::NodeRange::NodeRange(Node& node, const int min, const int max)
+Parser::NodeRange::NodeRange(Node& node, int const min, int const max)
     : node{node}, min{min}, max{max} {}
 
-Node* Parser::NodeRangeList::find(const int min, const int max) {
+Node* Parser::NodeRangeList::find(int const min, int const max) {
 	Node* node = nullptr;
 
-	for (const auto& each : data) {
+	for (auto const& each : data) {
 		if (min > each.min) {
 			if (max <= each.max) {
 				node = &each.node;
@@ -1460,7 +1460,7 @@ Node* Parser::NodeRangeList::find(const int min, const int max) {
 	return node;
 }
 
-void Parser::NodeRangeList::add(Node& node, const int min, const int max) {
+void Parser::NodeRangeList::add(Node& node, int const min, int const max) {
 	data.emplace_back(node, min, max);
 }
 
@@ -1472,7 +1472,7 @@ Parser::DataHandler::DataHandler(
     int line, int column, std::size_t offset, std::size_t length, DataCallback func)
     : line{line}, column{column}, offset{offset}, length{length}, func{func} {}
 
-Parser::LinkData::LinkData(Element& link, const int line, const int column)
+Parser::LinkData::LinkData(Element& link, int const line, int const column)
     : link{link}, line{line}, column{column} {}
 
 Parser::VisibilityData::VisibilityData(int targetLine, VisibilityType visibility)

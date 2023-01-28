@@ -3,7 +3,7 @@
 namespace UHS {
 
 Pipe::Pipe(std::istream& in) : in_{in} {
-	if (const auto infile = dynamic_cast<std::ifstream*>(&in)) {
+	if (auto const infile = dynamic_cast<std::ifstream*>(&in)) {
 		if (!infile->is_open()) {
 			throw ReadError("could not open input file");
 		}
@@ -24,22 +24,22 @@ void Pipe::read() {
 		char buffer[ReadLength] = {0};
 
 		while (in_.read(buffer, length)) {
-			for (const auto& func : handlers_) {
+			for (auto const& func : handlers_) {
 				func(buffer, length);
 			}
 			offset_ += length;
 		}
 		length = in_.gcount();
 
-		for (const auto& func : handlers_) {
+		for (auto const& func : handlers_) {
 			func(buffer, length);
 		}
 		offset_ += length;
 
-		if (const auto infile = dynamic_cast<std::ifstream*>(&in_)) {
+		if (auto const infile = dynamic_cast<std::ifstream*>(&in_)) {
 			infile->close();
 		}
-	} catch (const std::exception& err) {
+	} catch (std::exception const& err) {
 		err_ = std::current_exception();
 	}
 }

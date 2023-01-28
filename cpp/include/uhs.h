@@ -113,7 +113,7 @@ enum class VisibilityType {
 };
 
 static constexpr auto EOL = "\r\n";
-static const auto MaxDepth = 24;
+static auto const MaxDepth = 24;
 static constexpr auto Version = UHS_VERSION;
 
 inline constexpr TextFormat operator&(TextFormat lhs, TextFormat rhs) {
@@ -148,36 +148,36 @@ inline constexpr TextFormat operator^=(TextFormat& lhs, TextFormat rhs) {
 }
 
 inline constexpr TextFormat withFormat(
-    const TextFormat format, const TextFormat formatToAdd) {
+    TextFormat const format, TextFormat const formatToAdd) {
 	return format | formatToAdd;
 }
 
 inline constexpr TextFormat withoutFormat(
-    const TextFormat format, const TextFormat formatToRemove) {
+    TextFormat const format, TextFormat const formatToRemove) {
 	return format & ~formatToRemove;
 }
 
-inline constexpr bool hasFormat(const TextFormat haystack, const TextFormat needle) {
+inline constexpr bool hasFormat(TextFormat const haystack, TextFormat const needle) {
 	return (haystack & needle) == needle;
 }
 
 class Error : public std::runtime_error {
 public:
 	Error();
-	Error(const std::string& message);
-	Error(const char* message);
+	Error(std::string const& message);
+	Error(char const* message);
 
 	template<typename... Args>
-	Error(const char* format, Args... args) : Error() {
+	Error(char const* format, Args... args) : Error() {
 		auto message = tfm::format(format, args...);
 		// TODO: Review for slice
 		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
 	}
 
-	const std::string string() const;
+	std::string const string() const;
 };
 
-std::ostream& operator<<(std::ostream& out, const Error& err);
+std::ostream& operator<<(std::ostream& out, Error const& err);
 
 class LogicError : public Error {
 	using Error::Error;
@@ -205,18 +205,18 @@ public:
 	static ParseError badToken(int line, int column, TokenType type);
 	static ParseError badToken(int line, int column, TokenType expected, TokenType found);
 
-	ParseError(int line, int column, const std::string& message);
-	ParseError(int line, int column, const char* message);
+	ParseError(int line, int column, std::string const& message);
+	ParseError(int line, int column, char const* message);
 
 	template<typename... Args>
-	ParseError(int line, int column, const char* format, Args... args) : Error() {
+	ParseError(int line, int column, char const* format, Args... args) : Error() {
 		// TODO: Review for slice
 		static_cast<Error&>(*this) = Error(this->format(format, line, column, args...));
 	}
 
 private:
 	template<typename... Args>
-	const std::string format(const char* format, int line, int column, Args... args) {
+	std::string const format(char const* format, int line, int column, Args... args) {
 		auto fmt = "parse error at line %d, column %d: "s + format;
 		return tfm::format(fmt.data(), line, column, args...);
 	}
@@ -228,27 +228,27 @@ class WriteError : public Error {
 
 class Logger {
 public:
-	void error(const char* message) const { this->error("%s", message); }
+	void error(char const* message) const { this->error("%s", message); }
 
-	void error(const Error& err) const { this->error("%s", err.string().c_str()); }
+	void error(Error const& err) const { this->error("%s", err.string().c_str()); }
 
 	template<typename... Args>
-	void error(const char* format, Args... args) const {
+	void error(char const* format, Args... args) const {
 		this->log(std::cout, "error: ", format, args...);
 	}
 
-	void warn(const char* message) const { this->warn("%s", message); }
+	void warn(char const* message) const { this->warn("%s", message); }
 
-	void warn(const Error& err) const { this->warn("%s", err.string().c_str()); }
+	void warn(Error const& err) const { this->warn("%s", err.string().c_str()); }
 
 	template<typename... Args>
-	void warn(const char* format, Args... args) const {
+	void warn(char const* format, Args... args) const {
 		this->log(std::cout, "warning: ", format, args...);
 	}
 
 private:
 	template<typename... Args>
-	void log(std::ostream& ostream, const char* prefix, const char* format,
+	void log(std::ostream& ostream, char const* prefix, char const* format,
 	    Args... args) const {
 
 		std::string buffer;
@@ -271,39 +271,39 @@ struct Options {
 
 namespace Strings {
 
-static const char AsciiStart = 0x20;
-static const char AsciiEnd = 0x7F;
+static char const AsciiStart = 0x20;
+static char const AsciiEnd = 0x7F;
 
-bool beginsWithAttachedPunctuation(const std::string& s);
+bool beginsWithAttachedPunctuation(std::string const& s);
 std::string& chomp(std::string& s, char c);
-bool endsWithAttachedPunctuation(const std::string& s);
-bool endsWithFinalPunctuation(const std::string& s);
-const std::string hex(const std::string& s);
-const std::string hex(char s);
-bool isInt(const std::string& s);
+bool endsWithAttachedPunctuation(std::string const& s);
+bool endsWithFinalPunctuation(std::string const& s);
+std::string const hex(std::string const& s);
+std::string const hex(char s);
+bool isInt(std::string const& s);
 bool isPrintable(int c);
-std::string join(const std::vector<std::string>& s, const std::string& sep);
-std::string ltrim(const std::string& s, char c);
-std::string rtrim(const std::string& s, char c);
-std::vector<std::string> split(const std::string& s, const std::string& sep, int n = 0);
-std::string toBase64(const std::string& s);
-int toInt(const std::string& s);
-std::string wrap(const std::string& s, const std::string& sep, std::size_t width);
-std::string wrap(const std::string& s, const std::string& sep, std::size_t width,
-    int& numLines, const std::string prefix = "");
+std::string join(std::vector<std::string> const& s, std::string const& sep);
+std::string ltrim(std::string const& s, char c);
+std::string rtrim(std::string const& s, char c);
+std::vector<std::string> split(std::string const& s, std::string const& sep, int n = 0);
+std::string toBase64(std::string const& s);
+int toInt(std::string const& s);
+std::string wrap(std::string const& s, std::string const& sep, std::size_t width);
+std::string wrap(std::string const& s, std::string const& sep, std::size_t width,
+    int& numLines, std::string const prefix = "");
 
 } // namespace Strings
 
 namespace Regex {
 
-const std::regex Descriptor{"([0-9]+) ([a-z]{4,})"};
-const std::regex DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
-const std::regex EmailAddress{".+@.+\\..+"};
-const std::regex HyperpngRegion{
+std::regex const Descriptor{"([0-9]+) ([a-z]{4,})"};
+std::regex const DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
+std::regex const EmailAddress{".+@.+\\..+"};
+std::regex const HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
-const std::regex OverlayAddress{
+std::regex const OverlayAddress{
     "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
-const std::regex URL{"https?://.+\\..+"};
+std::regex const URL{"https?://.+\\..+"};
 
 } // namespace Regex
 
@@ -313,10 +313,10 @@ class Attributes {
 public:
 	using Type = std::map<std::string, std::string>;
 
-	const Type& attrs() const;
-	std::optional<const std::string> attr(const std::string key) const;
-	void attr(const std::string key, const std::string value);
-	void attr(const std::string key, const int value);
+	Type const& attrs() const;
+	std::optional<std::string const> attr(std::string const key) const;
+	void attr(std::string const key, std::string const value);
+	void attr(std::string const key, int const value);
 
 private:
 	Type attrs_;
@@ -325,11 +325,11 @@ private:
 class Body {
 public:
 	Body() = default;
-	explicit Body(const std::string body);
-	explicit Body(const int body);
-	const std::string& body() const;
-	void body(const std::string body);
-	void body(const int body);
+	explicit Body(std::string const body);
+	explicit Body(int const body);
+	std::string const& body() const;
+	void body(std::string const body);
+	void body(int const body);
 
 private:
 	std::string body_;
@@ -349,9 +349,9 @@ private:
 class Title {
 public:
 	Title() = default;
-	explicit Title(const std::string title);
-	const std::string& title() const;
-	void title(const std::string title);
+	explicit Title(std::string const title);
+	std::string const& title() const;
+	void title(std::string const title);
 
 private:
 	std::string title_;
@@ -361,7 +361,7 @@ class Visibility {
 public:
 	VisibilityType visibility() const;
 	void visibility(VisibilityType visibility);
-	const std::string visibilityString() const;
+	std::string const visibilityString() const;
 
 private:
 	VisibilityType visibility_ = VisibilityType::All;
@@ -371,7 +371,7 @@ private:
 
 class Pipe {
 public:
-	using Handler = std::function<void(const char*, std::streamsize n)>;
+	using Handler = std::function<void(char const*, std::streamsize n)>;
 
 	explicit Pipe(std::istream& in);
 	void addHandler(Handler func);
@@ -381,7 +381,7 @@ public:
 	bool eof();
 
 private:
-	static const std::size_t ReadLength = 1024;
+	static std::size_t const ReadLength = 1024;
 
 	std::istream& in_;
 	std::size_t offset_ = 0;
@@ -391,23 +391,23 @@ private:
 
 class CRC {
 public:
-	static const auto ByteLength = 2;
+	static auto const ByteLength = 2;
 
 	CRC();
 	void upstream(Pipe& pipe);
-	void calculate(const char* buffer, std::streamsize length, bool bufferChecksum);
-	void calculate(const char* buffer, std::streamsize length);
+	void calculate(char const* buffer, std::streamsize length, bool bufferChecksum);
+	void calculate(char const* buffer, std::streamsize length);
 	uint16_t result();
 	void result(std::vector<char>& out);
 	bool valid();
 	void reset();
 
 private:
-	static const auto TableLength = 256;
-	static const uint16_t Polynomial = 0x8005;
-	static const uint16_t CastMask = 0xFFFF;
-	static const uint16_t MSBMask = 0x8000;
-	static const uint16_t FinalXOR = 0x0100;
+	static auto const TableLength = 256;
+	static uint16_t const Polynomial = 0x8005;
+	static uint16_t const CastMask = 0xFFFF;
+	static uint16_t const MSBMask = 0x8000;
+	static uint16_t const FinalXOR = 0x0100;
 
 	Pipe* pipe_ = nullptr;
 	uint16_t table_[TableLength];
@@ -429,7 +429,7 @@ public:
 	static constexpr auto AsciiEncBegin = "#a+";
 	static constexpr auto AsciiEncEnd = "#a-";
 	static constexpr auto CreditSep = "CREDITS:";
-	static const auto DataSep = '\x1A';
+	static auto const DataSep = '\x1A';
 	static constexpr auto HyperlinkBegin = "#h+";
 	static constexpr auto HyperlinkEnd = "#h-";
 	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";
@@ -449,62 +449,62 @@ public:
 	static constexpr auto Signature = "UHS";
 	static constexpr auto UnregisteredOnly = "Z";
 
-	static const std::string typeString(TokenType t);
+	static std::string const typeString(TokenType t);
 
-	Token(const TokenType tokenType, std::size_t offset = 0, int line = 0,
+	Token(TokenType const tokenType, std::size_t offset = 0, int line = 0,
 	    std::size_t column = 0, std::string value = "");
-	friend std::ostream& operator<<(std::ostream& out, const Token& t);
+	friend std::ostream& operator<<(std::ostream& out, Token const& t);
 	TokenType type() const;
 	int line() const;
 	std::size_t column() const;
 	std::size_t offset() const;
-	const std::string& value() const;
-	const std::string typeString() const;
-	const std::string string() const;
+	std::string const& value() const;
+	std::string const typeString() const;
+	std::string const string() const;
 
 private:
 	class TypeMap {
 	public:
 		TypeMap();
-		const std::string findByType(const TokenType type) const;
+		std::string const findByType(TokenType const type) const;
 
 	private:
-		std::map<const TokenType, const std::string> map_;
+		std::map<TokenType const, std::string const> map_;
 	};
 
 	static Token::TypeMap typeMap_;
 
-	const TokenType type_;
+	TokenType const type_;
 	int line_ = 0;
 	std::size_t column_ = 0;
 	std::size_t offset_ = 0;
 	std::string value_;
 
-	const std::string formatToken() const;
-	const std::string formatIntValue() const;
-	const std::string formatStringValue() const;
-	const std::string formatByteValue() const;
+	std::string const formatToken() const;
+	std::string const formatIntValue() const;
+	std::string const formatStringValue() const;
+	std::string const formatByteValue() const;
 };
 
 class Tokenizer {
 public:
 	explicit Tokenizer(Pipe& pipe);
-	void tokenize(const char* buffer, std::streamsize length);
+	void tokenize(char const* buffer, std::streamsize length);
 	bool hasNext();
-	std::unique_ptr<const Token> next();
+	std::unique_ptr<Token const> next();
 
 private:
 	class TokenChannel {
 	public:
 		explicit TokenChannel(Pipe& pipe);
-		void send(const Token&& token);
-		std::unique_ptr<const Token> receive();
+		void send(Token const&& token);
+		std::unique_ptr<Token const> receive();
 		bool empty() const;
 		bool ok() const;
 		void close();
 
 	private:
-		std::queue<const Token> queue_;
+		std::queue<Token const> queue_;
 		mutable std::mutex mutex_;
 		bool open_ = true;
 		Pipe& pipe_; // For exceptions
@@ -521,14 +521,14 @@ private:
 	TokenChannel out_;
 
 	void tokenizeLine();
-	ElementType tokenizeDescriptor(const std::smatch& matches);
-	void tokenizeDataAddress(const std::smatch& matches);
-	void tokenizeHyperpngRegion(const std::smatch& matches);
-	void tokenizeOverlayAddress(const std::smatch& matches);
+	ElementType tokenizeDescriptor(std::smatch const& matches);
+	void tokenizeDataAddress(std::smatch const& matches);
+	void tokenizeHyperpngRegion(std::smatch const& matches);
+	void tokenizeOverlayAddress(std::smatch const& matches);
 	void tokenizeMatches(
-	    const std::smatch& matches, const std::vector<TokenType>&& tokens);
-	void tokenizeData(const std::string& data, std::size_t column);
-	void tokenizeCRC(const std::string& crc, std::size_t column);
+	    std::smatch const& matches, std::vector<TokenType> const&& tokens);
+	void tokenizeData(std::string const& data, std::size_t column);
+	void tokenizeCRC(std::string const& crc, std::size_t column);
 	void tokenizeEOF(std::size_t column);
 };
 
@@ -540,18 +540,18 @@ class Document;
 class Node {
 public:
 	using iterator = NodeIterator<Node>;
-	using const_iterator = NodeIterator<const Node>;
+	using const_iterator = NodeIterator<Node const>;
 
-	static const std::string typeString(NodeType type);
-	static bool isElementOfType(const Node& node, ElementType type);
+	static std::string const typeString(NodeType type);
+	static bool isElementOfType(Node const& node, ElementType type);
 
 	explicit Node(NodeType type);
-	Node(const Node& other);
+	Node(Node const& other);
 	Node& operator=(Node other);
 	virtual ~Node() = default;
 	friend void swap(Node& lhs, Node& rhs) noexcept;
 	NodeType nodeType() const;
-	const std::string nodeTypeString() const;
+	std::string const nodeTypeString() const;
 	bool isBreak() const;
 	bool isDocument() const;
 	bool isElement() const;
@@ -586,7 +586,7 @@ public:
 	const_iterator cend() const;
 
 protected:
-	void cloneChildren(const Node& node);
+	void cloneChildren(Node const& node);
 	virtual void didRemove();
 	virtual void didAdd();
 
@@ -606,7 +606,7 @@ public:
 	using Node::appendChild;
 
 	explicit ContainerNode(NodeType type);
-	ContainerNode(const ContainerNode& other);
+	ContainerNode(ContainerNode const& other);
 	ContainerNode& operator=(ContainerNode other);
 	virtual ~ContainerNode() = default;
 	friend void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept;
@@ -635,8 +635,8 @@ public:
 	pointer operator->() const;
 	NodeIterator<T>& operator++();
 	NodeIterator<T> operator++(int);
-	bool operator==(const NodeIterator<T>& rhs) const;
-	bool operator!=(const NodeIterator<T>& rhs) const;
+	bool operator==(NodeIterator<T> const& rhs) const;
+	bool operator!=(NodeIterator<T> const& rhs) const;
 
 private:
 	pointer initial_ = nullptr;
@@ -648,7 +648,7 @@ class BreakNode : public Node {
 public:
 	static std::shared_ptr<BreakNode> create();
 	BreakNode();
-	BreakNode(const BreakNode&);
+	BreakNode(BreakNode const&);
 	BreakNode& operator=(BreakNode);
 	std::shared_ptr<BreakNode> clone() const;
 };
@@ -657,7 +657,7 @@ class GroupNode : public ContainerNode {
 public:
 	static std::shared_ptr<GroupNode> create(int line, int length);
 	GroupNode(int line, int length);
-	GroupNode(const GroupNode&);
+	GroupNode(GroupNode const&);
 	GroupNode& operator=(GroupNode);
 	friend void swap(GroupNode& lhs, GroupNode& rhs) noexcept;
 	std::shared_ptr<GroupNode> clone() const;
@@ -667,16 +667,16 @@ class TextNode
     : public Node
     , public Traits::Body {
 public:
-	static std::shared_ptr<TextNode> create(const std::string body);
-	static std::shared_ptr<TextNode> create(const std::string body, TextFormat format);
+	static std::shared_ptr<TextNode> create(std::string const body);
+	static std::shared_ptr<TextNode> create(std::string const body, TextFormat format);
 
-	explicit TextNode(const std::string body);
-	TextNode(const std::string body, TextFormat format);
-	TextNode(const TextNode& other);
+	explicit TextNode(std::string const body);
+	TextNode(std::string const body, TextFormat format);
+	TextNode(TextNode const& other);
 	TextNode& operator=(TextNode other);
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
 	std::shared_ptr<TextNode> clone() const;
-	const std::string& string() const;
+	std::string const& string() const;
 	void addFormat(TextFormat format);
 	void removeFormat(TextFormat format);
 	bool hasFormat(TextFormat format) const;
@@ -697,31 +697,31 @@ class Element
     , public Traits::Inlined
     , public Traits::Visibility {
 public:
-	static std::shared_ptr<Element> create(ElementType type, const int id = 0);
-	static ElementType elementType(const std::string& typeString);
-	static const std::string typeString(ElementType type);
+	static std::shared_ptr<Element> create(ElementType type, int const id = 0);
+	static ElementType elementType(std::string const& typeString);
+	static std::string const typeString(ElementType type);
 
 	Element(ElementType type, int id = 0);
-	Element(const Element& other);
+	Element(Element const& other);
 	Element& operator=(Element other);
 	friend void swap(Element& lhs, Element& rhs) noexcept;
 	std::shared_ptr<Element> clone() const;
 	ElementType elementType() const;
-	const std::string elementTypeString() const;
+	std::string const elementTypeString() const;
 	int id() const;
 	bool isMedia() const;
-	const std::string mediaExt() const;
+	std::string const mediaExt() const;
 
 private:
 	class TypeMap {
 	public:
 		TypeMap();
-		const std::string findByType(const ElementType type) const;
-		ElementType findByString(const std::string& string) const;
+		std::string const findByType(ElementType const type) const;
+		ElementType findByString(std::string const& string) const;
 
 	private:
-		std::map<const ElementType, const std::string> byType_;
-		std::map<const std::string, const ElementType> byString_;
+		std::map<ElementType const, std::string const> byType_;
+		std::map<std::string const, ElementType const> byString_;
 	};
 
 	static Element::TypeMap typeMap_;
@@ -739,15 +739,15 @@ public:
 	static std::shared_ptr<Document> create(VersionType version);
 
 	Document(VersionType version);
-	Document(const Document& other);
+	Document(Document const& other);
 	Document& operator=(Document other);
 	friend void swap(Document& lhs, Document& rhs) noexcept;
-	Node* find(const int id);
+	Node* find(int const id);
 	std::shared_ptr<Document> clone() const;
 	void version(VersionType v);
 	VersionType version() const;
 	bool isVersion(VersionType v) const;
-	const std::string versionString() const;
+	std::string const versionString() const;
 	void validChecksum(bool value);
 	bool validChecksum() const;
 	void elementRemoved(Element& element);
@@ -757,26 +757,26 @@ public:
 private:
 	VersionType version_;
 	bool validChecksum_ = false;
-	std::map<const int, Node*> index_;
+	std::map<int const, Node*> index_;
 	bool indexed_ = true;
 };
 
 class Codec {
 public:
-	Codec(const Options options = {});
-	const std::string createKey(std::string secret) const;
-	const std::string decode88a(std::string encoded) const;
-	const std::string decode96a(
+	Codec(Options const options = {});
+	std::string const createKey(std::string secret) const;
+	std::string const decode88a(std::string encoded) const;
+	std::string const decode96a(
 	    std::string encoded, std::string key, bool isTextElement) const;
-	const std::string decodeSpecialChars(const std::string& encoded) const;
-	const std::string encode88a(std::string decoded) const;
-	const std::string encode96a(
+	std::string const decodeSpecialChars(std::string const& encoded) const;
+	std::string const encode88a(std::string decoded) const;
+	std::string const encode96a(
 	    std::string encoded, std::string key, bool isTextElement) const;
-	const std::string encodeSpecialChars(const std::string& decoded) const;
+	std::string const encodeSpecialChars(std::string const& decoded) const;
 
 private:
-	using UnicodeToAsciiMap = const std::map<const char32_t, const std::string>;
-	using AsciiToUnicodeMap = const std::map<const std::string, const std::string>;
+	using UnicodeToAsciiMap = std::map<char32_t const, std::string const> const;
+	using AsciiToUnicodeMap = std::map<std::string const, std::string const> const;
 
 	static constexpr auto KeySeed = "key";
 
@@ -854,7 +854,7 @@ private:
 	};
 
 	Logger logger_;
-	const Options options_;
+	Options const options_;
 
 	AsciiToUnicodeMap toChars_ = {
 	    {"S^", "Š"},
@@ -936,13 +936,13 @@ private:
 
 class Parser {
 public:
-	explicit Parser(const Logger logger, const Options options = {});
+	explicit Parser(Logger const logger, Options const options = {});
 	std::shared_ptr<Document> parse(std::istream& in);
-	std::shared_ptr<Document> parseFile(const std::string& filename);
+	std::shared_ptr<Document> parseFile(std::string const& filename);
 	void reset();
 
 private:
-	using NodeMap = std::map<const int, Node*>;
+	using NodeMap = std::map<int const, Node*>;
 	using DataCallback = std::function<void(std::string)>;
 
 	struct NodeRange {
@@ -950,14 +950,14 @@ private:
 		int min = 0;
 		int max = 0;
 
-		NodeRange(Node& node, const int min, const int max);
+		NodeRange(Node& node, int const min, int const max);
 	};
 
 	struct NodeRangeList {
 		std::vector<NodeRange> data = {};
 
-		Node* find(const int min, const int max);
-		void add(Node& node, const int min, const int max);
+		Node* find(int const min, int const max);
+		void add(Node& node, int const min, int const max);
 		void clear();
 	};
 
@@ -966,7 +966,7 @@ private:
 		int line = 0;
 		int column = 0;
 
-		LinkData(Element& link, const int line, const int column);
+		LinkData(Element& link, int const line, int const column);
 	};
 
 	struct VisibilityData {
@@ -987,13 +987,13 @@ private:
 		    DataCallback func);
 	};
 
-	static const auto FormatTokenLength = 3;
-	static const auto HeaderLength = 4;
+	static auto const FormatTokenLength = 3;
+	static auto const HeaderLength = 4;
 
 	// Fix for bad 88a backwards-compatibility header found in 401 files
 	static constexpr auto BadHeaderTitle = "Why aren't there any more hints here?";
-	static const auto BadHeaderFirstChildLine = HeaderLength + 16;
-	static const auto GoodHeaderFirstChildLine = HeaderLength + 15;
+	static auto const BadHeaderFirstChildLine = HeaderLength + 16;
+	static auto const GoodHeaderFirstChildLine = HeaderLength + 15;
 
 	Codec codec_;
 	std::unique_ptr<CRC> crc_ = nullptr;
@@ -1006,7 +1006,7 @@ private:
 	std::string key_;
 	int lineOffset_ = 0;
 	Logger logger_;
-	const Options options_;
+	Options const options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 
@@ -1014,12 +1014,12 @@ private:
 	void parse88a();
 	void parse88aElements(int firstHintTextLine, NodeMap& parents);
 	void parse88aTextNodes(int lastHintTextLine, NodeMap& parents);
-	void parse88aCredits(std::unique_ptr<const Token> token);
-	void parseHeaderSep(std::unique_ptr<const Token> token);
+	void parse88aCredits(std::unique_ptr<Token const> token);
+	void parseHeaderSep(std::unique_ptr<Token const> token);
 
 	// 96a
 	void parse96a();
-	std::shared_ptr<Element> parseElement(std::unique_ptr<const Token> token);
+	std::shared_ptr<Element> parseElement(std::unique_ptr<Token const> token);
 	void parseCommentElement(Element& element);
 	void parseDataElement(Element& element);
 	void parseHintElement(Element& element);
@@ -1033,8 +1033,8 @@ private:
 	void parseVersionElement(Element& element);
 
 	// Parse helpers
-	std::unique_ptr<const Token> next();
-	std::unique_ptr<const Token> expect(TokenType expected);
+	std::unique_ptr<Token const> next();
+	std::unique_ptr<Token const> expect(TokenType expected);
 	void addDataCallback(
 	    int line, int column, std::size_t offset, std::size_t length, DataCallback func);
 	void appendText(std::string& text, TextFormat& format, ContainerNode& node);
@@ -1043,10 +1043,10 @@ private:
 	int fixHeaderFirstChildLine(std::string title, int firstChildLine) const;
 	void addNodeToParentIndex(ContainerNode& node);
 	int offsetLine(int line);
-	void parseData(std::unique_ptr<const Token> token);
-	void parseDate(const std::string& date, std::tm& tm) const;
-	void parseTime(const std::string& time, std::tm& tm) const;
-	void parseWithFormat(const std::string& text, TextFormat& format, ContainerNode& node,
+	void parseData(std::unique_ptr<Token const> token);
+	void parseDate(std::string const& date, std::tm& tm) const;
+	void parseTime(std::string const& time, std::tm& tm) const;
+	void parseWithFormat(std::string const& text, TextFormat& format, ContainerNode& node,
 	    ElementType elementType);
 	void processLinks();
 	void processVisibility();
@@ -1054,107 +1054,107 @@ private:
 
 class Writer {
 public:
-	Writer(const Logger logger, std::ostream& out, const Options options = {});
+	Writer(Logger const logger, std::ostream& out, Options const options = {});
 	virtual ~Writer() = default;
-	virtual void write(const std::shared_ptr<Document> document) = 0;
+	virtual void write(std::shared_ptr<Document> const document) = 0;
 	virtual void reset();
 
 protected:
 	Codec codec_;
 	Logger logger_;
 	std::ostream& out_;
-	const Options options_;
+	Options const options_;
 };
 
 class TreeWriter : public Writer {
 public:
-	TreeWriter(const Logger logger, std::ostream& out, const Options options = {});
-	void write(const std::shared_ptr<Document> document) override;
+	TreeWriter(Logger const logger, std::ostream& out, Options const options = {});
+	void write(std::shared_ptr<Document> const document) override;
 
 private:
-	void draw(const Document& document);
-	void draw(const Element& element);
-	void draw(const GroupNode& groupNode);
-	void draw(const TextNode& textNode);
-	void drawScaffold(const Node& node);
+	void draw(Document const& document);
+	void draw(Element const& element);
+	void draw(GroupNode const& groupNode);
+	void draw(TextNode const& textNode);
+	void drawScaffold(Node const& node);
 };
 
 class HTMLWriter : public Writer {
 public:
-	HTMLWriter(const Logger logger, std::ostream& out, const Options options = {});
-	void write(const std::shared_ptr<Document> document) override;
+	HTMLWriter(Logger const logger, std::ostream& out, Options const options = {});
+	void write(std::shared_ptr<Document> const document) override;
 
 private:
-	using NodeMap = tsl::hopscotch_map<const Node*, const pugi::xml_node>;
+	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
 
 	class Serializer {
 	public:
-		using Func = void (HTMLWriter::*)(const Element& element, pugi::xml_node xmlNode);
+		using Func = void (HTMLWriter::*)(Element const& element, pugi::xml_node xmlNode);
 
 		Serializer();
-		void invoke(HTMLWriter& writer, const Element& element, pugi::xml_node xmlNode);
+		void invoke(HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode);
 
 	private:
-		std::map<const ElementType, Func> map_;
+		std::map<ElementType const, Func> map_;
 	};
 
-	void serialize(const Document& document, pugi::xml_document& xml);
-	void serializeDocument(const Document& document, pugi::xml_node root) const;
-	void serializeElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeBlankElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeCommentElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeDataElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeGifaElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeHintElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeHyperpngElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeIncentiveElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeInfoElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeLinkElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeOverlayElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeSoundElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeSubjectElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeTextElement(const Element& element, pugi::xml_node xmlNode);
-	void serializeTextNode(const TextNode& textNode, pugi::xml_node xmlNode) const;
-	std::shared_ptr<Document> addEntryPointTo88aDocument(const Document& document) const;
+	void serialize(Document const& document, pugi::xml_document& xml);
+	void serializeDocument(Document const& document, pugi::xml_node root) const;
+	void serializeElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeBlankElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeCommentElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeDataElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeGifaElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeHintElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeHyperpngElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeIncentiveElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeInfoElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeLinkElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeOverlayElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeSoundElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeSubjectElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeTextElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeTextNode(TextNode const& textNode, pugi::xml_node xmlNode) const;
+	std::shared_ptr<Document> addEntryPointTo88aDocument(Document const& document) const;
 	std::optional<pugi::xml_node> appendBody(
-	    const Element& element, pugi::xml_node xmlNode) const;
+	    Element const& element, pugi::xml_node xmlNode) const;
 	void appendClassNames(
 	    pugi::xml_node xmlNode, std::vector<std::string> classNames) const;
-	pugi::xml_node appendTitle(const Element& element, pugi::xml_node xmlNode) const;
-	pugi::xml_node appendMedia(const Element& element, pugi::xml_node xmlNode) const;
-	void appendVisibility(const Traits::Visibility& node, pugi::xml_node xmlNode) const;
+	pugi::xml_node appendTitle(Element const& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node appendMedia(Element const& element, pugi::xml_node xmlNode) const;
+	void appendVisibility(Traits::Visibility const& node, pugi::xml_node xmlNode) const;
 	pugi::xml_node createHTMLDocument(
-	    const Document& document, pugi::xml_document& xml) const;
+	    Document const& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
-	    const Element& element, pugi::xml_node xmlNode) const;
-	pugi::xml_node findOrCreateMap(const Element& element, pugi::xml_node xmlNode) const;
-	pugi::xml_node findXMLParent(const Node& node, const pugi::xml_node parent,
-	    const NodeMap parents, const int depth) const;
-	std::string getDataURI(const std::string& contentType, const std::string& data) const;
-	std::tuple<int, int> getImageSize(const Element& element) const;
-	Element* getParentElement(const Element& element) const;
-	std::tuple<int, int, int, int> getRegionCoordinates(const Element& element) const;
-	void populateArea(const Element& element, pugi::xml_node area) const;
+	    Element const& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node findOrCreateMap(Element const& element, pugi::xml_node xmlNode) const;
+	pugi::xml_node findXMLParent(Node const& node, pugi::xml_node const parent,
+	    NodeMap const parents, int const depth) const;
+	std::string getDataURI(std::string const& contentType, std::string const& data) const;
+	std::tuple<int, int> getImageSize(Element const& element) const;
+	Element* getParentElement(Element const& element) const;
+	std::tuple<int, int, int, int> getRegionCoordinates(Element const& element) const;
+	void populateArea(Element const& element, pugi::xml_node area) const;
 
 	static HTMLWriter::Serializer serializer_;
 
 	std::string css_;
 	std::string js_;
-	std::map<const ElementType, std::string> mediaContentTypes_;
-	std::map<const ElementType, std::string> mediaTagTypes_;
+	std::map<ElementType const, std::string> mediaContentTypes_;
+	std::map<ElementType const, std::string> mediaTagTypes_;
 };
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(const Logger logger, std::ostream& out, const Options options = {});
-	void write(const std::shared_ptr<Document> document) override;
+	JSONWriter(Logger const logger, std::ostream& out, Options const options = {});
+	void write(std::shared_ptr<Document> const document) override;
 
 private:
-	void serialize(const Document& document, Json::Value& root) const;
-	void serializeDocument(const Document& document, Json::Value& object) const;
-	void serializeElement(const Element& element, Json::Value& object) const;
-	void serializeTextNode(const TextNode& textNode, Json::Value& object) const;
-	void serializeMap(const Traits::Attributes::Type& attrs, Json::Value& object) const;
+	void serialize(Document const& document, Json::Value& root) const;
+	void serializeDocument(Document const& document, Json::Value& object) const;
+	void serializeElement(Element const& element, Json::Value& object) const;
+	void serializeTextNode(TextNode const& textNode, Json::Value& object) const;
+	void serializeMap(Traits::Attributes::Type const& attrs, Json::Value& object) const;
 };
 
 class UHSWriter : public Writer {
@@ -1162,10 +1162,10 @@ public:
 	// The official readers work with lines longer than 76 characters, but
 	// lines were capped at 76 so that DOS readers would display correctly
 	// within the standard 80-character window (with border and padding).
-	static const std::size_t LineLength = 76;
+	static std::size_t const LineLength = 76;
 
-	UHSWriter(const Logger logger, std::ostream& out, const Options options = {});
-	void write(const std::shared_ptr<Document> document) override;
+	UHSWriter(Logger const logger, std::ostream& out, Options const options = {});
+	void write(std::shared_ptr<Document> const document) override;
 	void reset() override;
 
 private:
@@ -1177,28 +1177,28 @@ private:
 		int invoke(UHSWriter& writer, Element& element, std::string& out);
 
 	private:
-		std::map<const ElementType, Func> map_;
+		std::map<ElementType const, Func> map_;
 	};
 
-	using DataQueue = std::queue<std::pair<ElementType, const std::string>>;
+	using DataQueue = std::queue<std::pair<ElementType, std::string const>>;
 
-	static const std::size_t InitialBufferLength = 204'800; // 200 KiB
-	static const std::size_t MediaSizeLength = 6;  // Up to 999,999 bytes per media file
-	static const std::size_t RegionSizeLength = 4; // Up to 9,999 × 9,999 px per region
-	static const std::size_t FileSizeLength = 7;   // Up to 9,999,999 bytes per document
-	static const auto InitialElementLength = 2;    // Element descriptor and title
+	static std::size_t const InitialBufferLength = 204'800; // 200 KiB
+	static std::size_t const MediaSizeLength = 6;  // Up to 999,999 bytes per media file
+	static std::size_t const RegionSizeLength = 4; // Up to 9,999 × 9,999 px per region
+	static std::size_t const FileSizeLength = 7;   // Up to 9,999,999 bytes per document
+	static auto const InitialElementLength = 2;    // Element descriptor and title
 	static constexpr auto DataAddressMarker = "000000";
 	static constexpr auto InfoLengthMarker = "length=0000000";
 	static constexpr auto LinkMarker = "** LINK **";
 
-	void serialize88a(const Document& document, std::string& out);
+	void serialize88a(Document const& document, std::string& out);
 	void serialize96a(std::string& out);
 	int serializeElement(Element& element, std::string& out);
 	int serializeBlankElement(Element& element, std::string& out);
 	int serializeCommentElement(Element& element, std::string& out);
 	int serializeDataElement(Element& element, std::string& out);
 	int serializeHintChild(Node& node, Element& parentElement,
-	    std::map<const int, TextFormat>& formats, std::string& textBuffer,
+	    std::map<int const, TextFormat>& formats, std::string& textBuffer,
 	    std::string& out);
 	int serializeHintElement(Element& element, std::string& out);
 	int serializeHyperpngElement(Element& element, std::string& out);
@@ -1212,9 +1212,9 @@ private:
 	void updateLinkTargets(std::string& out) const;
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
-	std::string formatText(const TextNode& textNode, const TextFormat previousFormat);
-	std::string encodeText(const std::string text, const ElementType parentType);
-	void addData(const Element& element);
+	std::string formatText(TextNode const& textNode, TextFormat const previousFormat);
+	std::string encodeText(std::string const text, ElementType const parentType);
+	void addData(Element const& element);
 	std::string createDataAddress(
 	    std::size_t bodyLength, std::string textFormat = "") const;
 	std::string createOverlayAddress(std::size_t bodyLength, int x, int y) const;

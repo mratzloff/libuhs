@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-Writer::Writer(const Logger logger, std::ostream& out, const Options options)
+Writer::Writer(Logger const logger, std::ostream& out, Options const options)
     : codec_{options}, logger_{logger}, out_{out}, options_{options} {}
 
 void Writer::reset() {}

@@ -2,23 +2,23 @@
 
 namespace UHS {
 
-JSONWriter::JSONWriter(const Logger logger, std::ostream& out, const Options options)
+JSONWriter::JSONWriter(Logger const logger, std::ostream& out, Options const options)
     : Writer(logger, out, options) {}
 
-void JSONWriter::write(const std::shared_ptr<Document> document) {
+void JSONWriter::write(std::shared_ptr<Document> const document) {
 	Json::Value root{Json::objectValue};
 	this->serialize(*document, root);
 	out_ << root << std::endl;
 }
 
-void JSONWriter::serialize(const Document& document, Json::Value& root) const {
+void JSONWriter::serialize(Document const& document, Json::Value& root) const {
 	Json::Value* parents[MaxDepth];
 	Json::Value* parent = &root;
 
 	auto depth = 0;
 	parents[depth] = &root;
 
-	for (const auto& node : document) {
+	for (auto const& node : document) {
 		// Manage JSON arrays as we descend and ascend
 		auto nodeDepth = node.depth();
 
@@ -48,13 +48,13 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 			if (nodeDepth == 0) {
 				object = root;
 			}
-			const auto& d = static_cast<const Document&>(node);
+			auto const& d = static_cast<Document const&>(node);
 			this->serializeDocument(d, object);
 			(*parent)["children"].append(object);
 			break;
 		}
 		case NodeType::Element: {
-			const auto& element = static_cast<const Element&>(node);
+			auto const& element = static_cast<Element const&>(node);
 			this->serializeElement(element, object);
 			(*parent)["children"].append(object);
 			break;
@@ -64,7 +64,7 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 			break;
 		}
 		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(node);
+			auto const& textNode = static_cast<TextNode const&>(node);
 			this->serializeTextNode(textNode, object);
 			(*parent)["children"].append(object);
 			break;
@@ -77,7 +77,7 @@ void JSONWriter::serialize(const Document& document, Json::Value& root) const {
 	}
 }
 
-void JSONWriter::serializeDocument(const Document& document, Json::Value& object) const {
+void JSONWriter::serializeDocument(Document const& document, Json::Value& object) const {
 	object["title"] = document.title();
 	object["version"] = document.versionString();
 
@@ -87,7 +87,7 @@ void JSONWriter::serializeDocument(const Document& document, Json::Value& object
 	object["type"] = document.nodeTypeString();
 
 	// Build attributes map
-	const auto& attrs = document.attrs();
+	auto const& attrs = document.attrs();
 	if (!attrs.empty()) {
 		Json::Value map = {Json::objectValue};
 		this->serializeMap(attrs, map);
@@ -95,12 +95,12 @@ void JSONWriter::serializeDocument(const Document& document, Json::Value& object
 	}
 }
 
-void JSONWriter::serializeElement(const Element& element, Json::Value& object) const {
+void JSONWriter::serializeElement(Element const& element, Json::Value& object) const {
 	std::string fname;
 	std::ofstream fout;
 
 	object["title"] = element.title();
-	if (const auto id = element.id(); id > 0) {
+	if (auto const id = element.id(); id > 0) {
 		object["id"] = id;
 	}
 
@@ -113,7 +113,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 		fout.close();
 		object["body"] = fname;
 	} else {
-		const auto& body = element.body();
+		auto const& body = element.body();
 		if (!body.empty()) {
 			object["body"] = body;
 		}
@@ -124,7 +124,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 	object["type"] = Element::typeString(element.elementType());
 
 	// Build attributes map
-	const auto& attrs = element.attrs();
+	auto const& attrs = element.attrs();
 	if (!attrs.empty()) {
 		Json::Value map{Json::objectValue};
 		this->serializeMap(attrs, map);
@@ -132,7 +132,7 @@ void JSONWriter::serializeElement(const Element& element, Json::Value& object) c
 	}
 }
 
-void JSONWriter::serializeTextNode(const TextNode& textNode, Json::Value& object) const {
+void JSONWriter::serializeTextNode(TextNode const& textNode, Json::Value& object) const {
 	object["body"] = textNode.body();
 
 	auto attributes = Json::Value(Json::objectValue);
@@ -143,9 +143,9 @@ void JSONWriter::serializeTextNode(const TextNode& textNode, Json::Value& object
 }
 
 void JSONWriter::serializeMap(
-    const Traits::Attributes::Type& attrs, Json::Value& object) const {
+    Traits::Attributes::Type const& attrs, Json::Value& object) const {
 
-	for (const auto& [k, v] : attrs) {
+	for (auto const& [k, v] : attrs) {
 		if (v == "true") {
 			object[k] = true;
 		} else if (v == "false") {
@@ -153,7 +153,7 @@ void JSONWriter::serializeMap(
 		} else if (Strings::isInt(v)) {
 			try {
 				object[k] = Strings::toInt(v);
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				object[k] = v;
 			}
 		} else {

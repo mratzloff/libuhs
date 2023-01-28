@@ -6,16 +6,16 @@ namespace UHS {
 
 Error::Error() : std::runtime_error("") {}
 
-Error::Error(const std::string& message) : std::runtime_error(message) {}
+Error::Error(std::string const& message) : std::runtime_error(message) {}
 
-Error::Error(const char* message) : std::runtime_error(message) {}
+Error::Error(char const* message) : std::runtime_error(message) {}
 
-const std::string Error::string() const {
+std::string const Error::string() const {
 	std::string buffer;
 	buffer += this->what();
 	try {
 		std::rethrow_if_nested(this);
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		buffer += " (";
 		buffer += err.string();
 		buffer += ")";
@@ -25,7 +25,7 @@ const std::string Error::string() const {
 	return buffer;
 }
 
-std::ostream& operator<<(std::ostream& out, const Error& err) {
+std::ostream& operator<<(std::ostream& out, Error const& err) {
 	out << err.string();
 	return out;
 }
@@ -80,10 +80,10 @@ ParseError ParseError::badToken(
 	    Token::typeString(found));
 }
 
-ParseError::ParseError(int line, int column, const std::string& message)
+ParseError::ParseError(int line, int column, std::string const& message)
     : ParseError(line, column, message.data()) {}
 
-ParseError::ParseError(int line, int column, const char* message) : Error() {
+ParseError::ParseError(int line, int column, char const* message) : Error() {
 	// TODO: Review for slice
 	static_cast<Error&>(*this) = Error(this->format("%s", line, column, message));
 }

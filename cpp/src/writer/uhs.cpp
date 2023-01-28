@@ -6,14 +6,14 @@ namespace UHS {
 
 UHSWriter::Serializer UHSWriter::serializer_;
 
-UHSWriter::UHSWriter(const Logger logger, std::ostream& out, const Options options)
+UHSWriter::UHSWriter(Logger const logger, std::ostream& out, Options const options)
     : Writer(logger, out, options) {}
 
-void UHSWriter::write(const std::shared_ptr<Document> document) {
+void UHSWriter::write(std::shared_ptr<Document> const document) {
 	std::string buffer;
 	buffer.reserve(InitialBufferLength);
 	document_ = document;
-	const auto is88a = document_->isVersion(VersionType::Version88a);
+	auto const is88a = document_->isVersion(VersionType::Version88a);
 
 	switch (options_.mode) {
 	case ModeType::Auto:
@@ -50,8 +50,8 @@ void UHSWriter::reset() {
 	}
 }
 
-void UHSWriter::serialize88a(const Document& document, std::string& out) {
-	std::queue<const Node*> queue;
+void UHSWriter::serialize88a(Document const& document, std::string& out) {
+	std::queue<Node const*> queue;
 	auto previousType = ElementType::Unknown;
 	auto line = 1;
 	auto numPreviousChildren = 0;
@@ -63,7 +63,7 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 	std::string buffer;
 
 	while (!queue.empty()) {
-		const auto node = queue.front();
+		auto const node = queue.front();
 		queue.pop();
 
 		switch (node->nodeType()) {
@@ -71,8 +71,8 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			numPreviousChildren = node->numChildren();
 			break;
 		case NodeType::Element: {
-			const auto element = static_cast<const Element*>(node);
-			const auto elementType = element->elementType();
+			auto const element = static_cast<Element const*>(node);
+			auto const elementType = element->elementType();
 			std::string title;
 
 			switch (elementType) {
@@ -113,7 +113,7 @@ void UHSWriter::serialize88a(const Document& document, std::string& out) {
 			numPreviousChildren = node->numChildren();
 			break;
 		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode*>(node);
+			auto const& textNode = static_cast<TextNode const*>(node);
 			auto body = textNode->body();
 
 			if (!options_.debug) {
@@ -166,7 +166,7 @@ void UHSWriter::serialize96a(std::string& out) {
 		case NodeType::Break:
 			throw WriteError("unexpected break node");
 		case NodeType::Document: {
-			const auto document = static_pointer_cast<const Document>(node);
+			auto const document = static_pointer_cast<Document const>(node);
 			if (!document->isVersion(VersionType::Version88a)) {
 				continue;
 			}
@@ -176,14 +176,14 @@ void UHSWriter::serialize96a(std::string& out) {
 			break;
 		}
 		case NodeType::Element: {
-			const auto element = static_pointer_cast<Element>(node);
+			auto const element = static_pointer_cast<Element>(node);
 			this->serializeElement(*element, out);
 			break;
 		}
 		case NodeType::Group:
 			throw WriteError("unexpected group node");
 		case NodeType::Text: {
-			const auto textNode = static_pointer_cast<TextNode>(node);
+			auto const textNode = static_pointer_cast<TextNode>(node);
 			throw WriteError("unexpected text node: %s", textNode->body());
 		}
 		}
@@ -216,7 +216,7 @@ int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
 
-	const auto& body = codec_.encodeSpecialChars(element.body());
+	auto const& body = codec_.encodeSpecialChars(element.body());
 	if (!body.empty()) {
 		buffer += Strings::wrap(body, EOL, LineLength, length) + EOL;
 	}
@@ -233,7 +233,7 @@ int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 // GIFs don't appear to be displayed by the official reader any longer
 int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	const auto& body = element.body();
+	auto const& body = element.body();
 
 	auto dataAddress = this->createDataAddress(body.length());
 	this->addData(element);
@@ -249,11 +249,11 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 }
 
 int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
-    std::map<const int, TextFormat>& formats, std::string& textBuffer, std::string& out) {
+    std::map<int const, TextFormat>& formats, std::string& textBuffer, std::string& out) {
 
 	auto length = 0;
 	auto depth = parentElement.depth();
-	const auto elementType = parentElement.elementType();
+	auto const elementType = parentElement.elementType();
 
 	if (node.isElement() && elementType == ElementType::Nesthint) {
 		// Outputs to text buffer
@@ -271,9 +271,9 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 
 	if (!node.isText() && !textBuffer.empty()) {
 		// Outputs directly to main buffer
-		const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
+		auto const scEncoded = codec_.encodeSpecialChars(textBuffer);
 		auto childLength = 0;
-		const auto wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
+		auto const wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
 		out += this->encodeText(wrapped, elementType);
 		length += childLength;
 		currentLine_ += childLength;
@@ -305,7 +305,7 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 		}
 	} else if (node.isText()) {
 		// Outputs to text buffer
-		const auto& textNode = static_cast<const TextNode&>(node);
+		auto const& textNode = static_cast<TextNode const&>(node);
 		textBuffer += this->formatText(textNode, formats[depth]);
 		formats[depth] = textNode.format();
 	} else {
@@ -318,20 +318,20 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
-	std::map<const int, TextFormat> formats;
+	std::map<int const, TextFormat> formats;
 	std::string textBuffer;
 
 	currentLine_ += length;
-	const auto elementType = element.elementType();
+	auto const elementType = element.elementType();
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		length += this->serializeHintChild(*node, element, formats, textBuffer, buffer);
 	}
 
 	if (!textBuffer.empty()) {
-		const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
+		auto const scEncoded = codec_.encodeSpecialChars(textBuffer);
 		auto childLength = 0;
-		const auto wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
+		auto const wrapped = Strings::wrap(scEncoded, "\n", LineLength, childLength);
 		buffer += this->encodeText(wrapped, elementType);
 		length += childLength;
 		currentLine_ += childLength;
@@ -346,7 +346,7 @@ int UHSWriter::serializeHintElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	const auto& body = element.body();
+	auto const& body = element.body();
 
 	auto buffer = this->createDataAddress(body.length());
 	this->addData(element);
@@ -370,7 +370,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 			if (auto value = child->attr(attr)) {
 				try {
 					coord = Strings::toInt(*value);
-				} catch (const Error& err) {
+				} catch (Error const& err) {
 					throw WriteError("invalid coordinate: %s", *value);
 				}
 			}
@@ -404,7 +404,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 	std::string buffer;
 
-	std::map<const ElementType, bool> excluded = {
+	std::map<ElementType const, bool> excluded = {
 	    {ElementType::Incentive, true},
 	    {ElementType::Info, true},
 	    {ElementType::Version, true},
@@ -417,7 +417,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 			continue;
 		}
 
-		const auto& candidate = static_cast<const Element&>(node);
+		auto const& candidate = static_cast<Element const&>(node);
 		if (excluded[candidate.elementType()]) {
 			continue;
 		}
@@ -468,19 +468,19 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	buffer += EOL;
 	++length;
 
-	const auto now = std::time(nullptr);
-	const auto tm = std::localtime(&now);
+	auto const now = std::time(nullptr);
+	auto const tm = std::localtime(&now);
 
 	char formatted[10];
-	const auto dateLength = std::strftime(formatted, 10, "%d-%b-%y", tm);
+	auto const dateLength = std::strftime(formatted, 10, "%d-%b-%y", tm);
 	buffer += "date=" + std::string(formatted, dateLength) + EOL;
 	++length;
 
-	const auto timeLength = std::strftime(formatted, 9, "%H:%M:%S", tm);
+	auto const timeLength = std::strftime(formatted, 9, "%H:%M:%S", tm);
 	buffer += "time=" + std::string(formatted, timeLength) + EOL;
 	++length;
 
-	std::map<const std::string, bool> whitelisted = {
+	std::map<std::string const, bool> whitelisted = {
 	    {"author", true},
 	    {"author-note", true},
 	    {"copyright", true},
@@ -488,16 +488,16 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	    {"publisher", true},
 	};
 
-	for (const auto& [key, value] : document_->attrs()) {
+	for (auto const& [key, value] : document_->attrs()) {
 		if (whitelisted[key] && !value.empty()) {
-			const auto scEncoded = codec_.encodeSpecialChars(value);
+			auto const scEncoded = codec_.encodeSpecialChars(value);
 			buffer += Strings::wrap(scEncoded, EOL, LineLength, length, key + "=");
 			buffer += EOL;
 		}
 	}
 
 	if (auto notice = document_->attr("notice")) {
-		const auto scEncoded = codec_.encodeSpecialChars(*notice);
+		auto const scEncoded = codec_.encodeSpecialChars(*notice);
 		buffer += Strings::wrap(scEncoded, EOL, LineLength, length, Token::NoticePrefix);
 		buffer += EOL;
 	}
@@ -525,7 +525,7 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 		if (targetID < 0) {
 			throw Error();
 		}
-	} catch (const Error& err) {
+	} catch (Error const& err) {
 		throw WriteError("expected positive integer, found %s", element.body());
 	}
 
@@ -546,7 +546,7 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	const auto& body = element.body();
+	auto const& body = element.body();
 
 	std::vector<std::pair<std::string, int>> coords = {
 	    {"image-x", 0},
@@ -556,7 +556,7 @@ int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 		if (auto value = element.attr(attr)) {
 			try {
 				coord = Strings::toInt(*value);
-			} catch (const Error& err) {
+			} catch (Error const& err) {
 				throw WriteError("invalid coordinate: %s", *value);
 			}
 		}
@@ -588,7 +588,7 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 		if (node->nodeType() != NodeType::Element) {
 			throw WriteError("unexpected node type: %s", node->nodeTypeString());
 		}
-		const auto child = static_pointer_cast<Element>(node);
+		auto const child = static_pointer_cast<Element>(node);
 		length += this->serializeElement(*child, buffer);
 	}
 	element.length(length);
@@ -601,17 +601,17 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
-	const auto elementType = element.elementType();
+	auto const elementType = element.elementType();
 	std::string textBuffer;
 	std::string buffer;
 	auto previousFormat = TextFormat::None;
-	const auto message = "unexpected node type: %s";
+	auto const message = "unexpected node type: %s";
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (node->isGroup()) {
 			for (auto child = node->firstChild(); child; child = child->nextSibling()) {
 				if (child->isText()) {
-					const auto textNode = static_pointer_cast<const TextNode>(child);
+					auto const textNode = static_pointer_cast<TextNode const>(child);
 					textBuffer += this->formatText(*textNode, previousFormat);
 					previousFormat = textNode->format();
 				} else {
@@ -623,10 +623,10 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 		}
 	}
 
-	const auto scEncoded = codec_.encodeSpecialChars(textBuffer);
+	auto const scEncoded = codec_.encodeSpecialChars(textBuffer);
 	auto body = this->encodeText(scEncoded, elementType);
 
-	const auto format = element.attr("format");
+	auto const format = element.attr("format");
 	buffer += this->createDataAddress(body.length(), format ? *format : "0");
 	++length;
 
@@ -647,7 +647,7 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 	out += element.elementTypeString();
 	out += EOL;
 
-	const auto title = codec_.encodeSpecialChars(element.title());
+	auto const title = codec_.encodeSpecialChars(element.title());
 
 	if (title.empty()) {
 		out += '-';
@@ -660,9 +660,9 @@ void UHSWriter::serializeElementHeader(Element& element, std::string& out) const
 void UHSWriter::updateLinkTargets(std::string& out) const {
 	// Because we're shifting characters, we move backwards through the file in
 	// order to reduce the total number of bytes copied within the output buffer.
-	const auto end = deferredLinks_.crend();
+	auto const end = deferredLinks_.crend();
 	for (auto it = deferredLinks_.crbegin(); it != end; ++it) {
-		const auto target = *it;
+		auto const target = *it;
 		assert(target);
 
 		if (!target->isElement()) {
@@ -673,13 +673,13 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 		}
 
 		auto targetElement = static_cast<Element*>(target);
-		const auto pos = out.rfind(LinkMarker);
+		auto const pos = out.rfind(LinkMarker);
 		if (pos == std::string::npos) {
 			throw WriteError("could not find link marker");
 		}
 
-		const auto targetLine = std::to_string(targetElement->line());
-		const auto length = targetLine.length();
+		auto const targetLine = std::to_string(targetElement->line());
+		auto const length = targetLine.length();
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);
 	}
@@ -692,13 +692,13 @@ void UHSWriter::serializeData(std::string& out) {
 	auto offset = 0;
 
 	while (!data_.empty()) {
-		const auto& pair = data_.front();
-		const auto elementType = pair.first;
-		const auto& data = pair.second;
+		auto const& pair = data_.front();
+		auto const elementType = pair.first;
+		auto const& data = pair.second;
 
 		std::smatch matches;
 		auto isOverlay = (elementType == ElementType::Overlay);
-		const auto& regex = (isOverlay) ? Regex::OverlayAddress : Regex::DataAddress;
+		auto const& regex = (isOverlay) ? Regex::OverlayAddress : Regex::DataAddress;
 		if (!std::regex_search(out.cbegin() + offset, searchEnd, matches, regex)) {
 			throw WriteError(
 			    "could not find address offset for %s element data (%d bytes)",
@@ -706,11 +706,11 @@ void UHSWriter::serializeData(std::string& out) {
 			    data.length());
 		}
 
-		const auto& matchNumber = (isOverlay) ? 1 : 2;
-		const auto position = static_cast<std::size_t>(matches.position(matchNumber));
-		const auto dataAddress = std::to_string(dataOffset);
-		const auto dataAddressLength = dataAddress.length();
-		const auto dataAddressOffset =
+		auto const& matchNumber = (isOverlay) ? 1 : 2;
+		auto const position = static_cast<std::size_t>(matches.position(matchNumber));
+		auto const dataAddress = std::to_string(dataOffset);
+		auto const dataAddressLength = dataAddress.length();
+		auto const dataAddressOffset =
 		    offset + position + FileSizeLength - dataAddressLength;
 
 		// Replace data address
@@ -727,14 +727,14 @@ void UHSWriter::serializeData(std::string& out) {
 	}
 
 	// Find length attribute
-	const auto position = out.find(InfoLengthMarker);
+	auto const position = out.find(InfoLengthMarker);
 	if (position == std::string::npos) {
 		return; // No info node present
 	}
-	const auto fileLength = out.length() + CRC::ByteLength;
-	const auto fileLengthString = std::to_string(fileLength);
-	const auto fileLengthStringLength = fileLengthString.length();
-	const auto infoLengthOffset =
+	auto const fileLength = out.length() + CRC::ByteLength;
+	auto const fileLengthString = std::to_string(fileLength);
+	auto const fileLengthStringLength = fileLengthString.length();
+	auto const infoLengthOffset =
 	    position + strlen(InfoLengthMarker) - fileLengthStringLength;
 
 	// Replace length attribute
@@ -753,7 +753,7 @@ void UHSWriter::serializeCRC(std::string& out) {
 }
 
 std::string UHSWriter::formatText(
-    const TextNode& textNode, const TextFormat previousFormat) {
+    TextNode const& textNode, TextFormat const previousFormat) {
 
 	auto body = textNode.body();
 
@@ -783,7 +783,7 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasPreviousSibling()) {
 		if (auto node = textNode.previousSibling(); node->isElement()) {
-			const auto previousElement = static_cast<Element*>(node);
+			auto const previousElement = static_cast<Element*>(node);
 			if (previousElement->inlined()) {
 				body = Token::InlineEnd + body;
 			}
@@ -792,7 +792,7 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasNextSibling()) {
 		if (auto node = textNode.nextSibling(); node->isElement()) {
-			const auto nextElement = static_pointer_cast<Element>(node);
+			auto const nextElement = static_pointer_cast<Element>(node);
 			if (nextElement->inlined()) {
 				body += Token::InlineBegin;
 			}
@@ -802,7 +802,7 @@ std::string UHSWriter::formatText(
 	return body;
 }
 
-std::string UHSWriter::encodeText(const std::string text, const ElementType parentType) {
+std::string UHSWriter::encodeText(std::string const text, ElementType const parentType) {
 	std::string buffer;
 
 	auto lines = Strings::split(text, "\n");
@@ -846,7 +846,7 @@ std::string UHSWriter::encodeText(const std::string text, const ElementType pare
 	return buffer;
 }
 
-void UHSWriter::addData(const Element& element) {
+void UHSWriter::addData(Element const& element) {
 	data_.emplace(std::make_pair(element.elementType(), element.body()));
 }
 
@@ -887,7 +887,7 @@ std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y
 
 std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
 	std::ostringstream buffer;
-	std::vector<const int> coords = {x1, y1, x2, y2};
+	std::vector<int const> coords = {x1, y1, x2, y2};
 	auto continuation = false;
 
 	for (auto coord : coords) {

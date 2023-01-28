@@ -6,12 +6,12 @@
 namespace UHS {
 
 Tokenizer::Tokenizer(Pipe& pipe) : pipe_{pipe}, out_{pipe} {
-	pipe_.addHandler([=](const char* buffer, std::streamsize length) {
+	pipe_.addHandler([=](char const* buffer, std::streamsize length) {
 		this->tokenize(buffer, length);
 	});
 }
 
-void Tokenizer::tokenize(const char* buffer, std::streamsize length) {
+void Tokenizer::tokenize(char const* buffer, std::streamsize length) {
 	std::string localBuffer{buffer, static_cast<std::size_t>(length)};
 	std::size_t column = 0;
 
@@ -77,7 +77,7 @@ bool Tokenizer::hasNext() {
 	return out_.ok();
 }
 
-std::unique_ptr<const Token> Tokenizer::next() {
+std::unique_ptr<Token const> Tokenizer::next() {
 	return out_.receive();
 }
 
@@ -140,7 +140,7 @@ void Tokenizer::tokenizeLine() {
 	}
 }
 
-ElementType Tokenizer::tokenizeDescriptor(const std::smatch& matches) {
+ElementType Tokenizer::tokenizeDescriptor(std::smatch const& matches) {
 	out_.send(
 	    {TokenType::Length, offset_, line_, 0, Strings::ltrim(matches[1].str(), '0')});
 	std::string ident{matches[2].str()};
@@ -149,7 +149,7 @@ ElementType Tokenizer::tokenizeDescriptor(const std::smatch& matches) {
 	return Element::elementType(ident);
 }
 
-void Tokenizer::tokenizeDataAddress(const std::smatch& matches) {
+void Tokenizer::tokenizeDataAddress(std::smatch const& matches) {
 	this->tokenizeMatches(matches,
 	    {
 	        TokenType::TextFormat,
@@ -158,7 +158,7 @@ void Tokenizer::tokenizeDataAddress(const std::smatch& matches) {
 	    });
 }
 
-void Tokenizer::tokenizeHyperpngRegion(const std::smatch& matches) {
+void Tokenizer::tokenizeHyperpngRegion(std::smatch const& matches) {
 	this->tokenizeMatches(matches,
 	    {
 	        TokenType::CoordX,
@@ -168,7 +168,7 @@ void Tokenizer::tokenizeHyperpngRegion(const std::smatch& matches) {
 	    });
 }
 
-void Tokenizer::tokenizeOverlayAddress(const std::smatch& matches) {
+void Tokenizer::tokenizeOverlayAddress(std::smatch const& matches) {
 	this->tokenizeMatches(matches,
 	    {
 	        TokenType::DataOffset,
@@ -179,7 +179,7 @@ void Tokenizer::tokenizeOverlayAddress(const std::smatch& matches) {
 }
 
 void Tokenizer::tokenizeMatches(
-    const std::smatch& matches, const std::vector<TokenType>&& tokens) {
+    std::smatch const& matches, std::vector<TokenType> const&& tokens) {
 
 	for (std::vector<TokenType>::size_type i = 0; i < tokens.size(); ++i) {
 		if (matches[i + 1].length() > 0) {
@@ -190,11 +190,11 @@ void Tokenizer::tokenizeMatches(
 	}
 }
 
-void Tokenizer::tokenizeData(const std::string& data, std::size_t column) {
+void Tokenizer::tokenizeData(std::string const& data, std::size_t column) {
 	out_.send({TokenType::Data, offset_, line_, column, data});
 }
 
-void Tokenizer::tokenizeCRC(const std::string& crc, std::size_t column) {
+void Tokenizer::tokenizeCRC(std::string const& crc, std::size_t column) {
 	out_.send({TokenType::CRC, offset_, line_, column, crc});
 }
 
@@ -204,13 +204,13 @@ void Tokenizer::tokenizeEOF(std::size_t column) {
 
 Tokenizer::TokenChannel::TokenChannel(Pipe& pipe) : pipe_{pipe} {}
 
-void Tokenizer::TokenChannel::send(const Token&& token) {
+void Tokenizer::TokenChannel::send(Token const&& token) {
 	std::lock_guard<std::mutex> m{mutex_};
 	assert(open_);
 	queue_.push(token);
 }
 
-std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
+std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
 	if (auto err = pipe_.error()) {
 		std::rethrow_exception(err);
 	}
@@ -223,7 +223,7 @@ std::unique_ptr<const Token> Tokenizer::TokenChannel::receive() {
 		}
 	}
 	std::lock_guard<std::mutex> m{mutex_};
-	auto t = std::make_unique<const Token>(queue_.front());
+	auto t = std::make_unique<Token const>(queue_.front());
 	queue_.pop();
 
 	return t;

@@ -4,7 +4,7 @@ namespace UHS {
 
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
-HTMLWriter::HTMLWriter(const Logger logger, std::ostream& out, const Options options)
+HTMLWriter::HTMLWriter(Logger const logger, std::ostream& out, Options const options)
     : Writer(logger, out, options) {
 
 	css_ =
@@ -25,13 +25,13 @@ HTMLWriter::HTMLWriter(const Logger logger, std::ostream& out, const Options opt
 	mediaTagTypes_.emplace(ElementType::Sound, "audio");
 }
 
-void HTMLWriter::write(const std::shared_ptr<Document> document) {
+void HTMLWriter::write(std::shared_ptr<Document> const document) {
 	pugi::xml_document xml;
 	this->serialize(*document, xml);
 	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
-void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
+void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 	auto depth = 0;
 	NodeMap parents;
 
@@ -45,12 +45,12 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 	auto root = this->createHTMLDocument(*d, xml);
 	auto parent = root;
 
-	for (const auto& node : *d) {
+	for (auto const& node : *d) {
 		auto nodeDepth = node.depth();
 
 		try {
 			parent = this->findXMLParent(node, parent, parents, depth);
-		} catch (const std::out_of_range& err) {
+		} catch (std::out_of_range const& err) {
 			throw WriteError("could not find XML parent");
 		}
 
@@ -59,7 +59,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		case NodeType::Break:
 			break;
 		case NodeType::Document: {
-			const auto& d = static_cast<const Document&>(node);
+			auto const& d = static_cast<Document const&>(node);
 			pugi::xml_node xmlNode;
 
 			if (strcmp(parent.name(), "ol") == 0) {
@@ -77,7 +77,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			break;
 		}
 		case NodeType::Element: {
-			const auto& element = static_cast<const Element&>(node);
+			auto const& element = static_cast<Element const&>(node);
 			pugi::xml_node xmlNode;
 
 			if (strcmp(parent.name(), "ol") == 0) {
@@ -96,13 +96,13 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 		}
 		case NodeType::Group: {
 			pugi::xml_node xmlNode;
-			const Element* parentElement;
+			Element const* parentElement;
 			ElementType parentElementType = ElementType::Unknown;
 			assert(node.hasParent());
 			auto nodeParent = node.parent();
 
 			if (nodeParent->isElement()) {
-				parentElement = static_cast<const Element*>(nodeParent);
+				parentElement = static_cast<Element const*>(nodeParent);
 				parentElementType = parentElement->elementType();
 			}
 
@@ -126,7 +126,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 			break;
 		}
 		case NodeType::Text: {
-			const auto& textNode = static_cast<const TextNode&>(node);
+			auto const& textNode = static_cast<TextNode const&>(node);
 			auto xmlNode = parent.append_child("span");
 			this->serializeTextNode(textNode, xmlNode);
 			break;
@@ -140,7 +140,7 @@ void HTMLWriter::serialize(const Document& document, pugi::xml_document& xml) {
 }
 
 void HTMLWriter::serializeDocument(
-    const Document& document, pugi::xml_node xmlNode) const {
+    Document const& document, pugi::xml_node xmlNode) const {
 
 	xmlNode.append_attribute("data-type") = document.nodeTypeString().c_str();
 	xmlNode.append_attribute("data-version") = document.versionString().c_str();
@@ -148,11 +148,11 @@ void HTMLWriter::serializeDocument(
 	xmlNode.append_child("ol");
 }
 
-void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode) {
-	if (const auto id = element.id(); id > 0) {
+void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode) {
+	if (auto const id = element.id(); id > 0) {
 		xmlNode.append_attribute("data-id") = id;
 
-		const auto parentDocument = element.findDocument();
+		auto const parentDocument = element.findDocument();
 		if (!parentDocument) {
 			throw WriteError("no document found for element with ID %d", element.id());
 		}
@@ -168,7 +168,7 @@ void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode
 
 	this->appendVisibility(element, xmlNode);
 
-	for (const auto& [k, v] : element.attrs()) {
+	for (auto const& [k, v] : element.attrs()) {
 		xmlNode.append_attribute(("data-" + k).c_str()) = v.c_str();
 	}
 
@@ -181,34 +181,34 @@ void HTMLWriter::serializeElement(const Element& element, pugi::xml_node xmlNode
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
-void HTMLWriter::serializeBlankElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeBlankElement(Element const& element, pugi::xml_node xmlNode) {
 	xmlNode.set_name("hr");
 }
 #pragma clang diagnostic pop
 
-void HTMLWriter::serializeCommentElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeCommentElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	this->appendBody(element, xmlNode);
 }
 
-void HTMLWriter::serializeDataElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeDataElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendMedia(element, xmlNode);
 }
 
-void HTMLWriter::serializeGifaElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeGifaElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("alt") = element.title().c_str();
 	this->appendClassNames(media, {"media", "gifa"});
 }
 
-void HTMLWriter::serializeHintElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeHintElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeHyperpngElement(
-    const Element& element, pugi::xml_node xmlNode) {
+    Element const& element, pugi::xml_node xmlNode) {
 
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
@@ -225,12 +225,12 @@ void HTMLWriter::serializeHyperpngElement(
 }
 
 void HTMLWriter::serializeIncentiveElement(
-    const Element& element, pugi::xml_node xmlNode) {
+    Element const& element, pugi::xml_node xmlNode) {
 
 	this->appendBody(element, xmlNode);
 }
 
-void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeInfoElement(Element const& element, pugi::xml_node xmlNode) {
 	auto document = element.findDocument();
 	if (document && document->attrs().size() == 0) {
 		return;
@@ -271,7 +271,7 @@ void HTMLWriter::serializeInfoElement(const Element& element, pugi::xml_node xml
 	}
 }
 
-void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeLinkElement(Element const& element, pugi::xml_node xmlNode) {
 	auto isLink = false;
 	auto isText = false;
 
@@ -307,7 +307,7 @@ void HTMLWriter::serializeLinkElement(const Element& element, pugi::xml_node xml
 	xmlNode.append_attribute("href") = ("#" + target).c_str();
 }
 
-void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeOverlayElement(Element const& element, pugi::xml_node xmlNode) {
 	// Re-parent node
 	auto container = findHyperpngContainer(element, xmlNode);
 	if (!container) {
@@ -334,24 +334,24 @@ void HTMLWriter::serializeOverlayElement(const Element& element, pugi::xml_node 
 	area.append_attribute("data-overlay") = element.id();
 }
 
-void HTMLWriter::serializeSoundElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeSoundElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("controls");
 	this->appendClassNames(media, {"media", "sound"});
 }
 
-void HTMLWriter::serializeSubjectElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeSubjectElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
-void HTMLWriter::serializeTextElement(const Element& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeTextElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);
 }
 
 void HTMLWriter::serializeTextNode(
-    const TextNode& textNode, pugi::xml_node xmlNode) const {
+    TextNode const& textNode, pugi::xml_node xmlNode) const {
 
 	if (textNode.hasPreviousSibling()) {
 		auto previousNode = textNode.previousSibling();
@@ -401,7 +401,7 @@ void HTMLWriter::serializeTextNode(
 }
 
 std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
-    const Document& document) const {
+    Document const& document) const {
 
 	auto copy = document.clone(); // Expensive, but 88a files are very small
 	auto container = Element::create(ElementType::Subject, 1);
@@ -420,9 +420,9 @@ std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
 }
 
 std::optional<pugi::xml_node> HTMLWriter::appendBody(
-    const Element& element, pugi::xml_node xmlNode) const {
+    Element const& element, pugi::xml_node xmlNode) const {
 
-	const auto& body = element.body();
+	auto const& body = element.body();
 	if (body.empty()) {
 		return std::nullopt;
 	}
@@ -440,10 +440,10 @@ void HTMLWriter::appendClassNames(
 		xmlNode.append_attribute("class");
 	}
 
-	const auto value = std::string{attr.value()};
+	auto const value = std::string{attr.value()};
 	if (!value.empty()) {
 		auto oldClassNames = Strings::split(value, " ");
-		for (const auto& className : oldClassNames) {
+		for (auto const& className : oldClassNames) {
 			classNames.emplace_back(className);
 		}
 	}
@@ -456,7 +456,7 @@ void HTMLWriter::appendClassNames(
 }
 
 pugi::xml_node HTMLWriter::appendTitle(
-    const Element& element, pugi::xml_node xmlNode) const {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	auto div = xmlNode.append_child("div");
 	auto title = div.append_child("span");
@@ -467,7 +467,7 @@ pugi::xml_node HTMLWriter::appendTitle(
 }
 
 pugi::xml_node HTMLWriter::appendMedia(
-    const Element& element, pugi::xml_node xmlNode) const {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	std::string contentType;
 	std::string tagName;
@@ -476,7 +476,7 @@ pugi::xml_node HTMLWriter::appendMedia(
 	try {
 		contentType = mediaContentTypes_.at(elementType);
 		tagName = mediaTagTypes_.at(elementType);
-	} catch (const std::out_of_range&) {
+	} catch (std::out_of_range const&) {
 		throw WriteError("unexpected media type: %s", element.elementTypeString());
 	}
 
@@ -488,7 +488,7 @@ pugi::xml_node HTMLWriter::appendMedia(
 }
 
 void HTMLWriter::appendVisibility(
-    const Traits::Visibility& node, pugi::xml_node xmlNode) const {
+    Traits::Visibility const& node, pugi::xml_node xmlNode) const {
 
 	if (node.visibility() == VisibilityType::All) {
 		return;
@@ -497,7 +497,7 @@ void HTMLWriter::appendVisibility(
 }
 
 pugi::xml_node HTMLWriter::createHTMLDocument(
-    const Document& document, pugi::xml_document& xml) const {
+    Document const& document, pugi::xml_document& xml) const {
 
 	// <!DOCTYPE html>
 	xml.append_child(pugi::node_doctype).set_value("html");
@@ -559,7 +559,7 @@ pugi::xml_node HTMLWriter::createHTMLDocument(
 }
 
 std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
-    const Element& element, pugi::xml_node xmlNode) const {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	auto parentElement = this->getParentElement(element);
 	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
@@ -574,7 +574,7 @@ std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
 }
 
 pugi::xml_node HTMLWriter::findOrCreateMap(
-    const Element& element, pugi::xml_node xmlNode) const {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	auto parentElement = this->getParentElement(element);
 	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
@@ -600,8 +600,8 @@ pugi::xml_node HTMLWriter::findOrCreateMap(
 	return map;
 }
 
-pugi::xml_node HTMLWriter::findXMLParent(const Node& node, const pugi::xml_node parent,
-    const NodeMap parents, const int depth) const {
+pugi::xml_node HTMLWriter::findXMLParent(Node const& node, pugi::xml_node const parent,
+    NodeMap const parents, int const depth) const {
 
 	auto nodeDepth = node.depth();
 	auto nodeParent = parent;
@@ -612,7 +612,7 @@ pugi::xml_node HTMLWriter::findXMLParent(const Node& node, const pugi::xml_node 
 
 	try {
 		nodeParent = parents.at(node.parent());
-	} catch (const std::out_of_range& err) {
+	} catch (std::out_of_range const& err) {
 		throw WriteError("could not find HTML parent node");
 	}
 
@@ -633,12 +633,12 @@ pugi::xml_node HTMLWriter::findXMLParent(const Node& node, const pugi::xml_node 
 }
 
 std::string HTMLWriter::getDataURI(
-    const std::string& contentType, const std::string& data) const {
+    std::string const& contentType, std::string const& data) const {
 
 	return tfm::format("data:%s;base64,%s", contentType, Strings::toBase64(data));
 }
 
-std::tuple<int, int> HTMLWriter::getImageSize(const Element& element) const {
+std::tuple<int, int> HTMLWriter::getImageSize(Element const& element) const {
 	auto x = element.attr("image-x");
 	auto y = element.attr("image-y");
 
@@ -649,7 +649,7 @@ std::tuple<int, int> HTMLWriter::getImageSize(const Element& element) const {
 	return std::make_tuple(Strings::toInt(*x), Strings::toInt(*y));
 }
 
-Element* HTMLWriter::getParentElement(const Element& element) const {
+Element* HTMLWriter::getParentElement(Element const& element) const {
 	auto parentNode = element.parent();
 	if (!parentNode || !parentNode->isElement()) {
 		return nullptr;
@@ -658,7 +658,7 @@ Element* HTMLWriter::getParentElement(const Element& element) const {
 }
 
 std::tuple<int, int, int, int> HTMLWriter::getRegionCoordinates(
-    const Element& element) const {
+    Element const& element) const {
 	auto x1 = element.attr("region-top-left-x");
 	auto y1 = element.attr("region-top-left-y");
 	auto x2 = element.attr("region-bottom-right-x");
@@ -675,7 +675,7 @@ std::tuple<int, int, int, int> HTMLWriter::getRegionCoordinates(
 	    Strings::toInt(*y2));
 }
 
-void HTMLWriter::populateArea(const Element& element, pugi::xml_node area) const {
+void HTMLWriter::populateArea(Element const& element, pugi::xml_node area) const {
 	auto [x1, y1, x2, y2] = this->getRegionCoordinates(element);
 	auto coordsString = tfm::format("%d,%d,%d,%d", x1, y1, x2, y2);
 
@@ -703,7 +703,7 @@ HTMLWriter::Serializer::Serializer() {
 }
 
 void HTMLWriter::Serializer::invoke(
-    HTMLWriter& writer, const Element& element, pugi::xml_node xmlNode) {
+    HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode) {
 
 	auto func = map_.at(element.elementType());
 	(writer.*func)(element, xmlNode);
