@@ -1,4 +1,4 @@
-#ifndef UHS_H
+#if !defined UHS_H
 #define UHS_H
 
 #define UHS_VERSION "1.0.0-alpha"
@@ -1242,6 +1242,9 @@ private:
 	DataQueue data_;
 	std::vector<Node*> deferredLinks_;
 };
+
+bool write(Logger const logger, std::string const format, std::string const infile,
+    std::string const outfile = "", Options const options = {});
 
 } // namespace UHS
 

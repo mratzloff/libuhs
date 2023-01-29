@@ -61,7 +61,6 @@ int main(int const argc, char* argv[]) {
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-
 	Logger logger{options.quiet ? LogLevel::None : LogLevel::Warn};
 
 	// Debug
@@ -74,23 +73,10 @@ int main(int const argc, char* argv[]) {
 		logger.error("--format (-f) is required");
 		return Err;
 	};
-	if (format != "uhs" && format != "html" && format != "json" && format != "tree") {
-		logger.error("unknown option for --format: %s", format);
-		return Err;
-	}
 
 	// Media directory
 	std::string mediaDir;
 	args({"-m", "--media"}) >> mediaDir;
-
-	if (mediaDir.length() > 0) {
-		std::filesystem::path path{mediaDir};
-		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
-			logger.error("invalid media directory: %s", mediaDir);
-			return Err;
-		}
-		options.mediaDir = mediaDir;
-	}
 
 	// Read and write mode
 	std::string mode;
@@ -103,21 +89,13 @@ int main(int const argc, char* argv[]) {
 	} else if (mode == "96a") {
 		options.mode = ModeType::Version96a;
 	} else {
-		logger.error("unknown option for --mode: %s", mode);
+		logger.error("unknown mode: %s", mode);
 		return Err;
 	}
 
 	// Output file
 	std::string outfile;
 	args({"-o", "--output"}) >> outfile;
-
-	if (outfile.length() > 0) {
-		std::filesystem::path path{outfile};
-		if (!path.has_parent_path() || !std::filesystem::exists(path.parent_path())) {
-			logger.error("invalid output file: %s", outfile);
-			return Err;
-		}
-	}
 
 	// Preserve unregistered content restrictions
 	options.preserve = args[{"--preserve"}];
@@ -127,52 +105,10 @@ int main(int const argc, char* argv[]) {
 		logger.error("no input file specified");
 		return Err;
 	}
-
 	std::string infile = argv[argc - 1];
-	std::filesystem::path infilePath{infile};
 
-	if (!std::filesystem::exists(infilePath)) {
-		logger.error("invalid file: %s", infile);
-		return Err;
-	}
-
-	try {
-		Parser p{logger, options};
-		auto const document = p.parseFile(infile);
-
-		std::ofstream fout;
-		if (!outfile.empty()) {
-			fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
-		}
-		std::ostream& out = (outfile.empty()) ? std::cout : fout;
-
-		if (format == "uhs") {
-			UHSWriter w{logger, out, options};
-			w.write(document);
-		} else if (format == "html") {
-			HTMLWriter w{logger, out, options};
-			w.write(document);
-		} else if (format == "json") {
-			JSONWriter w{logger, out, options};
-			w.write(document);
-		} else if (format == "tree") {
-			TreeWriter w{logger, out, options};
-			w.write(document);
-		}
-	} catch (ReadError const& err) {
-		logger.error(err);
-		return Err;
-	} catch (ParseError const& err) {
-		logger.error(err);
-		return Err;
-	} catch (WriteError const& err) {
-		logger.error(err);
-		return Err;
-	} catch (Error const& err) {
-		logger.error(err);
-		return Err;
-	} catch (std::exception const& err) {
-		logger.error(err.what());
+	auto ok = write(logger, format, infile, outfile, options);
+	if (!ok) {
 		return Err;
 	}
 

@@ -33,7 +33,8 @@ set (uhs_sources
 	cpp/src/writer/html.cpp
 	cpp/src/writer/json.cpp
 	cpp/src/writer/tree.cpp
-	cpp/src/writer/uhs.cpp)
+	cpp/src/writer/uhs.cpp
+	cpp/src/uhs.cpp)
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
