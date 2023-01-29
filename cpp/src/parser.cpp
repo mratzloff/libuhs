@@ -747,9 +747,7 @@ void Parser::parseIncentiveElement(Element& element) {
 
 		// Split instruction (e.g., "3Z")
 		if (instructionLength < 2) {
-			if (!options_.quiet) {
-				logger_.warn(message, instruction);
-			}
+			logger_.warn(message, instruction);
 			continue;
 		}
 
@@ -760,9 +758,7 @@ void Parser::parseIncentiveElement(Element& element) {
 				throw Error();
 			}
 		} catch (Error const& err) {
-			if (!options_.quiet) {
-				logger_.warn(message, instruction);
-			}
+			logger_.warn(message, instruction);
 			continue;
 		}
 
@@ -774,9 +770,7 @@ void Parser::parseIncentiveElement(Element& element) {
 		} else if (flag == Token::UnregisteredOnly) {
 			visibility = VisibilityType::UnregisteredOnly;
 		} else {
-			if (!options_.quiet) {
-				logger_.warn(message, instruction);
-			}
+			logger_.warn(message, instruction);
 			continue;
 		}
 
@@ -1278,7 +1272,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 				case 'h':
 					switch (s[i + 2]) {
 					case '+': // Token::HyperlinkBegin
-						if (hasFormat(format, TextFormat::Hyperlink) && !options_.quiet) {
+						if (hasFormat(format, TextFormat::Hyperlink)) {
 							logger_.warn("unexpected formatting sequence: %s",
 							    Token::HyperlinkBegin);
 						}
@@ -1288,9 +1282,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 						i += 2;
 						break;
 					case '-': // Token::HyperlinkEnd
-						if (!hasFormat(format, TextFormat::Hyperlink)
-						    && !options_.quiet) {
-
+						if (!hasFormat(format, TextFormat::Hyperlink)) {
 							logger_.warn("unexpected formatting sequence: %s",
 							    Token::HyperlinkEnd);
 						}
@@ -1304,7 +1296,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 				case 'p':
 					switch (s[i + 2]) {
 					case '-': // Token::MonospaceBegin
-						if (hasFormat(format, TextFormat::Monospace) && !options_.quiet) {
+						if (hasFormat(format, TextFormat::Monospace)) {
 							logger_.warn("unexpected formatting sequence: %s",
 							    Token::MonospaceBegin);
 						}
@@ -1314,9 +1306,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 						i += 2;
 						break;
 					case '+': // Token::MonospaceEnd
-						if (!hasFormat(format, TextFormat::Monospace)
-						    && !options_.quiet) {
-
+						if (!hasFormat(format, TextFormat::Monospace)) {
 							logger_.warn("unexpected formatting sequence: %s",
 							    Token::MonospaceEnd);
 						}
@@ -1394,9 +1384,7 @@ void Parser::processLinks() {
 			}
 		}
 		if (!target) {
-			if (!options_.quiet) {
-				logger_.warn("link target not found: %d", targetLine);
-			}
+			logger_.warn("link target not found: %d", targetLine);
 			// throw ParseError(line, column, "target not found: %d", targetLine);
 		}
 	}
@@ -1406,9 +1394,7 @@ void Parser::processVisibility() {
 	for (auto [targetLine, visibility] : deferredVisibilities_) {
 		if (auto target = document_->find(targetLine)) {
 			if (!target->isElement()) {
-				if (!options_.quiet) {
-					logger_.warn("could not set visibility: non-element node");
-				}
+				logger_.warn("could not set visibility: non-element node");
 				continue;
 			}
 
@@ -1423,9 +1409,7 @@ void Parser::processVisibility() {
 				case VisibilityType::UnregisteredOnly: {
 					auto node = target->pointer();
 					if (!target->hasParent() || !node) {
-						if (!options_.quiet) {
-							logger_.warn("could not remove orphaned node");
-						}
+						logger_.warn("could not remove orphaned node");
 						continue;
 					}
 					target->parent()->removeChild(node);
@@ -1435,7 +1419,7 @@ void Parser::processVisibility() {
 					break; // No change
 				}
 			}
-		} else if (!options_.quiet) {
+		} else {
 			logger_.warn(
 			    "could not set visibility: no element found at line %d", targetLine);
 		}

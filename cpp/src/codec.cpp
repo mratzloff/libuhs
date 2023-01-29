@@ -53,9 +53,7 @@ std::string const Codec::decodeSpecialChars(std::string const& encoded) const {
 		auto pos = encoded.find("#a-", offset);
 
 		if (pos == std::string::npos) {
-			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: expected #a-");
-			}
+			logger_.warn("unexpected sequence: expected #a-");
 			segment += encoded[i];
 			continue;
 		}
@@ -66,9 +64,7 @@ std::string const Codec::decodeSpecialChars(std::string const& encoded) const {
 		try {
 			segment += this->toChars_.at(value);
 		} catch (std::out_of_range const& err) {
-			if (!options_.quiet) {
-				logger_.warn("unexpected sequence: %s", value);
-			}
+			logger_.warn("unexpected sequence: %s", value);
 			segment += encoded[i];
 			break;
 		}

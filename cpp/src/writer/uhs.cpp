@@ -666,9 +666,7 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 		assert(target);
 
 		if (!target->isElement()) {
-			if (!options_.quiet) {
-				logger_.warn("link target is not an element");
-			}
+			logger_.warn("link target is not an element");
 			continue;
 		}
 

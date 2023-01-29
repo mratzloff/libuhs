@@ -42,7 +42,6 @@ void printVersion() {
 }
 
 int main(int const argc, char* argv[]) {
-	Logger logger;
 	Options options;
 
 	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
@@ -59,6 +58,11 @@ int main(int const argc, char* argv[]) {
 		printVersion();
 		return OK;
 	}
+
+	// Suppress errors and warnings
+	options.quiet = args[{"-q", "--quiet"}];
+
+	Logger logger{options.quiet ? LogLevel::None : LogLevel::Warn};
 
 	// Debug
 	options.debug = args[{"-d", "--debug"}];
@@ -118,9 +122,6 @@ int main(int const argc, char* argv[]) {
 	// Preserve unregistered content restrictions
 	options.preserve = args[{"--preserve"}];
 
-	// Suppress errors and warnings
-	options.quiet = args[{"-q", "--quiet"}];
-
 	// Input file
 	if (argc < 2) {
 		logger.error("no input file specified");
@@ -159,29 +160,19 @@ int main(int const argc, char* argv[]) {
 			w.write(document);
 		}
 	} catch (ReadError const& err) {
-		if (!options.quiet) {
-			logger.error(err);
-		}
+		logger.error(err);
 		return Err;
 	} catch (ParseError const& err) {
-		if (!options.quiet) {
-			logger.error(err);
-		}
+		logger.error(err);
 		return Err;
 	} catch (WriteError const& err) {
-		if (!options.quiet) {
-			logger.error(err);
-		}
+		logger.error(err);
 		return Err;
 	} catch (Error const& err) {
-		if (!options.quiet) {
-			logger.error(err);
-		}
+		logger.error(err);
 		return Err;
 	} catch (std::exception const& err) {
-		if (!options.quiet) {
-			logger.error(err.what());
-		}
+		logger.error(err.what());
 		return Err;
 	}
 

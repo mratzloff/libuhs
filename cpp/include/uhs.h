@@ -56,11 +56,10 @@ enum class ElementType {
 	Version,
 };
 
-enum class TextFormat : uint8_t {
-	None = 0, // Also used for binary data
-	Monospace = 1,
-	Overflow = 2,
-	Hyperlink = 4,
+enum class LogLevel {
+	None,
+	Warn,
+	Error,
 };
 
 enum class NodeType {
@@ -75,6 +74,13 @@ enum class ModeType {
 	Auto,
 	Version88a,
 	Version96a,
+};
+
+enum class TextFormat : uint8_t {
+	None = 0, // Also used for binary data
+	Monospace = 1,
+	Overflow = 2,
+	Hyperlink = 4,
 };
 
 enum class TokenType {
@@ -228,25 +234,30 @@ class WriteError : public Error {
 
 class Logger {
 public:
+	Logger(LogLevel level = LogLevel::Warn) : level_{level} {}
 	void error(char const* message) const { this->error("%s", message); }
-
 	void error(Error const& err) const { this->error("%s", err.string().c_str()); }
 
 	template<typename... Args>
 	void error(char const* format, Args... args) const {
-		this->log(std::cout, "error: ", format, args...);
+		if (level_ == LogLevel::Warn || level_ == LogLevel::Error) {
+			this->log(std::cout, "error: ", format, args...);
+		}
 	}
 
 	void warn(char const* message) const { this->warn("%s", message); }
-
 	void warn(Error const& err) const { this->warn("%s", err.string().c_str()); }
 
 	template<typename... Args>
 	void warn(char const* format, Args... args) const {
-		this->log(std::cout, "warning: ", format, args...);
+		if (level_ == LogLevel::Warn) {
+			this->log(std::cout, "warning: ", format, args...);
+		}
 	}
 
 private:
+	LogLevel level_;
+
 	template<typename... Args>
 	void log(std::ostream& ostream, char const* prefix, char const* format,
 	    Args... args) const {
