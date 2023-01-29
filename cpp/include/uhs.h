@@ -1,7 +1,9 @@
 #if !defined UHS_H
-#define UHS_H
 
+#define UHS_H
 #define UHS_VERSION "1.0.0-alpha"
+
+#if defined __cplusplus
 
 #include <cassert>
 #include <cstdint>
@@ -1247,5 +1249,14 @@ bool write(Logger const logger, std::string const format, std::string const infi
     std::string const outfile = "", Options const options = {});
 
 } // namespace UHS
+
+extern "C" {
+#endif
+
+int uhs_write(char const* format, char const* infile, char const* outfile);
+
+#if defined __cplusplus
+}
+#endif
 
 #endif

@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.8)
 
-project (libuhs CXX)
+project (libuhs CXX C)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY cpp/lib)
@@ -100,9 +100,18 @@ target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
 # bin/uhs
 add_executable (uhs_bin cpp/src/cmd/uhs/main.cpp)
 add_dependencies (uhs_bin css_includes js_includes)
-set_target_properties (uhs_bin PROPERTIES OUTPUT_NAME uhs)
+set_target_properties (uhs_bin
+	PROPERTIES LINKER_LANGUAGE CXX
+               OUTPUT_NAME uhs)
 target_include_directories (uhs_bin PUBLIC ${argh_includes})
 target_link_libraries (uhs_bin PUBLIC uhs)
+
+# bin/uhsc
+add_executable (uhsc_bin c/src/cmd/uhsc/main.c)
+set_target_properties (uhsc_bin
+	PROPERTIES LINKER_LANGUAGE C
+               OUTPUT_NAME uhsc)
+target_link_libraries (uhsc_bin PUBLIC uhs)
 
 # clang-format
 add_custom_target (format
