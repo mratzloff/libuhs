@@ -12,7 +12,7 @@
     "module": "esnext",
     "moduleResolution": "node",
     "noFallthroughCasesInSwitch": true,
-    "outDir": "ts/build",
+    "outDir": "build/ts",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,

@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs_bridge.h"
 
 int main(int argc, char* argv[]) {
 	(void) argc;

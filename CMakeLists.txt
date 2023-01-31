@@ -3,20 +3,22 @@ cmake_minimum_required (VERSION 3.8)
 project (libuhs CXX C)
 
 set (CMAKE_CXX_STANDARD 20)
-set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY cpp/lib)
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 
-set (bin node_modules/.bin)
 set (argh_includes cpp/vendor/argh)
+set (bin node_modules/.bin)
 set (json_includes cpp/vendor/jsoncpp/json)
 set (pugixml_includes cpp/vendor/pugixml)
 set (tinyformat_includes cpp/vendor/tinyformat)
 set (tinyutf8_includes cpp/vendor/tinyutf8)
 set (tsl_includes cpp/vendor/tsl)
-set (uhs_includes cpp/include)
+set (uhs_build_includes build/include)
+set (uhs_includes include)
 
 set (uhs_sources
+	cpp/src/bridge.cpp
 	cpp/src/codec.cpp
 	cpp/src/crc.cpp
 	cpp/src/document.cpp
@@ -38,42 +40,44 @@ set (uhs_sources
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
+file (MAKE_DIRECTORY build/assets)
+file (MAKE_DIRECTORY build/include)
+
 # css_minified
-file (MAKE_DIRECTORY cpp/assets/build)
 add_custom_target(css_minified
-	COMMAND ${bin}/minify cpp/assets/css/uhs.css > cpp/assets/build/uhs.min.css
-	BYPRODUCTS cpp/assets/build/uhs.min.css)
+	COMMAND ${bin}/minify cpp/assets/css/uhs.css > build/assets/uhs.min.css
+	BYPRODUCTS build/assets/uhs.min.css)
 
 # css_includes
 add_custom_target(css_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_css_h.cmake
-	BYPRODUCTS cpp/include/css.h)
+	BYPRODUCTS ${uhs_build_includes}/css.h)
 add_dependencies (css_includes css_minified)
 
 # js
 add_custom_target(js
 	COMMAND ${bin}/tsc
-	BYPRODUCTS ts/build/constants.js
-	           ts/build/history.js
-	           ts/build/search.js
-	           ts/build/viewport.js)
+	BYPRODUCTS build/ts/constants.js
+	           build/ts/history.js
+	           build/ts/search.js
+	           build/ts/viewport.js)
 
 # js_combined
 add_custom_target(js_combined
-	COMMAND ${bin}/ncc build ts/src/index.ts --out ts/build --no-source-map-register --quiet
-	BYPRODUCTS ts/build/index.js)
+	COMMAND ${bin}/ncc build ts/src/index.ts --out build/ts --no-source-map-register --quiet
+	BYPRODUCTS build/ts/index.js)
 add_dependencies (js_combined js)
 
 # js_minified
 add_custom_target(js_minified
-	COMMAND ${bin}/minify ts/build/index.js > ts/build/index.min.js
-	BYPRODUCTS ts/build/index.min.js)
+	COMMAND ${bin}/minify build/ts/index.js > build/ts/index.min.js
+	BYPRODUCTS build/ts/index.min.js)
 add_dependencies (js_minified js_combined)
 
 # js_includes
 add_custom_target(js_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_js_h.cmake
-	BYPRODUCTS cpp/include/js.h)
+	BYPRODUCTS ${uhs_build_includes}/js.h)
 add_dependencies (js_includes js_minified)
 
 # json.o
@@ -94,6 +98,7 @@ target_include_directories (uhs
 	       ${tinyformat_includes}
 	       ${tinyutf8_includes}
 	       ${tsl_includes}
+		   ${uhs_build_includes}
 	       ${uhs_includes})
 target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
 
@@ -117,6 +122,7 @@ target_link_libraries (uhsc_bin PUBLIC uhs)
 add_custom_target (format
 	COMMAND clang-format -style=file -i -verbose
 		${uhs_includes}/uhs.h
+		${uhs_includes}/uhs_bridge.h
 		${uhs_sources}
 		${uhs_bin_sources})
 

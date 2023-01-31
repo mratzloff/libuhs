@@ -1,0 +1,3 @@
+module uhs {
+    header "uhs_bridge.h"
+}
