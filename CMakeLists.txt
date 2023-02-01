@@ -9,6 +9,7 @@ list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 
 set (argh_includes cpp/vendor/argh)
 set (bin node_modules/.bin)
+set (httplib_includes cpp/vendor/httplib)
 set (json_includes cpp/vendor/jsoncpp/json)
 set (pugixml_includes cpp/vendor/pugixml)
 set (tinyformat_includes cpp/vendor/tinyformat)
@@ -22,6 +23,7 @@ set (uhs_sources
 	cpp/src/codec.cpp
 	cpp/src/crc.cpp
 	cpp/src/document.cpp
+	cpp/src/downloader.cpp
 	cpp/src/element.cpp
 	cpp/src/error.cpp
 	cpp/src/node.cpp
@@ -94,6 +96,7 @@ add_dependencies (uhs css_includes js_includes)
 target_link_libraries(uhs json pugixml)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
+	       ${httplib_includes}
 	       ${pugixml_includes}
 	       ${tinyformat_includes}
 	       ${tinyutf8_includes}
@@ -133,6 +136,7 @@ add_custom_target (lint
 		-Xanalyzer
 		-analyzer-output=text
 		-I${argh_includes}
+		-I${httplib_includes}
 		-I${json_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}

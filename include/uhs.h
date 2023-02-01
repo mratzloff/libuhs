@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "hopscotch_map.h"
+#include "httplib.h"
 #include "json.h"
 #include "pugixml.hpp"
 #pragma clang diagnostic push
@@ -1241,6 +1242,16 @@ private:
 	std::string key_;
 	DataQueue data_;
 	std::vector<Node*> deferredLinks_;
+};
+
+class Downloader {
+public:
+	void getIndex();
+
+private:
+	static constexpr auto Host = "www.uhs-hints.com";
+	static constexpr auto IndexPath = "/cgi-bin/update.cgi";
+	static constexpr auto Protocol = "http";
 };
 
 bool write(Logger const logger, std::string const format, std::string const infile,

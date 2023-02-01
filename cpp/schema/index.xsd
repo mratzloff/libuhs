@@ -1,0 +1,45 @@
+<!-- For documentation purposes only -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xml:lang="en">
+    <xsd:element name="uhsfiles" type="FilesType"/>
+
+    <xsd:complexType name="FilesType">
+        <xsd:sequence>
+            <xsd:element name="file" type="FileType" minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="FileType">
+        <xsd:sequence>
+            <xsd:element name="ftitle" type="xsd:string"/>
+            <xsd:sequence>
+                <xsd:element name="falttitle" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xsd:sequence>
+            <xsd:sequence>
+                <xsd:element name="frelated" type="xsd:string" minOccurs="0" maxOccurs="unbounded"/>
+            </xsd:sequence>
+            <xsd:element name="furl" type="URLType"/>
+            <xsd:element name="fname" type="FilenameType"/>
+            <xsd:element name="fdate" type="DateType"/>
+            <xsd:element name="fsize" type="xsd:positiveInteger"/>
+            <xsd:element name="ffullsize" type="xsd:positiveInteger"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:simpleType name="URLType">
+        <xsd:restriction base="xsd:anyURI">
+            <xsd:pattern value=".+/[\w-]+\.zip"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="FilenameType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="[\w-]+\.uhs"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:simpleType name="DateType">
+        <xsd:restriction base="xsd:string">
+            <xsd:pattern value="\d{2}-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2}"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+</xsd:schema>
