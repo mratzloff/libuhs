@@ -360,7 +360,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 
 		auto child = static_pointer_cast<Element>(node);
 
-		std::vector<std::pair<std::string, int>> coords{
+		std::vector<std::pair<std::string, int>> coords = {
 		    {"region-top-left-x", 0},
 		    {"region-top-left-y", 0},
 		    {"region-bottom-right-x", 0},
@@ -745,6 +745,7 @@ void UHSWriter::serializeCRC(std::string& out) {
 
 	// Write checksum
 	std::vector<char> checksum;
+	checksum.reserve(2);
 	crc_.result(checksum);
 	out.push_back(checksum[0]);
 	out.push_back(checksum[1]);
@@ -942,21 +943,21 @@ void UHSWriter::convertTo96a() {
 }
 
 UHSWriter::Serializer::Serializer() {
-	map_.emplace(ElementType::Blank, &UHSWriter::serializeBlankElement);
-	map_.emplace(ElementType::Comment, &UHSWriter::serializeCommentElement);
-	map_.emplace(ElementType::Credit, &UHSWriter::serializeCommentElement);
-	map_.emplace(ElementType::Gifa, &UHSWriter::serializeDataElement);
-	map_.emplace(ElementType::Hint, &UHSWriter::serializeHintElement);
-	map_.emplace(ElementType::Hyperpng, &UHSWriter::serializeHyperpngElement);
-	map_.emplace(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
-	map_.emplace(ElementType::Info, &UHSWriter::serializeInfoElement);
-	map_.emplace(ElementType::Link, &UHSWriter::serializeLinkElement);
-	map_.emplace(ElementType::Nesthint, &UHSWriter::serializeHintElement);
-	map_.emplace(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
-	map_.emplace(ElementType::Sound, &UHSWriter::serializeDataElement);
-	map_.emplace(ElementType::Subject, &UHSWriter::serializeSubjectElement);
-	map_.emplace(ElementType::Text, &UHSWriter::serializeTextElement);
-	map_.emplace(ElementType::Version, &UHSWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Blank, &UHSWriter::serializeBlankElement);
+	map_.try_emplace(ElementType::Comment, &UHSWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Credit, &UHSWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Gifa, &UHSWriter::serializeDataElement);
+	map_.try_emplace(ElementType::Hint, &UHSWriter::serializeHintElement);
+	map_.try_emplace(ElementType::Hyperpng, &UHSWriter::serializeHyperpngElement);
+	map_.try_emplace(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
+	map_.try_emplace(ElementType::Info, &UHSWriter::serializeInfoElement);
+	map_.try_emplace(ElementType::Link, &UHSWriter::serializeLinkElement);
+	map_.try_emplace(ElementType::Nesthint, &UHSWriter::serializeHintElement);
+	map_.try_emplace(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
+	map_.try_emplace(ElementType::Sound, &UHSWriter::serializeDataElement);
+	map_.try_emplace(ElementType::Subject, &UHSWriter::serializeSubjectElement);
+	map_.try_emplace(ElementType::Text, &UHSWriter::serializeTextElement);
+	map_.try_emplace(ElementType::Version, &UHSWriter::serializeCommentElement);
 }
 
 int UHSWriter::Serializer::invoke(UHSWriter& writer, Element& element, std::string& out) {

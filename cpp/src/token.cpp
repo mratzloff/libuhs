@@ -112,24 +112,24 @@ std::string const Token::formatByteValue() const {
 }
 
 Token::TypeMap::TypeMap() {
-	map_.emplace(TokenType::CRC, "CRC");
-	map_.emplace(TokenType::CoordX, "CoordX");
-	map_.emplace(TokenType::CoordY, "CoordY");
-	map_.emplace(TokenType::CreditSep, "CreditSep");
-	map_.emplace(TokenType::Data, "Data");
-	map_.emplace(TokenType::DataLength, "DataLength");
-	map_.emplace(TokenType::DataOffset, "DataOffset");
-	map_.emplace(TokenType::FileEnd, "FileEnd");
-	map_.emplace(TokenType::HeaderSep, "HeaderSep");
-	map_.emplace(TokenType::Ident, "Ident");
-	map_.emplace(TokenType::Length, "Length");
-	map_.emplace(TokenType::Line, "Line");
-	map_.emplace(TokenType::NestedElementSep, "NestedElementSep");
-	map_.emplace(TokenType::NestedTextSep, "NestedTextSep");
-	map_.emplace(TokenType::NestedParagraphSep, "NestedParagraphSep");
-	map_.emplace(TokenType::Signature, "Signature");
-	map_.emplace(TokenType::String, "String");
-	map_.emplace(TokenType::TextFormat, "TextFormat");
+	map_.try_emplace(TokenType::CRC, "CRC");
+	map_.try_emplace(TokenType::CoordX, "CoordX");
+	map_.try_emplace(TokenType::CoordY, "CoordY");
+	map_.try_emplace(TokenType::CreditSep, "CreditSep");
+	map_.try_emplace(TokenType::Data, "Data");
+	map_.try_emplace(TokenType::DataLength, "DataLength");
+	map_.try_emplace(TokenType::DataOffset, "DataOffset");
+	map_.try_emplace(TokenType::FileEnd, "FileEnd");
+	map_.try_emplace(TokenType::HeaderSep, "HeaderSep");
+	map_.try_emplace(TokenType::Ident, "Ident");
+	map_.try_emplace(TokenType::Length, "Length");
+	map_.try_emplace(TokenType::Line, "Line");
+	map_.try_emplace(TokenType::NestedElementSep, "NestedElementSep");
+	map_.try_emplace(TokenType::NestedTextSep, "NestedTextSep");
+	map_.try_emplace(TokenType::NestedParagraphSep, "NestedParagraphSep");
+	map_.try_emplace(TokenType::Signature, "Signature");
+	map_.try_emplace(TokenType::String, "String");
+	map_.try_emplace(TokenType::TextFormat, "TextFormat");
 }
 
 std::string const Token::TypeMap::findByType(const TokenType type) const {

@@ -14,15 +14,15 @@ HTMLWriter::HTMLWriter(Logger const logger, std::ostream& out, Options const opt
 #include "js.h"
 	    ;
 
-	mediaContentTypes_.emplace(ElementType::Gifa, "image/gif");
-	mediaContentTypes_.emplace(ElementType::Hyperpng, "image/png");
-	mediaContentTypes_.emplace(ElementType::Overlay, "image/png");
-	mediaContentTypes_.emplace(ElementType::Sound, "audio/wave");
+	mediaContentTypes_.try_emplace(ElementType::Gifa, "image/gif");
+	mediaContentTypes_.try_emplace(ElementType::Hyperpng, "image/png");
+	mediaContentTypes_.try_emplace(ElementType::Overlay, "image/png");
+	mediaContentTypes_.try_emplace(ElementType::Sound, "audio/wave");
 
-	mediaTagTypes_.emplace(ElementType::Gifa, "img");
-	mediaTagTypes_.emplace(ElementType::Hyperpng, "img");
-	mediaTagTypes_.emplace(ElementType::Overlay, "img");
-	mediaTagTypes_.emplace(ElementType::Sound, "audio");
+	mediaTagTypes_.try_emplace(ElementType::Gifa, "img");
+	mediaTagTypes_.try_emplace(ElementType::Hyperpng, "img");
+	mediaTagTypes_.try_emplace(ElementType::Overlay, "img");
+	mediaTagTypes_.try_emplace(ElementType::Sound, "audio");
 }
 
 void HTMLWriter::write(std::shared_ptr<Document> const document) {
@@ -72,7 +72,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 				xmlNode = parent.append_child("section");
 			}
 
-			parents.emplace(&node, xmlNode);
+			parents.try_emplace(&node, xmlNode);
 			this->serializeDocument(d, xmlNode);
 			break;
 		}
@@ -90,7 +90,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 				xmlNode = parent.append_child("div");
 			}
 
-			parents.emplace(&node, xmlNode);
+			parents.try_emplace(&node, xmlNode);
 			this->serializeElement(element, xmlNode);
 			break;
 		}
@@ -122,7 +122,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 				this->appendClassNames(xmlNode, {"hint"});
 			}
 
-			parents.emplace(&node, xmlNode);
+			parents.try_emplace(&node, xmlNode);
 			break;
 		}
 		case NodeType::Text: {
@@ -444,7 +444,7 @@ void HTMLWriter::appendClassNames(
 	if (!value.empty()) {
 		auto oldClassNames = Strings::split(value, " ");
 		for (auto const& className : oldClassNames) {
-			classNames.emplace_back(className);
+			classNames.push_back(className);
 		}
 	}
 
@@ -685,21 +685,21 @@ void HTMLWriter::populateArea(Element const& element, pugi::xml_node area) const
 }
 
 HTMLWriter::Serializer::Serializer() {
-	map_.emplace(ElementType::Blank, &HTMLWriter::serializeBlankElement);
-	map_.emplace(ElementType::Comment, &HTMLWriter::serializeCommentElement);
-	map_.emplace(ElementType::Credit, &HTMLWriter::serializeCommentElement);
-	map_.emplace(ElementType::Gifa, &HTMLWriter::serializeGifaElement);
-	map_.emplace(ElementType::Hint, &HTMLWriter::serializeHintElement);
-	map_.emplace(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
-	map_.emplace(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);
-	map_.emplace(ElementType::Info, &HTMLWriter::serializeInfoElement);
-	map_.emplace(ElementType::Link, &HTMLWriter::serializeLinkElement);
-	map_.emplace(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
-	map_.emplace(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
-	map_.emplace(ElementType::Sound, &HTMLWriter::serializeSoundElement);
-	map_.emplace(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
-	map_.emplace(ElementType::Text, &HTMLWriter::serializeTextElement);
-	map_.emplace(ElementType::Version, &HTMLWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Blank, &HTMLWriter::serializeBlankElement);
+	map_.try_emplace(ElementType::Comment, &HTMLWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Credit, &HTMLWriter::serializeCommentElement);
+	map_.try_emplace(ElementType::Gifa, &HTMLWriter::serializeGifaElement);
+	map_.try_emplace(ElementType::Hint, &HTMLWriter::serializeHintElement);
+	map_.try_emplace(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
+	map_.try_emplace(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);
+	map_.try_emplace(ElementType::Info, &HTMLWriter::serializeInfoElement);
+	map_.try_emplace(ElementType::Link, &HTMLWriter::serializeLinkElement);
+	map_.try_emplace(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
+	map_.try_emplace(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
+	map_.try_emplace(ElementType::Sound, &HTMLWriter::serializeSoundElement);
+	map_.try_emplace(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
+	map_.try_emplace(ElementType::Text, &HTMLWriter::serializeTextElement);
+	map_.try_emplace(ElementType::Version, &HTMLWriter::serializeCommentElement);
 }
 
 void HTMLWriter::Serializer::invoke(

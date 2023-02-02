@@ -108,8 +108,8 @@ Element::TypeMap::TypeMap() {
 	};
 
 	for (auto const& pair : list) {
-		byType_.emplace(pair);
-		byString_.emplace(std::make_pair(pair.second, pair.first));
+		byType_.try_emplace(pair.first, pair.second);
+		byString_.try_emplace(pair.second, pair.first);
 	}
 }
 

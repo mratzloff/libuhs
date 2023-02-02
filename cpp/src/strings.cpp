@@ -111,7 +111,7 @@ std::vector<std::string> split(std::string const& s, std::string const& sep, int
 			break;
 		}
 		to = s.find(sep, from);
-		items.emplace_back(s.substr(from, to - from));
+		items.push_back(s.substr(from, to - from));
 		if (to == std::string::npos) {
 			break;
 		}
