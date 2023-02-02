@@ -59,6 +59,7 @@ enum class ElementType {
 
 enum class LogLevel {
 	None,
+	Info,
 	Warn,
 	Error,
 };
@@ -186,6 +187,28 @@ public:
 
 std::ostream& operator<<(std::ostream& out, Error const& err);
 
+class HTTPError : public Error {
+public:
+	template<typename... Args>
+	HTTPError(httplib::Result const& res, char const* format, Args... args)
+	    : Error(), response_{res.value()} {
+
+		// TODO: Review for slice
+		static_cast<Error&>(*this) = Error(this->format(format, args...));
+	}
+
+	httplib::Response const getResponse() const;
+
+private:
+	template<typename... Args>
+	std::string const format(char const* format, Args... args) {
+		auto fmt = "HTTP %d: "s + format;
+		return tfm::format(fmt.data(), response_.status, args...);
+	}
+
+	httplib::Response response_;
+};
+
 class LogicError : public Error {
 	using Error::Error;
 };
@@ -241,7 +264,7 @@ public:
 
 	template<typename... Args>
 	void error(char const* format, Args... args) const {
-		if (level_ == LogLevel::Warn || level_ == LogLevel::Error) {
+		if (level_ != LogLevel::None) {
 			this->log(std::cout, "error: ", format, args...);
 		}
 	}
@@ -251,8 +274,17 @@ public:
 
 	template<typename... Args>
 	void warn(char const* format, Args... args) const {
-		if (level_ == LogLevel::Warn) {
+		if (level_ == LogLevel::Warn || level_ == LogLevel::Info) {
 			this->log(std::cout, "warning: ", format, args...);
+		}
+	}
+
+	void info(char const* message) const { this->info("%s", message); }
+
+	template<typename... Args>
+	void info(char const* format, Args... args) const {
+		if (level_ == LogLevel::Info) {
+			this->log(std::cout, "info: ", format, args...);
 		}
 	}
 
@@ -865,7 +897,7 @@ private:
 	    {U'ÿ', "y:"},
 	};
 
-	Logger logger_;
+	Logger const logger_;
 	Options const options_;
 
 	AsciiToUnicodeMap toChars_ = {
@@ -1007,7 +1039,7 @@ private:
 	static auto const BadHeaderFirstChildLine = HeaderLength + 16;
 	static auto const GoodHeaderFirstChildLine = HeaderLength + 15;
 
-	Codec codec_;
+	Codec const codec_;
 	std::unique_ptr<CRC> crc_ = nullptr;
 	std::vector<DataHandler> dataHandlers_;
 	std::vector<LinkData> deferredLinks_;
@@ -1017,7 +1049,7 @@ private:
 	bool isTitleSet_ = false;
 	std::string key_;
 	int lineOffset_ = 0;
-	Logger logger_;
+	Logger const logger_;
 	Options const options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
@@ -1072,8 +1104,8 @@ public:
 	virtual void reset();
 
 protected:
-	Codec codec_;
-	Logger logger_;
+	Codec const codec_;
+	Logger const logger_;
 	std::ostream& out_;
 	Options const options_;
 };
@@ -1235,7 +1267,7 @@ private:
 
 	static UHSWriter::Serializer serializer_;
 
-	Codec codec_;
+	Codec const codec_;
 	CRC crc_;
 	int currentLine_ = 1;
 	std::shared_ptr<Document> document_ = nullptr;
@@ -1246,12 +1278,27 @@ private:
 
 class Downloader {
 public:
-	void getIndex();
+	Downloader(Logger const logger, Options const options = {});
+	void fetchIndex();
 
 private:
-	static constexpr auto Host = "www.uhs-hints.com";
+	struct File {
+		int compressedSize;                   // fsize
+		std::string filename;                 // fname
+		std::string key;                      // fname sans .uhs
+		std::vector<std::string> otherTitles; // falttitle
+		std::vector<std::string> relatedKeys; // frelated
+		std::string title;                    // ftitle
+		std::string url;                      // furl
+	};
+
+	static constexpr auto Host = "www.invisiclues.com";
 	static constexpr auto IndexPath = "/cgi-bin/update.cgi";
 	static constexpr auto Protocol = "http";
+
+	std::map<std::string const, File const> files_;
+	Logger const logger_;
+	Options const options_;
 };
 
 bool write(Logger const logger, std::string const format, std::string const infile,

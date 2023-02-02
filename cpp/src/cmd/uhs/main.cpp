@@ -19,7 +19,7 @@ int convert(int const argc, char* argv[]) {
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	Logger logger{options.quiet ? LogLevel::None : LogLevel::Warn};
+	Logger logger{options.quiet ? LogLevel::None : LogLevel::Info};
 
 	// Output format
 	std::string format;
@@ -81,10 +81,16 @@ int download(int const argc, char* argv[]) {
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	Logger logger{options.quiet ? LogLevel::None : LogLevel::Warn};
+	Logger logger{options.quiet ? LogLevel::None : LogLevel::Info};
 
-	Downloader dl;
-	dl.getIndex();
+	Downloader downloader{logger, options};
+
+	try {
+		downloader.fetchIndex();
+	} catch (HTTPError const& err) {
+		logger.error(err);
+		return Err;
+	}
 
 	return OK;
 }

@@ -30,6 +30,12 @@ std::ostream& operator<<(std::ostream& out, Error const& err) {
 	return out;
 }
 
+//------------------------------- HTTPError ---------------------------------//
+
+httplib::Response const HTTPError::getResponse() const {
+	return response_;
+}
+
 //------------------------------- ParseError --------------------------------//
 
 ParseError ParseError::badLine(int line, int column, int targetLine) {
