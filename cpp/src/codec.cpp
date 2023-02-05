@@ -62,7 +62,7 @@ std::string const Codec::decodeSpecialChars(std::string const& encoded) const {
 		auto const value = encoded.substr(offset, length);
 
 		try {
-			segment += this->toChars_.at(value);
+			segment += toChars_.at(value);
 		} catch (std::out_of_range const& err) {
 			logger_.warn("unexpected sequence: %s", value);
 			segment += encoded[i];
@@ -112,7 +112,7 @@ std::string const Codec::encodeSpecialChars(std::string const& decoded) const {
 		std::string sequence;
 		try {
 			auto const c = (char32_t) utf8String[i];
-			sequence = this->fromChars_.at(c);
+			sequence = fromChars_.at(c);
 			segment += Token::AsciiEncBegin;
 			segment += sequence;
 			segment += Token::AsciiEncEnd;

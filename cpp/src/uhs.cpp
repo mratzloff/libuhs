@@ -5,7 +5,7 @@ namespace UHS {
 bool write(Logger const logger, std::string const format, std::string const infile,
     std::string const outfile, Options const options) {
 
-	if (format != "uhs" && format != "html" && format != "json" && format != "tree") {
+	if (format != "html" && format != "json" && format != "tree" && format != "uhs") {
 		logger.error("unknown format: %s", format);
 		return false;
 	}

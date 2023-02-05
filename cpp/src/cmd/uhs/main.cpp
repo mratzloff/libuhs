@@ -15,16 +15,16 @@ int convert(int const argc, char* argv[]) {
 	args.parse(argc - 1, argv + 1);
 
 	// Debug
-	options.debug = args[{"-d", "--debug"}];
+	options.debug = args[{"--debug"}];
+	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	Logger logger{options.quiet ? LogLevel::None : LogLevel::Info};
+	logger.level(options.quiet ? LogLevel::None : LogLevel::Info);
 
 	// Output format
 	std::string format;
-
-	if (!(args({"-f", "--format"}, "uhs") >> format)) {
+	if (!(args({"-f", "--format"}, "html") >> format)) {
 		logger.error("--format (-f) is required");
 		return Err;
 	};
@@ -73,21 +73,40 @@ int convert(int const argc, char* argv[]) {
 int download(int const argc, char* argv[]) {
 	Options options;
 
-	argh::parser args;
+	argh::parser args({"-d", "--dir"});
 	args.parse(argc - 1, argv + 1);
 
+	// Output directory
+	std::string dir;
+	args({"-d", "--dir"}) >> dir;
+
 	// Debug
-	options.debug = args[{"-d", "--debug"}];
+	options.debug = args[{"--debug"}];
+	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	Logger logger{options.quiet ? LogLevel::None : LogLevel::Info};
+	logger.level(options.quiet ? LogLevel::None : LogLevel::Info);
+
+	// Download file
+	if (argc < 2) {
+		logger.error("no file to download specified");
+		return Err;
+	}
+	std::string downloadFile = argv[argc - 1];
 
 	Downloader downloader{logger, options};
 
 	try {
-		downloader.fetchIndex();
+		downloader.loadIndex();
+		downloader.download(downloadFile, dir);
 	} catch (HTTPError const& err) {
+		logger.error(err);
+		return Err;
+	} catch (ZipError const& err) {
+		logger.error(err);
+		return Err;
+	} catch (Error const& err) {
 		logger.error(err);
 		return Err;
 	}
@@ -100,29 +119,30 @@ void printHelp() {
 	    "uhs %s\n"
 	    "A utility to read and write Universal Hint System game hint files\n\n"
 	    "\033[1mUSAGE\033[0m\n"
-	    "  $ uhs convert -f <fmt> [options] <file>\n"
-	    "  $ uhs download [options]\n\n"
+	    "  $ uhs <convert|download> [options] <file>\n\n"
 	    "\033[1mEXAMPLES\033[0m\n"
-	    "  $ uhs convert -f html -o example.html example.uhs\n"
-	    "  $ uhs download -q\n\n"
+	    "  $ uhs convert -q -o example.html example.uhs\n"
+	    "  $ uhs download -d ./hints example.uhs\n\n"
 	    "\033[1mOPTIONS\033[0m\n"
-	    "  -d,        --debug          Print debugging statements\n"
+	    "             --debug          Print debugging statements\n"
 	    "  -h,        --help           Print this help statement\n"
 	    "  -q,        --quiet          Suppress errors and warnings\n"
 	    "  -v,        --version        Print the version\n\n"
 	    "convert:\n"
 	    "  -f <fmt>,  --format=<fmt>   Output format\n"
-	    "                              ●  uhs   UHS file (default)\n"
-	    "                              ○  html  HTML file\n"
-	    "                              ○  json  JSON file\n"
-	    "                              ○  tree  Tree representation of file\n\n"
+	    "                              ●  html  HTML application (default)\n"
+	    "                              ○  json  JSON\n"
+	    "                              ○  tree  Tree representation\n"
+	    "                              ○  uhs   UHS\n"
 	    "  -m <dir>,  --media=<dir>    Image and audio write directory (JSON output only)\n"
 	    "             --mode=<mode>    Read and write mode\n"
 	    "                              ●  auto  Choose mode based on input file (default)\n"
 	    "                              ○  96a   2000s-era reader and writer\n"
-	    "                              ○  88a   1980s-era reader and writer\n\n"
+	    "                              ○  88a   1980s-era reader and writer\n"
 	    "  -o <file>, --output=<file>  Output file\n"
-	    "             --preserve       Preserve unregistered content restrictions\n";
+	    "             --preserve       Preserve unregistered content restrictions\n\n"
+	    "download:\n"
+	    "  -d <dir>, --dir=<dir>       Output directory\n";
 
 	tfm::printf(help, Version);
 }

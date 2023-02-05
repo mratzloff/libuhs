@@ -28,6 +28,9 @@
 #include "hopscotch_map.h"
 #include "httplib.h"
 #include "json.h"
+extern "C" {
+#include "puff.h"
+}
 #include "pugixml.hpp"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
@@ -59,9 +62,10 @@ enum class ElementType {
 
 enum class LogLevel {
 	None,
-	Info,
-	Warn,
 	Error,
+	Warn,
+	Info,
+	Debug,
 };
 
 enum class NodeType {
@@ -256,12 +260,18 @@ class WriteError : public Error {
 	using Error::Error;
 };
 
+class ZipError : public Error {
+	using Error::Error;
+};
+
 class Logger {
 public:
-	Logger(LogLevel level = LogLevel::Warn) : level_{level} {}
+	Logger(LogLevel level = LogLevel::Error) : level_{level} {}
+	void level(LogLevel level) { level_ = level; }
+
+	// Error
 	void error(char const* message) const { this->error("%s", message); }
 	void error(Error const& err) const { this->error("%s", err.string().c_str()); }
-
 	template<typename... Args>
 	void error(char const* format, Args... args) const {
 		if (level_ != LogLevel::None) {
@@ -269,22 +279,33 @@ public:
 		}
 	}
 
+	// Warn
 	void warn(char const* message) const { this->warn("%s", message); }
 	void warn(Error const& err) const { this->warn("%s", err.string().c_str()); }
-
 	template<typename... Args>
 	void warn(char const* format, Args... args) const {
-		if (level_ == LogLevel::Warn || level_ == LogLevel::Info) {
+		if (level_ == LogLevel::Warn || level_ == LogLevel::Info
+		    || level_ == LogLevel::Debug) {
+
 			this->log(std::cout, "warning: ", format, args...);
 		}
 	}
 
+	// Info
 	void info(char const* message) const { this->info("%s", message); }
-
 	template<typename... Args>
 	void info(char const* format, Args... args) const {
-		if (level_ == LogLevel::Info) {
+		if (level_ == LogLevel::Info || level_ == LogLevel::Debug) {
 			this->log(std::cout, "info: ", format, args...);
+		}
+	}
+
+	// Debug
+	void debug(char const* message) const { this->debug("%s", message); }
+	template<typename... Args>
+	void debug(char const* format, Args... args) const {
+		if (level_ == LogLevel::Debug) {
+			this->log(std::cout, "debug: ", format, args...);
 		}
 	}
 
@@ -332,6 +353,7 @@ std::string rtrim(std::string const& s, char c);
 std::vector<std::string> split(std::string const& s, std::string const& sep, int n = 0);
 std::string toBase64(std::string const& s);
 int toInt(std::string const& s);
+void toLower(std::string& s);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width,
     int& numLines, std::string const prefix = "");
@@ -1279,16 +1301,17 @@ private:
 class Downloader {
 public:
 	Downloader(Logger const logger, Options const options = {});
-	void fetchIndex();
+	void download(std::string const& filename, std::string const& outdir);
+	void loadIndex();
 
 private:
-	struct File {
+	struct FileMetadata {
 		int compressedSize;                   // fsize
 		std::string filename;                 // fname
-		std::string key;                      // fname sans .uhs
 		std::vector<std::string> otherTitles; // falttitle
 		std::vector<std::string> relatedKeys; // frelated
 		std::string title;                    // ftitle
+		int uncompressedSize;                 // ffullsize
 		std::string url;                      // furl
 	};
 
@@ -1296,9 +1319,34 @@ private:
 	static constexpr auto IndexPath = "/cgi-bin/update.cgi";
 	static constexpr auto Protocol = "http";
 
-	std::map<std::string const, File const> files_;
+	void unzip(std::string const& zip, std::string const& outdir);
+
+	std::map<std::string const, FileMetadata const> fileMetadata_;
+	httplib::Client httpClient_;
+	httplib::Headers httpHeaders_;
 	Logger const logger_;
 	Options const options_;
+};
+
+class Zip {
+public:
+	Zip(std::string const& data);
+	bool isZip();
+	void unzip(std::string const& outdir);
+
+private:
+	static int const CompressedSizeOffset = 18;
+	static int const ExtraFieldLengthOffset = 28;
+	static int const FilenameLengthOffset = 26;
+	static int const FilenameOffset = 30;
+	static uint32_t const Signature = 0x04034b50;
+	static int const SignatureOffset = 0;
+	static int const UncompressedSizeOffset = 22;
+
+	uint16_t readUint16LE(int offset);
+	uint32_t readUint32LE(int offset);
+
+	std::string const data_;
 };
 
 bool write(Logger const logger, std::string const format, std::string const infile,

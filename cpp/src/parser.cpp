@@ -212,7 +212,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 			}
 		}
 		if (options_.debug) {
-			tfm::printf("\"%s\"\n", title);
+			logger_.debug("\"%s\"\n", title);
 		}
 		e->title(title);
 
@@ -253,9 +253,10 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		}
 
 		auto element = static_cast<Element*>(parent);
+
 		auto body = codec_.decode88a(token->value());
 		if (options_.debug) {
-			tfm::printf("\"%s\"\n", body);
+			logger_.debug("\"%s\"\n", body);
 		}
 
 		auto group = GroupNode::create(line, 1);
@@ -558,7 +559,7 @@ void Parser::parseHintElement(Element& element) {
 			}
 
 			if (options_.debug) {
-				tfm::printf("\"%s\"\n", text);
+				logger_.debug("\"%s\"\n", text);
 			}
 
 			text += '\n';
@@ -727,7 +728,7 @@ void Parser::parseIncentiveElement(Element& element) {
 		}
 		auto text = codec_.decode96a(token->value(), key_, false);
 		if (options_.debug) {
-			tfm::printf("\"%s\"\n", text);
+			logger_.debug("\"%s\"\n", text);
 		}
 		body += text;
 		continuation = true;
@@ -958,7 +959,7 @@ void Parser::parseTextElement(Element& element) {
 		for (auto& text : lines) {
 			text = codec_.decode96a(text, key_, true);
 			if (options_.debug) {
-				tfm::printf("\"%s\"\n", text);
+				logger_.debug("\"%s\"\n", text);
 			}
 		}
 
@@ -992,9 +993,8 @@ void Parser::parseVersionElement(Element& element) {
 
 std::unique_ptr<Token const> Parser::next() {
 	auto token = tokenizer_->next();
-
 	if (options_.debug) {
-		std::cout << token->string() << std::endl;
+		logger_.debug(token->string().c_str());
 	}
 	return token;
 }

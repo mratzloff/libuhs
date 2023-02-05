@@ -162,6 +162,13 @@ int toInt(std::string const& s) {
 	return intVal;
 }
 
+void toLower(std::string& s) {
+	std::transform(s.cbegin(),
+	    s.cend(),
+	    s.begin(), // write to the same location
+	    [](unsigned char c) { return std::tolower(c); });
+}
+
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width) {
 	auto numLines = 0;
 	return wrap(s, sep, width, numLines);

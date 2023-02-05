@@ -11,6 +11,7 @@ set (argh_includes cpp/vendor/argh)
 set (bin node_modules/.bin)
 set (httplib_includes cpp/vendor/httplib)
 set (json_includes cpp/vendor/jsoncpp/json)
+set (puff_includes cpp/vendor/puff)
 set (pugixml_includes cpp/vendor/pugixml)
 set (tinyformat_includes cpp/vendor/tinyformat)
 set (tinyutf8_includes cpp/vendor/tinyutf8)
@@ -38,7 +39,8 @@ set (uhs_sources
 	cpp/src/writer/json.cpp
 	cpp/src/writer/tree.cpp
 	cpp/src/writer/uhs.cpp
-	cpp/src/uhs.cpp)
+	cpp/src/uhs.cpp
+	cpp/src/zip.cpp)
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
@@ -86,6 +88,10 @@ add_dependencies (js_includes js_minified)
 add_library (json OBJECT cpp/vendor/jsoncpp/jsoncpp.cpp)
 target_include_directories (json PUBLIC ${json_includes})
 
+# puff.o
+add_library (puff OBJECT cpp/vendor/puff/puff.c)
+target_include_directories (puff PUBLIC ${puff_includes})
+
 # pugixml.o
 add_library (pugixml OBJECT cpp/vendor/pugixml/pugixml.cpp)
 target_include_directories (pugixml PUBLIC ${pugixml_includes})
@@ -93,10 +99,11 @@ target_include_directories (pugixml PUBLIC ${pugixml_includes})
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
 add_dependencies (uhs css_includes js_includes)
-target_link_libraries(uhs json pugixml)
+target_link_libraries(uhs json pugixml puff)
 target_include_directories (uhs
 	PUBLIC ${json_includes}
 	       ${httplib_includes}
+	       ${puff_includes}
 	       ${pugixml_includes}
 	       ${tinyformat_includes}
 	       ${tinyutf8_includes}
@@ -121,7 +128,13 @@ set_target_properties (uhsc_bin
                OUTPUT_NAME uhsc)
 target_link_libraries (uhsc_bin PUBLIC uhs)
 
-# clang-format
+# make clean-all
+add_custom_target (clean-all
+	COMMAND rm -rf build
+	COMMAND rm -rf CMakeFiles
+	COMMAND rm -rf lib)
+
+# make format
 add_custom_target (format
 	COMMAND clang-format -style=file -i -verbose
 		${uhs_includes}/uhs.h
@@ -129,7 +142,7 @@ add_custom_target (format
 		${uhs_sources}
 		${uhs_bin_sources})
 
-# clang --analyze
+# make lint
 add_custom_target (lint
 	COMMAND clang
 		--analyze
@@ -138,11 +151,13 @@ add_custom_target (lint
 		-I${argh_includes}
 		-I${httplib_includes}
 		-I${json_includes}
+		-I${puff_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
 		-I${tinyutf8_includes}
 		-I${tsl_includes}
 		-I${uhs_includes}
 		-std=c++20
-		${uhs_sources} ${uhs_bin_sources})
+		${uhs_sources}
+		${uhs_bin_sources})
 add_dependencies (lint format)
