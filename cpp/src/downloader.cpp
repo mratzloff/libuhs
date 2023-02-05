@@ -8,12 +8,15 @@ Downloader::Downloader(Logger const logger, Options const options)
     , logger_{logger}
     , options_{options} {}
 
-void Downloader::download(std::string const& filename, std::string const& dir) {
-	FileMetadata metadata;
-	try {
-		metadata = fileMetadata_.at(filename);
-	} catch (std::out_of_range const& err) {
-		throw Error("unknown filename: %s", filename);
+void Downloader::download(std::string const& file, std::string const& dir) {
+	std::vector<std::string const> files{file};
+	this->download(files, dir);
+}
+
+void Downloader::download(
+    std::vector<std::string const> const& files, std::string const& dir) {
+	if (fileIndex_.size() == 0) {
+		this->loadFileIndex();
 	}
 
 	std::string outdir = dir;
@@ -26,22 +29,39 @@ void Downloader::download(std::string const& filename, std::string const& dir) {
 		throw Error("directory does not exist: %s", outdir);
 	}
 
-	std::string buffer;
-	auto res = httpClient_.Get(
-	    metadata.url, httpHeaders_, [&](char const* data, size_t data_length) {
-		    buffer.append(data, data_length);
-		    return true;
-	    });
-	if (res->status != 200) {
-		throw HTTPError(res, "could not download file");
-	}
+	for (auto file : files) {
+		FileMetadata metadata;
+		try {
+			metadata = fileIndex_.at(file);
+		} catch (std::out_of_range const& err) {
+			throw Error("unknown filename: %s", file);
+		}
 
-	Zip zip{buffer};
-	zip.unzip(outdir);
+		std::string buffer;
+		auto res = httpClient_.Get(
+		    metadata.url, httpHeaders_, [&](char const* data, size_t data_length) {
+			    buffer.append(data, data_length);
+			    return true;
+		    });
+		if (res->status != 200) {
+			throw HTTPError(res, "could not download file");
+		}
+		logger_.info("downloaded %s", file);
+
+		Zip zip{buffer};
+		zip.unzip(outdir);
+	}
 }
 
-void Downloader::loadIndex() {
-	auto res = httpClient_.Get(IndexPath, httpHeaders_);
+Downloader::FileIndex const& Downloader::fileIndex() {
+	if (fileIndex_.size() == 0) {
+		this->loadFileIndex();
+	}
+	return fileIndex_;
+}
+
+void Downloader::loadFileIndex() {
+	auto res = httpClient_.Get(FileIndexPath, httpHeaders_);
 	if (res->status != 200) {
 		throw HTTPError(res, "could not download index of file metadata");
 	}
@@ -70,7 +90,7 @@ void Downloader::loadIndex() {
 		auto title = node.child("ftitle").text().as_string();
 		auto url = node.child("furl").text().as_string();
 
-		fileMetadata_.try_emplace(filename,
+		fileIndex_.try_emplace(filename,
 		    FileMetadata{
 		        .compressedSize = compressedSize,
 		        .filename = filename,
@@ -84,7 +104,7 @@ void Downloader::loadIndex() {
 		++numAdded;
 	}
 
-	logger_.debug("Added metadata for %d files to index", numAdded);
+	logger_.debug("added metadata for %d files to index", numAdded);
 }
 
 } // namespace UHS

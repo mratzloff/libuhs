@@ -8,7 +8,7 @@ bool Zip::isZip() {
 	return this->readUint32LE(SignatureOffset) == Signature;
 }
 
-void Zip::unzip(std::string const& outdir) {
+void Zip::unzip(std::string const& dir) {
 	if (!this->isZip()) {
 		throw ZipError("file is not a zip file");
 	}
@@ -38,7 +38,7 @@ void Zip::unzip(std::string const& outdir) {
 	}
 
 	// Write to file
-	std::filesystem::path path{outdir};
+	std::filesystem::path path{dir};
 	auto outfile = path.append(filename).string();
 	auto fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
 	fout.write(reinterpret_cast<char const*>(uncompressed), uncompressedLength);

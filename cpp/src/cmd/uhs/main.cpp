@@ -14,7 +14,7 @@ int convert(int const argc, char* argv[]) {
 	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
 	args.parse(argc - 1, argv + 1);
 
-	// Debug
+	// Print debugging statements
 	options.debug = args[{"--debug"}];
 	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
@@ -24,10 +24,7 @@ int convert(int const argc, char* argv[]) {
 
 	// Output format
 	std::string format;
-	if (!(args({"-f", "--format"}, "html") >> format)) {
-		logger.error("--format (-f) is required");
-		return Err;
-	};
+	args({"-f", "--format"}, "html") >> format;
 
 	// Media directory
 	std::string mediaDir;
@@ -76,11 +73,14 @@ int download(int const argc, char* argv[]) {
 	argh::parser args({"-d", "--dir"});
 	args.parse(argc - 1, argv + 1);
 
+	// All files
+	auto all = args[{"--all"}];
+
 	// Output directory
 	std::string dir;
 	args({"-d", "--dir"}) >> dir;
 
-	// Debug
+	// Print debugging statements
 	options.debug = args[{"--debug"}];
 	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
@@ -89,17 +89,25 @@ int download(int const argc, char* argv[]) {
 	logger.level(options.quiet ? LogLevel::None : LogLevel::Info);
 
 	// Download file
-	if (argc < 2) {
-		logger.error("no file to download specified");
+	if (argc < 2 && !all) {
+		logger.error("no download file specified");
 		return Err;
 	}
-	std::string downloadFile = argv[argc - 1];
+	std::string file = argv[argc - 1];
 
 	Downloader downloader{logger, options};
 
 	try {
-		downloader.loadIndex();
-		downloader.download(downloadFile, dir);
+		std::vector<std::string const> files;
+		if (all) {
+			auto index = downloader.fileIndex();
+			for (auto const& [file, _] : index) {
+				files.push_back(file);
+			}
+		} else {
+			files.push_back(file);
+		}
+		downloader.download(files, dir);
 	} catch (HTTPError const& err) {
 		logger.error(err);
 		return Err;
@@ -119,10 +127,12 @@ void printHelp() {
 	    "uhs %s\n"
 	    "A utility to read and write Universal Hint System game hint files\n\n"
 	    "\033[1mUSAGE\033[0m\n"
-	    "  $ uhs <convert|download> [options] <file>\n\n"
+	    "  $ uhs convert [options] <file>\n"
+	    "  $ uhs download [options] [file]\n\n"
 	    "\033[1mEXAMPLES\033[0m\n"
 	    "  $ uhs convert -q -o example.html example.uhs\n"
-	    "  $ uhs download -d ./hints example.uhs\n\n"
+	    "  $ uhs download -d ./hints example.uhs\n"
+	    "  $ uhs download --all\n\n"
 	    "\033[1mOPTIONS\033[0m\n"
 	    "             --debug          Print debugging statements\n"
 	    "  -h,        --help           Print this help statement\n"
@@ -142,6 +152,7 @@ void printHelp() {
 	    "  -o <file>, --output=<file>  Output file\n"
 	    "             --preserve       Preserve unregistered content restrictions\n\n"
 	    "download:\n"
+	    "            --all             All files\n"
 	    "  -d <dir>, --dir=<dir>       Output directory\n";
 
 	tfm::printf(help, Version);

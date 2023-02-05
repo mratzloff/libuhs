@@ -1300,11 +1300,6 @@ private:
 
 class Downloader {
 public:
-	Downloader(Logger const logger, Options const options = {});
-	void download(std::string const& filename, std::string const& outdir);
-	void loadIndex();
-
-private:
 	struct FileMetadata {
 		int compressedSize;                   // fsize
 		std::string filename;                 // fname
@@ -1315,13 +1310,21 @@ private:
 		std::string url;                      // furl
 	};
 
+	using FileIndex = std::map<std::string const, FileMetadata const>;
+
+	Downloader(Logger const logger, Options const options = {});
+	void download(std::string const& file, std::string const& dir);
+	void download(std::vector<std::string const> const& files, std::string const& dir);
+	FileIndex const& fileIndex();
+
+private:
+	static constexpr auto FileIndexPath = "/cgi-bin/update.cgi";
 	static constexpr auto Host = "www.invisiclues.com";
-	static constexpr auto IndexPath = "/cgi-bin/update.cgi";
 	static constexpr auto Protocol = "http";
 
-	void unzip(std::string const& zip, std::string const& outdir);
+	void loadFileIndex();
 
-	std::map<std::string const, FileMetadata const> fileMetadata_;
+	FileIndex fileIndex_;
 	httplib::Client httpClient_;
 	httplib::Headers httpHeaders_;
 	Logger const logger_;
@@ -1332,7 +1335,7 @@ class Zip {
 public:
 	Zip(std::string const& data);
 	bool isZip();
-	void unzip(std::string const& outdir);
+	void unzip(std::string const& dir);
 
 private:
 	static int const CompressedSizeOffset = 18;
