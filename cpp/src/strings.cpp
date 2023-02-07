@@ -123,7 +123,7 @@ std::vector<std::string> split(std::string const& s, std::string const& sep, int
 }
 
 std::string toBase64(std::string const& s) {
-	static const std::string charset =
+	static std::string const charset =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 	size_t end = 0;

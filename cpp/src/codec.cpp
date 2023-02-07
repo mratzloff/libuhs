@@ -3,8 +3,6 @@
 
 namespace UHS {
 
-Codec::Codec(const Options options) : options_{options} {}
-
 std::string const Codec::createKey(std::string secret) const {
 	return this->encode96a(secret, KeySeed, false);
 }
@@ -26,7 +24,7 @@ std::string const Codec::decode88a(std::string encoded) const {
 }
 
 std::string const Codec::decode96a(
-    std::string encoded, std::string key, bool isTextElement) const {
+    std::string encoded, std::string const& key, bool isTextElement) const {
 
 	std::string& decoded = encoded;
 	std::size_t const length = encoded.length();
@@ -90,7 +88,7 @@ std::string const Codec::encode88a(std::string decoded) const {
 }
 
 std::string const Codec::encode96a(
-    std::string decoded, std::string key, bool isTextElement) const {
+    std::string decoded, std::string const& key, bool isTextElement) const {
 
 	std::string& encoded = decoded;
 	std::size_t const length = decoded.length();
@@ -124,8 +122,8 @@ std::string const Codec::encodeSpecialChars(std::string const& decoded) const {
 	return segment;
 }
 
-int Codec::keystream(
-    std::string key, std::size_t keyLength, std::size_t line, bool isTextElement) const {
+int Codec::keystream(std::string const& key, std::size_t keyLength, std::size_t line,
+    bool isTextElement) const {
 
 	int const intIndex = static_cast<int>(line); // Guarantee signedness
 	int const offset = intIndex % keyLength;

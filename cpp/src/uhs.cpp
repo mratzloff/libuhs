@@ -2,8 +2,8 @@
 
 namespace UHS {
 
-bool write(Logger const logger, std::string const format, std::string const infile,
-    std::string const outfile, Options const options) {
+bool write(Logger const& logger, std::string const format, std::string const infile,
+    std::string const outfile, Options const& options) {
 
 	if (format != "html" && format != "json" && format != "tree" && format != "uhs") {
 		logger.error("unknown format: %s", format);
@@ -55,13 +55,13 @@ bool write(Logger const logger, std::string const format, std::string const infi
 			TreeWriter w{logger, out, options};
 			w.write(document);
 		}
-	} catch (ReadError const& err) {
+	} catch (DataError const& err) {
+		logger.error(err);
+		return false;
+	} catch (FileError const& err) {
 		logger.error(err);
 		return false;
 	} catch (ParseError const& err) {
-		logger.error(err);
-		return false;
-	} catch (WriteError const& err) {
 		logger.error(err);
 		return false;
 	} catch (Error const& err) {

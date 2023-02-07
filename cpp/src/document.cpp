@@ -80,7 +80,7 @@ std::string const Document::versionString() const {
 	case VersionType::Version96a:
 		return "96a";
 	default:
-		throw Error("invalid version");
+		throw DataError("invalid version");
 	}
 }
 

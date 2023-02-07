@@ -2,19 +2,19 @@
 
 namespace UHS {
 
-Downloader::Downloader(Logger const logger, Options const options)
+Downloader::Downloader(Logger const& logger)
     : httpClient_{httplib::Client(tfm::format("%s://%s", Protocol, Host))}
     , httpHeaders_{{{"User-Agent", "UHSWIN/6.10"}}}
-    , logger_{logger}
-    , options_{options} {}
+    , logger_{logger} {}
 
-void Downloader::download(std::string const& file, std::string const& dir) {
+void Downloader::download(std::string const& dir, std::string const& file) {
 	std::vector<std::string const> files{file};
-	this->download(files, dir);
+	this->download(dir, files);
 }
 
 void Downloader::download(
-    std::vector<std::string const> const& files, std::string const& dir) {
+    std::string const& dir, std::vector<std::string const> const& files) {
+
 	if (fileIndex_.size() == 0) {
 		this->loadFileIndex();
 	}
@@ -26,7 +26,7 @@ void Downloader::download(
 
 	std::filesystem::path path{outdir};
 	if (!std::filesystem::exists(path)) {
-		throw Error("directory does not exist: %s", outdir);
+		throw FileError("directory does not exist: %s", outdir);
 	}
 
 	for (auto file : files) {
@@ -34,7 +34,7 @@ void Downloader::download(
 		try {
 			metadata = fileIndex_.at(file);
 		} catch (std::out_of_range const& err) {
-			throw Error("unknown filename: %s", file);
+			throw FileError("unknown file: %s", file);
 		}
 
 		std::string buffer;
@@ -44,12 +44,17 @@ void Downloader::download(
 			    return true;
 		    });
 		if (res->status != 200) {
-			throw HTTPError(res, "could not download file");
+			throw HTTPError(res, "could not download file: %s", file);
 		}
 		logger_.info("downloaded %s", file);
 
 		Zip zip{buffer};
-		zip.unzip(outdir);
+
+		try {
+			zip.unzip(outdir);
+		} catch (FileError const& err) {
+			std::throw_with_nested(FileError("could not decompress ZIP file: %s", file));
+		}
 	}
 }
 
@@ -63,7 +68,7 @@ Downloader::FileIndex const& Downloader::fileIndex() {
 void Downloader::loadFileIndex() {
 	auto res = httpClient_.Get(FileIndexPath, httpHeaders_);
 	if (res->status != 200) {
-		throw HTTPError(res, "could not download index of file metadata");
+		throw HTTPError(res, "could not download file index");
 	}
 
 	pugi::xml_document doc;
@@ -104,7 +109,7 @@ void Downloader::loadFileIndex() {
 		++numAdded;
 	}
 
-	logger_.debug("added metadata for %d files to index", numAdded);
+	logger_.debug("added metadata for %d files to file index", numAdded);
 }
 
 } // namespace UHS

@@ -6,7 +6,7 @@ namespace UHS {
 
 UHSWriter::Serializer UHSWriter::serializer_;
 
-UHSWriter::UHSWriter(Logger const logger, std::ostream& out, Options const options)
+UHSWriter::UHSWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {}
 
 void UHSWriter::write(std::shared_ptr<Document> const document) {
@@ -28,7 +28,7 @@ void UHSWriter::write(std::shared_ptr<Document> const document) {
 		break;
 	case ModeType::Version96a:
 		if (is88a) {
-			throw WriteError("conversion from 88a to 96a is unimplemented");
+			throw DataError("conversion from 88a to 96a is unimplemented");
 		}
 		this->serialize96a(buffer);
 		break;
@@ -89,7 +89,7 @@ void UHSWriter::serialize88a(Document const& document, std::string& out) {
 				title = Strings::rtrim(element->title(), '?');
 				break;
 			default:
-				throw WriteError(
+				throw DataError(
 				    "unexpected element type: %s", Element::typeString(elementType));
 			}
 
@@ -164,7 +164,7 @@ void UHSWriter::serialize96a(std::string& out) {
 	for (auto node = document_->firstChild(); node; node = node->nextSibling()) {
 		switch (node->nodeType()) {
 		case NodeType::Break:
-			throw WriteError("unexpected break node");
+			throw DataError("unexpected break node");
 		case NodeType::Document: {
 			auto const document = static_pointer_cast<Document const>(node);
 			if (!document->isVersion(VersionType::Version88a)) {
@@ -181,10 +181,10 @@ void UHSWriter::serialize96a(std::string& out) {
 			break;
 		}
 		case NodeType::Group:
-			throw WriteError("unexpected group node");
+			throw DataError("unexpected group node");
 		case NodeType::Text: {
 			auto const textNode = static_pointer_cast<TextNode>(node);
-			throw WriteError("unexpected text node: %s", textNode->body());
+			throw DataError("unexpected text node: %s", textNode->body());
 		}
 		}
 	}
@@ -309,7 +309,7 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 		textBuffer += this->formatText(textNode, formats[depth]);
 		formats[depth] = textNode.format();
 	} else {
-		throw WriteError("unexpected node type: %s", node.nodeTypeString());
+		throw DataError("unexpected node type: %s", node.nodeTypeString());
 	}
 
 	return length;
@@ -355,7 +355,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+			throw DataError("unexpected node type: %s", node->nodeTypeString());
 		}
 
 		auto child = static_pointer_cast<Element>(node);
@@ -371,7 +371,7 @@ int UHSWriter::serializeHyperpngElement(Element& element, std::string& out) {
 				try {
 					coord = Strings::toInt(*value);
 				} catch (Error const& err) {
-					throw WriteError("invalid coordinate: %s", *value);
+					throw DataError("invalid coordinate: %s", *value);
 				}
 			}
 		}
@@ -526,13 +526,13 @@ int UHSWriter::serializeLinkElement(Element& element, std::string& out) {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw WriteError("expected positive integer, found %s", element.body());
+		throw DataError("expected positive integer, found %s", element.body());
 	}
 
 	if (auto target = document_->find(targetID)) {
 		deferredLinks_.push_back(target);
 	} else {
-		throw WriteError("target element not found for id %d", targetID);
+		throw DataError("target element not found for id %d", targetID);
 	}
 
 	currentLine_ += length;
@@ -557,7 +557,7 @@ int UHSWriter::serializeOverlayElement(Element& element, std::string& out) {
 			try {
 				coord = Strings::toInt(*value);
 			} catch (Error const& err) {
-				throw WriteError("invalid coordinate: %s", *value);
+				throw DataError("invalid coordinate: %s", *value);
 			}
 		}
 	}
@@ -586,7 +586,7 @@ int UHSWriter::serializeSubjectElement(Element& element, std::string& out) {
 
 	for (auto node = element.firstChild(); node; node = node->nextSibling()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError("unexpected node type: %s", node->nodeTypeString());
+			throw DataError("unexpected node type: %s", node->nodeTypeString());
 		}
 		auto const child = static_pointer_cast<Element>(node);
 		length += this->serializeElement(*child, buffer);
@@ -615,11 +615,11 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 					textBuffer += this->formatText(*textNode, previousFormat);
 					previousFormat = textNode->format();
 				} else {
-					throw WriteError(message, child->nodeTypeString());
+					throw DataError(message, child->nodeTypeString());
 				}
 			}
 		} else {
-			throw WriteError(message, node->nodeTypeString());
+			throw DataError(message, node->nodeTypeString());
 		}
 	}
 
@@ -673,7 +673,7 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 		auto targetElement = static_cast<Element*>(target);
 		auto const pos = out.rfind(LinkMarker);
 		if (pos == std::string::npos) {
-			throw WriteError("could not find link marker");
+			throw DataError("could not find link marker");
 		}
 
 		auto const targetLine = std::to_string(targetElement->line());
@@ -698,7 +698,7 @@ void UHSWriter::serializeData(std::string& out) {
 		auto isOverlay = (elementType == ElementType::Overlay);
 		auto const& regex = (isOverlay) ? Regex::OverlayAddress : Regex::DataAddress;
 		if (!std::regex_search(out.cbegin() + offset, searchEnd, matches, regex)) {
-			throw WriteError(
+			throw DataError(
 			    "could not find address offset for %s element data (%d bytes)",
 			    Element::typeString(elementType),
 			    data.length());
@@ -801,7 +801,7 @@ std::string UHSWriter::formatText(
 	return body;
 }
 
-std::string UHSWriter::encodeText(std::string const text, ElementType const parentType) {
+std::string UHSWriter::encodeText(std::string const& text, ElementType const parentType) {
 	std::string buffer;
 
 	auto lines = Strings::split(text, "\n");
@@ -913,7 +913,7 @@ void UHSWriter::convertTo96a() {
 	container->title(document_->title());
 	for (auto node = document_->firstChild(); node; node = document_->firstChild()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError("expected element, found %s node", node->nodeTypeString());
+			throw DataError("expected element, found %s node", node->nodeTypeString());
 		}
 		document_->removeChild(node);
 		container->appendChild(node);

@@ -6,8 +6,8 @@
 
 namespace UHS {
 
-Parser::Parser(Logger const logger, Options const options)
-    : codec_{options}, logger_{logger}, options_{options} {
+Parser::Parser(Logger const& logger, Options const& options)
+    : logger_{logger}, options_{options} {
 
 	// TODO: Guard these by platform
 	setenv("TZ", "", 1);
@@ -56,7 +56,7 @@ std::shared_ptr<Document> Parser::parseFile(std::string const& infile) {
 	std::filesystem::path infilePath{infile};
 
 	if (!std::filesystem::exists(infilePath)) {
-		throw ReadError("invalid file: %s", infile);
+		throw FileError("invalid file: %s", infile);
 	}
 
 	std::shared_ptr<Document> document;
@@ -971,7 +971,7 @@ void Parser::parseTextElement(Element& element) {
 			try {
 				auto fmt = format;
 				this->parseWithFormat(body, fmt, *group, element.elementType());
-			} catch (const Error& err) {
+			} catch (const DataError& err) {
 				std::throw_with_nested(
 				    ParseError(line, column, "could not parse formatted string"));
 			}
@@ -1087,7 +1087,8 @@ Node* Parser::findParent(ContainerNode& node) {
 	auto parent = parents_.find(min, max);
 
 	if (!parent) {
-		throw Error("could not find parent element between lines %d and %d", min, max);
+		throw DataError(
+		    "could not find parent element between lines %d and %d", min, max);
 	}
 
 	return parent;
@@ -1132,7 +1133,7 @@ void Parser::parseDate(std::string const& date, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw Error("invalid year: %d", year);
+		throw DataError("invalid year: %d", year);
 	}
 	if (year < 95) { // Info elements were introduced in 1995
 		year += 100;
@@ -1164,7 +1165,7 @@ void Parser::parseDate(std::string const& date, std::tm& tm) const {
 	} else if (parts[1] == "Dec") {
 		month = 11;
 	} else {
-		throw Error("invalid month: %d", parts[1]);
+		throw DataError("invalid month: %d", parts[1]);
 	}
 
 	int day = 0;
@@ -1174,7 +1175,7 @@ void Parser::parseDate(std::string const& date, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw Error("invalid day: %d", day);
+		throw DataError("invalid day: %d", day);
 	}
 
 	tm.tm_year = year;
@@ -1193,7 +1194,7 @@ void Parser::parseTime(std::string const& time, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw Error("invalid hour: %d", hour);
+		throw DataError("invalid hour: %d", hour);
 	}
 
 	int min = 0;
@@ -1203,7 +1204,7 @@ void Parser::parseTime(std::string const& time, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw Error("invalid minute: %d", min);
+		throw DataError("invalid minute: %d", min);
 	}
 
 	int sec = 0;
@@ -1213,7 +1214,7 @@ void Parser::parseTime(std::string const& time, std::tm& tm) const {
 			throw Error();
 		}
 	} catch (Error const& err) {
-		throw Error("invalid second: %d", sec);
+		throw DataError("invalid second: %d", sec);
 	}
 
 	tm.tm_hour = hour;
@@ -1385,7 +1386,6 @@ void Parser::processLinks() {
 		}
 		if (!target) {
 			logger_.warn("link target not found: %d", targetLine);
-			// throw ParseError(line, column, "target not found: %d", targetLine);
 		}
 	}
 }

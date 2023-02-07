@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-TreeWriter::TreeWriter(Logger const logger, std::ostream& out, Options const options)
+TreeWriter::TreeWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {}
 
 void TreeWriter::write(std::shared_ptr<Document> const document) {

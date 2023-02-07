@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-JSONWriter::JSONWriter(Logger const logger, std::ostream& out, Options const options)
+JSONWriter::JSONWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {}
 
 void JSONWriter::write(std::shared_ptr<Document> const document) {
@@ -70,7 +70,7 @@ void JSONWriter::serialize(Document const& document, Json::Value& root) const {
 			break;
 		}
 		default:
-			throw WriteError("unexpected node type: %s", node.nodeTypeString());
+			throw DataError("unexpected node type: %s", node.nodeTypeString());
 		}
 
 		depth = nodeDepth;

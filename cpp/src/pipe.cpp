@@ -5,7 +5,7 @@ namespace UHS {
 Pipe::Pipe(std::istream& in) : in_{in} {
 	if (auto const infile = dynamic_cast<std::ifstream*>(&in)) {
 		if (!infile->is_open()) {
-			throw ReadError("could not open input file");
+			throw FileError("could not open input file");
 		}
 	}
 }

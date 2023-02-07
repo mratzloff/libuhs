@@ -8,7 +8,7 @@ enum Status {
 	OK = 0,
 };
 
-int convert(int const argc, char* argv[]) {
+int convert(int argc, char const* argv[]) {
 	Options options;
 
 	argh::parser args({"-f", "--format", "-o", "--output", "-m", "--media", "--mode"});
@@ -67,7 +67,7 @@ int convert(int const argc, char* argv[]) {
 	return OK;
 }
 
-int download(int const argc, char* argv[]) {
+int download(int argc, char const* argv[]) {
 	Options options;
 
 	argh::parser args({"-d", "--dir"});
@@ -95,7 +95,7 @@ int download(int const argc, char* argv[]) {
 	}
 	std::string file = argv[argc - 1];
 
-	Downloader downloader{logger, options};
+	Downloader downloader{logger};
 
 	try {
 		std::vector<std::string const> files;
@@ -107,16 +107,19 @@ int download(int const argc, char* argv[]) {
 		} else {
 			files.push_back(file);
 		}
-		downloader.download(files, dir);
-	} catch (HTTPError const& err) {
+		downloader.download(dir, files);
+	} catch (FileError const& err) {
 		logger.error(err);
 		return Err;
-	} catch (ZipError const& err) {
+	} catch (HTTPError const& err) {
 		logger.error(err);
 		return Err;
 	} catch (Error const& err) {
 		logger.error(err);
 		return Err;
+	} catch (std::exception const& err) {
+		logger.error(err.what());
+		return false;
 	}
 
 	return OK;
@@ -162,7 +165,7 @@ void printVersion() {
 	std::cout << Version << std::endl;
 }
 
-int main(int const argc, char* argv[]) {
+int main(int argc, char const* argv[]) {
 	std::string command;
 	if (argc >= 2) {
 		command = argv[1];

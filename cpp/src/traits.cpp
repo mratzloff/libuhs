@@ -8,7 +8,7 @@ Attributes::Type const& Attributes::attrs() const {
 	return attrs_;
 }
 
-std::optional<std::string const> Attributes::attr(std::string const key) const {
+std::optional<std::string const> Attributes::attr(std::string const& key) const {
 	std::string s;
 	try {
 		s = attrs_.at(key);
@@ -18,17 +18,17 @@ std::optional<std::string const> Attributes::attr(std::string const key) const {
 	return s;
 }
 
-void Attributes::attr(std::string const key, std::string const value) {
+void Attributes::attr(std::string const& key, std::string const& value) {
 	attrs_[key] = value;
 }
 
-void Attributes::attr(std::string const key, int const value) {
+void Attributes::attr(std::string const& key, int const value) {
 	this->attr(key, std::to_string(value));
 }
 
 //---------------------------------- Body -----------------------------------//
 
-Body::Body(std::string const body) : body_{body} {}
+Body::Body(std::string const& body) : body_{body} {}
 
 Body::Body(int const body) : Body(std::to_string(body)) {}
 
@@ -36,7 +36,7 @@ std::string const& Body::body() const {
 	return body_;
 }
 
-void Body::body(std::string const body) {
+void Body::body(std::string const& body) {
 	body_ = body;
 }
 
@@ -58,13 +58,13 @@ void Inlined::inlined(bool inlined) {
 
 //---------------------------------- Title ----------------------------------//
 
-Title::Title(std::string const title) : title_{title} {}
+Title::Title(std::string const& title) : title_{title} {}
 
 std::string const& Title::title() const {
 	return title_;
 }
 
-void Title::title(std::string title) {
+void Title::title(std::string const& title) {
 	title_ = title;
 }
 
@@ -89,7 +89,7 @@ std::string const Visibility::visibilityString() const {
 	case VisibilityType::UnregisteredOnly:
 		return "unregistered";
 	default:
-		throw Error("invalid visibility");
+		throw DataError("invalid visibility");
 	}
 }
 

@@ -10,7 +10,7 @@ bool Zip::isZip() {
 
 void Zip::unzip(std::string const& dir) {
 	if (!this->isZip()) {
-		throw ZipError("file is not a zip file");
+		throw FileError("file is not in ZIP format");
 	}
 
 	// Read metadata from zip
@@ -34,7 +34,7 @@ void Zip::unzip(std::string const& dir) {
 
 	auto status = puff(uncompressed, &uncompressedLength, compressed, &compressedLength);
 	if (status != 0) {
-		throw ZipError("could not decompress zip file (error code: %d)\n", status);
+		throw FileError("invalid DEFLATE data (error code: %d)\n", status);
 	}
 
 	// Write to file

@@ -83,7 +83,7 @@ std::string const Element::mediaExt() const {
 	case ElementType::Sound:
 		return "wav";
 	default:
-		throw Error("invalid media extension");
+		throw DataError("invalid media extension");
 	}
 }
 

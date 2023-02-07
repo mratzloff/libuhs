@@ -213,11 +213,11 @@ private:
 	httplib::Response response_;
 };
 
-class LogicError : public Error {
+class DataError : public Error {
 	using Error::Error;
 };
 
-class ReadError : public Error {
+class FileError : public Error {
 	using Error::Error;
 };
 
@@ -254,14 +254,6 @@ private:
 		auto fmt = "parse error at line %d, column %d: "s + format;
 		return tfm::format(fmt.data(), line, column, args...);
 	}
-};
-
-class WriteError : public Error {
-	using Error::Error;
-};
-
-class ZipError : public Error {
-	using Error::Error;
 };
 
 class Logger {
@@ -380,9 +372,9 @@ public:
 	using Type = std::map<std::string, std::string>;
 
 	Type const& attrs() const;
-	std::optional<std::string const> attr(std::string const key) const;
-	void attr(std::string const key, std::string const value);
-	void attr(std::string const key, int const value);
+	std::optional<std::string const> attr(std::string const& key) const;
+	void attr(std::string const& key, std::string const& value);
+	void attr(std::string const& key, int const value);
 
 private:
 	Type attrs_;
@@ -391,10 +383,10 @@ private:
 class Body {
 public:
 	Body() = default;
-	explicit Body(std::string const body);
+	explicit Body(std::string const& body);
 	explicit Body(int const body);
 	std::string const& body() const;
-	void body(std::string const body);
+	void body(std::string const& body);
 	void body(int const body);
 
 private:
@@ -415,9 +407,9 @@ private:
 class Title {
 public:
 	Title() = default;
-	explicit Title(std::string const title);
+	explicit Title(std::string const& title);
 	std::string const& title() const;
-	void title(std::string const title);
+	void title(std::string const& title);
 
 private:
 	std::string title_;
@@ -733,11 +725,11 @@ class TextNode
     : public Node
     , public Traits::Body {
 public:
-	static std::shared_ptr<TextNode> create(std::string const body);
-	static std::shared_ptr<TextNode> create(std::string const body, TextFormat format);
+	static std::shared_ptr<TextNode> create(std::string const& body);
+	static std::shared_ptr<TextNode> create(std::string const& body, TextFormat format);
 
-	explicit TextNode(std::string const body);
-	TextNode(std::string const body, TextFormat format);
+	explicit TextNode(std::string const& body);
+	TextNode(std::string const& body, TextFormat format);
 	TextNode(TextNode const& other);
 	TextNode& operator=(TextNode other);
 	friend void swap(TextNode& lhs, TextNode& rhs) noexcept;
@@ -829,15 +821,14 @@ private:
 
 class Codec {
 public:
-	Codec(Options const options = {});
-	std::string const createKey(std::string secret) const;
+	std::string const createKey(std::string const secret) const;
 	std::string const decode88a(std::string encoded) const;
 	std::string const decode96a(
-	    std::string encoded, std::string key, bool isTextElement) const;
+	    std::string encoded, std::string const& key, bool isTextElement) const;
 	std::string const decodeSpecialChars(std::string const& encoded) const;
 	std::string const encode88a(std::string decoded) const;
 	std::string const encode96a(
-	    std::string encoded, std::string key, bool isTextElement) const;
+	    std::string encoded, std::string const& key, bool isTextElement) const;
 	std::string const encodeSpecialChars(std::string const& decoded) const;
 
 private:
@@ -920,7 +911,6 @@ private:
 	};
 
 	Logger const logger_;
-	Options const options_;
 
 	AsciiToUnicodeMap toChars_ = {
 	    {"S^", "Š"},
@@ -995,14 +985,14 @@ private:
 	    {"y:", "ÿ"},
 	};
 
-	int keystream(
-	    std::string key, std::size_t keyLength, std::size_t line, bool isText) const;
+	int keystream(std::string const& key, std::size_t keyLength, std::size_t line,
+	    bool isText) const;
 	char toPrintable(int c) const;
 };
 
 class Parser {
 public:
-	explicit Parser(Logger const logger, Options const options = {});
+	explicit Parser(Logger const& logger, Options const& options = {});
 	std::shared_ptr<Document> parse(std::istream& in);
 	std::shared_ptr<Document> parseFile(std::string const& filename);
 	void reset();
@@ -1072,7 +1062,7 @@ private:
 	std::string key_;
 	int lineOffset_ = 0;
 	Logger const logger_;
-	Options const options_;
+	Options const& options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 
@@ -1120,7 +1110,7 @@ private:
 
 class Writer {
 public:
-	Writer(Logger const logger, std::ostream& out, Options const options = {});
+	Writer(Logger const& logger, std::ostream& out, Options const& options = {});
 	virtual ~Writer() = default;
 	virtual void write(std::shared_ptr<Document> const document) = 0;
 	virtual void reset();
@@ -1129,12 +1119,12 @@ protected:
 	Codec const codec_;
 	Logger const logger_;
 	std::ostream& out_;
-	Options const options_;
+	Options const& options_;
 };
 
 class TreeWriter : public Writer {
 public:
-	TreeWriter(Logger const logger, std::ostream& out, Options const options = {});
+	TreeWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 
 private:
@@ -1147,7 +1137,7 @@ private:
 
 class HTMLWriter : public Writer {
 public:
-	HTMLWriter(Logger const logger, std::ostream& out, Options const options = {});
+	HTMLWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 
 private:
@@ -1212,7 +1202,7 @@ private:
 
 class JSONWriter : public Writer {
 public:
-	JSONWriter(Logger const logger, std::ostream& out, Options const options = {});
+	JSONWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 
 private:
@@ -1230,7 +1220,7 @@ public:
 	// within the standard 80-character window (with border and padding).
 	static std::size_t const LineLength = 76;
 
-	UHSWriter(Logger const logger, std::ostream& out, Options const options = {});
+	UHSWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 	void reset() override;
 
@@ -1279,7 +1269,7 @@ private:
 	void serializeData(std::string& out);
 	void serializeCRC(std::string& out);
 	std::string formatText(TextNode const& textNode, TextFormat const previousFormat);
-	std::string encodeText(std::string const text, ElementType const parentType);
+	std::string encodeText(std::string const& text, ElementType const parentType);
 	void addData(Element const& element);
 	std::string createDataAddress(
 	    std::size_t bodyLength, std::string textFormat = "") const;
@@ -1312,9 +1302,9 @@ public:
 
 	using FileIndex = std::map<std::string const, FileMetadata const>;
 
-	Downloader(Logger const logger, Options const options = {});
-	void download(std::string const& file, std::string const& dir);
-	void download(std::vector<std::string const> const& files, std::string const& dir);
+	Downloader(Logger const& logger);
+	void download(std::string const& dir, std::string const& file);
+	void download(std::string const& dir, std::vector<std::string const> const& files);
 	FileIndex const& fileIndex();
 
 private:
@@ -1328,7 +1318,6 @@ private:
 	httplib::Client httpClient_;
 	httplib::Headers httpHeaders_;
 	Logger const logger_;
-	Options const options_;
 };
 
 class Zip {
@@ -1352,8 +1341,8 @@ private:
 	std::string const data_;
 };
 
-bool write(Logger const logger, std::string const format, std::string const infile,
-    std::string const outfile = "", Options const options = {});
+bool write(Logger const& logger, std::string const format, std::string const infile,
+    std::string const outfile = "", Options const& options = {});
 
 } // namespace UHS
 

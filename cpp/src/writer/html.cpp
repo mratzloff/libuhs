@@ -4,7 +4,7 @@ namespace UHS {
 
 HTMLWriter::Serializer HTMLWriter::serializer_;
 
-HTMLWriter::HTMLWriter(Logger const logger, std::ostream& out, Options const options)
+HTMLWriter::HTMLWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {
 
 	css_ =
@@ -51,7 +51,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		try {
 			parent = this->findXMLParent(node, parent, parents, depth);
 		} catch (std::out_of_range const& err) {
-			throw WriteError("could not find XML parent");
+			throw DataError("could not find XML parent");
 		}
 
 		// Serialize node
@@ -132,7 +132,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 			break;
 		}
 		default:
-			throw WriteError("unexpected node type: %s", node.nodeTypeString());
+			throw DataError("unexpected node type: %s", node.nodeTypeString());
 		}
 
 		depth = nodeDepth;
@@ -154,7 +154,7 @@ void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode
 
 		auto const parentDocument = element.findDocument();
 		if (!parentDocument) {
-			throw WriteError("no document found for element with ID %d", element.id());
+			throw DataError("no document found for element with ID %d", element.id());
 		}
 
 		auto inHeaderDocument = (parentDocument->findDocument() != nullptr);
@@ -311,7 +311,7 @@ void HTMLWriter::serializeOverlayElement(Element const& element, pugi::xml_node 
 	// Re-parent node
 	auto container = findHyperpngContainer(element, xmlNode);
 	if (!container) {
-		throw WriteError("overlay parent must be a hyperpng element");
+		throw DataError("overlay parent must be a hyperpng element");
 	}
 	container->append_move(xmlNode);
 
@@ -409,7 +409,7 @@ std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
 	container->title(copy->title());
 	for (auto node = copy->firstChild(); node; node = copy->firstChild()) {
 		if (node->nodeType() != NodeType::Element) {
-			throw WriteError("expected element, found %s node", node->nodeTypeString());
+			throw DataError("expected element, found %s node", node->nodeTypeString());
 		}
 		copy->removeChild(node);
 		container->appendChild(node);
@@ -477,7 +477,7 @@ pugi::xml_node HTMLWriter::appendMedia(
 		contentType = mediaContentTypes_.at(elementType);
 		tagName = mediaTagTypes_.at(elementType);
 	} catch (std::out_of_range const&) {
-		throw WriteError("unexpected media type: %s", element.elementTypeString());
+		throw DataError("unexpected media type: %s", element.elementTypeString());
 	}
 
 	auto media = xmlNode.append_child(tagName.c_str());
@@ -578,13 +578,13 @@ pugi::xml_node HTMLWriter::findOrCreateMap(
 
 	auto parentElement = this->getParentElement(element);
 	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
-		throw WriteError(
+		throw DataError(
 		    "expected hyperpng parent; got %s", parentElement->elementTypeString());
 	}
 
 	auto container = this->findHyperpngContainer(element, xmlNode);
 	if (!container) {
-		throw WriteError(
+		throw DataError(
 		    "hyperpng %s must have an image container", element.elementTypeString());
 	}
 
@@ -613,7 +613,7 @@ pugi::xml_node HTMLWriter::findXMLParent(Node const& node, pugi::xml_node const 
 	try {
 		nodeParent = parents.at(node.parent());
 	} catch (std::out_of_range const& err) {
-		throw WriteError("could not find HTML parent node");
+		throw DataError("could not find HTML parent node");
 	}
 
 	auto ol = nodeParent.first_element_by_path("ol");
@@ -643,7 +643,7 @@ std::tuple<int, int> HTMLWriter::getImageSize(Element const& element) const {
 	auto y = element.attr("image-y");
 
 	if (!x || !y) {
-		throw WriteError("expected size for %s", element.elementTypeString());
+		throw DataError("expected size for %s", element.elementTypeString());
 	}
 
 	return std::make_tuple(Strings::toInt(*x), Strings::toInt(*y));
@@ -665,7 +665,7 @@ std::tuple<int, int, int, int> HTMLWriter::getRegionCoordinates(
 	auto y2 = element.attr("region-bottom-right-y");
 
 	if (!x1 || !y1 || !x2 || !y2) {
-		throw WriteError(
+		throw DataError(
 		    "expected coordinates for hyperpng %s", element.elementTypeString());
 	}
 

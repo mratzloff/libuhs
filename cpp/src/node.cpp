@@ -15,7 +15,7 @@ std::string const Node::typeString(NodeType type) {
 	case NodeType::Text:
 		return "text";
 	default:
-		throw Error("invalid node type");
+		throw DataError("invalid node type");
 	}
 }
 
@@ -173,7 +173,7 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 		firstChild_ = node;
 	} else {
 		if (!ref->hasPreviousSibling()) {
-			throw Error("expected previous sibling for node");
+			throw DataError("expected previous sibling for node");
 		}
 
 		auto previous = ref->previousSibling();
@@ -465,17 +465,17 @@ std::shared_ptr<GroupNode> GroupNode::clone() const {
 
 //-------------------------------- TextNode --------------------------------//
 
-std::shared_ptr<TextNode> TextNode::create(const std::string body) {
+std::shared_ptr<TextNode> TextNode::create(std::string const& body) {
 	return std::make_shared<TextNode>(body);
 }
 
-std::shared_ptr<TextNode> TextNode::create(const std::string body, TextFormat format) {
+std::shared_ptr<TextNode> TextNode::create(std::string const& body, TextFormat format) {
 	return std::make_shared<TextNode>(body, format);
 }
 
-TextNode::TextNode(const std::string body) : Node(NodeType::Text), Body(body) {}
+TextNode::TextNode(std::string const& body) : Node(NodeType::Text), Body(body) {}
 
-TextNode::TextNode(const std::string body, TextFormat format)
+TextNode::TextNode(std::string const& body, TextFormat format)
     : Node(NodeType::Text), Body(body), format_{format} {}
 
 TextNode::TextNode(TextNode const& other)
