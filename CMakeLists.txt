@@ -124,10 +124,14 @@ set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 file (MAKE_DIRECTORY build/assets)
 file (MAKE_DIRECTORY build/include)
 
+# yarn
+add_custom_target (yarn COMMAND yarn)
+
 # css_minified
 add_custom_target (css_minified
 	COMMAND ${bin}/minify cpp/assets/css/uhs.css > build/assets/uhs.min.css
 	BYPRODUCTS build/assets/uhs.min.css)
+add_dependencies (css_minified yarn)
 
 # css_includes
 add_custom_target (css_includes
@@ -143,6 +147,7 @@ add_custom_target (js
 		build/ts/history.js
 		build/ts/search.js
 		build/ts/viewport.js)
+add_dependencies (js yarn)
 
 # js_combined
 add_custom_target (js_combined
@@ -211,8 +216,9 @@ add_custom_target (clean-all
 	COMMAND rm -rf _deps
 	COMMAND rm -f CMakeCache.txt
 	COMMAND rm -rf CMakeFiles
+	COMMAND rm -rf lib
 	COMMAND rm -f Makefile
-	COMMAND rm -rf lib)
+	COMMAND rm -rf node_modules)
 
 # make format
 add_custom_target (format
