@@ -1,21 +1,97 @@
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.14)
+cmake_policy (SET CMP0135 NEW)
 
 project (libuhs CXX C)
+
+include (ExternalProject)
+include (FetchContent)
 
 set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 
-set (argh_includes cpp/vendor/argh)
+# Fetch dependencies
+FetchContent_Declare (argh_dep
+	GIT_REPOSITORY https://github.com/adishavit/argh
+	GIT_TAG c429ee27134195b317e852324212bf39056bbff4)
+FetchContent_MakeAvailable (argh_dep)
+
+FetchContent_Declare (hopscotch_map_dep
+	GIT_REPOSITORY https://github.com/Tessil/hopscotch-map
+	GIT_TAG fc6ddc142a2ea11270275d32ccd5fea091f84a12)
+FetchContent_MakeAvailable (hopscotch_map_dep)
+
+FetchContent_Declare (httplib_dep
+	GIT_REPOSITORY https://github.com/yhirose/cpp-httplib
+	GIT_TAG 4e6ded1f36ec24d6428ab560f8c0ddfb653651e6)
+FetchContent_MakeAvailable (httplib_dep)
+
+set (jsoncpp_prefix ${FETCHCONTENT_BASE_DIR}/jsoncpp_dep)
+
+ExternalProject_Add (jsoncpp_dep
+	GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp
+	GIT_TAG 5defb4ed1a4293b8e2bf641e16b156fb9de498cc
+	PREFIX ${jsoncpp_prefix}
+	CMAKE_CACHE_ARGS
+		-DBUILD_SHARED_LIBS:BOOL=OFF
+		-DBUILD_OBJECT_LIBS:BOOL=OFF
+		-DJSONCPP_WITH_CMAKE_PACKAGE:BOOL=OFF
+		-DJSONCPP_WITH_POST_BUILD_UNITTEST:BOOL=OFF
+		-DJSONCPP_WITH_PKGCONFIG_SUPPORT:BOOL=OFF
+		-DJSONCPP_WITH_TESTS:BOOL=OFF
+	INSTALL_COMMAND "")
+
+ExternalProject_Get_Property (jsoncpp_dep SOURCE_DIR BINARY_DIR)
+set (jsoncpp_dep_SOURCE_DIR ${SOURCE_DIR})
+set (jsoncpp_dep_BINARY_DIR ${BINARY_DIR})
+
+FetchContent_Declare (zlib_dep
+	GIT_REPOSITORY https://github.com/madler/zlib
+	GIT_TAG 04f42ceca40f73e2978b50e93806c2a18c1281fc)
+FetchContent_Populate (zlib_dep)
+
+set (puff_dep_SOURCE_DIR ${zlib_dep_SOURCE_DIR}/contrib/puff)
+
+FetchContent_GetProperties (zlib_dep)
+if (zlib_dep_POPULATED)
+	add_library (puff OBJECT ${puff_dep_SOURCE_DIR}/puff.c)
+endif ()
+
+FetchContent_Declare (pugixml_dep
+	GIT_REPOSITORY https://github.com/zeux/pugixml
+	GIT_TAG c2c61a590508922964a425c603c7016329b14655)
+FetchContent_MakeAvailable (pugixml_dep)
+
+set (tinyformat_prefix ${FETCHCONTENT_BASE_DIR}/tinyformat_dep)
+
+ExternalProject_Add (tinyformat_dep
+	GIT_REPOSITORY https://github.com/mratzloff/tinyformat
+	GIT_TAG 52f5a919de22c696b6fb55570b7210a9f3815b7e
+	PREFIX ${tinyformat_prefix}
+	CMAKE_CACHE_ARGS -DBUILD_TESTS:BOOL=OFF)
+
+ExternalProject_Get_Property (tinyformat_dep SOURCE_DIR)
+set (tinyformat_dep_SOURCE_DIR ${SOURCE_DIR})
+
+FetchContent_Declare (tinyutf8_dep
+	GIT_REPOSITORY https://github.com/DuffsDevice/tiny-utf8
+	GIT_TAG a71a1c4c681ed1eb178db641b3e1bc6298bb2327)
+FetchContent_MakeAvailable (tinyutf8_dep)
+
+# Define dependency path variables
+set (argh_includes ${argh_dep_SOURCE_DIR})
+set (hopscotch_map_includes ${hopscotch_map_dep_SOURCE_DIR}/include)
+set (httplib_includes ${httplib_dep_SOURCE_DIR})
+set (jsoncpp_includes ${jsoncpp_dep_SOURCE_DIR}/include)
+set (jsoncpp_lib ${jsoncpp_dep_BINARY_DIR}/lib)
+set (puff_includes ${puff_dep_SOURCE_DIR})
+set (pugixml_includes ${pugixml_dep_SOURCE_DIR}/src)
+set (tinyformat_includes ${tinyformat_dep_SOURCE_DIR})
+set (tinyutf8_includes ${tinyutf8_dep_SOURCE_DIR}/include)
+
+# Define project path variables
 set (bin node_modules/.bin)
-set (httplib_includes cpp/vendor/httplib)
-set (json_includes cpp/vendor/jsoncpp/json)
-set (puff_includes cpp/vendor/puff)
-set (pugixml_includes cpp/vendor/pugixml)
-set (tinyformat_includes cpp/vendor/tinyformat)
-set (tinyutf8_includes cpp/vendor/tinyutf8)
-set (tsl_includes cpp/vendor/tsl)
 set (uhs_build_includes build/include)
 set (uhs_includes include)
 
@@ -44,94 +120,98 @@ set (uhs_sources
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
+# Create build directories
 file (MAKE_DIRECTORY build/assets)
 file (MAKE_DIRECTORY build/include)
 
 # css_minified
-add_custom_target(css_minified
+add_custom_target (css_minified
 	COMMAND ${bin}/minify cpp/assets/css/uhs.css > build/assets/uhs.min.css
 	BYPRODUCTS build/assets/uhs.min.css)
 
 # css_includes
-add_custom_target(css_includes
+add_custom_target (css_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_css_h.cmake
 	BYPRODUCTS ${uhs_build_includes}/css.h)
 add_dependencies (css_includes css_minified)
 
 # js
-add_custom_target(js
+add_custom_target (js
 	COMMAND ${bin}/tsc
-	BYPRODUCTS build/ts/constants.js
-	           build/ts/history.js
-	           build/ts/search.js
-	           build/ts/viewport.js)
+	BYPRODUCTS
+		build/ts/constants.js
+		build/ts/history.js
+		build/ts/search.js
+		build/ts/viewport.js)
 
 # js_combined
-add_custom_target(js_combined
+add_custom_target (js_combined
 	COMMAND ${bin}/ncc build ts/src/index.ts --out build/ts --no-source-map-register --quiet
 	BYPRODUCTS build/ts/index.js)
 add_dependencies (js_combined js)
 
 # js_minified
-add_custom_target(js_minified
+add_custom_target (js_minified
 	COMMAND ${bin}/minify build/ts/index.js > build/ts/index.min.js
 	BYPRODUCTS build/ts/index.min.js)
 add_dependencies (js_minified js_combined)
 
 # js_includes
-add_custom_target(js_includes
+add_custom_target (js_includes
 	COMMAND ${CMAKE_COMMAND} -P cmake/create_js_h.cmake
 	BYPRODUCTS ${uhs_build_includes}/js.h)
 add_dependencies (js_includes js_minified)
 
-# json.o
-add_library (json OBJECT cpp/vendor/jsoncpp/jsoncpp.cpp)
-target_include_directories (json PUBLIC ${json_includes})
-
-# puff.o
-add_library (puff OBJECT cpp/vendor/puff/puff.c)
-target_include_directories (puff PUBLIC ${puff_includes})
-
-# pugixml.o
-add_library (pugixml OBJECT cpp/vendor/pugixml/pugixml.cpp)
-target_include_directories (pugixml PUBLIC ${pugixml_includes})
-
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
 add_dependencies (uhs css_includes js_includes)
-target_link_libraries(uhs json pugixml puff)
+link_directories (
+	${jsoncpp_lib}
+	${CMAKE_SOURCE_DIR}/lib)
+target_link_libraries (uhs
+	PUBLIC
+		jsoncpp
+		puff
+		pugixml)
 target_include_directories (uhs
-	PUBLIC ${json_includes}
-	       ${httplib_includes}
-	       ${puff_includes}
-	       ${pugixml_includes}
-	       ${tinyformat_includes}
-	       ${tinyutf8_includes}
-	       ${tsl_includes}
-		   ${uhs_build_includes}
-	       ${uhs_includes})
+	PUBLIC
+		${hopscotch_map_includes}
+		${httplib_includes}
+		${jsoncpp_includes}
+		${puff_includes}
+		${pugixml_includes}
+		${tinyformat_includes}
+		${tinyutf8_includes}
+		${uhs_build_includes}
+		${uhs_includes})
 target_compile_options (uhs PRIVATE -g -O3 -Wall -Wextra)
 
 # bin/uhs
 add_executable (uhs_bin cpp/src/cmd/uhs/main.cpp)
 add_dependencies (uhs_bin css_includes js_includes)
 set_target_properties (uhs_bin
-	PROPERTIES LINKER_LANGUAGE CXX
-               OUTPUT_NAME uhs)
-target_include_directories (uhs_bin PUBLIC ${argh_includes})
-target_link_libraries (uhs_bin PUBLIC uhs)
+	PROPERTIES
+		LINKER_LANGUAGE CXX
+		OUTPUT_NAME uhs)
+target_include_directories (uhs_bin PRIVATE ${argh_includes})
+target_link_libraries (uhs_bin PRIVATE uhs)
 
 # bin/uhsc
 add_executable (uhsc_bin c/src/cmd/uhsc/main.c)
 set_target_properties (uhsc_bin
-	PROPERTIES LINKER_LANGUAGE C
-               OUTPUT_NAME uhsc)
-target_link_libraries (uhsc_bin PUBLIC uhs)
+	PROPERTIES
+		LINKER_LANGUAGE C
+		OUTPUT_NAME uhsc)
+target_link_libraries (uhsc_bin PRIVATE uhs)
 
 # make clean-all
 add_custom_target (clean-all
+	COMMAND rm -f *.cmake
 	COMMAND rm -rf build
+	COMMAND rm -rf _deps
+	COMMAND rm -f CMakeCache.txt
 	COMMAND rm -rf CMakeFiles
+	COMMAND rm -f Makefile
 	COMMAND rm -rf lib)
 
 # make format
@@ -149,13 +229,13 @@ add_custom_target (lint
 		-Xanalyzer
 		-analyzer-output=text
 		-I${argh_includes}
+		-I${hopscotch_map_includes}
 		-I${httplib_includes}
-		-I${json_includes}
+		-I${jsoncpp_includes}
 		-I${puff_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
 		-I${tinyutf8_includes}
-		-I${tsl_includes}
 		-I${uhs_includes}
 		-std=c++20
 		${uhs_sources}

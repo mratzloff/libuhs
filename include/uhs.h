@@ -25,9 +25,8 @@
 #include <tuple>
 #include <vector>
 
-#include "hopscotch_map.h"
 #include "httplib.h"
-#include "json.h"
+#include "json/json.h"
 extern "C" {
 #include "puff.h"
 }
@@ -36,6 +35,8 @@ extern "C" {
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #include "tinyformat.h"
 #pragma clang diagnostic pop
+#include "tinyutf8/tinyutf8.h"
+#include "tsl/hopscotch_map.h"
 
 namespace UHS {
 

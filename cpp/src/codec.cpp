@@ -1,4 +1,3 @@
-#include "tinyutf8.h"
 #include "uhs.h"
 
 namespace UHS {
