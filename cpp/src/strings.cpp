@@ -122,6 +122,12 @@ std::vector<std::string> split(std::string const& s, std::string const& sep, int
 	return items;
 }
 
+std::vector<std::string> split(std::string const& s, std::regex const& sep) {
+	std::sregex_token_iterator it(s.begin(), s.end(), sep, -1);
+	std::sregex_token_iterator end;
+	return {it, end};
+}
+
 std::string toBase64(std::string const& s) {
 	static std::string const charset =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -167,6 +173,12 @@ void toLower(std::string& s) {
 	    s.cend(),
 	    s.begin(), // write to the same location
 	    [](unsigned char c) { return std::tolower(c); });
+}
+
+std::string trim(std::string s, char c) {
+	s.erase(s.find_last_not_of(c) + 1);
+	s.erase(0, s.find_first_not_of(c));
+	return s;
 }
 
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width) {

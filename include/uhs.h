@@ -344,9 +344,11 @@ std::string join(std::vector<std::string> const& s, std::string const& sep);
 std::string ltrim(std::string const& s, char c);
 std::string rtrim(std::string const& s, char c);
 std::vector<std::string> split(std::string const& s, std::string const& sep, int n = 0);
+std::vector<std::string> split(std::string const& s, std::regex const& sep);
 std::string toBase64(std::string const& s);
 int toInt(std::string const& s);
 void toLower(std::string& s);
+std::string trim(std::string s, char c);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width,
     int& numLines, std::string const prefix = "");
@@ -358,8 +360,10 @@ namespace Regex {
 std::regex const Descriptor{"([0-9]+) ([a-z]{4,})"};
 std::regex const DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
 std::regex const EmailAddress{".+@.+\\..+"};
+std::regex const HorizontalRule{"-{4,}"};
 std::regex const HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
+std::regex const MaybeHorizontalRule{"[- ]+"};
 std::regex const OverlayAddress{
     "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 std::regex const URL{"https?://.+\\..+"};
@@ -1143,6 +1147,7 @@ public:
 
 private:
 	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
+	using TableRow = std::vector<std::string>;
 
 	class Serializer {
 	public:
