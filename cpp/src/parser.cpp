@@ -954,29 +954,30 @@ void Parser::parseTextElement(Element& element) {
 	std::size_t length = intLength;
 
 	// Data
-	this->addDataCallback(line, column, offset, length, [=, &element](std::string data) {
-		auto lines = Strings::split(data, EOL);
-		for (auto& text : lines) {
-			text = codec_.decode96a(text, key_, true);
-			if (options_.debug) {
-				logger_.debug("\"%s\"\n", text);
-			}
-		}
+	this->addDataCallback(
+	    line, column, offset, length, [=, this, &element](std::string data) {
+		    auto lines = Strings::split(data, EOL);
+		    for (auto& text : lines) {
+			    text = codec_.decode96a(text, key_, true);
+			    if (options_.debug) {
+				    logger_.debug("\"%s\"\n", text);
+			    }
+		    }
 
-		auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
-		if (!body.empty()) {
-			auto group = GroupNode::create(element.line(), element.length());
-			element.appendChild(group);
+		    auto body = Strings::rtrim(Strings::join(lines, "\n"), '\n');
+		    if (!body.empty()) {
+			    auto group = GroupNode::create(element.line(), element.length());
+			    element.appendChild(group);
 
-			try {
-				auto fmt = format;
-				this->parseWithFormat(body, fmt, *group, element.elementType());
-			} catch (const DataError& err) {
-				std::throw_with_nested(
-				    ParseError(line, column, "could not parse formatted string"));
-			}
-		}
-	});
+			    try {
+				    auto fmt = format;
+				    this->parseWithFormat(body, fmt, *group, element.elementType());
+			    } catch (DataError const& err) {
+				    std::throw_with_nested(
+				        ParseError(line, column, "could not parse formatted string"));
+			    }
+		    }
+	    });
 }
 
 void Parser::parseVersionElement(Element& element) {
@@ -1235,7 +1236,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 			if (s.substr(i + 1, 2) == " \n") {
 				// Handle paragraph breaks
 				for (std::size_t j = i; j < length && s.substr(j + 1, 2) == " \n";
-				     j += 2, i = j) {
+				    j += 2, i = j) {
 
 					segment += '\n';
 				}

@@ -563,7 +563,7 @@ private:
 		void close();
 
 	private:
-		std::queue<Token const> queue_;
+		std::queue<Token> queue_;
 		mutable std::mutex mutex_;
 		bool open_ = true;
 		Pipe& pipe_; // For exceptions
@@ -1305,7 +1305,7 @@ public:
 
 	Downloader(Logger const& logger);
 	void download(std::string const& dir, std::string const& file);
-	void download(std::string const& dir, std::vector<std::string const> const& files);
+	void download(std::string const& dir, std::vector<std::string> const& files);
 	FileIndex const& fileIndex();
 
 private:

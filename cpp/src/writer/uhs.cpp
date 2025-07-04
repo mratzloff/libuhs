@@ -886,7 +886,7 @@ std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y
 
 std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
 	std::ostringstream buffer;
-	std::vector<int const> coords = {x1, y1, x2, y2};
+	std::vector<int> coords = {x1, y1, x2, y2};
 	auto continuation = false;
 
 	for (auto coord : coords) {

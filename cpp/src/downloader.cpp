@@ -8,12 +8,11 @@ Downloader::Downloader(Logger const& logger)
     , logger_{logger} {}
 
 void Downloader::download(std::string const& dir, std::string const& file) {
-	std::vector<std::string const> files{file};
+	std::vector<std::string> files{file};
 	this->download(dir, files);
 }
 
-void Downloader::download(
-    std::string const& dir, std::vector<std::string const> const& files) {
+void Downloader::download(std::string const& dir, std::vector<std::string> const& files) {
 
 	if (fileIndex_.size() == 0) {
 		this->loadFileIndex();

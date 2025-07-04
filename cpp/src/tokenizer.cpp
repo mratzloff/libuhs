@@ -6,7 +6,7 @@
 namespace UHS {
 
 Tokenizer::Tokenizer(Pipe& pipe) : pipe_{pipe}, out_{pipe} {
-	pipe_.addHandler([=](char const* buffer, std::streamsize length) {
+	pipe_.addHandler([=, this](char const* buffer, std::streamsize length) {
 		this->tokenize(buffer, length);
 	});
 }

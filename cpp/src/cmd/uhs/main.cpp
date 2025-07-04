@@ -98,7 +98,7 @@ int download(int argc, char const* argv[]) {
 	Downloader downloader{logger};
 
 	try {
-		std::vector<std::string const> files;
+		std::vector<std::string> files;
 		if (all) {
 			auto index = downloader.fileIndex();
 			for (auto const& [file, _] : index) {

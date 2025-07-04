@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.14)
+cmake_minimum_required (VERSION 4.0)
 cmake_policy (SET CMP0135 NEW)
 
 project (libuhs CXX C)
@@ -6,7 +6,8 @@ project (libuhs CXX C)
 include (ExternalProject)
 include (FetchContent)
 
-set (CMAKE_CXX_STANDARD 20)
+set (CMAKE_CXX_STANDARD 23)
+set (CMAKE_C_STANDARD 23)
 set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY lib)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 list (APPEND CMAKE_MODULE_PATH cpp/vendor)
@@ -14,24 +15,24 @@ list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 # Fetch dependencies
 FetchContent_Declare (argh_dep
 	GIT_REPOSITORY https://github.com/adishavit/argh
-	GIT_TAG c429ee27134195b317e852324212bf39056bbff4)
+	GIT_TAG c3f0d8c8a6dacb00df626b409248a34e3bcd15f5)
 FetchContent_MakeAvailable (argh_dep)
 
 FetchContent_Declare (hopscotch_map_dep
 	GIT_REPOSITORY https://github.com/Tessil/hopscotch-map
-	GIT_TAG fc6ddc142a2ea11270275d32ccd5fea091f84a12)
+	GIT_TAG 799f43600f9ca65a3045decbc7571b5522fa21b7)
 FetchContent_MakeAvailable (hopscotch_map_dep)
 
 FetchContent_Declare (httplib_dep
 	GIT_REPOSITORY https://github.com/yhirose/cpp-httplib
-	GIT_TAG 4e6ded1f36ec24d6428ab560f8c0ddfb653651e6)
+	GIT_TAG d5409ab541ecc6f4f3df7558a829c5dc522ecf7e)
 FetchContent_MakeAvailable (httplib_dep)
 
 set (jsoncpp_prefix ${FETCHCONTENT_BASE_DIR}/jsoncpp_dep)
 
 ExternalProject_Add (jsoncpp_dep
 	GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp
-	GIT_TAG 5defb4ed1a4293b8e2bf641e16b156fb9de498cc
+	GIT_TAG 1.9.6
 	PREFIX ${jsoncpp_prefix}
 	CMAKE_CACHE_ARGS
 		-DBUILD_SHARED_LIBS:BOOL=OFF
@@ -55,8 +56,8 @@ set (jsoncpp_dep_BINARY_DIR ${BINARY_DIR})
 
 FetchContent_Declare (zlib_dep
 	GIT_REPOSITORY https://github.com/madler/zlib
-	GIT_TAG 04f42ceca40f73e2978b50e93806c2a18c1281fc)
-FetchContent_Populate (zlib_dep)
+	GIT_TAG 5a82f71ed1dfc0bec044d9702463dbdf84ea3b71)
+FetchContent_MakeAvailable (zlib_dep)
 
 set (puff_dep_SOURCE_DIR ${zlib_dep_SOURCE_DIR}/contrib/puff)
 
@@ -67,14 +68,14 @@ endif ()
 
 FetchContent_Declare (pugixml_dep
 	GIT_REPOSITORY https://github.com/zeux/pugixml
-	GIT_TAG c2c61a590508922964a425c603c7016329b14655)
+	GIT_TAG 5a1892b321a38997e3e359069aea3fa35d49a5c6)
 FetchContent_MakeAvailable (pugixml_dep)
 
 set (tinyformat_prefix ${FETCHCONTENT_BASE_DIR}/tinyformat_dep)
 
 ExternalProject_Add (tinyformat_dep
 	GIT_REPOSITORY https://github.com/mratzloff/tinyformat
-	GIT_TAG 52f5a919de22c696b6fb55570b7210a9f3815b7e
+	GIT_TAG 9f6032683b2fb900a3de456f39a61da684704e8e
 	PREFIX ${tinyformat_prefix}
 	CMAKE_CACHE_ARGS -DBUILD_TESTS:BOOL=OFF
 	LOG_DOWNLOAD ON
@@ -90,8 +91,8 @@ ExternalProject_Get_Property (tinyformat_dep SOURCE_DIR)
 set (tinyformat_dep_SOURCE_DIR ${SOURCE_DIR})
 
 FetchContent_Declare (tinyutf8_dep
-	GIT_REPOSITORY https://github.com/DuffsDevice/tiny-utf8
-	GIT_TAG a71a1c4c681ed1eb178db641b3e1bc6298bb2327)
+	GIT_REPOSITORY https://github.com/mratzloff/tiny-utf8
+	GIT_TAG e8ebed5b54f2ae80598228013f4044fd8bf8ce62)
 FetchContent_MakeAvailable (tinyutf8_dep)
 
 # Define dependency path variables
@@ -258,7 +259,7 @@ add_custom_target (lint
 		-I${tinyformat_includes}
 		-I${tinyutf8_includes}
 		-I${uhs_includes}
-		-std=c++20
+		-std=c++23
 		${uhs_sources}
 		${uhs_bin_sources})
 add_dependencies (lint format)

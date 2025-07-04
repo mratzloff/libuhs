@@ -13,7 +13,7 @@ int uhs_download(char const* dir, int numFiles, char const** files) {
 	UHS::Logger logger{UHS::LogLevel::Error};
 	auto downloader = UHS::Downloader{logger};
 
-	std::vector<std::string const> filesObj;
+	std::vector<std::string> filesObj;
 	for (auto i = 0; i < numFiles; ++i) {
 		filesObj.push_back(std::string{files[i]});
 	}

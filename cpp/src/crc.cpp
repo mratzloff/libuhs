@@ -16,7 +16,7 @@ CRC::CRC() {
 
 void CRC::upstream(Pipe& pipe) {
 	pipe_ = &pipe;
-	pipe.addHandler([=](char const* buffer, std::streamsize length) {
+	pipe.addHandler([=, this](char const* buffer, std::streamsize length) {
 		this->calculate(buffer, length, true);
 	});
 }
