@@ -350,6 +350,45 @@ void HTMLWriter::serializeTextElement(Element const& element, pugi::xml_node xml
 	this->appendTitle(element, xmlNode);
 }
 
+std::pair<std::string const, std::vector<std::string>> HTMLWriter::findNextSegment(
+    std::vector<std::string>::const_iterator begin,
+    std::vector<std::string>::const_iterator end) const {
+
+	std::vector<std::string> lines;
+	auto inTable = false;
+
+	for (auto it = begin; it < end; ++it) {
+		// Detect blank lines
+		auto numBlankLines = 0;
+		for (; it < end && *it == ""; ++it, ++numBlankLines) {
+			lines.emplace_back(*it);
+		}
+
+		if (numBlankLines > 1) {
+			if (inTable) {
+				for (; numBlankLines > 0; --numBlankLines) {
+					lines.pop_back();
+				}
+			}
+			break;
+		}
+
+		// Detect table
+		std::smatch match;
+		if (std::regex_match(*it, match, Regex::HorizontalLine)) {
+			if (inTable) { // Found two tables in a single block
+				lines.pop_back();
+				break;
+			}
+			inTable = true;
+		}
+
+		lines.emplace_back(*it);
+	}
+
+	return std::pair{inTable ? "table" : "none", lines};
+}
+
 void HTMLWriter::serializeTextNode(
     TextNode const& textNode, pugi::xml_node xmlNode) const {
 
@@ -367,177 +406,60 @@ void HTMLWriter::serializeTextNode(
 
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
+	std::vector<std::pair<std::string const, std::vector<std::string>>> segments;
 
-	// BEGIN TEST CODE
 	if (textNode.hasFormat(TextFormat::Monospace | TextFormat::Overflow)) {
-		TableRow headings;
-		auto numColumns = 0;
-		auto numColumnsHint = 0;
-		auto numHeadingRows = 2; // TODO: Make this dynamic
-		auto numTrailingEmptyLines = 0;
-		std::vector<std::vector<std::size_t>> wordIndexesByRow;
+		std::size_t segmentLength = 0;
+		for (auto it = lines.cbegin(); it < lines.cend(); it += segmentLength) {
+			auto const& segment = this->findNextSegment(it, lines.cend());
+			auto const& segmentLines = segment.second;
+			segmentLength += segmentLines.size();
+			segments.push_back(segment);
+		}
 
+		for (auto const& [segmentType, segmentLines] : segments) {
+			if (segmentType == "table") {
+				auto table = new TextTable();
+				table->parse(segmentLines);
+				if (table->valid()) {
+					table->serialize(xmlNode);
+				} else {
+					// DRY
+					for (std::size_t i = 0; i < lines.size(); ++i) {
+						if (i > 0) {
+							xmlNode.append_child("br");
+						}
+						xmlNode.append_child(pugi::node_pcdata)
+						    .set_value(lines[i].c_str());
+					}
+				}
+			} else if (segmentType == "none") {
+				// TODO: Handle this
+				tfm::printf("== BEGIN %s =====================\n", segmentType);
+				for (auto sit = segmentLines.cbegin(); sit < segmentLines.cend(); ++sit) {
+					tfm::printf(">%s\n", *sit);
+				}
+				tfm::printf("== END =============================\n");
+
+				// DRY
+				for (std::size_t i = 0; i < lines.size(); ++i) {
+					if (i > 0) {
+						xmlNode.append_child("br");
+					}
+					xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
+				}
+			}
+		}
+	} else {
+		// END TEST CODE
+
+		// DRY
 		for (std::size_t i = 0; i < lines.size(); ++i) {
-			std::smatch match;
-
-			tfm::printf("\"%s\"\n", lines[i]);
-			if (std::regex_match(lines[i], match, Regex::MaybeHorizontalRule)) {
-				auto const matches = Strings::split(lines[i], std::regex{"\\s+"});
-				int const numHorizontalRules = matches.size();
-
-				if (numHorizontalRules == 0) { // False positive
-					continue;
-				}
-				if (numHorizontalRules > 1) {
-					numColumnsHint = numHorizontalRules;
-				}
-
-				if (i - 1 >= 0) { // Look back at potential headings
-					headings = Strings::split(lines[i - 1], std::regex{"\\s{2,}"});
-					int const numHeadings = headings.size();
-
-					if (numHeadings == 0) {
-						break;
-					}
-					if (numHeadings == numColumnsHint) {
-						// Evidence suggests we found the correct number of columns
-						numColumns = numColumnsHint;
-					} else if (numColumnsHint == 0) {
-						// We can't always trust the number of headings alone;
-						// sometimes there are fewer headings than columns
-						numColumnsHint = numHeadings;
-					}
-				}
-
-				continue;
+			if (i > 0) {
+				xmlNode.append_child("br");
 			}
-
-			std::vector<std::size_t> wordIndexes;
-			auto between = false;
-
-			for (std::size_t j = 0; j < lines[i].length(); ++j) {
-				if ((j == 0 || between) && lines[i][j] != ' ') {
-					between = false;
-					wordIndexes.push_back(j);
-					continue;
-				}
-				if (!between && j - 2 >= 0 && lines[i][j] == ' ' && lines[i][j - 1] == ' '
-				    && lines[i][j - 2] == ' ') {
-
-					between = true;
-				}
-			}
-
-			for (auto wordIndex : wordIndexes) {
-				tfm::printf("%d, ", wordIndex);
-			}
-			std::cout << "\n";
-
-			if (wordIndexes.size() > 0) {
-				numTrailingEmptyLines = 0;
-			} else {
-				++numTrailingEmptyLines;
-			}
-
-			wordIndexesByRow.push_back(wordIndexes);
+			xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
 		}
-
-		auto maxColumns = 0;
-		for (auto const& wordIndexes : wordIndexesByRow) {
-			if (int size = wordIndexes.size(); size > maxColumns) {
-				maxColumns = size;
-			}
-		}
-
-		numColumns = (maxColumns > numColumnsHint) ? maxColumns : numColumnsHint;
-
-		tfm::printf("[numColumnsHint = %d]\n", numColumnsHint);
-		tfm::printf("[numColumns = %d]\n\n", numColumns);
-
-		if (numColumns == 0) {
-			// bail out
-		}
-
-		// Next, determine the most likely column boundaries
-
-		tsl::hopscotch_map<std::size_t, int> wordIndexFreqs;
-		for (auto const& wordIndexes : wordIndexesByRow) {
-			for (auto const& wordIndex : wordIndexes) {
-				++wordIndexFreqs[wordIndex];
-			}
-		}
-		std::vector<std::pair<std::size_t, int>> sortedWordIndexFreqs;
-		for (auto& pair : wordIndexFreqs) {
-			sortedWordIndexFreqs.push_back(pair);
-		}
-		std::sort(sortedWordIndexFreqs.begin(),
-		    sortedWordIndexFreqs.end(),
-		    [](auto const& a, auto const& b) { return b.second < a.second; });
-
-		std::cout << "[sortedWordIndexFreqs = ";
-		for (auto const& [wordIndex, freq] : sortedWordIndexFreqs) {
-			tfm::printf("%d (%d), ", wordIndex, freq);
-		}
-		std::cout << "]\n";
-
-		std::vector<std::size_t> columnIndexes;
-		auto numWordIndexFreqs = static_cast<int>(sortedWordIndexFreqs.size());
-		for (auto i = 0; i < numColumns && i < numWordIndexFreqs; ++i) {
-			columnIndexes.push_back(sortedWordIndexFreqs[i].first);
-		}
-		std::sort(columnIndexes.begin(), columnIndexes.end());
-
-		std::cout << "[columnIndexes = ";
-		for (auto const& index : columnIndexes) {
-			tfm::printf("%d, ", index);
-		}
-		std::cout << "]\n";
-
-		std::vector<TableRow> rows;
-		std::size_t finalRowIndex = lines.size() - numTrailingEmptyLines;
-		for (std::size_t i = numHeadingRows; i < finalRowIndex; ++i) {
-			TableRow row;
-			for (int j = 0; j < numColumns; ++j) {
-				std::size_t end = std::string::npos;
-				if (j + 1 < numColumns && lines[i].length() > columnIndexes[j + 1]) {
-					end = columnIndexes[j + 1] - columnIndexes[j];
-				}
-				std::string cell;
-				if (lines[i].length() > columnIndexes[j]) {
-					tfm::printf("[substr %d %d] ", columnIndexes[j], end);
-					cell = lines[i].substr(columnIndexes[j], end);
-				}
-				// TODO: Logic for continuations
-				row.push_back(Strings::trim(cell, ' '));
-			}
-			std::cout << "\n";
-			rows.push_back(row);
-		}
-
-		for (auto const& heading : headings) {
-			tfm::printf("|%s", heading);
-		}
-		std::cout << "|\n";
-
-		for (auto i = 0; i < numColumns; ++i) {
-			std::cout << "|---";
-		}
-		std::cout << "|\n";
-
-		for (auto const& row : rows) {
-			for (auto const& cell : row) {
-				tfm::printf("|%s", cell);
-			}
-			std::cout << "|\n";
-		}
-	}
-	// END TEST CODE
-
-	for (std::size_t i = 0; i < lines.size(); ++i) {
-		if (i > 0) {
-			xmlNode.append_child("br");
-		}
-		xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
 	}
 
 	if (textNode.hasFormat(TextFormat::Hyperlink)) {
@@ -872,6 +794,206 @@ void HTMLWriter::Serializer::invoke(
 
 	auto func = map_.at(element.elementType());
 	(writer.*func)(element, xmlNode);
+}
+
+void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
+	TableRow headings;
+	auto numColumns = 0;
+	auto numColumnsHint = 0;
+	auto numHeadingRows = 2; // TODO: Make this dynamic
+	auto numTrailingEmptyLines = 0;
+	std::vector<std::vector<std::size_t>> wordIndexesByRow;
+
+	tfm::printf("== BEGIN table =====================\n");
+	for (auto sit = lines.cbegin(); sit < lines.cend(); ++sit) {
+		tfm::printf(">%s\n", *sit);
+	}
+	tfm::printf("== END =============================\n");
+
+	for (std::size_t i = 0; i < lines.size(); ++i) {
+		std::smatch match;
+
+		tfm::printf("\"%s\"\n", lines[i]);
+		if (std::regex_match(lines[i], match, Regex::HorizontalLine)) {
+			auto const matches = Strings::split(lines[i], std::regex{"\\s+"});
+			int const numHorizontalRules = matches.size();
+
+			if (numHorizontalRules == 0) { // False positive
+				continue;
+			}
+			if (numHorizontalRules > 1) {
+				numColumnsHint = numHorizontalRules;
+			}
+
+			if (i - 1 >= 0) { // Look back at potential headings
+				headings = Strings::split(lines[i - 1], std::regex{"\\s{2,}"});
+				int const numHeadings = headings.size();
+
+				if (numHeadings == 0) {
+					break;
+				}
+				if (numHeadings == numColumnsHint) {
+					// Evidence suggests we found the correct number of
+					// columns
+					numColumns = numColumnsHint;
+				} else if (numColumnsHint == 0) {
+					// We can't always trust the number of headings alone;
+					// sometimes there are fewer headings than columns
+					numColumnsHint = numHeadings;
+				}
+			}
+
+			continue;
+		}
+
+		std::vector<std::size_t> wordIndexes;
+		auto inWord = false;
+		auto lineEnd = lines[i].size();
+
+		for (std::size_t j = 0; j < lineEnd; ++j) {
+			if (lines[i][j] != ' ' && !inWord) {
+				wordIndexes.push_back(j);
+				inWord = true;
+			}
+			if (j + 1 < lineEnd && lines[i][j] == ' ' && lines[i][j + 1] == ' '
+			    && inWord) {
+
+				inWord = false;
+			}
+		}
+
+		for (auto wordIndex : wordIndexes) {
+			tfm::printf("%d, ", wordIndex);
+		}
+		std::cout << "\n";
+
+		if (wordIndexes.size() > 0) {
+			numTrailingEmptyLines = 0;
+		} else {
+			++numTrailingEmptyLines;
+		}
+
+		wordIndexesByRow.push_back(wordIndexes);
+	}
+
+	auto maxColumns = 0;
+	for (auto const& wordIndexes : wordIndexesByRow) {
+		if (int size = wordIndexes.size(); size > maxColumns) {
+			maxColumns = size;
+		}
+	}
+
+	numColumns = (maxColumns > numColumnsHint) ? maxColumns : numColumnsHint;
+
+	tfm::printf("[numColumnsHint = %d]\n", numColumnsHint);
+	tfm::printf("[numColumns = %d]\n\n", numColumns);
+
+	if (numColumns == 0) {
+		// bail out
+	}
+
+	// Next, determine the most likely column boundaries
+
+	tsl::hopscotch_map<std::size_t, int> wordIndexFreqs;
+	for (auto const& wordIndexes : wordIndexesByRow) {
+		for (auto const& wordIndex : wordIndexes) {
+			++wordIndexFreqs[wordIndex];
+		}
+	}
+	std::vector<std::pair<std::size_t, int>> sortedWordIndexFreqs;
+	for (auto& pair : wordIndexFreqs) {
+		sortedWordIndexFreqs.push_back(pair);
+	}
+	std::sort(sortedWordIndexFreqs.begin(),
+	    sortedWordIndexFreqs.end(),
+	    [](auto const& a, auto const& b) { return b.second < a.second; });
+
+	std::cout << "[sortedWordIndexFreqs = ";
+	for (auto const& [wordIndex, freq] : sortedWordIndexFreqs) {
+		tfm::printf("%d (%d), ", wordIndex, freq);
+	}
+	std::cout << "]\n";
+
+	std::vector<std::size_t> columnIndexes;
+	auto numWordIndexFreqs = static_cast<int>(sortedWordIndexFreqs.size());
+	for (auto i = 0; i < numColumns && i < numWordIndexFreqs; ++i) {
+		columnIndexes.push_back(sortedWordIndexFreqs[i].first);
+	}
+	std::sort(columnIndexes.begin(), columnIndexes.end());
+
+	std::cout << "[columnIndexes = ";
+	for (auto const& index : columnIndexes) {
+		tfm::printf("%d, ", index);
+	}
+	std::cout << "]\n";
+
+	// tsl::hopscotch_map<std::size_t, std::size_t> preciseColumnIndexes;
+	// for (auto cit = columnIndexes.cbegin(); cit < columnIndexes.cend(); ++cit) {
+	// 	auto index = *cit;
+	// 	// TODO: Don't assume a two-line header
+	// 	for (auto sit = lines.cbegin() + 2; sit < lines.cend(); ++sit) {
+	// 		tfm::printf("#%s\n", *sit);
+	// 		for (std::size_t i = 0; i < sit->size(); ++i) {
+	// 			for (; index > 0 && sit[i][index - 1] != ' '; --index) {
+	// 				tfm::printf("%d: %c\n", index - 1, sit[i][index - 1]);
+	// 			}
+	// 		}
+	// 	}
+	// 	preciseColumnIndexes[*cit] = index;
+	// }
+	// for (auto cit = columnIndexes.begin(); cit < columnIndexes.end(); ++cit) {
+	// 	*cit = preciseColumnIndexes[*cit];
+	// }
+
+	std::cout << "[columnIndexes(2) = ";
+	for (auto const& index : columnIndexes) {
+		tfm::printf("%d, ", index);
+	}
+	std::cout << "]\n";
+
+	std::vector<TableRow> rows;
+	std::size_t finalRowIndex = lines.size() - numTrailingEmptyLines;
+	for (std::size_t i = numHeadingRows; i < finalRowIndex; ++i) {
+		TableRow row;
+		for (int j = 0; j < numColumns; ++j) {
+			std::size_t end = std::string::npos;
+			if (j + 1 < numColumns && lines[i].length() > columnIndexes[j + 1]) {
+				end = columnIndexes[j + 1] - columnIndexes[j];
+			}
+			std::string cell;
+			if (lines[i].length() > columnIndexes[j]) {
+				tfm::printf("[substr %d %d] ", columnIndexes[j], end);
+				cell = lines[i].substr(columnIndexes[j], end);
+			}
+			// TODO: Logic for continuations
+			row.push_back(Strings::trim(cell, ' '));
+		}
+		std::cout << "\n";
+		rows.push_back(row);
+	}
+
+	for (auto const& heading : headings) {
+		tfm::printf("|%s", heading);
+	}
+	std::cout << "|\n";
+
+	for (auto i = 0; i < numColumns; ++i) {
+		std::cout << "|---";
+	}
+	std::cout << "|\n";
+
+	for (auto const& row : rows) {
+		for (auto const& cell : row) {
+			tfm::printf("|%s", cell);
+		}
+		std::cout << "|\n";
+	}
+}
+
+void HTMLWriter::TextTable::serialize(pugi::xml_node& xmlNode) {}
+
+bool HTMLWriter::TextTable::valid() {
+	return valid_;
 }
 
 } // namespace UHS

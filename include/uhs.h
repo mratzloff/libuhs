@@ -360,10 +360,9 @@ namespace Regex {
 std::regex const Descriptor{"([0-9]+) ([a-z]{4,})"};
 std::regex const DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
 std::regex const EmailAddress{".+@.+\\..+"};
-std::regex const HorizontalRule{"-{4,}"};
+std::regex const HorizontalLine{"(?:-{4,} *)+"};
 std::regex const HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
-std::regex const MaybeHorizontalRule{"[- ]+"};
 std::regex const OverlayAddress{
     "0{6} ([0-9]{6,}) ([0-9]{6,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 std::regex const URL{"https?://.+\\..+"};
@@ -1160,6 +1159,17 @@ private:
 		std::map<ElementType const, Func> map_;
 	};
 
+	class TextTable {
+	public:
+		void parse(std::vector<std::string> lines);
+		void serialize(pugi::xml_node& xmlNode);
+		bool valid();
+
+	private:
+		pugi::xml_document doc;
+		bool valid_ = false;
+	};
+
 	void serialize(Document const& document, pugi::xml_document& xml);
 	void serializeDocument(Document const& document, pugi::xml_node root) const;
 	void serializeElement(Element const& element, pugi::xml_node xmlNode);
@@ -1189,6 +1199,9 @@ private:
 	    Document const& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
 	    Element const& element, pugi::xml_node xmlNode) const;
+	std::pair<std::string const, std::vector<std::string>> findNextSegment(
+	    std::vector<std::string>::const_iterator begin,
+	    std::vector<std::string>::const_iterator end) const;
 	pugi::xml_node findOrCreateMap(Element const& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findXMLParent(Node const& node, pugi::xml_node const parent,
 	    NodeMap const parents, int const depth) const;
