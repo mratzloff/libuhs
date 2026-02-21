@@ -123,7 +123,7 @@ std::vector<std::string> split(std::string const& s, std::string const& sep, int
 }
 
 std::vector<std::string> split(std::string const& s, std::regex const& sep) {
-	std::sregex_token_iterator it(s.begin(), s.end(), sep, -1);
+	std::sregex_token_iterator it(s.cbegin(), s.cend(), sep, -1);
 	std::sregex_token_iterator end;
 	return {it, end};
 }
