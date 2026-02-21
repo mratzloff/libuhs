@@ -344,6 +344,7 @@ std::string join(std::vector<std::string> const& s, std::string const& sep);
 std::string ltrim(std::string const& s, char c);
 std::string rtrim(std::string const& s, char c);
 std::vector<std::string> split(std::string const& s, std::string const& sep, int n = 0);
+std::vector<std::string> split(std::string const& s, std::regex const& sep);
 std::string toBase64(std::string const& s);
 int toInt(std::string const& s);
 void toLower(std::string& s);
