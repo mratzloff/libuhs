@@ -122,6 +122,12 @@ std::vector<std::string> split(std::string const& s, std::string const& sep, int
 	return items;
 }
 
+std::vector<std::string> split(std::string const& s, std::regex const& sep) {
+	std::sregex_token_iterator it(s.cbegin(), s.cend(), sep, -1);
+	std::sregex_token_iterator end;
+	return {it, end};
+}
+
 std::string toBase64(std::string const& s) {
 	static std::string const charset =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
