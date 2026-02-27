@@ -796,13 +796,58 @@ void HTMLWriter::Serializer::invoke(
 	(writer.*func)(element, xmlNode);
 }
 
+std::vector<std::pair<std::size_t, double>> HTMLWriter::TextTable::boostFirst(
+    std::vector<std::pair<std::size_t, double>>& pairs, int const boost) {
+
+	for (auto& pair : pairs) {
+		pair.second += boost;
+		break;
+	}
+	return pairs;
+}
+
+tsl::hopscotch_map<std::size_t, double> HTMLWriter::TextTable::boost(
+    tsl::hopscotch_map<std::size_t, double> map, int const beta) {
+
+	for (auto pair : map) {
+		pair.second = std::pow(pair.second, beta);
+	}
+	return map;
+}
+
+tsl::hopscotch_map<std::size_t, double> HTMLWriter::TextTable::normalize(
+    tsl::hopscotch_map<std::size_t, double> map) {
+	auto max = 0.0;
+	auto min = std::numeric_limits<double>::max();
+
+	for (auto const& pair : map) {
+		if (pair.first < min) {
+			min = pair.second;
+		}
+		if (pair.second > max) {
+			max = pair.second;
+		}
+	}
+
+	for (auto it = map.begin(); it != map.end(); ++it) {
+		if (max == min) {
+			it.value() = 1;
+		} else {
+			it.value() = (it.value() - min) * (max - min);
+		}
+	}
+
+	return map;
+}
+
 void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 	TableRow headings;
+	auto foundHeader = false;
 	auto numColumns = 0;
 	auto numColumnsHint = 0;
-	auto numHeadingRows = 2; // TODO: Make this dynamic
+	auto numHeadingRows = 0;
 	auto numTrailingEmptyLines = 0;
-	std::vector<std::vector<std::size_t>> wordIndexesByRow;
+	std::vector<std::vector<std::pair<std::size_t, int>>> wordEntriesByRow;
 
 	tfm::printf("== BEGIN table =====================\n");
 	for (auto sit = lines.cbegin(); sit < lines.cend(); ++sit) {
@@ -814,13 +859,17 @@ void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 		std::smatch match;
 
 		tfm::printf("\"%s\"\n", lines[i]);
-		if (std::regex_match(lines[i], match, Regex::HorizontalLine)) {
+		if (!foundHeader && std::regex_match(lines[i], match, Regex::HorizontalLine)) {
 			auto const matches = Strings::split(lines[i], std::regex{"\\s+"});
 			int const numHorizontalRules = matches.size();
 
 			if (numHorizontalRules == 0) { // False positive
 				continue;
 			}
+
+			foundHeader = true;
+			numHeadingRows = i + 1;
+
 			if (numHorizontalRules > 1) {
 				numColumnsHint = numHorizontalRules;
 			}
@@ -846,46 +895,53 @@ void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 			continue;
 		}
 
-		std::vector<std::size_t> wordIndexes;
 		auto inWord = false;
 		auto lineEnd = lines[i].size();
+		auto numSpaces = 0; // Leading spaces before word
+		std::vector<std::pair<std::size_t, int>> wordEntries; // index -> spaces
 
 		for (std::size_t j = 0; j < lineEnd; ++j) {
 			if (lines[i][j] != ' ' && !inWord) {
-				wordIndexes.push_back(j);
+				// We've entered a word
+				wordEntries.push_back({j, numSpaces});
 				inWord = true;
 			}
-			if (j + 1 < lineEnd && lines[i][j] == ' ' && lines[i][j + 1] == ' '
-			    && inWord) {
-
+			if (j + 1 < lineEnd && lines[i][j] == ' ' && inWord) {
+				// We've exited a word
 				inWord = false;
+				numSpaces = 0;
+			}
+			if (lines[i][j] == ' ') {
+				++numSpaces;
 			}
 		}
 
-		for (auto wordIndex : wordIndexes) {
-			tfm::printf("%d, ", wordIndex);
+		std::cout << "[index -> spaces = ";
+		for (auto wordEntry : wordEntries) {
+			tfm::printf("[%d, %d], ", wordEntry.first, wordEntry.second);
 		}
-		std::cout << "\n";
+		std::cout << "]\n";
 
-		if (wordIndexes.size() > 0) {
+		if (wordEntries.size() > 0) {
 			numTrailingEmptyLines = 0;
 		} else {
 			++numTrailingEmptyLines;
 		}
 
-		wordIndexesByRow.push_back(wordIndexes);
+		wordEntriesByRow.push_back(wordEntries);
 	}
 
-	auto maxColumns = 0;
-	for (auto const& wordIndexes : wordIndexesByRow) {
-		if (int size = wordIndexes.size(); size > maxColumns) {
-			maxColumns = size;
-		}
-	}
+	// auto maxColumns = 0;
+	// for (auto const& wordEntries : wordEntriesByRow) {
+	// 	if (int size = wordEntries.size(); size > maxColumns) {
+	// 		maxColumns = size;
+	// 	}
+	// }
 
-	numColumns = (maxColumns > numColumnsHint) ? maxColumns : numColumnsHint;
+	// numColumns = (maxColumns > numColumnsHint) ? maxColumns : numColumnsHint;
+	numColumns = numColumnsHint;
 
-	tfm::printf("[numColumnsHint = %d]\n", numColumnsHint);
+	// tfm::printf("[numColumnsHint = %d]\n", numColumnsHint);
 	tfm::printf("[numColumns = %d]\n\n", numColumns);
 
 	if (numColumns == 0) {
@@ -894,30 +950,65 @@ void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 
 	// Next, determine the most likely column boundaries
 
-	tsl::hopscotch_map<std::size_t, int> wordIndexFreqs;
-	for (auto const& wordIndexes : wordIndexesByRow) {
-		for (auto const& wordIndex : wordIndexes) {
+	tsl::hopscotch_map<std::size_t, double> wordIndexFreqs;
+	tsl::hopscotch_map<std::size_t, double> wordIndexSpaces;
+
+	for (auto const& wordEntries : wordEntriesByRow) {
+		for (auto const& wordEntry : wordEntries) {
+			auto [wordIndex, spaces] = wordEntry;
+
 			++wordIndexFreqs[wordIndex];
+
+			// We want to later boost above a baseline of 1
+			spaces = std::max(0, spaces - 1);
+
+			if (wordIndexSpaces[wordIndex] < spaces) {
+				wordIndexSpaces[wordIndex] = spaces;
+			}
 		}
 	}
-	std::vector<std::pair<std::size_t, int>> sortedWordIndexFreqs;
+
+	normalize(wordIndexFreqs);
+	boost(normalize(wordIndexSpaces), 2);
+
+	std::vector<std::pair<std::size_t, double>> sortedWordIndexes;
 	for (auto& pair : wordIndexFreqs) {
-		sortedWordIndexFreqs.push_back(pair);
+		auto const freqScore = IndexFrequencyWeight * pair.second;
+		auto const spacesScore = LeadingSpacesWeight * wordIndexSpaces[pair.first];
+		sortedWordIndexes.push_back({pair.first, freqScore + spacesScore});
 	}
-	std::sort(sortedWordIndexFreqs.begin(),
-	    sortedWordIndexFreqs.end(),
+	std::sort(sortedWordIndexes.begin(),
+	    sortedWordIndexes.end(),
+	    [](auto const& a, auto const& b) { return a.first < b.first; });
+
+	std::cout << "[AAA = ";
+	for (auto const& [wordIndex, score] : sortedWordIndexes) {
+		tfm::printf("%d (%d), ", wordIndex, score);
+	}
+	std::cout << "]\n";
+
+	boostFirst(sortedWordIndexes, INT_MAX);
+
+	std::cout << "[BBB = ";
+	for (auto const& [wordIndex, score] : sortedWordIndexes) {
+		tfm::printf("%d (%d), ", wordIndex, score);
+	}
+	std::cout << "]\n";
+
+	std::sort(sortedWordIndexes.begin(),
+	    sortedWordIndexes.end(),
 	    [](auto const& a, auto const& b) { return b.second < a.second; });
 
-	std::cout << "[sortedWordIndexFreqs = ";
-	for (auto const& [wordIndex, freq] : sortedWordIndexFreqs) {
-		tfm::printf("%d (%d), ", wordIndex, freq);
+	std::cout << "[sortedWordIndexes = ";
+	for (auto const& [wordIndex, score] : sortedWordIndexes) {
+		tfm::printf("%d (%d), ", wordIndex, score);
 	}
 	std::cout << "]\n";
 
 	std::vector<std::size_t> columnIndexes;
-	auto numWordIndexFreqs = static_cast<int>(sortedWordIndexFreqs.size());
+	auto numWordIndexFreqs = static_cast<int>(sortedWordIndexes.size());
 	for (auto i = 0; i < numColumns && i < numWordIndexFreqs; ++i) {
-		columnIndexes.push_back(sortedWordIndexFreqs[i].first);
+		columnIndexes.push_back(sortedWordIndexes[i].first);
 	}
 	std::sort(columnIndexes.begin(), columnIndexes.end());
 
@@ -930,8 +1021,7 @@ void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 	// tsl::hopscotch_map<std::size_t, std::size_t> preciseColumnIndexes;
 	// for (auto cit = columnIndexes.cbegin(); cit < columnIndexes.cend(); ++cit) {
 	// 	auto index = *cit;
-	// 	// TODO: Don't assume a two-line header
-	// 	for (auto sit = lines.cbegin() + 2; sit < lines.cend(); ++sit) {
+	// 	for (auto sit = lines.cbegin() + numHeadingRows; sit < lines.cend(); ++sit) {
 	// 		tfm::printf("#%s\n", *sit);
 	// 		for (std::size_t i = 0; i < sit->size(); ++i) {
 	// 			for (; index > 0 && sit[i][index - 1] != ' '; --index) {
@@ -945,11 +1035,11 @@ void HTMLWriter::TextTable::parse(std::vector<std::string> lines) {
 	// 	*cit = preciseColumnIndexes[*cit];
 	// }
 
-	std::cout << "[columnIndexes(2) = ";
-	for (auto const& index : columnIndexes) {
-		tfm::printf("%d, ", index);
-	}
-	std::cout << "]\n";
+	// std::cout << "[columnIndexes(2) = ";
+	// for (auto const& index : columnIndexes) {
+	// 	tfm::printf("%d, ", index);
+	// }
+	// std::cout << "]\n";
 
 	std::vector<TableRow> rows;
 	std::size_t finalRowIndex = lines.size() - numTrailingEmptyLines;

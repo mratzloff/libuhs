@@ -4,6 +4,7 @@
 #define UHS_VERSION "1.0.0-alpha"
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -12,6 +13,7 @@
 #include <iostream>
 #include <istream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -1166,8 +1168,18 @@ private:
 		bool valid();
 
 	private:
+		static auto constexpr IndexFrequencyWeight = 0.4;
+		static auto constexpr LeadingSpacesWeight = 0.6;
+
 		pugi::xml_document doc;
 		bool valid_ = false;
+
+		std::vector<std::pair<std::size_t, double>> boostFirst(
+		    std::vector<std::pair<std::size_t, double>>& pairs, int boost);
+		tsl::hopscotch_map<std::size_t, double> boost(
+		    tsl::hopscotch_map<std::size_t, double> map, int beta);
+		tsl::hopscotch_map<std::size_t, double> normalize(
+		    tsl::hopscotch_map<std::size_t, double> map);
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);
