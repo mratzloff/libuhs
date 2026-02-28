@@ -1148,7 +1148,6 @@ public:
 
 private:
 	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
-	using TableRow = std::vector<std::string>;
 
 	class Serializer {
 	public:
@@ -1161,25 +1160,41 @@ private:
 		std::map<ElementType const, Func> map_;
 	};
 
-	class TextTable {
+	class Table {
 	public:
 		void parse(std::vector<std::string> lines);
 		void serialize(pugi::xml_node& xmlNode);
 		bool valid();
 
 	private:
+		struct Word {
+			int index = 0;
+			int numLeadingSpaces = 0;
+		};
+
+		struct WordAggregate {
+			int index = 0;
+			int indexFrequency = 0;
+			int maxLeadingSpaces = 0;
+			int minLeadingSpaces = 0;
+			double indexFrequencyScore = 0.0;
+			double leadingSpacesScore = 0.0;
+			double score = 0.0;
+		};
+
 		static auto constexpr IndexFrequencyWeight = 0.4;
 		static auto constexpr LeadingSpacesWeight = 0.6;
 
 		pugi::xml_document doc;
 		bool valid_ = false;
 
-		std::vector<std::pair<std::size_t, double>> boostFirst(
-		    std::vector<std::pair<std::size_t, double>>& pairs, int boost);
-		tsl::hopscotch_map<std::size_t, double> boost(
-		    tsl::hopscotch_map<std::size_t, double> map, int beta);
-		tsl::hopscotch_map<std::size_t, double> normalize(
-		    tsl::hopscotch_map<std::size_t, double> map);
+		void boostFirst(std::vector<WordAggregate>& aggregates);
+		void boostLeadingSpaces(std::vector<WordAggregate>& aggregates);
+		int calcNumColumns(std::vector<WordAggregate>& aggregates);
+		void mergeAdjacentIndexes(std::vector<WordAggregate>& aggregates);
+		void normalizeIndexFrequency(std::vector<WordAggregate>& aggregates);
+		void normalizeLeadingSpaces(std::vector<WordAggregate>& aggregates);
+		void score(std::vector<WordAggregate>& aggregates);
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);
