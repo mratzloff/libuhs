@@ -1167,34 +1167,16 @@ private:
 		bool valid();
 
 	private:
-		struct Word {
-			int index = 0;
-			int numLeadingSpaces = 0;
-		};
-
-		struct WordAggregate {
-			int index = 0;
-			int indexFrequency = 0;
-			int maxLeadingSpaces = 0;
-			int minLeadingSpaces = 0;
-			double indexFrequencyScore = 0.0;
-			double leadingSpacesScore = 0.0;
-			double score = 0.0;
-		};
-
-		static auto constexpr IndexFrequencyWeight = 0.4;
-		static auto constexpr LeadingSpacesWeight = 0.6;
-
 		pugi::xml_document doc;
 		bool valid_ = false;
 
-		void boostFirst(std::vector<WordAggregate>& aggregates);
-		void boostLeadingSpaces(std::vector<WordAggregate>& aggregates);
-		int calcNumColumns(std::vector<WordAggregate>& aggregates);
-		void mergeAdjacentIndexes(std::vector<WordAggregate>& aggregates);
-		void normalizeIndexFrequency(std::vector<WordAggregate>& aggregates);
-		void normalizeLeadingSpaces(std::vector<WordAggregate>& aggregates);
-		void score(std::vector<WordAggregate>& aggregates);
+		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries(
+		    std::vector<std::string> const& lines, int demarcationIndex);
+		int findDemarcationLine(std::vector<std::string> const& lines);
+		std::vector<std::string> splitBySpaces(std::string const& line);
+		void processContinuationLine(std::string const& line,
+		    std::vector<std::vector<std::string>>& table,
+		    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries);
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);

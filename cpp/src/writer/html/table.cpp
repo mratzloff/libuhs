@@ -2,152 +2,77 @@
 
 namespace UHS {
 
-void HTMLWriter::Table::boostFirst(std::vector<WordAggregate>& aggregates) {
-	for (auto& aggregate : aggregates) {
-		aggregate.score = std::pow(aggregate.score, 10);
-		break;
-	}
-}
+std::vector<std::pair<std::size_t, std::size_t>>
+    HTMLWriter::Table::detectColumnBoundaries(
+        std::vector<std::string> const& lines, int demarcationIndex) {
 
-void HTMLWriter::Table::boostLeadingSpaces(std::vector<WordAggregate>& aggregates) {
-	for (auto& aggregate : aggregates) {
-		aggregate.leadingSpacesScore = std::pow(aggregate.leadingSpacesScore, 2);
-	}
-}
+	std::vector<std::pair<std::size_t, std::size_t>> boundaries;
 
-int HTMLWriter::Table::calcNumColumns(std::vector<WordAggregate>& aggregates) {
-	if (aggregates.size() <= 1) {
-		return aggregates.empty() ? 0 : 1;
+	if (demarcationIndex <= 0) {
+		return boundaries;
 	}
 
-	// Calculate mean (excluding first aggregate)
-	double mean = 0.0;
-	for (auto it = aggregates.begin() + 1; it != aggregates.end(); ++it) {
-		mean += it->score;
-	}
-	mean /= (aggregates.size() - 1);
-
-	// Calculate standard deviation (excluding first aggregate)
-	double variance = 0.0;
-	for (auto it = aggregates.begin() + 1; it != aggregates.end(); ++it) {
-		double diff = it->score - mean;
-		variance += diff * diff;
-	}
-	variance /= (aggregates.size() - 1);
-	double stdDev = std::sqrt(variance);
-
-	// Count entries with score > 1 std dev from mean (excluding first aggregate)
-	int count = 0;
-	for (auto it = aggregates.begin() + 1; it != aggregates.end(); ++it) {
-		if (std::abs(it->score - mean) > stdDev) {
-			++count;
-		}
+	auto header = lines[demarcationIndex - 1];
+	auto maxLength = header.size();
+	if (static_cast<std::size_t>(demarcationIndex + 1) < lines.size()) {
+		maxLength = std::max(maxLength, lines[demarcationIndex + 1].size());
 	}
 
-	return count + 1; // Add 1 for the first aggregate
-}
+	std::vector<bool> isSpaceGap(maxLength, false);
 
-void HTMLWriter::Table::mergeAdjacentIndexes(std::vector<WordAggregate>& aggregates) {
-	std::sort(aggregates.begin(), aggregates.end(), [](auto const& a, auto const& b) {
-		return b.index < a.index;
-	});
-
-	WordAggregate* previous = nullptr;
-	auto it = aggregates.begin();
-	while (it != aggregates.end()) {
-		auto& current = *it;
-
-		if (previous && current.index == previous->index - 1
-		    && previous->maxLeadingSpaces > 1) {
-			// Merge previous into current
-			current.indexFrequency += previous->indexFrequency;
-			current.maxLeadingSpaces =
-			    std::max(current.maxLeadingSpaces, previous->maxLeadingSpaces);
-
-			// Erase previous (which is at it - 1)
-			it = aggregates.erase(std::prev(it));
-			previous = &current;
+	// Mark positions that are parts of 2+ space gap
+	auto spaceCount = 0;
+	for (std::size_t i = 0; i <= header.size(); ++i) {
+		if (i < header.size() && header[i] == ' ') {
+			spaceCount++;
 		} else {
-			previous = &current;
-			++it;
+			if (spaceCount >= 2) {
+				for (std::size_t j = i - spaceCount; j < i; ++j) {
+					isSpaceGap[j] = true;
+				}
+			}
+			spaceCount = 0;
 		}
 	}
+
+	// Extract columns
+	auto inColumn = false;
+	std::size_t columnStart = 0;
+
+	for (std::size_t i = 0; i < header.size(); ++i) {
+		auto isGap = isSpaceGap[i];
+
+		if (isGap && inColumn) {
+			boundaries.emplace_back(columnStart, i);
+			inColumn = false;
+		} else if (!isGap && !inColumn) {
+			columnStart = i;
+			inColumn = true;
+		}
+	}
+
+	if (inColumn) {
+		boundaries.emplace_back(columnStart, header.size());
+	}
+
+	return boundaries;
 }
 
-void HTMLWriter::Table::normalizeIndexFrequency(std::vector<WordAggregate>& aggregates) {
-
-	auto max = 0;
-	auto min = INT_MAX;
-
-	for (auto const& aggregate : aggregates) {
-		if (aggregate.indexFrequency < min) {
-			min = aggregate.indexFrequency;
-		}
-		if (aggregate.indexFrequency > max) {
-			max = aggregate.indexFrequency;
+int HTMLWriter::Table::findDemarcationLine(std::vector<std::string> const& lines) {
+	for (std::size_t i = 0; i < lines.size(); ++i) {
+		int dashCount = std::count(lines[i].begin(), lines[i].end(), '-');
+		if (dashCount >= 4) {
+			return static_cast<int>(i);
 		}
 	}
-
-	for (auto& aggregate : aggregates) {
-		if (max == min) {
-			aggregate.indexFrequencyScore = 1.0;
-		} else {
-			tfm::printf("[%d) min:%d, max:%d, freq:%d, score:%d]\n",
-			    aggregate.index,
-			    min,
-			    max,
-			    aggregate.indexFrequency,
-			    (static_cast<double>(aggregate.indexFrequency) - static_cast<double>(min))
-			        / static_cast<double>(max - min));
-			aggregate.indexFrequencyScore =
-			    (static_cast<double>(aggregate.indexFrequency) - static_cast<double>(min))
-			    / static_cast<double>(max - min);
-		}
-	}
-}
-
-void HTMLWriter::Table::normalizeLeadingSpaces(std::vector<WordAggregate>& aggregates) {
-
-	auto max = 0;
-	auto min = INT_MAX;
-
-	for (auto const& aggregate : aggregates) {
-		if (aggregate.maxLeadingSpaces < min) {
-			min = aggregate.maxLeadingSpaces;
-		}
-		if (aggregate.maxLeadingSpaces > max) {
-			max = aggregate.maxLeadingSpaces;
-		}
-	}
-
-	for (auto& aggregate : aggregates) {
-		if (aggregate.maxLeadingSpaces == 1) {
-			aggregate.leadingSpacesScore = 0.0;
-		} else if (max == min) {
-			aggregate.leadingSpacesScore = 1.0;
-		} else {
-			aggregate.leadingSpacesScore =
-			    (static_cast<double>(aggregate.maxLeadingSpaces)
-			        - static_cast<double>(min))
-			    / static_cast<double>(max - min);
-		}
-	}
-}
-
-void HTMLWriter::Table::score(std::vector<WordAggregate>& aggregates) {
-	for (auto& aggregate : aggregates) {
-		aggregate.score = (IndexFrequencyWeight * aggregate.indexFrequency)
-		                  + (LeadingSpacesWeight * aggregate.maxLeadingSpaces);
-	}
+	return -1;
 }
 
 void HTMLWriter::Table::parse(std::vector<std::string> lines) {
-	auto foundHeader = false;
-	auto numColumns = 0;
-	auto numHeadings = 0;
-	auto numHeadingRows = 0;
-	auto numTrailingEmptyLines = 0;
-	std::vector<std::vector<Word>> wordsByRow;
+	if (lines.empty()) {
+		valid_ = false;
+		return;
+	}
 
 	tfm::printf("== BEGIN table =====================\n");
 	for (auto sit = lines.cbegin(); sit < lines.cend(); ++sit) {
@@ -155,232 +80,178 @@ void HTMLWriter::Table::parse(std::vector<std::string> lines) {
 	}
 	tfm::printf("== END =============================\n");
 
-	for (std::size_t i = 0; i < lines.size(); ++i) {
-		std::smatch match;
+	auto demarcationIndex = findDemarcationLine(lines);
+	if (demarcationIndex <= 0) {
+		valid_ = false;
+		return;
+	}
 
-		tfm::printf("\"%s\"\n", lines[i]);
-		if (!foundHeader && std::regex_match(lines[i], match, Regex::HorizontalLine)) {
-			auto const matches = Strings::split(lines[i], std::regex{"\\s+"});
-			int const numHorizontalRules = matches.size();
+	// Detect column boundaries from header row
+	auto columnBoundaries = detectColumnBoundaries(lines, demarcationIndex);
+	if (columnBoundaries.empty()) {
+		valid_ = false;
+		return;
+	}
 
-			foundHeader = true;
-			numHeadingRows = i + 1;
+	int expectedNumColumns = columnBoundaries.size();
 
-			if (numHorizontalRules == 0) { // False positive
-				continue;
+	// Parse table rows
+	std::vector<std::vector<std::string>> table;
+
+	// Add header rows (all non-empty lines before demarcation)
+	for (auto i = demarcationIndex - 1; i >= 0; --i) {
+		if (!lines[i].empty()) {
+			auto cells = splitBySpaces(lines[i]);
+			// Pad with empty cells if needed
+			while (static_cast<int>(cells.size()) < expectedNumColumns) {
+				cells.push_back("");
 			}
-			if (numHorizontalRules > 1) {
-				numColumns = numHorizontalRules;
-				continue;
-			}
+			table.insert(table.begin(), cells);
+		}
+	}
 
-			auto const headings = Strings::split(lines[i - 1], std::regex{"\\s{2,}"});
-			numHeadings = headings.size();
+	// Add data rows (all lines after demarcation)
+	for (std::size_t i = demarcationIndex + 1; i < lines.size(); ++i) {
+		if (lines[i].empty()) {
+			continue;
 		}
 
-		auto inWord = false;
-		auto lineEnd = lines[i].size();
-		auto numSpaces = 0; // Leading spaces before word
-		std::vector<Word> words;
+		auto cells = splitBySpaces(lines[i]);
 
-		for (std::size_t j = 0; j < lineEnd; ++j) {
-			if (lines[i][j] != ' ' && !inWord) {
-				// We've entered a word
-				words.emplace_back(j, numSpaces);
-				inWord = true;
-			}
-			if (j + 1 < lineEnd && lines[i][j] == ' ' && inWord) {
-				// We've exited a word
-				inWord = false;
-				numSpaces = 0;
-			}
-			if (lines[i][j] == ' ') {
-				++numSpaces;
+		// Check if this is a continuation line
+		auto isContinuation = false;
+		if (!lines[i].empty() && std::isspace(lines[i][0])) {
+			// Only treat a line as a continuation if it has 1-2 cells
+			if (static_cast<int>(cells.size()) <= 2) {
+				isContinuation = true;
 			}
 		}
 
-		std::cout << "[index -> spaces = ";
-		for (auto word : words) {
-			tfm::printf("[%d, %d], ", word.index, word.numLeadingSpaces);
-		}
-		std::cout << "]\n";
-
-		if (words.size() > 0) {
-			numTrailingEmptyLines = 0;
+		if (!table.empty() && isContinuation) {
+			// For continuation lines, split into cells and assign each to correct column
+			processContinuationLine(lines[i], table, columnBoundaries);
 		} else {
-			++numTrailingEmptyLines;
-		}
-
-		wordsByRow.emplace_back(words);
-	}
-
-	tfm::printf("[numColumns = %d]\n\n", numColumns);
-
-	// Next, determine the most likely column boundaries
-
-	tsl::hopscotch_map<std::size_t, WordAggregate> aggregateMap;
-	for (auto const& words : wordsByRow) {
-		for (auto const& word : words) {
-			auto& aggregate = aggregateMap[word.index];
-
-			aggregate.index = word.index;
-			++aggregate.indexFrequency;
-
-			if (aggregate.minLeadingSpaces == 0) {
-				aggregate.minLeadingSpaces = INT_MAX;
+			// This is a new row; pad with empty cells if needed
+			while (static_cast<int>(cells.size()) < expectedNumColumns) {
+				cells.push_back("");
 			}
-			if (word.numLeadingSpaces > aggregate.maxLeadingSpaces) {
-				aggregate.maxLeadingSpaces = word.numLeadingSpaces;
-			}
-			if (word.numLeadingSpaces < aggregate.minLeadingSpaces) {
-				aggregate.minLeadingSpaces = word.numLeadingSpaces;
-			}
+			table.push_back(cells);
 		}
 	}
 
-	std::vector<WordAggregate> aggregates;
-	for (auto it = aggregateMap.begin(); it != aggregateMap.end(); ++it) {
-		aggregates.push_back(it.value());
-	}
-
-	// For debugging; remove after this is working
-	std::sort(aggregates.begin(), aggregates.end(), [](auto const& a, auto const& b) {
-		return a.index < b.index;
-	});
-
-	std::cout << "[index frequency = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.indexFrequency);
-	}
-	std::cout << "]\n";
-
-	std::cout << "[max leading spaces = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.maxLeadingSpaces);
-	}
-	std::cout << "]\n";
-
-	mergeAdjacentIndexes(aggregates);
-
-	std::cout << "[merged indexes = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.indexFrequency);
-	}
-	std::cout << "]\n";
-
-	normalizeIndexFrequency(aggregates);
-
-	std::cout << "[normalized index frequency = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.indexFrequencyScore);
-	}
-	std::cout << "]\n";
-
-	normalizeLeadingSpaces(aggregates);
-
-	std::cout << "[normalized leading spaces = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.leadingSpacesScore);
-	}
-	std::cout << "]\n";
-
-	boostLeadingSpaces(aggregates);
-
-	std::cout << "[boosted leading spaces = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.leadingSpacesScore);
-	}
-	std::cout << "]\n";
-
-	score(aggregates);
-
-	std::cout << "[score = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.score);
-	}
-	std::cout << "]\n";
-
-	std::sort(aggregates.begin(), aggregates.end(), [](auto const& a, auto const& b) {
-		return a.index < b.index;
-	});
-
-	boostFirst(aggregates);
-
-	std::cout << "[boosted score = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.score);
-	}
-	std::cout << "]\n";
-
-	std::sort(aggregates.begin(), aggregates.end(), [](auto const& a, auto const& b) {
-		return b.score < a.score;
-	});
-
-	std::cout << "[sorted score = ";
-	for (auto const& aggregate : aggregates) {
-		tfm::printf("%d (%d), ", aggregate.index, aggregate.score);
-	}
-	std::cout << "]\n";
-
-	if (numColumns == 0) {
-		numColumns = calcNumColumns(aggregates);
-	}
-	if (numHeadings > numColumns) {
-		numColumns = numHeadings;
-	}
-
-	std::vector<std::size_t> columnIndexes;
-	auto numWordIndexFreqs = static_cast<int>(aggregates.size());
-	for (auto i = 0; i < numColumns && i < numWordIndexFreqs; ++i) {
-		columnIndexes.push_back(aggregates[i].index);
-	}
-	std::sort(columnIndexes.begin(), columnIndexes.end());
-
-	std::cout << "[columnIndexes = ";
-	for (auto const& index : columnIndexes) {
-		tfm::printf("%d, ", index);
-	}
-	std::cout << "]\n";
-
-	// TODO: Check if any indexes are in the middle of header words
-	// If so, remove those indexes from the columnIndexes
-
-	std::vector<std::vector<std::string>> rows;
-	std::size_t finalRowIndex = lines.size() - numTrailingEmptyLines;
-	for (std::size_t i = 0; i < finalRowIndex; ++i) {
-		std::vector<std::string> row;
-		for (int j = 0; j < numColumns; ++j) {
-			std::size_t end = std::string::npos;
-			if (j + 1 < numColumns && lines[i].length() > columnIndexes[j + 1]) {
-				end = columnIndexes[j + 1] - columnIndexes[j];
-			}
-			std::string cell;
-			if (lines[i].length() > columnIndexes[j]) {
-				tfm::printf("[substr %d %d] ", columnIndexes[j], end);
-				cell = lines[i].substr(columnIndexes[j], end);
-			}
-			// TODO: Logic for continuations
-			row.push_back(Strings::trim(cell, ' '));
-		}
-		std::cout << "\n";
-		rows.push_back(row);
-	}
-
-	// for (auto const& heading : headings) {
-	// 	tfm::printf("|%s", heading);
-	// }
-	// std::cout << "|\n";
-
-	// for (auto i = 0; i < numColumns; ++i) {
-	// 	std::cout << "|---";
-	// }
-	// std::cout << "|\n";
-
-	for (auto const& row : rows) {
+	// Print the parsed table
+	for (auto const& row : table) {
 		for (auto const& cell : row) {
 			tfm::printf("|%s", cell);
 		}
 		std::cout << "|\n";
+	}
+
+	valid_ = true;
+}
+
+// Splits a line by 2+ consecutive spaces or space-minus-digit pattern
+std::vector<std::string> HTMLWriter::Table::splitBySpaces(std::string const& line) {
+	std::vector<std::string> cells;
+	std::string currentCell;
+	int spaceCount = 0;
+
+	for (std::size_t i = 0; i < line.size(); ++i) {
+		char c = line[i];
+		if (c == ' ') {
+			spaceCount++;
+			continue;
+		}
+
+		// Non-space character
+		if (spaceCount >= 2) {
+			// This is a column boundary
+			currentCell = Strings::trim(currentCell, ' ');
+			if (!currentCell.empty()) {
+				cells.push_back(currentCell);
+			}
+			spaceCount = 0;
+			currentCell.clear();
+			currentCell += c;
+		} else if (spaceCount == 1 && c == '-') {
+			// Special case: space-minus might be column boundary
+			// Only if minus is followed by a digit (i.e., a negative number)
+			bool isNegativeNumber = (i + 1 < line.size() && std::isdigit(line[i + 1]));
+			if (isNegativeNumber) {
+				// This is space-minus-digit, treat as boundary
+				currentCell = Strings::trim(currentCell, ' ');
+				if (!currentCell.empty()) {
+					cells.push_back(currentCell);
+				}
+				spaceCount = 0;
+				currentCell.clear();
+				currentCell += c; // Add the minus to new cell
+			} else {
+				// Space-minus without digit is part of cell (e.g., "- none -")
+				spaceCount = 0;
+				currentCell += ' ';
+				currentCell += c;
+			}
+		} else if (spaceCount == 1) {
+			// Single space within a cell (not before minus); add it
+			spaceCount = 0;
+			currentCell += ' ';
+			currentCell += c;
+		} else {
+			// No preceding spaces
+			currentCell += c;
+		}
+	}
+
+	// Handle remaining spaces and cell
+	if (!currentCell.empty()) {
+		currentCell = Strings::trim(currentCell, ' ');
+		if (!currentCell.empty()) {
+			cells.push_back(currentCell);
+		}
+	}
+
+	return cells;
+}
+
+// Helper method to process continuation lines
+void HTMLWriter::Table::processContinuationLine(std::string const& line,
+    std::vector<std::vector<std::string>>& table,
+    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries) {
+
+	if (table.empty()) {
+		return;
+	}
+
+	auto cells = splitBySpaces(line);
+	auto& lastRow = table.back();
+
+	if (!cells.empty()) {
+		// Find the position of each cell in the original line
+		std::size_t searchStart = 0;
+		for (auto const& cell : cells) {
+			// Find this cell's position in the original line
+			std::size_t cellPos = line.find(cell, searchStart);
+			if (cellPos != std::string::npos) {
+				// Determine which column this position falls into
+				for (std::size_t col = 0; col < columnBoundaries.size(); ++col) {
+					auto const& [colStart, colEnd] = columnBoundaries[col];
+					if (cellPos >= colStart && cellPos < colEnd) {
+						// Append to this column
+						if (col < lastRow.size()) {
+							if (!lastRow[col].empty()) {
+								lastRow[col] += " " + cell;
+							} else {
+								lastRow[col] = cell;
+							}
+						}
+						break;
+					}
+				}
+				// Move search position forward for next cell
+				searchStart = cellPos + cell.length();
+			}
+		}
 	}
 }
 
