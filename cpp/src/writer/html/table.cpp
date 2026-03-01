@@ -59,9 +59,9 @@ std::vector<std::pair<std::size_t, std::size_t>>
 }
 
 int HTMLWriter::Table::findDemarcationLine(std::vector<std::string> const& lines) {
+	std::smatch match;
 	for (std::size_t i = 0; i < lines.size(); ++i) {
-		int dashCount = std::count(lines[i].begin(), lines[i].end(), '-');
-		if (dashCount >= 4) {
+		if (std::regex_match(lines[i], match, Regex::HorizontalLine)) {
 			return static_cast<int>(i);
 		}
 	}
