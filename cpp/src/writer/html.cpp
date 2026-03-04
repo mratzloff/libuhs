@@ -350,43 +350,32 @@ void HTMLWriter::serializeTextElement(Element const& element, pugi::xml_node xml
 	this->appendTitle(element, xmlNode);
 }
 
-std::pair<std::string const, std::vector<std::string>> HTMLWriter::findNextSegment(
-    std::vector<std::string>::const_iterator begin,
-    std::vector<std::string>::const_iterator end) const {
+std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
+    HTMLWriter::findNextSegment(std::vector<std::string>::const_iterator it,
+        std::vector<std::string>::const_iterator end) const {
 
 	std::vector<std::string> lines;
-	auto inTable = false;
+	std::smatch match;
 
-	for (auto it = begin; it < end; ++it) {
-		// Detect blank lines
-		auto numBlankLines = 0;
-		for (; it < end && *it == ""; ++it, ++numBlankLines) {
-			lines.emplace_back(*it);
-		}
-
-		if (numBlankLines > 1) {
-			if (inTable) {
-				for (; numBlankLines > 0; --numBlankLines) {
-					lines.pop_back();
-				}
+	while (it < end) {
+		if (it + 1 < end && *it == "" && *(it + 1) == "") {
+			for (; it < end && *it == ""; ++it) {
+				tfm::printf("\"%s\" (ignored)\n", *it);
 			}
 			break;
+		} else if (it + 2 < end && *it == ""
+		           && std::regex_match(*(it + 2), match, Regex::HorizontalLine)) {
+			tfm::printf("\"%s\" (ignored)\n", *it);
+			++it;
+			break;
+		} else {
+			tfm::printf("\"%s\"\n", *it);
+			lines.emplace_back(*it);
+			++it;
 		}
-
-		// Detect table
-		std::smatch match;
-		if (std::regex_match(*it, match, Regex::HorizontalLine)) {
-			if (inTable) { // Found two tables in a single block
-				lines.pop_back();
-				break;
-			}
-			inTable = true;
-		}
-
-		lines.emplace_back(*it);
 	}
 
-	return std::pair{inTable ? "table" : "none", lines};
+	return {lines, it};
 }
 
 void HTMLWriter::serializeTextNode(
@@ -406,60 +395,42 @@ void HTMLWriter::serializeTextNode(
 
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
-	std::vector<std::pair<std::string const, std::vector<std::string>>> segments;
 
-	if (textNode.hasFormat(TextFormat::Monospace | TextFormat::Overflow)) {
-		std::size_t segmentLength = 0;
-		for (auto it = lines.cbegin(); it < lines.cend(); it += segmentLength) {
-			auto const& segment = this->findNextSegment(it, lines.cend());
-			auto const& segmentLines = segment.second;
-			segmentLength += segmentLines.size();
-			segments.push_back(segment);
-		}
-
-		for (auto const& [segmentType, segmentLines] : segments) {
-			if (segmentType == "table") {
-				auto table = new Table();
-				table->parse(segmentLines);
-				if (table->valid()) {
-					table->serialize(xmlNode);
-				} else {
-					// DRY
-					for (std::size_t i = 0; i < lines.size(); ++i) {
-						if (i > 0) {
-							xmlNode.append_child("br");
-						}
-						xmlNode.append_child(pugi::node_pcdata)
-						    .set_value(lines[i].c_str());
-					}
-				}
-			} else if (segmentType == "none") {
-				// TODO: Handle this
-				tfm::printf("== BEGIN %s =====================\n", segmentType);
-				for (auto sit = segmentLines.cbegin(); sit < segmentLines.cend(); ++sit) {
-					tfm::printf(">%s\n", *sit);
-				}
-				tfm::printf("== END =============================\n");
-
-				// DRY
-				for (std::size_t i = 0; i < lines.size(); ++i) {
-					if (i > 0) {
-						xmlNode.append_child("br");
-					}
-					xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
-				}
-			}
-		}
-	} else {
-		// END TEST CODE
-
-		// DRY
+	auto appendLines = [&lines, &xmlNode]() {
 		for (std::size_t i = 0; i < lines.size(); ++i) {
 			if (i > 0) {
 				xmlNode.append_child("br");
 			}
 			xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
 		}
+	};
+
+	if (textNode.hasFormat(TextFormat::Monospace | TextFormat::Overflow)) {
+		std::vector<std::vector<std::string>> segments;
+
+		for (auto it = lines.cbegin(); it < lines.cend();) {
+			auto [segment, next] = this->findNextSegment(it, lines.cend());
+			segments.push_back(segment);
+			it = next;
+		}
+
+		for (auto const& segment : segments) {
+			xmlNode.set_name("div");
+
+			Table table{segment};
+			table.parse();
+
+			if (table.valid()) {
+				table.serialize(xmlNode);
+				continue;
+			}
+
+			appendLines();
+			xmlNode.append_attribute("class");
+			xmlNode.attribute("class") = "monospace overflow";
+		}
+	} else {
+		appendLines();
 	}
 
 	if (textNode.hasFormat(TextFormat::Hyperlink)) {
@@ -472,18 +443,6 @@ void HTMLWriter::serializeTextNode(
 		}
 		xmlNode.append_attribute("href") = body.c_str();
 		this->appendClassNames(xmlNode, {"hyperlink"});
-	}
-
-	std::vector<std::string> classNames;
-
-	if (textNode.hasFormat(TextFormat::Monospace)) {
-		classNames.push_back("monospace");
-	}
-	if (textNode.hasFormat(TextFormat::Overflow)) {
-		classNames.push_back("overflow");
-	}
-	if (!classNames.empty()) {
-		this->appendClassNames(xmlNode, classNames);
 	}
 }
 

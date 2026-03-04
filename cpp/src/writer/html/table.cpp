@@ -2,20 +2,135 @@
 
 namespace UHS {
 
+HTMLWriter::Table::Table(std::vector<std::string> const& lines) : lines_{lines} {}
+
+void HTMLWriter::Table::parse() {
+	if (lines_.empty()) {
+		valid_ = false;
+		return;
+	}
+
+	demarcationLine_ = findDemarcationLine();
+	if (demarcationLine_ <= 0) {
+		valid_ = false;
+		return;
+	}
+
+	// Detect column boundaries from header row
+	auto columnBoundaries = detectColumnBoundaries();
+	if (columnBoundaries.empty()) {
+		valid_ = false;
+		return;
+	}
+
+	int expectedNumColumns = columnBoundaries.size();
+
+	// Add header rows (all non-empty lines before demarcation)
+	for (auto it = lines_.begin() + demarcationLine_ - 1; it >= lines_.begin(); --it) {
+		auto const& line = *it;
+
+		if (!line.empty()) {
+			auto cells = splitLine(line);
+			// Pad with empty cells if needed
+			while (static_cast<int>(cells.size()) < expectedNumColumns) {
+				cells.push_back("");
+			}
+			table_.insert(table_.begin(), cells);
+		}
+	}
+
+	// Add data rows (all lines after demarcation)
+	for (auto it = lines_.begin() + demarcationLine_ + 1; it < lines_.end(); ++it) {
+		auto const& line = *it;
+
+		if (line.empty()) {
+			continue;
+		}
+
+		auto cells = splitLine(line);
+
+		// Check if this is a continuation line
+		auto isContinuation = false;
+		if (!line.empty() && std::isspace(line[0])) {
+			// Only treat a line as a continuation if it has 1-2 cells
+			if (static_cast<int>(cells.size()) <= 2) {
+				isContinuation = true;
+			}
+		}
+
+		if (!table_.empty() && isContinuation) {
+			// For continuation lines, split into cells and assign each to correct column
+			processContinuationLine(line, columnBoundaries);
+		} else {
+			// This is a new row; pad with empty cells if needed
+			while (static_cast<int>(cells.size()) < expectedNumColumns) {
+				cells.push_back("");
+			}
+			table_.push_back(cells);
+		}
+	}
+
+	valid_ = true;
+}
+
+void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
+	auto container = xmlNode.append_child("div");
+	container.append_attribute("class");
+	container.attribute("class") = "table-container";
+
+	auto table = container.append_child("table");
+	table.append_attribute("class");
+	table.attribute("class") = "option option-html";
+
+	auto thead = table.append_child("thead");
+	for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
+		auto const& row = *it;
+		auto tr = thead.append_child("tr");
+		for (auto const& cell : row) {
+			auto th = tr.append_child("th");
+			th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+		}
+	}
+
+	auto tbody = table.append_child("tbody");
+	for (auto it = table_.begin() + demarcationLine_; it < table_.end(); ++it) {
+		auto tr = tbody.append_child("tr");
+		auto const& row = *it;
+		for (auto const& cell : row) {
+			auto td = tr.append_child("td");
+			td.append_child(pugi::node_pcdata).set_value(cell.c_str());
+		}
+	}
+
+	auto text = container.append_child("div");
+	text.append_attribute("class");
+	text.attribute("class") = "option option-text monospace overflow";
+
+	for (std::size_t i = 0; i < lines_.size(); ++i) {
+		if (i > 0) {
+			text.append_child("br");
+		}
+		text.append_child(pugi::node_pcdata).set_value(lines_[i].c_str());
+	}
+}
+
+bool HTMLWriter::Table::valid() const {
+	return valid_;
+}
+
 std::vector<std::pair<std::size_t, std::size_t>>
-    HTMLWriter::Table::detectColumnBoundaries(
-        std::vector<std::string> const& lines, int demarcationIndex) {
+    HTMLWriter::Table::detectColumnBoundaries() const {
 
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries;
 
-	if (demarcationIndex <= 0) {
+	if (demarcationLine_ <= 0) {
 		return boundaries;
 	}
 
-	auto header = lines[demarcationIndex - 1];
+	auto const header = lines_[demarcationLine_ - 1];
 	auto maxLength = header.size();
-	if (static_cast<std::size_t>(demarcationIndex + 1) < lines.size()) {
-		maxLength = std::max(maxLength, lines[demarcationIndex + 1].size());
+	if (static_cast<std::size_t>(demarcationLine_ + 1) < lines_.size()) {
+		maxLength = std::max(maxLength, lines_[demarcationLine_ + 1].size());
 	}
 
 	std::vector<bool> isSpaceGap(maxLength, false);
@@ -58,100 +173,58 @@ std::vector<std::pair<std::size_t, std::size_t>>
 	return boundaries;
 }
 
-int HTMLWriter::Table::findDemarcationLine(std::vector<std::string> const& lines) {
+int HTMLWriter::Table::findDemarcationLine() const {
 	std::smatch match;
-	for (std::size_t i = 0; i < lines.size(); ++i) {
-		if (std::regex_match(lines[i], match, Regex::HorizontalLine)) {
+	for (std::size_t i = 0; i < lines_.size(); ++i) {
+		if (std::regex_match(lines_[i], match, Regex::HorizontalLine)) {
 			return static_cast<int>(i);
 		}
 	}
 	return -1;
 }
 
-void HTMLWriter::Table::parse(std::vector<std::string> lines) {
-	if (lines.empty()) {
-		valid_ = false;
+// Helper method to process continuation lines
+void HTMLWriter::Table::processContinuationLine(std::string const& line,
+    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries) {
+
+	if (table_.empty()) {
 		return;
 	}
 
-	tfm::printf("== BEGIN table =====================\n");
-	for (auto sit = lines.cbegin(); sit < lines.cend(); ++sit) {
-		tfm::printf(">%s\n", *sit);
-	}
-	tfm::printf("== END =============================\n");
+	auto const& cells = splitLine(line);
+	auto& lastRow = table_.back();
 
-	auto demarcationIndex = findDemarcationLine(lines);
-	if (demarcationIndex <= 0) {
-		valid_ = false;
-		return;
-	}
-
-	// Detect column boundaries from header row
-	auto columnBoundaries = detectColumnBoundaries(lines, demarcationIndex);
-	if (columnBoundaries.empty()) {
-		valid_ = false;
-		return;
-	}
-
-	int expectedNumColumns = columnBoundaries.size();
-
-	// Parse table rows
-	std::vector<std::vector<std::string>> table;
-
-	// Add header rows (all non-empty lines before demarcation)
-	for (auto i = demarcationIndex - 1; i >= 0; --i) {
-		if (!lines[i].empty()) {
-			auto cells = splitBySpaces(lines[i]);
-			// Pad with empty cells if needed
-			while (static_cast<int>(cells.size()) < expectedNumColumns) {
-				cells.push_back("");
-			}
-			table.insert(table.begin(), cells);
-		}
-	}
-
-	// Add data rows (all lines after demarcation)
-	for (std::size_t i = demarcationIndex + 1; i < lines.size(); ++i) {
-		if (lines[i].empty()) {
-			continue;
-		}
-
-		auto cells = splitBySpaces(lines[i]);
-
-		// Check if this is a continuation line
-		auto isContinuation = false;
-		if (!lines[i].empty() && std::isspace(lines[i][0])) {
-			// Only treat a line as a continuation if it has 1-2 cells
-			if (static_cast<int>(cells.size()) <= 2) {
-				isContinuation = true;
+	if (!cells.empty()) {
+		// Find the position of each cell in the original line
+		std::size_t searchStart = 0;
+		for (auto const& cell : cells) {
+			// Find this cell's position in the original line
+			std::size_t cellPos = line.find(cell, searchStart);
+			if (cellPos != std::string::npos) {
+				// Determine which column this position falls into
+				for (std::size_t col = 0; col < columnBoundaries.size(); ++col) {
+					auto const& [colStart, colEnd] = columnBoundaries[col];
+					if (cellPos >= colStart && cellPos < colEnd) {
+						// Append to this column
+						if (col < lastRow.size()) {
+							if (!lastRow[col].empty()) {
+								lastRow[col] += " " + cell;
+							} else {
+								lastRow[col] = cell;
+							}
+						}
+						break;
+					}
+				}
+				// Move search position forward for next cell
+				searchStart = cellPos + cell.length();
 			}
 		}
-
-		if (!table.empty() && isContinuation) {
-			// For continuation lines, split into cells and assign each to correct column
-			processContinuationLine(lines[i], table, columnBoundaries);
-		} else {
-			// This is a new row; pad with empty cells if needed
-			while (static_cast<int>(cells.size()) < expectedNumColumns) {
-				cells.push_back("");
-			}
-			table.push_back(cells);
-		}
 	}
-
-	// Print the parsed table
-	for (auto const& row : table) {
-		for (auto const& cell : row) {
-			tfm::printf("|%s", cell);
-		}
-		std::cout << "|\n";
-	}
-
-	valid_ = true;
 }
 
 // Splits a line by 2+ consecutive spaces or space-minus-digit pattern
-std::vector<std::string> HTMLWriter::Table::splitBySpaces(std::string const& line) {
+std::vector<std::string> HTMLWriter::Table::splitLine(std::string const& line) const {
 	std::vector<std::string> cells;
 	std::string currentCell;
 	int spaceCount = 0;
@@ -212,53 +285,6 @@ std::vector<std::string> HTMLWriter::Table::splitBySpaces(std::string const& lin
 	}
 
 	return cells;
-}
-
-// Helper method to process continuation lines
-void HTMLWriter::Table::processContinuationLine(std::string const& line,
-    std::vector<std::vector<std::string>>& table,
-    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries) {
-
-	if (table.empty()) {
-		return;
-	}
-
-	auto cells = splitBySpaces(line);
-	auto& lastRow = table.back();
-
-	if (!cells.empty()) {
-		// Find the position of each cell in the original line
-		std::size_t searchStart = 0;
-		for (auto const& cell : cells) {
-			// Find this cell's position in the original line
-			std::size_t cellPos = line.find(cell, searchStart);
-			if (cellPos != std::string::npos) {
-				// Determine which column this position falls into
-				for (std::size_t col = 0; col < columnBoundaries.size(); ++col) {
-					auto const& [colStart, colEnd] = columnBoundaries[col];
-					if (cellPos >= colStart && cellPos < colEnd) {
-						// Append to this column
-						if (col < lastRow.size()) {
-							if (!lastRow[col].empty()) {
-								lastRow[col] += " " + cell;
-							} else {
-								lastRow[col] = cell;
-							}
-						}
-						break;
-					}
-				}
-				// Move search position forward for next cell
-				searchStart = cellPos + cell.length();
-			}
-		}
-	}
-}
-
-void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) {}
-
-bool HTMLWriter::Table::valid() {
-	return valid_;
 }
 
 } // namespace UHS

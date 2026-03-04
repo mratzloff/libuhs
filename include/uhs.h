@@ -1162,20 +1162,21 @@ private:
 
 	class Table {
 	public:
-		void parse(std::vector<std::string> lines);
-		void serialize(pugi::xml_node& xmlNode);
-		bool valid();
+		Table(std::vector<std::string> const& lines);
+		void parse();
+		void serialize(pugi::xml_node& xmlNode) const;
+		bool valid() const;
 
 	private:
-		pugi::xml_document doc;
+		int demarcationLine_ = 0;
+		std::vector<std::string> const lines_;
+		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
 
-		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries(
-		    std::vector<std::string> const& lines, int demarcationIndex);
-		int findDemarcationLine(std::vector<std::string> const& lines);
-		std::vector<std::string> splitBySpaces(std::string const& line);
+		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
+		int findDemarcationLine() const;
+		std::vector<std::string> splitLine(std::string const& line) const;
 		void processContinuationLine(std::string const& line,
-		    std::vector<std::vector<std::string>>& table,
 		    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries);
 	};
 
@@ -1208,9 +1209,9 @@ private:
 	    Document const& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
 	    Element const& element, pugi::xml_node xmlNode) const;
-	std::pair<std::string const, std::vector<std::string>> findNextSegment(
-	    std::vector<std::string>::const_iterator begin,
-	    std::vector<std::string>::const_iterator end) const;
+	std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
+	    findNextSegment(std::vector<std::string>::const_iterator it,
+	        std::vector<std::string>::const_iterator end) const;
 	pugi::xml_node findOrCreateMap(Element const& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node findXMLParent(Node const& node, pugi::xml_node const parent,
 	    NodeMap const parents, int const depth) const;
