@@ -74,13 +74,25 @@ void HTMLWriter::Table::parse() {
 }
 
 void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
-	auto container = xmlNode.append_child("div");
-	container.append_attribute("class");
-	container.attribute("class") = "table-container";
+	auto tableContainer = xmlNode.append_child("div");
+	tableContainer.append_attribute("class");
+	tableContainer.attribute("class") = "table-container";
 
-	auto table = container.append_child("table");
+	auto controlContainer = tableContainer.append_child("div");
+	controlContainer.append_attribute("class");
+	controlContainer.attribute("class") = "control-container";
+
+	auto htmlButton = controlContainer.append_child("button");
+	htmlButton.append_attribute("class");
+	htmlButton.attribute("class") = "control select-html";
+
+	auto textButton = controlContainer.append_child("button");
+	textButton.append_attribute("class");
+	textButton.attribute("class") = "control select-text";
+
+	auto table = tableContainer.append_child("table");
 	table.append_attribute("class");
-	table.attribute("class") = "option option-html";
+	table.attribute("class") = "option option-html hidden";
 
 	auto thead = table.append_child("thead");
 	for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
@@ -102,7 +114,7 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 		}
 	}
 
-	auto text = container.append_child("div");
+	auto text = tableContainer.append_child("div");
 	text.append_attribute("class");
 	text.attribute("class") = "option option-text monospace overflow";
 

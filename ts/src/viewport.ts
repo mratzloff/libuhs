@@ -241,6 +241,24 @@ class Viewport {
         this.back();
     }
 
+    private initTableControls(element: HTMLElement): void {
+        const htmlControls = element.querySelectorAll('.control-container > .control.select-html');
+        htmlControls.forEach(control => control.addEventListener('click', () => {
+            const textTables = element.querySelectorAll('.table-container > .option-text');
+            textTables.forEach(table => table.classList.add('hidden'));
+            const htmlTables = element.querySelectorAll('.table-container > .option-html');
+            htmlTables.forEach(table => table.classList.remove('hidden'));
+        }));
+
+        const textControls = element.querySelectorAll('.control-container > .control.select-text');
+        textControls.forEach(control => control.addEventListener('click', () => {
+            const htmlTables = element.querySelectorAll('.table-container > .option-html');
+            htmlTables.forEach(table => table.classList.add('hidden'));
+            const textTables = element.querySelectorAll('.table-container > .option-text');
+            textTables.forEach(table => table.classList.remove('hidden'));
+        }));
+    }
+
     private processHintNode(element: HTMLElement): void {
         const type = element.getAttribute("data-type");
         if (type != "hint" && type != "nesthint") {
@@ -253,6 +271,7 @@ class Viewport {
             items[i].hidden = true;
         }
 
+        this.initTableControls(element);
         this.createFooter(items, element.id);
         this.updateHintProgress((index + 1) / items.length);
     }
@@ -261,6 +280,7 @@ class Viewport {
         this.replaceIdsWithDataAttributes(element);
         this.updateImageMapAnchor(element);
         this.createOverlayClickHandler(element);
+        this.initTableControls(element);
     }
 
     private processListNode(element: HTMLElement): void {
@@ -271,6 +291,7 @@ class Viewport {
         this.removeUnnecessaryElements(element);
         this.replaceIdsWithDataAttributes(element);
         this.createTitleClickHandlers(element);
+        this.initTableControls(element);
     }
 
     private refreshHistoryButtons() {
