@@ -2,7 +2,7 @@ body {
     background-color: rgb(245, 245, 245);
     color: rgb(41, 41, 41);
     font-family: Lora-VariableFont;
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.9;
     margin: 0;
     text-rendering: optimizeLegibility;
@@ -72,7 +72,7 @@ area.clickable {
     border: 1px solid rgb(210, 210, 210);
     border-radius: 10px;
     margin-bottom: 12px;
-    padding: 10px 12px;
+    padding: 10px 15px;
 }
 
 .hyperpng-background {
@@ -90,6 +90,7 @@ area.clickable {
 
 .monospace {
     font-family: SourceCodePro-Regular;
+    font-size: 16px;
     white-space: pre-wrap;
 }
 
@@ -116,6 +117,25 @@ ol.search-results > li + li {
 
 .spacer {
     flex-grow: 1;
+}
+
+.table-container table.option-html {
+    -webkit-border-horizontal-spacing: 0;
+    -webkit-border-vertical-spacing: 0;
+    font-size: 17px;
+}
+
+.table-container table.option-html td, th {
+    padding: 5px 15px;
+}
+
+.table-container table.option-html > thead tr {
+    background-color: rgb(41, 41, 41);
+    color: rgb(210, 210, 210);
+}
+
+.table-container table.option-html > tbody tr:nth-child(even) {
+    background-color: rgb(210, 210, 210);
 }
 
 .title {
