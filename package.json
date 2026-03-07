@@ -3,5 +3,9 @@
     "@vercel/ncc": "^0.34.0",
     "minify": "^9.1.0",
     "typescript": "^4.7.3"
-  }
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1"
+  },
+  "packageManager": "yarn@4.13.0"
 }
