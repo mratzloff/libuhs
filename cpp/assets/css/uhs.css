@@ -64,6 +64,32 @@ area.clickable {
     display: block;
 }
 
+.control-container {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.control-container > .control {
+    background-color: transparent;
+    border: 1px solid rgb(160, 160, 160);
+    border-radius: 5px;
+    cursor: pointer;
+    height: 30px;
+    padding: 0;
+    width: 30px;
+}
+
+.control-container > .control.select-html {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M64 256l0-96 160 0 0 96L64 256zm0 64l160 0 0 96L64 416l0-96zm224 96l0-96 160 0 0 96-160 0zM448 256l-160 0 0-96 160 0 0 96zM64 32C28.7 32 0 60.7 0 96L0 416c0 35.3 28.7 64 64 64l384 0c35.3 0 64-28.7 64-64l0-320c0-35.3-28.7-64-64-64L64 32z' fill='rgb(41%2C41%2C41)'/%3E%3C/svg%3E")
+        no-repeat center / 16px;
+}
+
+.control-container > .control.select-text {
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Crect x='0' y='80' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3Crect x='240' y='80' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3Crect x='0' y='224' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3Crect x='240' y='224' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3Crect x='0' y='368' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3Crect x='240' y='368' width='208' height='64' rx='32' ry='32' fill='rgb(41%2C41%2C41)'/%3E%3C/svg%3E")
+        no-repeat center / 16px;
+}
+
 .hidden {
     display: none;
 }
@@ -119,13 +145,19 @@ ol.search-results > li + li {
     flex-grow: 1;
 }
 
+.table-container {
+    margin-bottom: 15px;
+}
+
 .table-container table.option-html {
     -webkit-border-horizontal-spacing: 0;
     -webkit-border-vertical-spacing: 0;
     font-size: 17px;
+    width: 100%;
 }
 
-.table-container table.option-html td, th {
+.table-container table.option-html td,
+th {
     padding: 5px 15px;
 }
 
@@ -228,7 +260,11 @@ ol.search-results > li + li {
 }
 
 #nav select.disabled {
-    background: linear-gradient(to left, rgba(255, 255, 255, 0.05) 60px, rgba(255, 255, 255, 0) 60px);
+    background: linear-gradient(
+        to left,
+        rgba(255, 255, 255, 0.05) 60px,
+        rgba(255, 255, 255, 0) 60px
+    );
 }
 
 #progress {
@@ -257,7 +293,7 @@ ol.search-results > li + li {
     ul.breadcrumbs li {
         color: rgb(200, 200, 200);
     }
-    
+
     ul.breadcrumbs li + li {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 512'%3E%3Cpath d='M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z' fill='rgba(255,255,255,.7)'/%3E%3C/svg%3E");
     }

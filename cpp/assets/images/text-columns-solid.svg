@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">    <!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.-->
+    <rect x="0" y="32" width="208" height="64" rx="32" ry="32"/>
+    <rect x="240" y="32" width="208" height="64" rx="32" ry="32"/>
+    <rect x="0" y="160" width="208" height="64" rx="32" ry="32"/>
+    <rect x="240" y="160" width="208" height="64" rx="32" ry="32"/>
+    <rect x="0" y="288" width="208" height="64" rx="32" ry="32"/>
+    <rect x="240" y="288" width="208" height="64" rx="32" ry="32"/>
+    <rect x="0" y="416" width="208" height="64" rx="32" ry="32"/>
+    <rect x="240" y="416" width="208" height="64" rx="32" ry="32"/>
+</svg>

@@ -1,5 +1,5 @@
-import {HOME_ID} from "./constants";
-import {History, HistoryState} from "./history";
+import { HOME_ID } from "./constants";
+import { History, HistoryState } from "./history";
 import search from "./search";
 
 const ViewType = {
@@ -14,11 +14,11 @@ class Viewport {
     private viewport: HTMLElement;
 
     public static initOnReady() {
-        document.addEventListener("DOMContentLoaded", () => new Viewport);
+        document.addEventListener("DOMContentLoaded", () => new Viewport());
     }
 
     public constructor() {
-        this.history = new History;
+        this.history = new History();
 
         // Create nav
         const nav = document.createElement("nav");
@@ -56,7 +56,7 @@ class Viewport {
         searchField.addEventListener("search", e => {
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
-                this.go({type: ViewType.Search, locator: keywords});
+                this.go({ type: ViewType.Search, locator: keywords });
             }
         });
         nav.appendChild(searchField);
@@ -70,7 +70,7 @@ class Viewport {
         document.body.appendChild(this.viewport);
 
         // Handle history changes
-        this.history.addEventListener("change", (event) => {
+        this.history.addEventListener("change", event => {
             this.view((event as CustomEvent).detail);
         });
 
@@ -112,14 +112,18 @@ class Viewport {
         } else {
             button.textContent = "Show next hint";
         }
-        button.addEventListener("click", () => this.onButtonClick(items, elementId));
+        button.addEventListener("click", () =>
+            this.onButtonClick(items, elementId),
+        );
         footer.appendChild(button);
 
         document.body.appendChild(footer);
     }
 
     private createLinkClickHandlers(element: HTMLElement): void {
-        const links = element.querySelectorAll("a[href]:not(.hyperlink), area[href]");
+        const links = element.querySelectorAll(
+            "a[href]:not(.hyperlink), area[href]",
+        );
         links.forEach(link => {
             const targetId = link.getAttribute("data-target");
             if (!targetId) {
@@ -129,12 +133,14 @@ class Viewport {
             let clickable = true;
             if (link.nodeName == "AREA") {
                 const target = document.getElementById(targetId);
-                clickable = (target?.nodeName == "DIV");
+                clickable = target?.nodeName == "DIV";
             }
 
             if (clickable) {
-                const state = {type: ViewType.Hint, locator: targetId};
-                link.addEventListener("click", () => this.go(state), {capture: false});
+                const state = { type: ViewType.Hint, locator: targetId };
+                link.addEventListener("click", () => this.go(state), {
+                    capture: false,
+                });
                 link.classList.add("clickable");
             }
 
@@ -150,7 +156,11 @@ class Viewport {
                 throw new Error("could not find overlay target ID");
             }
 
-            overlay.addEventListener("click", () => this.showOverlay(targetId), {capture: false});
+            overlay.addEventListener(
+                "click",
+                () => this.showOverlay(targetId),
+                { capture: false },
+            );
             overlay.classList.add("clickable");
         });
     }
@@ -167,13 +177,19 @@ class Viewport {
                 type: ViewType.Hint,
                 locator: element.getAttribute("data-id")!,
             };
-            title.addEventListener("click", () => this.go(state), {capture: false});
+            title.addEventListener("click", () => this.go(state), {
+                capture: false,
+            });
             title.classList.add("clickable");
         });
     }
 
-    private findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
-        return element.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
+    private findListItemChildren(
+        element: HTMLElement,
+    ): NodeListOf<HTMLElement> {
+        return element.querySelectorAll(
+            ":scope > ol > li",
+        ) as NodeListOf<HTMLElement>;
     }
 
     private forward(): void {
@@ -192,7 +208,7 @@ class Viewport {
             const parsed = parseInt(cacheValue, 10);
             if (Number.isNaN(parsed)) {
                 sessionStorage.removeItem(key);
-            };
+            }
             index = parsed;
         }
 
@@ -215,7 +231,7 @@ class Viewport {
     }
 
     private home(): void {
-        this.go({type: ViewType.Hint, locator: HOME_ID});
+        this.go({ type: ViewType.Hint, locator: HOME_ID });
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -242,21 +258,37 @@ class Viewport {
     }
 
     private initTableControls(element: HTMLElement): void {
-        const htmlControls = element.querySelectorAll('.control-container > .control.select-html');
-        htmlControls.forEach(control => control.addEventListener('click', () => {
-            const textTables = element.querySelectorAll('.table-container > .option-text');
-            textTables.forEach(table => table.classList.add('hidden'));
-            const htmlTables = element.querySelectorAll('.table-container > .option-html');
-            htmlTables.forEach(table => table.classList.remove('hidden'));
-        }));
+        const htmlControls = element.querySelectorAll(
+            ".control-container > .control.select-html",
+        );
+        htmlControls.forEach(control =>
+            control.addEventListener("click", () => {
+                const textTables = element.querySelectorAll(
+                    ".table-container > .option-text",
+                );
+                textTables.forEach(table => table.classList.add("hidden"));
+                const htmlTables = element.querySelectorAll(
+                    ".table-container > .option-html",
+                );
+                htmlTables.forEach(table => table.classList.remove("hidden"));
+            }),
+        );
 
-        const textControls = element.querySelectorAll('.control-container > .control.select-text');
-        textControls.forEach(control => control.addEventListener('click', () => {
-            const htmlTables = element.querySelectorAll('.table-container > .option-html');
-            htmlTables.forEach(table => table.classList.add('hidden'));
-            const textTables = element.querySelectorAll('.table-container > .option-text');
-            textTables.forEach(table => table.classList.remove('hidden'));
-        }));
+        const textControls = element.querySelectorAll(
+            ".control-container > .control.select-text",
+        );
+        textControls.forEach(control =>
+            control.addEventListener("click", () => {
+                const htmlTables = element.querySelectorAll(
+                    ".table-container > .option-html",
+                );
+                htmlTables.forEach(table => table.classList.add("hidden"));
+                const textTables = element.querySelectorAll(
+                    ".table-container > .option-text",
+                );
+                textTables.forEach(table => table.classList.remove("hidden"));
+            }),
+        );
     }
 
     private processHintNode(element: HTMLElement): void {
@@ -367,8 +399,10 @@ class Viewport {
         const item = document.createElement("li");
         const linkContainer = document.createElement("div");
         const link = document.createElement("span");
-        const state = {type: ViewType.Hint, locator: id};
-        link.addEventListener("click", () => this.go(state), {capture: false});
+        const state = { type: ViewType.Hint, locator: id };
+        link.addEventListener("click", () => this.go(state), {
+            capture: false,
+        });
         link.classList.add("title", "clickable");
         link.textContent = title;
         linkContainer.appendChild(link);
@@ -447,7 +481,9 @@ class Viewport {
         if (results.length > 0) {
             const list = document.createElement("ol");
             list.classList.add("search-results");
-            results.forEach(result => list.appendChild(this.renderSearchResult(result)));
+            results.forEach(result =>
+                list.appendChild(this.renderSearchResult(result)),
+            );
             this.viewport.appendChild(list);
         } else {
             const text = document.createTextNode("No results found.");
@@ -516,34 +552,34 @@ class Viewport {
         this.reset();
 
         switch (state.type) {
-        case ViewType.Search:
-            this.search(state.locator);
-            break;
-        case ViewType.Hint:        
-            const entry = this.cloneEntryPoint(state.locator);
+            case ViewType.Search:
+                this.search(state.locator);
+                break;
+            case ViewType.Hint:
+                const entry = this.cloneEntryPoint(state.locator);
 
-            const element = document.getElementById(state.locator)!;
-            const headingContainer = entry.querySelector(":scope > div");
-            if (headingContainer) {
-                const breadcrumbs = this.renderBreadcrumbs(element);
-                if (breadcrumbs) {
-                    headingContainer.prepend(breadcrumbs);
+                const element = document.getElementById(state.locator)!;
+                const headingContainer = entry.querySelector(":scope > div");
+                if (headingContainer) {
+                    const breadcrumbs = this.renderBreadcrumbs(element);
+                    if (breadcrumbs) {
+                        headingContainer.prepend(breadcrumbs);
+                    }
                 }
-            }
-            this.replaceTitleWithHeading(entry);
+                this.replaceTitleWithHeading(entry);
 
-            const items = this.findListItemChildren(entry);
-    
-            if (items.length > 0) {
-                items.forEach(item => this.processListNode(item));
-            } else {
-                this.processLeafNode(entry);
-            }
-    
-            this.createLinkClickHandlers(entry);
-            this.processHintNode(entry);
-            this.renderElement(entry);
-            break;
+                const items = this.findListItemChildren(entry);
+
+                if (items.length > 0) {
+                    items.forEach(item => this.processListNode(item));
+                } else {
+                    this.processLeafNode(entry);
+                }
+
+                this.createLinkClickHandlers(entry);
+                this.processHintNode(entry);
+                this.renderElement(entry);
+                break;
         }
 
         this.scrollTop();
