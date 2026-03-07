@@ -11,6 +11,7 @@ class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
     private history: History;
+    private tableToggle: HTMLInputElement;
     private viewport: HTMLElement;
 
     public static initOnReady() {
@@ -48,6 +49,31 @@ class Viewport {
         const spacer = document.createElement("div");
         spacer.classList.add("spacer");
         nav.appendChild(spacer);
+
+        // Create page controls
+        const pageControls = document.createElement("div");
+        pageControls.classList.add("page-controls");
+
+        const toggleLabel = document.createElement("label");
+        toggleLabel.classList.add("toggle");
+
+        this.tableToggle = document.createElement("input");
+        this.tableToggle.type = "checkbox";
+        this.tableToggle.checked =
+            sessionStorage.getItem("option.table.mode") === "html";
+        this.tableToggle.addEventListener("change", () => {
+            const mode = this.tableToggle.checked ? "html" : "text";
+            sessionStorage.setItem("option.table.mode", mode);
+            this.applyTableMode();
+        });
+        toggleLabel.appendChild(this.tableToggle);
+
+        const toggleTrack = document.createElement("span");
+        toggleTrack.classList.add("toggle-track");
+        toggleLabel.appendChild(toggleTrack);
+
+        pageControls.appendChild(toggleLabel);
+        nav.appendChild(pageControls);
 
         // Create search field
         const searchField = document.createElement("input");
@@ -257,38 +283,19 @@ class Viewport {
         this.back();
     }
 
-    private initTableControls(element: HTMLElement): void {
-        const htmlControls = element.querySelectorAll(
-            ".control-container > .control.select-html",
-        );
-        htmlControls.forEach(control =>
-            control.addEventListener("click", () => {
-                const textTables = element.querySelectorAll(
-                    ".table-container > .option-text",
-                );
-                textTables.forEach(table => table.classList.add("hidden"));
-                const htmlTables = element.querySelectorAll(
-                    ".table-container > .option-html",
-                );
-                htmlTables.forEach(table => table.classList.remove("hidden"));
-            }),
-        );
+    private applyTableMode(): void {
+        const showHtml = this.tableToggle.checked;
 
-        const textControls = element.querySelectorAll(
-            ".control-container > .control.select-text",
-        );
-        textControls.forEach(control =>
-            control.addEventListener("click", () => {
-                const htmlTables = element.querySelectorAll(
-                    ".table-container > .option-html",
-                );
-                htmlTables.forEach(table => table.classList.add("hidden"));
-                const textTables = element.querySelectorAll(
-                    ".table-container > .option-text",
-                );
-                textTables.forEach(table => table.classList.remove("hidden"));
-            }),
-        );
+        this.viewport
+            .querySelectorAll(".table-container > .option-html")
+            .forEach(t =>
+                t.classList.toggle("hidden", !showHtml),
+            );
+        this.viewport
+            .querySelectorAll(".table-container > .option-text")
+            .forEach(t =>
+                t.classList.toggle("hidden", showHtml),
+            );
     }
 
     private processHintNode(element: HTMLElement): void {
@@ -303,7 +310,7 @@ class Viewport {
             items[i].hidden = true;
         }
 
-        this.initTableControls(element);
+        this.applyTableMode();
         this.createFooter(items, element.id);
         this.updateHintProgress((index + 1) / items.length);
     }
@@ -312,7 +319,7 @@ class Viewport {
         this.replaceIdsWithDataAttributes(element);
         this.updateImageMapAnchor(element);
         this.createOverlayClickHandler(element);
-        this.initTableControls(element);
+        this.applyTableMode();
     }
 
     private processListNode(element: HTMLElement): void {
@@ -323,7 +330,7 @@ class Viewport {
         this.removeUnnecessaryElements(element);
         this.replaceIdsWithDataAttributes(element);
         this.createTitleClickHandlers(element);
-        this.initTableControls(element);
+        this.applyTableMode();
     }
 
     private refreshHistoryButtons() {

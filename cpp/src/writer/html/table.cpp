@@ -78,18 +78,6 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 	tableContainer.append_attribute("class");
 	tableContainer.attribute("class") = "table-container";
 
-	auto controlContainer = tableContainer.append_child("div");
-	controlContainer.append_attribute("class");
-	controlContainer.attribute("class") = "control-container";
-
-	auto htmlButton = controlContainer.append_child("button");
-	htmlButton.append_attribute("class");
-	htmlButton.attribute("class") = "control select-html";
-
-	auto textButton = controlContainer.append_child("button");
-	textButton.append_attribute("class");
-	textButton.attribute("class") = "control select-text";
-
 	auto table = tableContainer.append_child("table");
 	table.append_attribute("class");
 	table.attribute("class") = "option option-html hidden";
