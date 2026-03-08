@@ -1182,9 +1182,6 @@ private:
 		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
 		int findDemarcationLine() const;
-		void processContinuationLine(std::string const& line,
-		    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries);
-		std::vector<std::string> splitLine(std::string const& line) const;
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);

@@ -34,10 +34,14 @@ void HTMLWriter::Table::parse() {
 		if (!line.empty()) {
 			// Use column boundaries to extract header cells
 			std::vector<std::string> cells;
-			for (auto const& [start, end] : columnBoundaries) {
-				if (start < line.size()) {
-					auto len = std::min(end, line.size()) - start;
-					cells.push_back(Strings::trim(line.substr(start, len), ' '));
+			for (std::size_t b = 0; b < columnBoundaries.size(); ++b) {
+				auto colStart = columnBoundaries[b].first;
+				auto colEnd = (b + 1 < columnBoundaries.size())
+				    ? columnBoundaries[b + 1].first
+				    : line.size();
+				if (colStart < line.size()) {
+					auto len = std::min(colEnd, line.size()) - colStart;
+					cells.push_back(Strings::trim(line.substr(colStart, len), ' '));
 				} else {
 					cells.push_back("");
 				}
@@ -54,27 +58,68 @@ void HTMLWriter::Table::parse() {
 			continue;
 		}
 
-		auto cells = splitLine(line);
+		auto naturalBounds = detectBoundariesFromLine(line);
 
-		// Check if this is a continuation line
-		auto isContinuation = false;
-		if (!line.empty() && std::isspace(line[0])) {
-			// Only treat a line as a continuation if it has 1-2 cells
-			if (static_cast<int>(cells.size()) <= 2) {
-				isContinuation = true;
+		// Continuation line: starts with space, few segments
+		if (!table_.empty() && std::isspace(line[0])
+		    && naturalBounds.size() <= 2) {
+			auto& lastRow = table_.back();
+			for (auto const& [segStart, segEnd] : naturalBounds) {
+				auto text = Strings::trim(
+				    line.substr(segStart, segEnd - segStart), ' ');
+				if (text.empty()) {
+					continue;
+				}
+
+				// Find which column this segment falls into
+				std::size_t col = columnBoundaries.size() - 1;
+				for (std::size_t c = 0; c + 1 < columnBoundaries.size(); ++c) {
+					if (segStart < columnBoundaries[c + 1].first) {
+						col = c;
+						break;
+					}
+				}
+
+				if (col < lastRow.size()) {
+					if (!lastRow[col].empty()) {
+						lastRow[col] += " " + text;
+					} else {
+						lastRow[col] = text;
+					}
+				}
 			}
+			continue;
 		}
 
-		if (!table_.empty() && isContinuation) {
-			// For continuation lines, split into cells and assign each to correct column
-			processContinuationLine(line, columnBoundaries);
+		// Extract cells
+		std::vector<std::string> cells;
+		if (static_cast<int>(naturalBounds.size()) >= expectedNumColumns - 1) {
+			// Normal row or single-space gap — use column boundaries
+			for (std::size_t b = 0; b < columnBoundaries.size(); ++b) {
+				auto colStart = columnBoundaries[b].first;
+				auto colEnd = (b + 1 < columnBoundaries.size())
+				    ? columnBoundaries[b + 1].first
+				    : line.size();
+				if (colStart < line.size()) {
+					auto len = std::min(colEnd, line.size()) - colStart;
+					cells.push_back(
+					    Strings::trim(line.substr(colStart, len), ' '));
+				} else {
+					cells.push_back("");
+				}
+			}
 		} else {
-			// This is a new row; pad with empty cells if needed
+			// Non-tabular text — extract using natural boundaries
+			for (auto const& [start, end] : naturalBounds) {
+				cells.push_back(
+				    Strings::trim(line.substr(start, end - start), ' '));
+			}
 			while (static_cast<int>(cells.size()) < expectedNumColumns) {
 				cells.push_back("");
 			}
-			table_.push_back(cells);
 		}
+
+		table_.push_back(cells);
 	}
 
 	// Exclude last row if it's a single long cell (not really table data)
@@ -279,108 +324,5 @@ int HTMLWriter::Table::findDemarcationLine() const {
 	return -1;
 }
 
-// Helper method to process continuation lines
-void HTMLWriter::Table::processContinuationLine(std::string const& line,
-    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries) {
-
-	if (table_.empty()) {
-		return;
-	}
-
-	auto const& cells = splitLine(line);
-	auto& lastRow = table_.back();
-
-	if (!cells.empty()) {
-		// Find the position of each cell in the original line
-		std::size_t searchStart = 0;
-		for (auto const& cell : cells) {
-			// Find this cell's position in the original line
-			std::size_t cellPos = line.find(cell, searchStart);
-			if (cellPos != std::string::npos) {
-				// Determine which column this position falls into
-				for (std::size_t col = 0; col < columnBoundaries.size(); ++col) {
-					auto const& [colStart, colEnd] = columnBoundaries[col];
-					if (cellPos >= colStart && cellPos < colEnd) {
-						// Append to this column
-						if (col < lastRow.size()) {
-							if (!lastRow[col].empty()) {
-								lastRow[col] += " " + cell;
-							} else {
-								lastRow[col] = cell;
-							}
-						}
-						break;
-					}
-				}
-				// Move search position forward for next cell
-				searchStart = cellPos + cell.length();
-			}
-		}
-	}
-}
-
-// Splits a line by 2+ consecutive spaces or space-minus-digit pattern
-std::vector<std::string> HTMLWriter::Table::splitLine(std::string const& line) const {
-	std::vector<std::string> cells;
-	std::string currentCell;
-	int spaceCount = 0;
-
-	for (std::size_t i = 0; i < line.size(); ++i) {
-		char c = line[i];
-		if (c == ' ') {
-			spaceCount++;
-			continue;
-		}
-
-		// Non-space character
-		if (spaceCount >= 2) {
-			// This is a column boundary
-			currentCell = Strings::trim(currentCell, ' ');
-			if (!currentCell.empty()) {
-				cells.push_back(currentCell);
-			}
-			spaceCount = 0;
-			currentCell.clear();
-			currentCell += c;
-		} else if (spaceCount == 1 && c == '-') {
-			// Special case: space-minus might be column boundary
-			// Only if minus is followed by a digit (i.e., a negative number)
-			bool isNegativeNumber = (i + 1 < line.size() && std::isdigit(line[i + 1]));
-			if (isNegativeNumber) {
-				// This is space-minus-digit, treat as boundary
-				currentCell = Strings::trim(currentCell, ' ');
-				if (!currentCell.empty()) {
-					cells.push_back(currentCell);
-				}
-				spaceCount = 0;
-				currentCell.clear();
-				currentCell += c; // Add the minus to new cell
-			} else {
-				// Space-minus without digit is part of cell (e.g., "- none -")
-				spaceCount = 0;
-				currentCell += ' ';
-				currentCell += c;
-			}
-		} else if (spaceCount == 1) {
-			// Single space within a cell (not before minus); add it
-			spaceCount = 0;
-			currentCell += ' ';
-			currentCell += c;
-		} else {
-			// No preceding spaces
-			currentCell += c;
-		}
-	}
-
-	// Handle remaining spaces and cell
-	if (!currentCell.empty()) {
-		currentCell = Strings::trim(currentCell, ' ');
-		if (!currentCell.empty()) {
-			cells.push_back(currentCell);
-		}
-	}
-
-	return cells;
-}
 
 } // namespace UHS
