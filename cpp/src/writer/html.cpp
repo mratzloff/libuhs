@@ -396,45 +396,58 @@ void HTMLWriter::serializeTextNode(
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
 
-	auto appendLines = [&lines, &xmlNode]() {
-		for (std::size_t i = 0; i < lines.size(); ++i) {
+	auto appendLines = [](pugi::xml_node node, std::vector<std::string> const& src) {
+		for (std::size_t i = 0; i < src.size(); ++i) {
 			if (i > 0) {
-				xmlNode.append_child("br");
+				node.append_child("br");
 			}
-			xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
+			node.append_child(pugi::node_pcdata).set_value(src[i].c_str());
 		}
 	};
 
 	if (textNode.hasFormat(TextFormat::Monospace | TextFormat::Overflow)) {
-		std::vector<std::vector<std::string>> segments;
+		xmlNode.set_name("div");
+		auto it = lines.cbegin();
 
-		for (auto it = lines.cbegin(); it < lines.cend();) {
+		while (it < lines.cend()) {
+			auto segmentStart = it;
 			auto [segment, next] = this->findNextSegment(it, lines.cend());
-			segments.push_back(segment);
 			it = next;
-		}
-
-		for (auto const& segment : segments) {
-			xmlNode.set_name("div");
 
 			Table table{segment};
 			table.parse();
 
 			if (table.valid()) {
 				table.serialize(xmlNode);
+
+				if (table.endLine() < segment.size()) {
+					it = segmentStart + table.endLine();
+				}
 				continue;
 			}
 
-			appendLines();
-			auto hasLongLine = std::any_of(segment.begin(), segment.end(),
+			auto hasLongLine = std::any_of(segment.begin(),
+			    segment.end(),
 			    [](auto const& l) { return l.size() > SuspectMonospaceLineLength; });
-			if (!hasLongLine) {
-				xmlNode.append_attribute("class");
-				xmlNode.attribute("class") = "monospace overflow";
+
+			if (hasLongLine) {
+				auto child = xmlNode.append_child("span");
+				appendLines(child, segment);
+
+				// Render trailing blank lines that findNextSegment consumed
+				for (auto blankIt = segmentStart + segment.size(); blankIt < it;
+				    ++blankIt) {
+					child.append_child("br");
+				}
+			} else {
+				auto child = xmlNode.append_child("div");
+				child.append_attribute("class");
+				child.attribute("class") = "monospace overflow";
+				appendLines(child, segment);
 			}
 		}
 	} else {
-		appendLines();
+		appendLines(xmlNode, lines);
 	}
 
 	if (textNode.hasFormat(TextFormat::Hyperlink)) {
