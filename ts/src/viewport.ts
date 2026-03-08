@@ -50,31 +50,6 @@ class Viewport {
         spacer.classList.add("spacer");
         nav.appendChild(spacer);
 
-        // Create page controls
-        const pageControls = document.createElement("div");
-        pageControls.classList.add("page-controls");
-
-        const toggleLabel = document.createElement("label");
-        toggleLabel.classList.add("toggle");
-
-        this.tableToggle = document.createElement("input");
-        this.tableToggle.type = "checkbox";
-        this.tableToggle.checked =
-            sessionStorage.getItem("option.table.mode") === "html";
-        this.tableToggle.addEventListener("change", () => {
-            const mode = this.tableToggle.checked ? "html" : "text";
-            sessionStorage.setItem("option.table.mode", mode);
-            this.applyTableMode();
-        });
-        toggleLabel.appendChild(this.tableToggle);
-
-        const toggleTrack = document.createElement("span");
-        toggleTrack.classList.add("toggle-track");
-        toggleLabel.appendChild(toggleTrack);
-
-        pageControls.appendChild(toggleLabel);
-        nav.appendChild(pageControls);
-
         // Create search field
         const searchField = document.createElement("input");
         searchField.type = "search";
@@ -87,8 +62,51 @@ class Viewport {
         });
         nav.appendChild(searchField);
 
+        // Create options menu button
+        const optionsButton = document.createElement("button");
+        optionsButton.id = "options";
+        optionsButton.addEventListener("click", () => {
+            optionsMenu.classList.toggle("open");
+            this.viewport.classList.toggle("options-open");
+        });
+        nav.appendChild(optionsButton);
+
         // Append nav
         document.body.appendChild(nav);
+
+        // Create options menu
+        const optionsMenuWrapper = document.createElement("div");
+        optionsMenuWrapper.id = "options-menu-wrapper";
+
+        const optionsMenu = document.createElement("div");
+        optionsMenu.id = "options-menu";
+
+        const tableToggleLabel = document.createElement("label");
+        tableToggleLabel.classList.add("toggle");
+
+        const tableToggleText = document.createElement("span");
+        tableToggleText.classList.add("toggle-label");
+        tableToggleText.textContent = "HTML tables";
+        tableToggleLabel.appendChild(tableToggleText);
+
+        this.tableToggle = document.createElement("input");
+        this.tableToggle.type = "checkbox";
+        this.tableToggle.checked =
+            sessionStorage.getItem("option.table.mode") === "html";
+        this.tableToggle.addEventListener("change", () => {
+            const mode = this.tableToggle.checked ? "html" : "text";
+            sessionStorage.setItem("option.table.mode", mode);
+            this.applyTableMode();
+        });
+        tableToggleLabel.appendChild(this.tableToggle);
+
+        const toggleTrack = document.createElement("span");
+        toggleTrack.classList.add("toggle-track");
+        tableToggleLabel.appendChild(toggleTrack);
+
+        optionsMenu.appendChild(tableToggleLabel);
+        optionsMenuWrapper.appendChild(optionsMenu);
+        document.body.appendChild(optionsMenuWrapper);
 
         // Create viewport
         this.viewport = document.createElement("div");
@@ -102,6 +120,17 @@ class Viewport {
 
         // Go to home view
         this.home();
+    }
+
+    private applyTableMode(): void {
+        const showHtml = this.tableToggle.checked;
+
+        this.viewport
+            .querySelectorAll(".table-container > .option-html")
+            .forEach(t => t.classList.toggle("hidden", !showHtml));
+        this.viewport
+            .querySelectorAll(".table-container > .option-text")
+            .forEach(t => t.classList.toggle("hidden", showHtml));
     }
 
     private back(): void {
@@ -283,21 +312,6 @@ class Viewport {
         this.back();
     }
 
-    private applyTableMode(): void {
-        const showHtml = this.tableToggle.checked;
-
-        this.viewport
-            .querySelectorAll(".table-container > .option-html")
-            .forEach(t =>
-                t.classList.toggle("hidden", !showHtml),
-            );
-        this.viewport
-            .querySelectorAll(".table-container > .option-text")
-            .forEach(t =>
-                t.classList.toggle("hidden", showHtml),
-            );
-    }
-
     private processHintNode(element: HTMLElement): void {
         const type = element.getAttribute("data-type");
         if (type != "hint" && type != "nesthint") {
@@ -310,7 +324,6 @@ class Viewport {
             items[i].hidden = true;
         }
 
-        this.applyTableMode();
         this.createFooter(items, element.id);
         this.updateHintProgress((index + 1) / items.length);
     }
@@ -319,7 +332,6 @@ class Viewport {
         this.replaceIdsWithDataAttributes(element);
         this.updateImageMapAnchor(element);
         this.createOverlayClickHandler(element);
-        this.applyTableMode();
     }
 
     private processListNode(element: HTMLElement): void {
@@ -330,7 +342,6 @@ class Viewport {
         this.removeUnnecessaryElements(element);
         this.replaceIdsWithDataAttributes(element);
         this.createTitleClickHandlers(element);
-        this.applyTableMode();
     }
 
     private refreshHistoryButtons() {
@@ -362,6 +373,7 @@ class Viewport {
 
     private renderElement(element: HTMLElement): void {
         this.viewport.appendChild(element);
+        this.applyTableMode();
     }
 
     private findBreadcrumbs(element: HTMLElement): string[] {
