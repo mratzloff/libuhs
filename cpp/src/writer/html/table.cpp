@@ -32,10 +32,15 @@ void HTMLWriter::Table::parse() {
 		auto const& line = *it;
 
 		if (!line.empty()) {
-			auto cells = splitLine(line);
-			// Pad with empty cells if needed
-			while (static_cast<int>(cells.size()) < expectedNumColumns) {
-				cells.push_back("");
+			// Use column boundaries to extract header cells
+			std::vector<std::string> cells;
+			for (auto const& [start, end] : columnBoundaries) {
+				if (start < line.size()) {
+					auto len = std::min(end, line.size()) - start;
+					cells.push_back(Strings::trim(line.substr(start, len), ' '));
+				} else {
+					cells.push_back("");
+				}
 			}
 			table_.insert(table_.begin(), cells);
 		}
@@ -152,27 +157,16 @@ bool HTMLWriter::Table::valid() const {
 }
 
 std::vector<std::pair<std::size_t, std::size_t>>
-    HTMLWriter::Table::detectColumnBoundaries() const {
+    HTMLWriter::Table::detectBoundariesFromLine(std::string const& line) const {
 
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries;
 
-	if (demarcationLine_ <= 0) {
-		return boundaries;
-	}
-
-	auto const header = lines_[demarcationLine_ - 1];
-	auto maxLength = header.size();
-	if (static_cast<std::size_t>(demarcationLine_ + 1) < lines_.size()) {
-		maxLength = std::max(maxLength, lines_[demarcationLine_ + 1].size());
-	}
-
-	std::vector<bool> isSpaceGap(maxLength, false);
-
 	// Mark positions that are parts of 2+ space gap
+	std::vector<bool> isSpaceGap(line.size(), false);
 	auto spaceCount = 0;
-	for (std::size_t i = 0; i <= header.size(); ++i) {
-		if (i < header.size() && header[i] == ' ') {
-			spaceCount++;
+	for (std::size_t i = 0; i <= line.size(); ++i) {
+		if (i < line.size() && line[i] == ' ') {
+			++spaceCount;
 		} else {
 			if (spaceCount >= 2) {
 				for (std::size_t j = i - spaceCount; j < i; ++j) {
@@ -187,20 +181,89 @@ std::vector<std::pair<std::size_t, std::size_t>>
 	auto inColumn = false;
 	std::size_t columnStart = 0;
 
-	for (std::size_t i = 0; i < header.size(); ++i) {
-		auto isGap = isSpaceGap[i];
-
-		if (isGap && inColumn) {
+	for (std::size_t i = 0; i < line.size(); ++i) {
+		if (isSpaceGap[i] && inColumn) {
 			boundaries.emplace_back(columnStart, i);
 			inColumn = false;
-		} else if (!isGap && !inColumn) {
+		} else if (!isSpaceGap[i] && !inColumn) {
 			columnStart = i;
 			inColumn = true;
 		}
 	}
 
 	if (inColumn) {
-		boundaries.emplace_back(columnStart, header.size());
+		boundaries.emplace_back(columnStart, line.size());
+	}
+
+	return boundaries;
+}
+
+std::vector<std::pair<std::size_t, std::size_t>>
+    HTMLWriter::Table::detectColumnBoundaries() const {
+
+	if (demarcationLine_ <= 0) {
+		return {};
+	}
+
+	auto const& header = lines_[demarcationLine_ - 1];
+	auto boundaries = detectBoundariesFromLine(header);
+
+	// Refine using the first non-empty data row
+	for (auto i = demarcationLine_ + 1; i < static_cast<int>(lines_.size()); ++i) {
+		if (lines_[i].empty()) {
+			continue;
+		}
+
+		auto dataBoundaries = detectBoundariesFromLine(lines_[i]);
+		if (dataBoundaries.size() <= boundaries.size()) {
+			break;
+		}
+
+		// Map each data column start to the header column it falls within.
+		// Split header columns that contain 2+ data column starts.
+		std::vector<std::pair<std::size_t, std::size_t>> refined;
+		std::size_t dataIndex = 0;
+
+		for (auto const& [hStart, hEnd] : boundaries) {
+			// Collect data column starts that fall within this header column
+			std::vector<std::size_t> dataStarts;
+			while (dataIndex < dataBoundaries.size()
+			       && dataBoundaries[dataIndex].first < hEnd) {
+				dataStarts.push_back(dataBoundaries[dataIndex].first);
+				++dataIndex;
+			}
+
+			if (dataStarts.size() <= 1) {
+				refined.emplace_back(hStart, hEnd);
+				continue;
+			}
+
+			// Split this header column at each extra data column start
+			auto prevStart = hStart;
+			for (std::size_t s = 1; s < dataStarts.size(); ++s) {
+				// Search backward from the data start for a space in the header
+				auto splitPos = dataStarts[s];
+				while (splitPos > prevStart && splitPos < header.size()
+				       && header[splitPos] != ' ') {
+					--splitPos;
+				}
+
+				if (splitPos > prevStart && splitPos < header.size()) {
+					refined.emplace_back(prevStart, splitPos);
+
+					// Skip spaces to find next column start
+					prevStart = splitPos;
+					while (prevStart < hEnd && prevStart < header.size()
+					       && header[prevStart] == ' ') {
+						++prevStart;
+					}
+				}
+			}
+			refined.emplace_back(prevStart, hEnd);
+		}
+
+		boundaries = refined;
+		break;
 	}
 
 	return boundaries;

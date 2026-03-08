@@ -1178,6 +1178,8 @@ private:
 		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
 
+		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
 		int findDemarcationLine() const;
 		void processContinuationLine(std::string const& line,
