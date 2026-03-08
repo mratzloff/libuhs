@@ -5,6 +5,8 @@ namespace UHS {
 HTMLWriter::Table::Table(std::vector<std::string> const& lines) : lines_{lines} {}
 
 void HTMLWriter::Table::parse() {
+	tableEndLine_ = lines_.size();
+
 	if (lines_.empty()) {
 		valid_ = false;
 		return;
@@ -70,6 +72,33 @@ void HTMLWriter::Table::parse() {
 		}
 	}
 
+	// Exclude last row if it's a single long cell (not really table data)
+	if (table_.size() > static_cast<std::size_t>(demarcationLine_) + 1) {
+		auto const& lastRow = table_.back();
+		auto nonEmptyCount = 0;
+		std::size_t longestLength = 0;
+
+		for (auto const& cell : lastRow) {
+			if (!cell.empty()) {
+				++nonEmptyCount;
+				longestLength = std::max(longestLength, cell.size());
+			}
+		}
+
+		if (nonEmptyCount == 1 && longestLength > SuspectCellLength) {
+			table_.pop_back();
+
+			// Find the corresponding line in lines_
+			for (auto i = static_cast<int>(lines_.size()) - 1; i > demarcationLine_;
+			    --i) {
+				if (!lines_[i].empty()) {
+					tableEndLine_ = i;
+					break;
+				}
+			}
+		}
+	}
+
 	valid_ = true;
 }
 
@@ -104,13 +133,36 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 
 	auto text = tableContainer.append_child("div");
 	text.append_attribute("class");
-	text.attribute("class") = "option option-text monospace overflow";
+	auto textHasLongLine = std::any_of(lines_.begin(),
+	    lines_.begin() + tableEndLine_,
+	    [](auto const& l) { return l.size() > SuspectMonospaceLineLength; });
+	text.attribute("class") =
+	    textHasLongLine ? "option option-text" : "option option-text monospace overflow";
 
-	for (std::size_t i = 0; i < lines_.size(); ++i) {
+	for (std::size_t i = 0; i < tableEndLine_; ++i) {
 		if (i > 0) {
 			text.append_child("br");
 		}
 		text.append_child(pugi::node_pcdata).set_value(lines_[i].c_str());
+	}
+
+	// Render excluded lines as a separate block
+	if (tableEndLine_ < lines_.size()) {
+		auto remainder = xmlNode.append_child("div");
+		remainder.append_attribute("class");
+		auto remainderHasLongLine = std::any_of(lines_.begin() + tableEndLine_,
+		    lines_.end(),
+		    [](auto const& l) { return l.size() > SuspectMonospaceLineLength; });
+		if (!remainderHasLongLine) {
+			remainder.attribute("class") = "monospace overflow";
+		}
+
+		for (std::size_t i = tableEndLine_; i < lines_.size(); ++i) {
+			if (i > tableEndLine_) {
+				remainder.append_child("br");
+			}
+			remainder.append_child(pugi::node_pcdata).set_value(lines_[i].c_str());
+		}
 	}
 }
 

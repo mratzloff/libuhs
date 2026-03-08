@@ -426,8 +426,12 @@ void HTMLWriter::serializeTextNode(
 			}
 
 			appendLines();
-			xmlNode.append_attribute("class");
-			xmlNode.attribute("class") = "monospace overflow";
+			auto hasLongLine = std::any_of(segment.begin(), segment.end(),
+			    [](auto const& l) { return l.size() > SuspectMonospaceLineLength; });
+			if (!hasLongLine) {
+				xmlNode.append_attribute("class");
+				xmlNode.attribute("class") = "monospace overflow";
+			}
 		}
 	} else {
 		appendLines();

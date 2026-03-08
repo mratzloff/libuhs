@@ -1163,21 +1163,25 @@ private:
 	class Table {
 	public:
 		Table(std::vector<std::string> const& lines);
+
 		void parse();
 		void serialize(pugi::xml_node& xmlNode) const;
 		bool valid() const;
 
 	private:
+		static constexpr std::size_t SuspectCellLength = 100;
+
 		int demarcationLine_ = 0;
 		std::vector<std::string> const lines_;
+		std::size_t tableEndLine_ = 0;
 		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
 
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
 		int findDemarcationLine() const;
-		std::vector<std::string> splitLine(std::string const& line) const;
 		void processContinuationLine(std::string const& line,
 		    std::vector<std::pair<std::size_t, std::size_t>> const& columnBoundaries);
+		std::vector<std::string> splitLine(std::string const& line) const;
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);
@@ -1221,6 +1225,7 @@ private:
 	std::tuple<int, int, int, int> getRegionCoordinates(Element const& element) const;
 	void populateArea(Element const& element, pugi::xml_node area) const;
 
+	static constexpr std::size_t SuspectMonospaceLineLength = 140;
 	static HTMLWriter::Serializer serializer_;
 
 	std::string css_;
