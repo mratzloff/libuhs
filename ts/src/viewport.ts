@@ -364,11 +364,20 @@ class Viewport {
     }
 
     private removeUnnecessaryElements(element: HTMLElement): void {
-        element.querySelector("p:not(.title)")?.remove();
-        const mediaFiles = element.querySelectorAll(".media");
-        mediaFiles.forEach(mediaFile => mediaFile.remove());
-        const lists = element.querySelectorAll("ol");
-        lists.forEach(list => list.remove());
+        const selectors = [
+            ".media",
+            "div > div.table-container",
+            "div[data-type='text'] > span",
+            "div:empty",
+            "ol",
+            "p:not(.title)",
+            "p:empty",
+        ];
+
+        selectors.forEach(selector => {
+            const elements = element.querySelectorAll(selector);
+            elements.forEach(e => e.remove());
+        });
     }
 
     private renderElement(element: HTMLElement): void {
