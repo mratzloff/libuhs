@@ -28,7 +28,7 @@ HTMLWriter::HTMLWriter(Logger const& logger, std::ostream& out, Options const& o
 void HTMLWriter::write(std::shared_ptr<Document> const document) {
 	pugi::xml_document xml;
 	this->serialize(*document, xml);
-	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
+	xml.save(out_, "", pugi::format_indent | pugi::format_no_declaration);
 }
 
 void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
@@ -360,16 +360,16 @@ std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
 	while (it < end) {
 		if (it + 1 < end && *it == "" && *(it + 1) == "") {
 			for (; it < end && *it == ""; ++it) {
-				tfm::printf("\"%s\" (ignored)\n", *it);
+				// tfm::printf("\"%s\" (ignored)\n", *it);
 			}
 			break;
 		} else if (it + 2 < end && *it == ""
 		           && std::regex_match(*(it + 2), match, Regex::HorizontalLine)) {
-			tfm::printf("\"%s\" (ignored)\n", *it);
+			// tfm::printf("\"%s\" (ignored)\n", *it);
 			++it;
 			break;
 		} else {
-			tfm::printf("\"%s\"\n", *it);
+			// tfm::printf("\"%s\"\n", *it);
 			lines.emplace_back(*it);
 			++it;
 		}
@@ -393,6 +393,16 @@ void HTMLWriter::serializeTextNode(
 		}
 	}
 
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		this->appendClassNames(xmlNode, {"format-hyperlink"});
+	}
+	if (textNode.hasFormat(TextFormat::Monospace)) {
+		this->appendClassNames(xmlNode, {"format-monospace"});
+	}
+	if (textNode.hasFormat(TextFormat::Overflow)) {
+		this->appendClassNames(xmlNode, {"format-overflow"});
+	}
+
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
 
@@ -405,46 +415,70 @@ void HTMLWriter::serializeTextNode(
 		}
 	};
 
-	if (textNode.hasFormat(TextFormat::Monospace | TextFormat::Overflow)) {
-		xmlNode.set_name("div");
-		auto it = lines.cbegin();
-
-		while (it < lines.cend()) {
-			auto segmentStart = it;
-			auto [segment, next] = this->findNextSegment(it, lines.cend());
-			it = next;
-
+	if (textNode.hasFormat(TextFormat::Monospace & TextFormat::Overflow)) {
+		// Check if any segment contains a table
+		bool hasTable = false;
+		for (auto scanIt = lines.cbegin(); scanIt < lines.cend();) {
+			auto [segment, next] = this->findNextSegment(scanIt, lines.cend());
+			scanIt = next;
 			Table table{segment};
 			table.parse();
+			if (table.valid() || table.hasPrecedingText()) {
+				hasTable = true;
+				break;
+			}
+		}
 
-			if (table.valid()) {
-				table.serialize(xmlNode);
+		if (hasTable) {
+			auto container = xmlNode.parent().parent();
+			auto insertAfter = xmlNode.parent();
+			auto it = lines.cbegin();
 
-				if (table.endLine() < segment.size()) {
-					it = segmentStart + table.endLine();
+			while (it < lines.cend()) {
+				auto segmentStart = it;
+				auto [segment, next] = this->findNextSegment(it, lines.cend());
+				it = next;
+
+				Table table{segment};
+				table.parse();
+
+				if (table.valid()) {
+					auto tableNode = container.insert_child_after("div", insertAfter);
+					insertAfter = tableNode;
+					table.serialize(tableNode);
+
+					if (table.endLine() < segment.size()) {
+						it = segmentStart + table.endLine();
+					}
+					continue;
 				}
-				continue;
+
+				if (table.hasPrecedingText()) {
+					it = segmentStart + table.startLine();
+					segment.resize(table.startLine());
+				}
+
+				auto child = container.insert_child_after("p", insertAfter);
+				insertAfter = child;
+				if (textNode.hasFormat(TextFormat::Monospace)) {
+					this->appendClassNames(child, {"monospace"});
+				}
+				if (textNode.hasFormat(TextFormat::Overflow)) {
+					this->appendClassNames(child, {"overflow"});
+				}
+				appendLines(child, segment);
 			}
 
-			auto hasLongLine = std::any_of(segment.begin(),
-			    segment.end(),
-			    [](auto const& l) { return l.size() > SuspectMonospaceLineLength; });
-
-			if (hasLongLine) {
-				auto child = xmlNode.append_child("span");
-				appendLines(child, segment);
-
-				// Render trailing blank lines that findNextSegment consumed
-				for (auto blankIt = segmentStart + segment.size(); blankIt < it;
-				    ++blankIt) {
-					child.append_child("br");
-				}
-			} else {
-				auto child = xmlNode.append_child("div");
-				child.append_attribute("class");
-				child.attribute("class") = "monospace overflow";
-				appendLines(child, segment);
+			xmlNode.parent().remove_child(xmlNode);
+		} else {
+			xmlNode.set_name("span");
+			if (textNode.hasFormat(TextFormat::Monospace)) {
+				this->appendClassNames(xmlNode, {"monospace"});
 			}
+			if (textNode.hasFormat(TextFormat::Overflow)) {
+				this->appendClassNames(xmlNode, {"overflow"});
+			}
+			appendLines(xmlNode, lines);
 		}
 	} else {
 		appendLines(xmlNode, lines);

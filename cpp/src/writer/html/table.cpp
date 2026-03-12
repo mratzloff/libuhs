@@ -18,6 +18,20 @@ void HTMLWriter::Table::parse() {
 		return;
 	}
 
+	// Find the start of the contiguous header block above the demarcation
+	startLine_ = demarcationLine_ - 1;
+	while (startLine_ > 0 && !lines_[startLine_ - 1].empty()) {
+		--startLine_;
+	}
+
+	// Bail if there are non-empty lines before the header block
+	for (std::size_t i = 0; i < startLine_; ++i) {
+		if (!lines_[i].empty()) {
+			valid_ = false;
+			return;
+		}
+	}
+
 	// Detect column boundaries from header row
 	auto columnBoundaries = detectColumnBoundaries();
 	if (columnBoundaries.empty()) {
@@ -32,20 +46,7 @@ void HTMLWriter::Table::parse() {
 		auto const& line = *it;
 
 		if (!line.empty()) {
-			// Use column boundaries to extract header cells
-			std::vector<std::string> cells;
-			for (std::size_t b = 0; b < columnBoundaries.size(); ++b) {
-				auto colStart = columnBoundaries[b].first;
-				auto colEnd = (b + 1 < columnBoundaries.size())
-				    ? columnBoundaries[b + 1].first
-				    : line.size();
-				if (colStart < line.size()) {
-					auto len = std::min(colEnd, line.size()) - colStart;
-					cells.push_back(Strings::trim(line.substr(colStart, len), ' '));
-				} else {
-					cells.push_back("");
-				}
-			}
+			auto cells = extractCellsByBoundaries(line, columnBoundaries);
 			table_.insert(table_.begin(), cells);
 		}
 	}
@@ -61,12 +62,10 @@ void HTMLWriter::Table::parse() {
 		auto naturalBounds = detectBoundariesFromLine(line);
 
 		// Continuation line: starts with space, few segments
-		if (!table_.empty() && std::isspace(line[0])
-		    && naturalBounds.size() <= 2) {
+		if (!table_.empty() && std::isspace(line[0]) && naturalBounds.size() <= 2) {
 			auto& lastRow = table_.back();
 			for (auto const& [segStart, segEnd] : naturalBounds) {
-				auto text = Strings::trim(
-				    line.substr(segStart, segEnd - segStart), ' ');
+				auto text = Strings::trim(line.substr(segStart, segEnd - segStart), ' ');
 				if (text.empty()) {
 					continue;
 				}
@@ -95,24 +94,11 @@ void HTMLWriter::Table::parse() {
 		std::vector<std::string> cells;
 		if (static_cast<int>(naturalBounds.size()) >= expectedNumColumns - 1) {
 			// Normal row or single-space gap — use column boundaries
-			for (std::size_t b = 0; b < columnBoundaries.size(); ++b) {
-				auto colStart = columnBoundaries[b].first;
-				auto colEnd = (b + 1 < columnBoundaries.size())
-				    ? columnBoundaries[b + 1].first
-				    : line.size();
-				if (colStart < line.size()) {
-					auto len = std::min(colEnd, line.size()) - colStart;
-					cells.push_back(
-					    Strings::trim(line.substr(colStart, len), ' '));
-				} else {
-					cells.push_back("");
-				}
-			}
+			cells = extractCellsByBoundaries(line, columnBoundaries);
 		} else {
 			// Non-tabular text — extract using natural boundaries
 			for (auto const& [start, end] : naturalBounds) {
-				cells.push_back(
-				    Strings::trim(line.substr(start, end - start), ' '));
+				cells.push_back(Strings::trim(line.substr(start, end - start), ' '));
 			}
 			while (static_cast<int>(cells.size()) < expectedNumColumns) {
 				cells.push_back("");
@@ -122,42 +108,14 @@ void HTMLWriter::Table::parse() {
 		table_.push_back(cells);
 	}
 
-	// Exclude last row if it's a single long cell (not really table data)
-	if (table_.size() > static_cast<std::size_t>(demarcationLine_) + 1) {
-		auto const& lastRow = table_.back();
-		auto nonEmptyCount = 0;
-		std::size_t longestLength = 0;
-
-		for (auto const& cell : lastRow) {
-			if (!cell.empty()) {
-				++nonEmptyCount;
-				longestLength = std::max(longestLength, cell.size());
-			}
-		}
-
-		if (nonEmptyCount == 1 && longestLength > SuspectCellLength) {
-			table_.pop_back();
-
-			// Find the corresponding line in lines_
-			for (auto i = static_cast<int>(lines_.size()) - 1; i > demarcationLine_;
-			    --i) {
-				if (!lines_[i].empty()) {
-					endLine_ = i;
-					break;
-				}
-			}
-		}
-	}
-
 	valid_ = true;
 }
 
 void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
-	auto tableContainer = xmlNode.append_child("div");
-	tableContainer.append_attribute("class");
-	tableContainer.attribute("class") = "table-container";
+	xmlNode.append_attribute("class");
+	xmlNode.attribute("class") = "table-container";
 
-	auto table = tableContainer.append_child("table");
+	auto table = xmlNode.append_child("table");
 	table.append_attribute("class");
 	table.attribute("class") = "option option-html hidden";
 
@@ -181,7 +139,7 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 		}
 	}
 
-	auto text = tableContainer.append_child("div");
+	auto text = xmlNode.append_child("div");
 	text.append_attribute("class");
 	text.attribute("class") = "option option-text monospace overflow";
 
@@ -193,8 +151,41 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 	}
 }
 
+std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
+    std::string const& line,
+    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
+
+	std::vector<std::string> cells;
+	for (std::size_t b = 0; b < boundaries.size(); ++b) {
+		auto colStart = boundaries[b].first;
+
+		std::size_t colEnd;
+		if (b + 1 < boundaries.size()) {
+			colEnd = boundaries[b + 1].first;
+		} else {
+			colEnd = line.size();
+		}
+
+		if (colStart < line.size()) {
+			auto len = std::min(colEnd, line.size()) - colStart;
+			cells.push_back(Strings::trim(line.substr(colStart, len), ' '));
+		} else {
+			cells.push_back("");
+		}
+	}
+	return cells;
+}
+
 std::size_t HTMLWriter::Table::endLine() const {
 	return endLine_;
+}
+
+bool HTMLWriter::Table::hasPrecedingText() const {
+	return startLine_ > 0;
+}
+
+std::size_t HTMLWriter::Table::startLine() const {
+	return startLine_;
 }
 
 bool HTMLWriter::Table::valid() const {
@@ -323,6 +314,5 @@ int HTMLWriter::Table::findDemarcationLine() const {
 	}
 	return -1;
 }
-
 
 } // namespace UHS

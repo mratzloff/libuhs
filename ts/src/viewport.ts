@@ -364,20 +364,13 @@ class Viewport {
     }
 
     private removeUnnecessaryElements(element: HTMLElement): void {
-        const selectors = [
-            ".media",
-            "div > div.table-container",
-            "div[data-type='text'] > span",
-            "div:empty",
-            "ol",
-            "p:not(.title)",
-            "p:empty",
-        ];
-
-        selectors.forEach(selector => {
-            const elements = element.querySelectorAll(selector);
-            elements.forEach(e => e.remove());
-        });
+        const firstChild = element.firstElementChild;
+        if (!firstChild) {
+            return;
+        }
+        while (firstChild.children.length > 1) {
+            firstChild.removeChild(firstChild.children[1]);
+        }
     }
 
     private renderElement(element: HTMLElement): void {

@@ -1167,13 +1167,14 @@ private:
 		void parse();
 		void serialize(pugi::xml_node& xmlNode) const;
 		std::size_t endLine() const;
+		bool hasPrecedingText() const;
+		std::size_t startLine() const;
 		bool valid() const;
 
 	private:
-		static constexpr std::size_t SuspectCellLength = 100;
-
 		int demarcationLine_ = 0;
 		std::size_t endLine_ = 0;
+		std::size_t startLine_ = 0;
 		std::vector<std::string> const lines_;
 		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
@@ -1181,6 +1182,9 @@ private:
 		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
 		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
+		std::vector<std::string> extractCellsByBoundaries(
+		    std::string const& line,
+		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
 		int findDemarcationLine() const;
 	};
 
@@ -1225,7 +1229,6 @@ private:
 	std::tuple<int, int, int, int> getRegionCoordinates(Element const& element) const;
 	void populateArea(Element const& element, pugi::xml_node area) const;
 
-	static constexpr std::size_t SuspectMonospaceLineLength = 140;
 	static HTMLWriter::Serializer serializer_;
 
 	std::string css_;
