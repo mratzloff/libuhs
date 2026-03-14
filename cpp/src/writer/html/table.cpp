@@ -156,13 +156,27 @@ std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
     std::string const& line,
     std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
 
-	std::vector<std::string> cells;
+	// Adjust boundaries for right-aligned data that extends left of header
+	// positions (e.g. negative numbers whose minus sign precedes the column)
+	std::vector<std::size_t> columnStarts;
 	for (std::size_t b = 0; b < boundaries.size(); ++b) {
-		auto columnStart = boundaries[b].first;
+		auto start = boundaries[b].first;
+		if (b > 0 && start > 0 && start < line.size()
+		    && line[start] != ' ' && line[start - 1] != ' ') {
+			while (start > 0 && line[start - 1] != ' ') {
+				--start;
+			}
+		}
+		columnStarts.push_back(start);
+	}
+
+	std::vector<std::string> cells;
+	for (std::size_t b = 0; b < columnStarts.size(); ++b) {
+		auto columnStart = columnStarts[b];
 
 		std::size_t columnEnd;
-		if (b + 1 < boundaries.size()) {
-			columnEnd = boundaries[b + 1].first;
+		if (b + 1 < columnStarts.size()) {
+			columnEnd = columnStarts[b + 1];
 		} else {
 			columnEnd = line.size();
 		}
