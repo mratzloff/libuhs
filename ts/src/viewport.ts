@@ -369,8 +369,12 @@ class Viewport {
             return;
         }
 
+        const inlineTags = new Set(["SPAN", "A"]);
         for (let i = container.children.length - 1; i >= 1; --i) {
             const child = container.children[i];
+            if (inlineTags.has(child.tagName)) {
+                continue;
+            }
             if (child.querySelector(":scope > div > span.title")) {
                 for (let j = child.children.length - 1; j >= 1; --j) {
                     child.removeChild(child.children[j]);
