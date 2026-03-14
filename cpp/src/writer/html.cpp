@@ -137,6 +137,21 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 
 		depth = nodeDepth;
 	}
+
+	// Clean up after table extraction
+	for (auto node : root.select_nodes("//p[not(node())]")) {
+		auto p = node.node();
+		p.parent().remove_child(p);
+	}
+	for (auto node : root.select_nodes("//div[@class='table-container']")) {
+		auto previous = node.node().previous_sibling();
+		if (previous && std::string(previous.name()) == "p") {
+			auto lastChild = previous.last_child();
+			if (lastChild) {
+				this->removeTrailingBreaks(lastChild);
+			}
+		}
+	}
 }
 
 void HTMLWriter::serializeDocument(
@@ -412,6 +427,11 @@ void HTMLWriter::serializeTextNode(
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
 
+	// for (auto const& line : lines) {
+	// 	tfm::printf("\"%s\"\n", line);
+	// }
+	// tfm::printf("--------\n");
+
 	auto appendLines = [](pugi::xml_node node, std::vector<std::string> const& src) {
 		for (std::size_t i = 0; i < src.size(); ++i) {
 			if (i > 0) {
@@ -421,7 +441,9 @@ void HTMLWriter::serializeTextNode(
 		}
 	};
 
-	if (textNode.hasFormat(TextFormat::Monospace & TextFormat::Overflow)) {
+	if (textNode.hasFormat(TextFormat::Monospace)
+	    || textNode.hasFormat(TextFormat::Overflow)) {
+
 		// Check if any segment contains a table
 		bool hasTable = false;
 		for (auto scanIt = lines.cbegin(); scanIt < lines.cend();) {
@@ -437,7 +459,18 @@ void HTMLWriter::serializeTextNode(
 
 		if (hasTable) {
 			auto container = xmlNode.parent().parent();
-			auto insertAfter = xmlNode.parent();
+			auto insertAfter = container.last_child();
+
+			// Move preceding inline siblings from <p> to container level
+			auto parentNode = xmlNode.parent();
+			while (parentNode.first_child() != xmlNode) {
+				auto sibling = parentNode.first_child();
+				auto wrapper = container.insert_child_after("p", insertAfter);
+				insertAfter = wrapper;
+				wrapper.append_copy(sibling);
+				parentNode.remove_child(sibling);
+			}
+
 			auto it = lines.cbegin();
 
 			while (it < lines.cend()) {
@@ -500,6 +533,15 @@ void HTMLWriter::serializeTextNode(
 		}
 		xmlNode.append_attribute("href") = body.c_str();
 		this->appendClassNames(xmlNode, {"hyperlink"});
+	}
+
+	// If tables were inserted after the <p> by this or previous text nodes,
+	// move this node's content to the correct container-level position
+	if (xmlNode.parent() && xmlNode.parent().next_sibling()) {
+		auto container = xmlNode.parent().parent();
+		auto wrapper = container.insert_child_after("p", container.last_child());
+		wrapper.append_copy(xmlNode);
+		xmlNode.parent().remove_child(xmlNode);
 	}
 }
 
