@@ -364,12 +364,20 @@ class Viewport {
     }
 
     private removeUnnecessaryElements(element: HTMLElement): void {
-        const firstChild = element.firstElementChild;
-        if (!firstChild) {
+        const container = element.firstElementChild;
+        if (!container) {
             return;
         }
-        while (firstChild.children.length > 1) {
-            firstChild.removeChild(firstChild.children[1]);
+
+        for (let i = container.children.length - 1; i >= 1; --i) {
+            const child = container.children[i];
+            if (child.querySelector(":scope > div > span.title")) {
+                for (let j = child.children.length - 1; j >= 1; --j) {
+                    child.removeChild(child.children[j]);
+                }
+            } else {
+                container.removeChild(child);
+            }
         }
     }
 

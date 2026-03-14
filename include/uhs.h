@@ -1221,6 +1221,7 @@ private:
 	    findNextSegment(std::vector<std::string>::const_iterator it,
 	        std::vector<std::string>::const_iterator end) const;
 	pugi::xml_node findOrCreateMap(Element const& element, pugi::xml_node xmlNode) const;
+	void removeTrailingBreaks(pugi::xml_node xmlNode) const;
 	pugi::xml_node findXMLParent(Node const& node, pugi::xml_node const parent,
 	    NodeMap const parents, int const depth) const;
 	std::string getDataURI(std::string const& contentType, std::string const& data) const;

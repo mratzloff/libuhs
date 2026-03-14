@@ -381,6 +381,12 @@ std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
 void HTMLWriter::serializeTextNode(
     TextNode const& textNode, pugi::xml_node xmlNode) const {
 
+	// Remove trailing <br> tags from the previous sibling span
+	auto previousSibling = xmlNode.previous_sibling();
+	if (previousSibling && std::string(previousSibling.name()) == "span") {
+		this->removeTrailingBreaks(previousSibling);
+	}
+
 	if (textNode.hasPreviousSibling()) {
 		auto previousNode = textNode.previousSibling();
 		if (previousNode->isElement()) {
@@ -668,6 +674,21 @@ std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
 	    parent.find_child_by_attribute("div", "class", "hyperpng-container media");
 
 	return container;
+}
+
+void HTMLWriter::removeTrailingBreaks(pugi::xml_node xmlNode) const {
+	auto lastChild = xmlNode.last_child();
+	while (lastChild) {
+		auto isBr = (std::string(lastChild.name()) == "br");
+		auto isEmptyText = (lastChild.type() == pugi::node_pcdata
+		                    && std::string(lastChild.value()).empty());
+
+		if (!isBr && !isEmptyText) {
+			break;
+		}
+		xmlNode.remove_child(lastChild);
+		lastChild = xmlNode.last_child();
+	}
 }
 
 pugi::xml_node HTMLWriter::findOrCreateMap(

@@ -64,26 +64,27 @@ void HTMLWriter::Table::parse() {
 		// Continuation line: starts with space, few segments
 		if (!table_.empty() && std::isspace(line[0]) && naturalBounds.size() <= 2) {
 			auto& lastRow = table_.back();
-			for (auto const& [segStart, segEnd] : naturalBounds) {
-				auto text = Strings::trim(line.substr(segStart, segEnd - segStart), ' ');
+			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
+				auto text = Strings::trim(
+				    line.substr(segmentStart, segmentEnd - segmentStart), ' ');
 				if (text.empty()) {
 					continue;
 				}
 
 				// Find which column this segment falls into
-				std::size_t col = columnBoundaries.size() - 1;
+				std::size_t column = columnBoundaries.size() - 1;
 				for (std::size_t c = 0; c + 1 < columnBoundaries.size(); ++c) {
-					if (segStart < columnBoundaries[c + 1].first) {
-						col = c;
+					if (segmentStart < columnBoundaries[c + 1].first) {
+						column = c;
 						break;
 					}
 				}
 
-				if (col < lastRow.size()) {
-					if (!lastRow[col].empty()) {
-						lastRow[col] += " " + text;
+				if (column < lastRow.size()) {
+					if (!lastRow[column].empty()) {
+						lastRow[column] += " " + text;
 					} else {
-						lastRow[col] = text;
+						lastRow[column] = text;
 					}
 				}
 			}
@@ -157,18 +158,18 @@ std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
 
 	std::vector<std::string> cells;
 	for (std::size_t b = 0; b < boundaries.size(); ++b) {
-		auto colStart = boundaries[b].first;
+		auto columnStart = boundaries[b].first;
 
-		std::size_t colEnd;
+		std::size_t columnEnd;
 		if (b + 1 < boundaries.size()) {
-			colEnd = boundaries[b + 1].first;
+			columnEnd = boundaries[b + 1].first;
 		} else {
-			colEnd = line.size();
+			columnEnd = line.size();
 		}
 
-		if (colStart < line.size()) {
-			auto len = std::min(colEnd, line.size()) - colStart;
-			cells.push_back(Strings::trim(line.substr(colStart, len), ' '));
+		if (columnStart < line.size()) {
+			auto len = std::min(columnEnd, line.size()) - columnStart;
+			cells.push_back(Strings::trim(line.substr(columnStart, len), ' '));
 		} else {
 			cells.push_back("");
 		}
@@ -260,42 +261,41 @@ std::vector<std::pair<std::size_t, std::size_t>>
 		std::vector<std::pair<std::size_t, std::size_t>> refined;
 		std::size_t dataIndex = 0;
 
-		for (auto const& [hStart, hEnd] : boundaries) {
+		for (auto const& [headerStart, headerEnd] : boundaries) {
 			// Collect data column starts that fall within this header column
 			std::vector<std::size_t> dataStarts;
 			while (dataIndex < dataBoundaries.size()
-			       && dataBoundaries[dataIndex].first < hEnd) {
+			       && dataBoundaries[dataIndex].first < headerEnd) {
 				dataStarts.push_back(dataBoundaries[dataIndex].first);
 				++dataIndex;
 			}
 
 			if (dataStarts.size() <= 1) {
-				refined.emplace_back(hStart, hEnd);
+				refined.emplace_back(headerStart, headerEnd);
 				continue;
 			}
 
 			// Split this header column at each extra data column start
-			auto prevStart = hStart;
+			auto previousStart = headerStart;
 			for (std::size_t s = 1; s < dataStarts.size(); ++s) {
 				// Search backward from the data start for a space in the header
-				auto splitPos = dataStarts[s];
-				while (splitPos > prevStart && splitPos < header.size()
-				       && header[splitPos] != ' ') {
-					--splitPos;
+				auto pos = dataStarts[s];
+				while (pos > previousStart && pos < header.size() && header[pos] != ' ') {
+					--pos;
 				}
 
-				if (splitPos > prevStart && splitPos < header.size()) {
-					refined.emplace_back(prevStart, splitPos);
+				if (pos > previousStart && pos < header.size()) {
+					refined.emplace_back(previousStart, pos);
 
 					// Skip spaces to find next column start
-					prevStart = splitPos;
-					while (prevStart < hEnd && prevStart < header.size()
-					       && header[prevStart] == ' ') {
-						++prevStart;
+					previousStart = pos;
+					while (previousStart < headerEnd && previousStart < header.size()
+					       && header[previousStart] == ' ') {
+						++previousStart;
 					}
 				}
 			}
-			refined.emplace_back(prevStart, hEnd);
+			refined.emplace_back(previousStart, headerEnd);
 		}
 
 		boundaries = refined;
