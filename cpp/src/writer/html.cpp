@@ -143,11 +143,16 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 	         "//span[contains(@class,'monospace') and contains(@class,'overflow')]")) {
 		auto span = node.node();
 		auto parent = span.parent();
-		auto container = parent.parent();
 
-		// Move preceding siblings into a new <p> before the parent
+		// If the span is the only child, stay within the parent (e.g. hint div).
+		// Otherwise, split at the grandparent level.
+		auto isOnlyChild = (parent.first_child() == span && !span.next_sibling());
+		auto insertInto = isOnlyChild ? parent : parent.parent();
+		auto insertBefore = isOnlyChild ? span : parent;
+
+		// Move preceding siblings into a new <p>
 		if (parent.first_child() != span) {
-			auto before = container.insert_child_before("p", parent);
+			auto before = insertInto.insert_child_before("p", insertBefore);
 			while (parent.first_child() != span) {
 				auto sibling = parent.first_child();
 				before.append_copy(sibling);
@@ -156,7 +161,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		}
 
 		// Move the span into its own <p>
-		auto block = container.insert_child_before("p", parent);
+		auto block = insertInto.insert_child_before("p", insertBefore);
 		this->appendClassNames(block, {"monospace", "overflow"});
 		while (span.first_child()) {
 			auto child = span.first_child();
