@@ -75,6 +75,14 @@ area.clickable {
     padding: 10px 15px;
 }
 
+.hint > p:first-child {
+    margin-top: 0;
+}
+
+.hint > p:last-child {
+    margin-bottom: 0;
+}
+
 .hyperpng-background {
     position: relative;
 }

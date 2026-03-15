@@ -383,6 +383,22 @@ class Viewport {
                 container.removeChild(child);
             }
         }
+
+        // Strip table content from data-id elements inside hint divs
+        const hints = element.querySelectorAll(":scope .hint");
+        for (let h = 0; h < hints.length; ++h) {
+            const dataElements = hints[h].querySelectorAll(":scope > [data-id]");
+            for (let d = 0; d < dataElements.length; ++d) {
+                const dataElement = dataElements[d];
+                const titleDiv = dataElement.firstElementChild;
+                if (!titleDiv?.querySelector(":scope > span.title")) {
+                    continue;
+                }
+                for (let i = dataElement.children.length - 1; i >= 1; --i) {
+                    dataElement.removeChild(dataElement.children[i]);
+                }
+            }
+        }
     }
 
     private renderElement(element: HTMLElement): void {

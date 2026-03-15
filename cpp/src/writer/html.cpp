@@ -138,8 +138,65 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		depth = nodeDepth;
 	}
 
-	// Clean up after table extraction
-	for (auto node : root.select_nodes("//p[not(node())]")) {
+	// Split parent elements around monospace+overflow spans into separate blocks
+	for (auto node : root.select_nodes(
+	         "//span[contains(@class,'monospace') and contains(@class,'overflow')]")) {
+		auto span = node.node();
+		auto parent = span.parent();
+		auto container = parent.parent();
+
+		// Move preceding siblings into a new <p> before the parent
+		if (parent.first_child() != span) {
+			auto before = container.insert_child_before("p", parent);
+			while (parent.first_child() != span) {
+				auto sibling = parent.first_child();
+				before.append_copy(sibling);
+				parent.remove_child(sibling);
+			}
+		}
+
+		// Move the span into its own <p>
+		auto block = container.insert_child_before("p", parent);
+		this->appendClassNames(block, {"monospace", "overflow"});
+		while (span.first_child()) {
+			auto child = span.first_child();
+			block.append_copy(child);
+			span.remove_child(child);
+		}
+		parent.remove_child(span);
+	}
+
+	// Wrap consecutive inline element runs in <p> when not already inside a <p>.
+	// Select only the first element in each run (no preceding inline sibling).
+	{
+		auto results = root.select_nodes(
+		    "//span[not(parent::p) and not(contains(@class,'title'))"
+		    " and not(preceding-sibling::*[1][self::a or self::span])]");
+		std::vector<pugi::xml_node> runStarts;
+		for (auto const& node : results) {
+			runStarts.push_back(node.node());
+		}
+
+		for (auto current : runStarts) {
+			auto wrapper = current.parent().insert_child_before("p", current);
+			while (current) {
+				auto name = std::string(current.name());
+				if (name != "a" && name != "span") {
+					break;
+				}
+				auto next = current.next_sibling();
+				wrapper.append_move(current);
+				current = next;
+			}
+			auto lastChild = wrapper.last_child();
+			if (lastChild) {
+				this->removeTrailingBreaks(lastChild);
+			}
+		}
+	}
+
+	// Remove empty or whitespace-only <p> elements
+	for (auto node : root.select_nodes("//p[not(node()) or normalize-space() = '']")) {
 		auto p = node.node();
 		p.parent().remove_child(p);
 	}
