@@ -1171,7 +1171,10 @@ private:
 		std::size_t startLine() const;
 		bool valid() const;
 
+		static constexpr double HeaderlessConsensusThreshold = 0.6;
+
 	private:
+		bool headerless_ = false;
 		int demarcationLine_ = 0;
 		std::size_t endLine_ = 0;
 		std::size_t startLine_ = 0;
@@ -1182,8 +1185,9 @@ private:
 		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
 		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
-		std::vector<std::string> extractCellsByBoundaries(
-		    std::string const& line,
+		std::vector<std::pair<std::size_t, std::size_t>>
+		    detectHeaderlessColumnBoundaries() const;
+		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
 		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
 		int findDemarcationLine() const;
 	};

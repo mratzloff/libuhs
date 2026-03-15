@@ -13,46 +13,61 @@ void HTMLWriter::Table::parse() {
 	}
 
 	demarcationLine_ = findDemarcationLine();
-	if (demarcationLine_ <= 0) {
-		valid_ = false;
-		return;
-	}
 
-	// Find the start of the contiguous header block above the demarcation
-	startLine_ = demarcationLine_ - 1;
-	while (startLine_ > 0 && !lines_[startLine_ - 1].empty()) {
-		--startLine_;
-	}
+	std::vector<std::pair<std::size_t, std::size_t>> columnBoundaries;
+	std::size_t dataStartLine = 0;
 
-	// Bail if there are non-empty lines before the header block
-	for (std::size_t i = 0; i < startLine_; ++i) {
-		if (!lines_[i].empty()) {
+	if (demarcationLine_ > 0) {
+		// Find the start of the contiguous header block above the demarcation
+		startLine_ = demarcationLine_ - 1;
+		while (startLine_ > 0 && !lines_[startLine_ - 1].empty()) {
+			--startLine_;
+		}
+
+		// Bail if there are non-empty lines before the header block
+		for (std::size_t i = 0; i < startLine_; ++i) {
+			if (!lines_[i].empty()) {
+				valid_ = false;
+				return;
+			}
+		}
+
+		// Detect column boundaries from header row
+		columnBoundaries = detectColumnBoundaries();
+		if (columnBoundaries.empty()) {
 			valid_ = false;
 			return;
 		}
-	}
 
-	// Detect column boundaries from header row
-	auto columnBoundaries = detectColumnBoundaries();
-	if (columnBoundaries.empty()) {
-		valid_ = false;
-		return;
+		// Add header rows (all non-empty lines before demarcation)
+		for (auto it = lines_.begin() + demarcationLine_ - 1; it >= lines_.begin();
+		    --it) {
+			auto const& line = *it;
+
+			if (!line.empty()) {
+				auto cells = extractCellsByBoundaries(line, columnBoundaries);
+				table_.insert(table_.begin(), cells);
+			}
+		}
+
+		dataStartLine = demarcationLine_ + 1;
+	} else {
+		// Try headerless columnar detection
+		columnBoundaries = detectHeaderlessColumnBoundaries();
+		if (columnBoundaries.empty()) {
+			valid_ = false;
+			return;
+		}
+
+		headerless_ = true;
+		startLine_ = 0;
+		dataStartLine = 0;
 	}
 
 	int expectedNumColumns = columnBoundaries.size();
 
-	// Add header rows (all non-empty lines before demarcation)
-	for (auto it = lines_.begin() + demarcationLine_ - 1; it >= lines_.begin(); --it) {
-		auto const& line = *it;
-
-		if (!line.empty()) {
-			auto cells = extractCellsByBoundaries(line, columnBoundaries);
-			table_.insert(table_.begin(), cells);
-		}
-	}
-
-	// Add data rows (all lines after demarcation)
-	for (auto it = lines_.begin() + demarcationLine_ + 1; it < lines_.end(); ++it) {
+	// Add data rows
+	for (auto it = lines_.begin() + dataStartLine; it < lines_.end(); ++it) {
 		auto const& line = *it;
 
 		if (line.empty()) {
@@ -120,18 +135,21 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 	table.append_attribute("class");
 	table.attribute("class") = "option option-html hidden";
 
-	auto thead = table.append_child("thead");
-	for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
-		auto const& row = *it;
-		auto tr = thead.append_child("tr");
-		for (auto const& cell : row) {
-			auto th = tr.append_child("th");
-			th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+	if (!headerless_) {
+		auto thead = table.append_child("thead");
+		for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
+			auto const& row = *it;
+			auto tr = thead.append_child("tr");
+			for (auto const& cell : row) {
+				auto th = tr.append_child("th");
+				th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+			}
 		}
 	}
 
 	auto tbody = table.append_child("tbody");
-	for (auto it = table_.begin() + demarcationLine_; it < table_.end(); ++it) {
+	auto tbodyStart = headerless_ ? table_.begin() : table_.begin() + demarcationLine_;
+	for (auto it = tbodyStart; it < table_.end(); ++it) {
 		auto tr = tbody.append_child("tr");
 		auto const& row = *it;
 		for (auto const& cell : row) {
@@ -160,8 +178,8 @@ std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
 	std::vector<std::size_t> columnStarts;
 	for (std::size_t b = 0; b < boundaries.size(); ++b) {
 		auto start = boundaries[b].first;
-		if (b > 0 && start > 0 && start < line.size()
-		    && line[start] != ' ' && line[start - 1] != ' ') {
+		if (b > 0 && start > 0 && start < line.size() && line[start] != ' '
+		    && line[start - 1] != ' ') {
 			// Search left for nearest space
 			auto leftPos = start;
 			while (leftPos > 0 && line[leftPos - 1] != ' ') {
@@ -327,6 +345,72 @@ std::vector<std::pair<std::size_t, std::size_t>>
 
 		boundaries = refined;
 		break;
+	}
+
+	return boundaries;
+}
+
+std::vector<std::pair<std::size_t, std::size_t>>
+    HTMLWriter::Table::detectHeaderlessColumnBoundaries() const {
+
+	// Count how many non-continuation lines produce each column count
+	std::map<std::size_t, int> columnFreqs;
+	int numDataLines = 0;
+
+	for (auto const& line : lines_) {
+		if (line.empty() || std::isspace(static_cast<unsigned char>(line[0]))) {
+			continue;
+		}
+		auto bounds = detectBoundariesFromLine(line);
+		++columnFreqs[bounds.size()];
+		++numDataLines;
+	}
+
+	if (numDataLines < 3) {
+		return {};
+	}
+
+	// Find most common column count >= 2
+	std::size_t numConsensusColumns = 0;
+	int consensusFreq = 0;
+	for (auto const& [numColumns, freq] : columnFreqs) {
+		if (numColumns >= 2 && freq > consensusFreq) {
+			numConsensusColumns = numColumns;
+			consensusFreq = freq;
+		}
+	}
+
+	auto const consensusRatio =
+	    static_cast<double>(consensusFreq) / static_cast<double>(numDataLines);
+	if (numConsensusColumns < 2 || consensusRatio < HeaderlessConsensusThreshold) {
+		return {};
+	}
+
+	// Compute consensus boundaries by averaging start positions across matching lines
+	std::vector<double> startSums(numConsensusColumns, 0.0);
+	std::vector<double> endSums(numConsensusColumns, 0.0);
+	int numMatches = 0;
+
+	for (auto const& line : lines_) {
+		if (line.empty() || std::isspace(static_cast<unsigned char>(line[0]))) {
+			continue;
+		}
+		auto bounds = detectBoundariesFromLine(line);
+		if (bounds.size() != numConsensusColumns) {
+			continue;
+		}
+		for (std::size_t c = 0; c < numConsensusColumns; ++c) {
+			startSums[c] += bounds[c].first;
+			endSums[c] += bounds[c].second;
+		}
+		++numMatches;
+	}
+
+	std::vector<std::pair<std::size_t, std::size_t>> boundaries;
+	for (std::size_t c = 0; c < numConsensusColumns; ++c) {
+		auto start = static_cast<std::size_t>(startSums[c] / numMatches + 0.5);
+		auto end = static_cast<std::size_t>(endSums[c] / numMatches + 0.5);
+		boundaries.emplace_back(start, end);
 	}
 
 	return boundaries;
