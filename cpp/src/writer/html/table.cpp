@@ -288,7 +288,19 @@ std::vector<std::pair<std::size_t, std::size_t>>
 	}
 
 	auto const& header = lines_[demarcationLine_ - 1];
-	auto boundaries = detectBoundariesFromLine(header);
+	auto const& demarcation = lines_[demarcationLine_];
+	auto headerBoundaries = detectBoundariesFromLine(header);
+	auto demarcationBoundaries = detectBoundariesFromLine(demarcation);
+
+	// Prefer demarcation boundaries (full column width) over header boundaries
+	// (text width only), but fall back to header if the demarcation has fewer
+	// segments.
+	std::vector<std::pair<std::size_t, std::size_t>> boundaries;
+	if (demarcationBoundaries.size() >= headerBoundaries.size()) {
+		boundaries = demarcationBoundaries;
+	} else {
+		boundaries = headerBoundaries;
+	}
 
 	// Refine using the first non-empty data row
 	for (auto i = demarcationLine_ + 1; i < static_cast<int>(lines_.size()); ++i) {
