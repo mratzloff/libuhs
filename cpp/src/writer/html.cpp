@@ -205,6 +205,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		auto p = node.node();
 		p.parent().remove_child(p);
 	}
+
 	for (auto node : root.select_nodes("//div[@class='table-container']")) {
 		auto previous = node.node().previous_sibling();
 		if (previous && std::string(previous.name()) == "p") {
@@ -437,16 +438,13 @@ std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
 	while (it < end) {
 		if (it + 1 < end && *it == "" && *(it + 1) == "") {
 			for (; it < end && *it == ""; ++it) {
-				// tfm::printf("\"%s\" (ignored)\n", *it);
 			}
 			break;
 		} else if (it + 2 < end && *it == ""
 		           && std::regex_match(*(it + 2), match, Regex::HorizontalLine)) {
-			// tfm::printf("\"%s\" (ignored)\n", *it);
 			++it;
 			break;
 		} else {
-			// tfm::printf("\"%s\"\n", *it);
 			lines.emplace_back(*it);
 			++it;
 		}
@@ -503,43 +501,82 @@ void HTMLWriter::serializeTextNode(
 		}
 	};
 
-	if (textNode.hasFormat(TextFormat::Monospace)
-	    || textNode.hasFormat(TextFormat::Overflow)) {
+	auto isMonospace = textNode.hasFormat(TextFormat::Monospace);
+	auto isOverflow = textNode.hasFormat(TextFormat::Overflow);
+	auto isMonoOrOverflow = (isMonospace || isOverflow);
 
-		// Check if any segment contains a table
-		bool hasTable = false;
-		for (auto scanIt = lines.cbegin(); scanIt < lines.cend();) {
-			auto [segment, next] = this->findNextSegment(scanIt, lines.cend());
-			scanIt = next;
+	// Count segments (separated by blank lines) and check for tables
+	int segmentCount = 0;
+	bool hasTable = false;
+	bool hasTrailingBreak = false;
+	for (auto scanIt = lines.cbegin(); scanIt < lines.cend();) {
+		auto [segment, next] = this->findNextSegment(scanIt, lines.cend());
+		scanIt = next;
+		++segmentCount;
+
+		if (isMonoOrOverflow && !hasTable) {
 			Table table{segment};
 			table.parse();
 			if (table.valid() || table.hasPrecedingText()) {
 				hasTable = true;
-				break;
 			}
 		}
+	}
 
-		if (hasTable) {
-			auto container = xmlNode.parent().parent();
-			auto insertAfter = container.last_child();
+	// Detect trailing paragraph break (body ends with \n\n)
+	if (lines.size() >= 2) {
+		auto end = lines.crbegin();
+		if (*end == "" && *(end + 1) == "") {
+			hasTrailingBreak = true;
+		}
+	}
 
-			// Move preceding inline siblings from <p> to container level
-			auto parentNode = xmlNode.parent();
-			while (parentNode.first_child() != xmlNode) {
-				auto sibling = parentNode.first_child();
-				auto wrapper = container.insert_child_after("p", insertAfter);
-				insertAfter = wrapper;
-				wrapper.append_copy(sibling);
-				parentNode.remove_child(sibling);
+	auto escapeToContainer = (segmentCount > 1 || hasTable || hasTrailingBreak);
+
+	auto applyHyperlink = [&](pugi::xml_node node) {
+		if (!textNode.hasFormat(TextFormat::Hyperlink)) {
+			return;
+		}
+		node.set_name("a");
+		auto href = body;
+		std::smatch matches;
+		if (std::regex_match(href, matches, Regex::EmailAddress)) {
+			href = "mailto:" + href;
+		} else if (!std::regex_match(href, matches, Regex::URL)) {
+			href = "http://" + href;
+		}
+		node.append_attribute("href") = href.c_str();
+		this->appendClassNames(node, {"hyperlink"});
+	};
+
+	if (escapeToContainer) {
+		auto container = xmlNode.parent().parent();
+		auto insertAfter = container.last_child();
+
+		// Move preceding inline siblings from <p> to container level (unwrapped)
+		auto parentNode = xmlNode.parent();
+		while (parentNode.first_child() != xmlNode) {
+			auto sibling = parentNode.first_child();
+			insertAfter = container.insert_move_after(sibling, insertAfter);
+		}
+
+		auto it = lines.cbegin();
+		bool firstSegment = true;
+
+		while (it < lines.cend()) {
+			auto segmentStart = it;
+			auto [segment, next] = this->findNextSegment(it, lines.cend());
+			it = next;
+
+			// Insert an empty <p> between segments to break inline runs.
+			// The empty-<p> cleanup pass removes these after wrapping.
+			if (!firstSegment) {
+				insertAfter = container.insert_child_after("p", insertAfter);
 			}
+			firstSegment = false;
 
-			auto it = lines.cbegin();
-
-			while (it < lines.cend()) {
-				auto segmentStart = it;
-				auto [segment, next] = this->findNextSegment(it, lines.cend());
-				it = next;
-
+			// Try table parse for monospace/overflow content
+			if (isMonoOrOverflow) {
 				Table table{segment};
 				table.parse();
 
@@ -558,52 +595,43 @@ void HTMLWriter::serializeTextNode(
 					it = segmentStart + table.startLine();
 					segment.resize(table.startLine());
 				}
-
-				auto child = container.insert_child_after("p", insertAfter);
-				insertAfter = child;
-				if (textNode.hasFormat(TextFormat::Monospace)) {
-					this->appendClassNames(child, {"monospace"});
-				}
-				if (textNode.hasFormat(TextFormat::Overflow)) {
-					this->appendClassNames(child, {"overflow"});
-				}
-				appendLines(child, segment);
 			}
 
-			xmlNode.parent().remove_child(xmlNode);
-		} else {
-			xmlNode.set_name("span");
-			if (textNode.hasFormat(TextFormat::Monospace)) {
-				this->appendClassNames(xmlNode, {"monospace"});
+			auto child = container.insert_child_after("span", insertAfter);
+			insertAfter = child;
+			if (isMonospace) {
+				this->appendClassNames(child, {"format-monospace", "monospace"});
 			}
-			if (textNode.hasFormat(TextFormat::Overflow)) {
-				this->appendClassNames(xmlNode, {"overflow"});
+			if (isOverflow) {
+				this->appendClassNames(child, {"format-overflow", "overflow"});
 			}
-			appendLines(xmlNode, lines);
+			appendLines(child, segment);
+			applyHyperlink(child);
 		}
+
+		// Insert trailing separator so the next text node starts a new paragraph
+		if (hasTrailingBreak) {
+			container.insert_child_after("p", insertAfter);
+		}
+
+		xmlNode.parent().remove_child(xmlNode);
 	} else {
-		appendLines(xmlNode, lines);
-	}
-
-	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		xmlNode.set_name("a");
-		std::smatch matches;
-		if (std::regex_match(body, matches, Regex::EmailAddress)) {
-			body = "mailto:" + body;
-		} else if (!std::regex_match(body, matches, Regex::URL)) {
-			body = "http://" + body;
+		if (isMonospace) {
+			this->appendClassNames(xmlNode, {"monospace"});
 		}
-		xmlNode.append_attribute("href") = body.c_str();
-		this->appendClassNames(xmlNode, {"hyperlink"});
+		if (isOverflow) {
+			this->appendClassNames(xmlNode, {"overflow"});
+		}
+		appendLines(xmlNode, lines);
+		applyHyperlink(xmlNode);
 	}
 
-	// If tables were inserted after the <p> by this or previous text nodes,
-	// move this node's content to the correct container-level position
+	// If content was escaped to container level by this or a previous text node,
+	// move this node to container level (unwrapped) so the inline-run wrapping
+	// post-processing can group it with adjacent spans.
 	if (xmlNode.parent() && xmlNode.parent().next_sibling()) {
 		auto container = xmlNode.parent().parent();
-		auto wrapper = container.insert_child_after("p", container.last_child());
-		wrapper.append_copy(xmlNode);
-		xmlNode.parent().remove_child(xmlNode);
+		container.insert_move_after(xmlNode, container.last_child());
 	}
 }
 
