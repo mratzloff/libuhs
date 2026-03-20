@@ -66,6 +66,12 @@ void HTMLWriter::Table::parse() {
 
 	int expectedNumColumns = columnBoundaries.size();
 
+	// Table width from demarcation line (used to detect line wrapping)
+	std::size_t tableWidth = 0;
+	if (demarcationLine_ >= 0 && demarcationLine_ < static_cast<int>(lines_.size())) {
+		tableWidth = lines_[demarcationLine_].size();
+	}
+
 	// Add data rows
 	bool afterSeparator = false;
 	for (auto it = lines_.begin() + dataStartLine; it < lines_.end(); ++it) {
@@ -78,10 +84,23 @@ void HTMLWriter::Table::parse() {
 
 		auto naturalBounds = detectBoundariesFromLine(line);
 
-		// Continuation line: starts with space, few segments, and not
-		// preceded by a separator line (which signals a new row group)
-		if (!table_.empty() && !afterSeparator && std::isspace(line[0])
-		    && naturalBounds.size() <= 2) {
+		// Continuation line: starts with space, few segments, not
+		// preceded by a separator line, and the previous row's last
+		// column cell fills its column width (indicating text was
+		// wrapped by the width limit rather than being a new row
+		// with empty leading columns)
+		bool previousCellFull = (tableWidth == 0);
+		if (!previousCellFull && !table_.empty()) {
+			auto const& lastRow = table_.back();
+			auto lastColumnIndex = columnBoundaries.size() - 1;
+			auto lastColumnWidth = tableWidth - columnBoundaries[lastColumnIndex].first;
+			if (lastColumnIndex < lastRow.size()
+			    && lastRow[lastColumnIndex].size() * 4 >= lastColumnWidth * 3) {
+				previousCellFull = true;
+			}
+		}
+		if (!table_.empty() && !afterSeparator && previousCellFull
+		    && std::isspace(line[0]) && naturalBounds.size() <= 2) {
 			auto& lastRow = table_.back();
 			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
 				auto text = Strings::trim(
