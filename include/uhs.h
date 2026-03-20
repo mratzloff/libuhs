@@ -1172,11 +1172,12 @@ private:
 		static constexpr double HeaderlessConsensusThreshold = 0.6;
 
 	private:
-		bool headerless_ = false;
+		bool charGrid_ = false;
 		int demarcationLine_ = 0;
 		std::size_t endLine_ = 0;
-		std::size_t startLine_ = 0;
+		bool headerless_ = false;
 		std::vector<std::string> const lines_;
+		std::size_t startLine_ = 0;
 		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
 

@@ -39,6 +39,17 @@ void HTMLWriter::Table::parse() {
 			return;
 		}
 
+		// Detect single-character grid (boundaries at stride 2, width 1)
+		if (columnBoundaries.size() >= 2) {
+			charGrid_ = true;
+			for (auto const& [start, end] : columnBoundaries) {
+				if (end - start != 1 || (start > 0 && start % 2 != 0)) {
+					charGrid_ = false;
+					break;
+				}
+			}
+		}
+
 		// Add header rows (all non-empty lines before demarcation)
 		for (auto it = lines_.begin() + demarcationLine_ - 1; it >= lines_.begin();
 		    --it) {
@@ -106,7 +117,7 @@ void HTMLWriter::Table::parse() {
 		// (indicating text overflowed the column rather than being a
 		// new row with empty leading columns)
 		bool isContinuation = (tableWidth == 0);
-		if (!isContinuation && !table_.empty()) {
+		if (!isContinuation && !charGrid_ && !table_.empty()) {
 			auto const& lastRow = table_.back();
 			isContinuation = true;
 			for (auto const& [segStart, segEnd] : naturalBounds) {
@@ -174,7 +185,8 @@ void HTMLWriter::Table::parse() {
 
 		// Extract cells
 		std::vector<std::string> cells;
-		if (static_cast<int>(naturalBounds.size()) >= expectedNumColumns - 1) {
+		if (charGrid_
+		    || static_cast<int>(naturalBounds.size()) >= expectedNumColumns - 1) {
 			// Normal row or single-space gap — use column boundaries
 			cells = extractCellsByBoundaries(line, columnBoundaries);
 		} else {
@@ -366,6 +378,23 @@ std::vector<std::pair<std::size_t, std::size_t>>
 		boundaries = demarcationBoundaries;
 	} else {
 		boundaries = headerBoundaries;
+	}
+
+	// Fallback: single-character grid (e.g. "1 2 3 4 5" over "---------")
+	if (boundaries.size() == 1 && header.size() >= 3 && header.size() % 2 == 1) {
+		bool isCharGrid = true;
+		for (std::size_t i = 0; i < header.size(); ++i) {
+			if ((i % 2 == 0) ? (header[i] == ' ') : (header[i] != ' ')) {
+				isCharGrid = false;
+				break;
+			}
+		}
+		if (isCharGrid) {
+			boundaries.clear();
+			for (std::size_t i = 0; i < header.size(); i += 2) {
+				boundaries.emplace_back(i, i + 1);
+			}
+		}
 	}
 
 	// Refine using the first non-empty data row
