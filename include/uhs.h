@@ -270,7 +270,7 @@ public:
 	template<typename... Args>
 	void error(char const* format, Args... args) const {
 		if (level_ != LogLevel::None) {
-			this->log(std::cout, "error: ", format, args...);
+			this->log("error: ", format, args...);
 		}
 	}
 
@@ -282,7 +282,7 @@ public:
 		if (level_ == LogLevel::Warn || level_ == LogLevel::Info
 		    || level_ == LogLevel::Debug) {
 
-			this->log(std::cout, "warning: ", format, args...);
+			this->log("warning: ", format, args...);
 		}
 	}
 
@@ -291,7 +291,7 @@ public:
 	template<typename... Args>
 	void info(char const* format, Args... args) const {
 		if (level_ == LogLevel::Info || level_ == LogLevel::Debug) {
-			this->log(std::cout, "info: ", format, args...);
+			this->log("info: ", format, args...);
 		}
 	}
 
@@ -300,7 +300,7 @@ public:
 	template<typename... Args>
 	void debug(char const* format, Args... args) const {
 		if (level_ == LogLevel::Debug) {
-			this->log(std::cout, "debug: ", format, args...);
+			this->log("debug: ", format, args...);
 		}
 	}
 
@@ -308,16 +308,14 @@ private:
 	LogLevel level_;
 
 	template<typename... Args>
-	void log(std::ostream& ostream, char const* prefix, char const* format,
-	    Args... args) const {
-
+	void log(char const* prefix, char const* format, Args... args) const {
 		std::string buffer;
 		buffer += "uhs: ";
 		buffer += prefix;
 		buffer += format;
 		buffer += '\n';
 
-		tfm::format(ostream, buffer.c_str(), args...);
+		tfm::format(std::cerr, buffer.c_str(), args...);
 	}
 };
 

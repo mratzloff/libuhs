@@ -16,11 +16,17 @@ int convert(int argc, char const* argv[]) {
 
 	// Print debugging statements
 	options.debug = args[{"--debug"}];
-	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	logger.level(options.quiet ? LogLevel::None : LogLevel::Info);
+
+	auto logLevel = LogLevel::Info;
+	if (options.debug) {
+		logLevel = LogLevel::Debug;
+	} else if (options.quiet) {
+		logLevel = LogLevel::None;
+	}
+	Logger logger{logLevel};
 
 	// Output format
 	std::string format;
@@ -82,11 +88,17 @@ int download(int argc, char const* argv[]) {
 
 	// Print debugging statements
 	options.debug = args[{"--debug"}];
-	Logger logger{options.debug ? LogLevel::Debug : LogLevel::Info};
 
 	// Suppress errors and warnings
 	options.quiet = args[{"-q", "--quiet"}];
-	logger.level(options.quiet ? LogLevel::None : LogLevel::Info);
+
+	auto logLevel = LogLevel::Info;
+	if (options.debug) {
+		logLevel = LogLevel::Debug;
+	} else if (options.quiet) {
+		logLevel = LogLevel::None;
+	}
+	Logger logger{logLevel};
 
 	// Download file
 	if (argc < 2 && !all) {
