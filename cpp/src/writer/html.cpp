@@ -557,14 +557,24 @@ void HTMLWriter::serializeTextNode(
 	};
 
 	if (escapeToContainer) {
-		auto container = xmlNode.parent().parent();
-		auto insertAfter = container.last_child();
-
-		// Move preceding inline siblings from <p> to container level (unwrapped)
 		auto parentNode = xmlNode.parent();
-		while (parentNode.first_child() != xmlNode) {
-			auto sibling = parentNode.first_child();
-			insertAfter = container.insert_move_after(sibling, insertAfter);
+		auto container = parentNode;
+		if (strcmp(parentNode.name(), "p") == 0) {
+			container = parentNode.parent();
+		}
+
+		pugi::xml_node insertAfter;
+		if (container == parentNode) {
+			// Span is directly in the container — insert after the span
+			insertAfter = xmlNode;
+		} else {
+			insertAfter = container.last_child();
+
+			// Move preceding inline siblings from <p> to container level
+			while (parentNode.first_child() != xmlNode) {
+				auto sibling = parentNode.first_child();
+				insertAfter = container.insert_move_after(sibling, insertAfter);
+			}
 		}
 
 		auto it = lines.cbegin();
