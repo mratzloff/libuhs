@@ -82,24 +82,64 @@ void HTMLWriter::Table::parse() {
 			continue;
 		}
 
+		// If the next non-empty line is a demarcation, the current line
+		// is the header of a subsequent table — stop before it
+		for (auto peek = it + 1; peek < lines_.end(); ++peek) {
+			if (peek->empty() || Strings::trim(*peek, ' ').empty()) {
+				continue;
+			}
+			std::smatch match;
+			if (std::regex_match(*peek, match, Regex::HorizontalLine)) {
+				endLine_ = static_cast<std::size_t>(it - lines_.begin());
+			}
+			break;
+		}
+		if (endLine_ < lines_.size()) {
+			break;
+		}
+
 		auto naturalBounds = detectBoundariesFromLine(line);
 
 		// Continuation line: starts with space, few segments, not
-		// preceded by a separator line, and the previous row's last
-		// column cell fills its column width (indicating text was
-		// wrapped by the width limit rather than being a new row
-		// with empty leading columns)
-		bool previousCellFull = (tableWidth == 0);
-		if (!previousCellFull && !table_.empty()) {
+		// preceded by a separator line, and each segment's text combined
+		// with the previous row's cell would exceed the column width
+		// (indicating text overflowed the column rather than being a
+		// new row with empty leading columns)
+		bool isContinuation = (tableWidth == 0);
+		if (!isContinuation && !table_.empty()) {
 			auto const& lastRow = table_.back();
-			auto lastColumnIndex = columnBoundaries.size() - 1;
-			auto lastColumnWidth = tableWidth - columnBoundaries[lastColumnIndex].first;
-			if (lastColumnIndex < lastRow.size()
-			    && lastRow[lastColumnIndex].size() * 4 >= lastColumnWidth * 3) {
-				previousCellFull = true;
+			isContinuation = true;
+			for (auto const& [segStart, segEnd] : naturalBounds) {
+				auto text = Strings::trim(
+				    line.substr(segStart, segEnd - segStart), ' ');
+				if (text.empty()) {
+					continue;
+				}
+
+				std::size_t column = columnBoundaries.size() - 1;
+				for (std::size_t c = 0; c + 1 < columnBoundaries.size(); ++c) {
+					if (segStart < columnBoundaries[c + 1].first) {
+						column = c;
+						break;
+					}
+				}
+
+				std::size_t columnWidth;
+				if (column + 1 < columnBoundaries.size()) {
+					columnWidth = columnBoundaries[column + 1].first
+					              - columnBoundaries[column].first;
+				} else {
+					columnWidth = tableWidth - columnBoundaries[column].first;
+				}
+
+				if (column >= lastRow.size()
+				    || lastRow[column].size() + 1 + text.size() <= columnWidth) {
+					isContinuation = false;
+					break;
+				}
 			}
 		}
-		if (!table_.empty() && !afterSeparator && previousCellFull
+		if (!table_.empty() && !afterSeparator && isContinuation
 		    && std::isspace(line[0]) && naturalBounds.size() <= 2) {
 			auto& lastRow = table_.back();
 			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
