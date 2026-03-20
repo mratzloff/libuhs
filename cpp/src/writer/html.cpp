@@ -523,15 +523,22 @@ void HTMLWriter::serializeTextNode(
 		}
 	}
 
-	// Detect trailing paragraph break (body ends with \n\n)
-	if (lines.size() >= 2) {
-		auto end = lines.crbegin();
-		if (*end == "" && *(end + 1) == "") {
-			hasTrailingBreak = true;
+	// Detect paragraph breaks (" " lines preserved from parser)
+	bool hasParagraphBreak = false;
+	for (auto const& line : lines) {
+		if (line == Token::ParagraphSep) {
+			hasParagraphBreak = true;
+			break;
 		}
 	}
 
-	auto escapeToContainer = (segmentCount > 1 || hasTable || hasTrailingBreak);
+	// Detect trailing paragraph break
+	if (!lines.empty() && lines.back() == Token::ParagraphSep) {
+		hasTrailingBreak = true;
+	}
+
+	auto escapeToContainer =
+	    (segmentCount > 1 || hasTable || hasTrailingBreak || hasParagraphBreak);
 
 	auto applyHyperlink = [&](pugi::xml_node node) {
 		if (!textNode.hasFormat(TextFormat::Hyperlink)) {
@@ -597,16 +604,38 @@ void HTMLWriter::serializeTextNode(
 				}
 			}
 
-			auto child = container.insert_child_after("span", insertAfter);
-			insertAfter = child;
-			if (isMonospace) {
-				this->appendClassNames(child, {"format-monospace", "monospace"});
+			// Split non-table content on paragraph break markers (" " lines)
+			std::vector<std::vector<std::string>> paragraphs;
+			std::vector<std::string> currentParagraph;
+			for (auto const& line : segment) {
+				if (line == Token::ParagraphSep) {
+					if (!currentParagraph.empty()) {
+						paragraphs.push_back(currentParagraph);
+						currentParagraph.clear();
+					}
+				} else {
+					currentParagraph.push_back(line);
+				}
 			}
-			if (isOverflow) {
-				this->appendClassNames(child, {"format-overflow", "overflow"});
+			if (!currentParagraph.empty()) {
+				paragraphs.push_back(currentParagraph);
 			}
-			appendLines(child, segment);
-			applyHyperlink(child);
+
+			for (std::size_t p = 0; p < paragraphs.size(); ++p) {
+				if (p > 0) {
+					insertAfter = container.insert_child_after("p", insertAfter);
+				}
+				auto child = container.insert_child_after("span", insertAfter);
+				insertAfter = child;
+				if (isMonospace) {
+					this->appendClassNames(child, {"format-monospace", "monospace"});
+				}
+				if (isOverflow) {
+					this->appendClassNames(child, {"format-overflow", "overflow"});
+				}
+				appendLines(child, paragraphs[p]);
+				applyHyperlink(child);
+			}
 		}
 
 		// Insert trailing separator so the next text node starts a new paragraph

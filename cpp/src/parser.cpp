@@ -455,7 +455,7 @@ void Parser::parseCommentElement(Element& element) {
 		case TokenType::NestedTextSep:
 			[[fallthrough]];
 		case TokenType::NestedParagraphSep:
-			body += (paragraph) ? "\n" : "\n\n";
+			body += (paragraph) ? "\n" : "\n \n";
 			continuation = false;
 			paragraph = true;
 			break;
@@ -1234,11 +1234,11 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 		switch (s[i]) { // TODO: Move this to a function map once logic is accurate
 		case '\n':
 			if (s.substr(i + 1, 2) == " \n") {
-				// Handle paragraph breaks
+				// Preserve paragraph breaks as " " lines
 				for (std::size_t j = i; j < length && s.substr(j + 1, 2) == " \n";
 				    j += 2, i = j) {
 
-					segment += '\n';
+					segment += "\n ";
 				}
 				segment += '\n';
 

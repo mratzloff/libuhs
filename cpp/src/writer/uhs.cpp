@@ -810,7 +810,7 @@ std::string UHSWriter::encodeText(std::string const& text, ElementType const par
 	for (std::size_t i = 0; i < numLines; ++i) {
 		auto& line = lines[i];
 
-		if (line == "") {
+		if (line.empty()) {
 			line = Token::ParagraphSep;
 		}
 

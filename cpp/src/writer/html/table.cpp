@@ -67,17 +67,21 @@ void HTMLWriter::Table::parse() {
 	int expectedNumColumns = columnBoundaries.size();
 
 	// Add data rows
+	bool afterSeparator = false;
 	for (auto it = lines_.begin() + dataStartLine; it < lines_.end(); ++it) {
 		auto const& line = *it;
 
-		if (line.empty()) {
+		if (line.empty() || Strings::trim(line, ' ').empty()) {
+			afterSeparator = true;
 			continue;
 		}
 
 		auto naturalBounds = detectBoundariesFromLine(line);
 
-		// Continuation line: starts with space, few segments
-		if (!table_.empty() && std::isspace(line[0]) && naturalBounds.size() <= 2) {
+		// Continuation line: starts with space, few segments, and not
+		// preceded by a separator line (which signals a new row group)
+		if (!table_.empty() && !afterSeparator && std::isspace(line[0])
+		    && naturalBounds.size() <= 2) {
 			auto& lastRow = table_.back();
 			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
 				auto text = Strings::trim(
@@ -103,8 +107,11 @@ void HTMLWriter::Table::parse() {
 					}
 				}
 			}
+			afterSeparator = false;
 			continue;
 		}
+
+		afterSeparator = false;
 
 		// Extract cells
 		std::vector<std::string> cells;
