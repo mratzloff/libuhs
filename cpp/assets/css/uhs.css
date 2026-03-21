@@ -144,6 +144,10 @@ th {
     text-align: left;
 }
 
+th[colspan] {
+    text-align: center;
+}
+
 .table-container table.option-html > thead tr {
     background-color: rgb(210, 210, 210);
     color: rgb(68, 68, 68);

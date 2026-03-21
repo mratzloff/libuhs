@@ -263,9 +263,34 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 		for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
 			auto const& row = *it;
 			auto tr = thead.append_child("tr");
+
+			int nonEmptyCount = 0;
 			for (auto const& cell : row) {
-				auto th = tr.append_child("th");
-				th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+				if (!cell.empty()) {
+					++nonEmptyCount;
+				}
+			}
+
+			if (nonEmptyCount == 0) {
+				thead.remove_child(tr);
+				continue;
+			}
+
+			if (nonEmptyCount == 1 && row.size() > 1) {
+				for (auto const& cell : row) {
+					if (!cell.empty()) {
+						auto th = tr.append_child("th");
+						th.append_attribute("colspan") =
+						    static_cast<int>(row.size());
+						th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+						break;
+					}
+				}
+			} else {
+				for (auto const& cell : row) {
+					auto th = tr.append_child("th");
+					th.append_child(pugi::node_pcdata).set_value(cell.c_str());
+				}
 			}
 		}
 	}
@@ -490,6 +515,11 @@ std::vector<std::pair<std::size_t, std::size_t>>
 					       && header[previousStart] == ' ') {
 						++previousStart;
 					}
+				} else if (dataStarts[s] >= header.size()) {
+					// Header doesn't extend to this data column — split
+					// at the data column start
+					refined.emplace_back(previousStart, dataStarts[s]);
+					previousStart = dataStarts[s];
 				}
 			}
 			refined.emplace_back(previousStart, headerEnd);
