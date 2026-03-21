@@ -303,5 +303,9 @@ target_include_directories (uhs_test PRIVATE ${catch2_build_includes} ${catch2_i
 target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
 
 add_custom_target (test
-	COMMAND uhs_test --colour-mode ansi
+	COMMAND uhs_test
+		--invisibles
+		--warn NoAssertions
+		--warn UnmatchedTestSpec
+		--warn InfiniteGenerators
 	DEPENDS uhs_test)
