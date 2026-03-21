@@ -134,11 +134,11 @@ set (uhs_sources
 	cpp/src/tokenizer.cpp
 	cpp/src/traits.cpp
 	cpp/src/writer/writer.cpp
-	cpp/src/writer/html.cpp
-	cpp/src/writer/html/table.cpp
-	cpp/src/writer/json.cpp
-	cpp/src/writer/tree.cpp
-	cpp/src/writer/uhs.cpp
+	cpp/src/writer/html_writer/table.cpp
+	cpp/src/writer/html_writer.cpp
+	cpp/src/writer/json_writer.cpp
+	cpp/src/writer/tree_writer.cpp
+	cpp/src/writer/uhs_writer.cpp
 	cpp/src/uhs.cpp
 	cpp/src/zip.cpp)
 
@@ -157,11 +157,11 @@ set (uhs_test_sources
 	cpp/test/test_token.cpp
 	cpp/test/test_tokenizer.cpp
 	cpp/test/test_traits.cpp
-	cpp/test/test_writer_html.cpp
-	cpp/test/test_writer_html_table.cpp
-	cpp/test/test_writer_json.cpp
-	cpp/test/test_writer_tree.cpp
-	cpp/test/test_writer_uhs.cpp
+	cpp/test/test_html_writer.cpp
+	cpp/test/test_html_writer_table.cpp
+	cpp/test/test_json_writer.cpp
+	cpp/test/test_tree_writer.cpp
+	cpp/test/test_uhs_writer.cpp
 	cpp/test/test_zip.cpp)
 
 # Create build directories
