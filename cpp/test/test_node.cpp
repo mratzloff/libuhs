@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Node::typeString", "[node]") {
 	REQUIRE(Node::typeString(NodeType::Break) == "break");
@@ -175,3 +175,5 @@ TEST_CASE("Node iteration traverses tree depth-first", "[node]") {
 	REQUIRE(visited[3] == NodeType::Element);
 	REQUIRE(visited[4] == NodeType::Text);
 }
+
+} // namespace UHS

@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("CRC produces consistent results", "[crc]") {
 	CRC crc;
@@ -84,3 +84,5 @@ TEST_CASE("CRC::result returns checksum in vector form", "[crc]") {
 	                         | (static_cast<uint8_t>(vectorResult[1]) << 8);
 	REQUIRE(reconstructed == scalarResult);
 }
+
+} // namespace UHS

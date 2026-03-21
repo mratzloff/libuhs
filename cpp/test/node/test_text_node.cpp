@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("TextNode format operations", "[text_node]") {
 	auto textNode = TextNode::create("hello");
@@ -37,3 +37,5 @@ TEST_CASE("TextNode::clone produces independent copy", "[text_node]") {
 	cloned->body("changed");
 	REQUIRE(original->string() == "hello");
 }
+
+} // namespace UHS

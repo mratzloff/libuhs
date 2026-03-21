@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 static std::string writeHTML(std::shared_ptr<Document> document) {
 	Logger logger(LogLevel::None);
@@ -202,3 +202,5 @@ TEST_CASE("HTMLWriter serializes link element as anchor", "[writer][html]") {
 	REQUIRE(output.find("href=\"#10\"") != std::string::npos);
 	REQUIRE(output.find("data-target=\"10\"") != std::string::npos);
 }
+
+} // namespace UHS

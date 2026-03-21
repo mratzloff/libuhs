@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Pipe reads all data from stream", "[pipe]") {
 	std::string input = "hello world";
@@ -95,3 +95,5 @@ TEST_CASE("Pipe handles empty stream", "[pipe]") {
 
 	REQUIRE(collected.empty());
 }
+
+} // namespace UHS

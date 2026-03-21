@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("TextFormat bitwise operators", "[text_format]") {
 	SECTION("OR combines flags") {
@@ -84,3 +84,5 @@ TEST_CASE("compound assignment operators", "[text_format]") {
 		REQUIRE(format == TextFormat::None);
 	}
 }
+
+} // namespace UHS

@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Element::typeString and elementType mapping", "[element]") {
 	REQUIRE(Element::typeString(ElementType::Hint) == "hint");
@@ -124,3 +124,5 @@ TEST_CASE("Element::clone produces independent copy", "[element]") {
 	cloned->title("Changed");
 	REQUIRE(original->title() == "Original Title");
 }
+
+} // namespace UHS

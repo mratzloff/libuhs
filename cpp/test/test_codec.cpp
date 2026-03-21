@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Codec::encode88a and decode88a roundtrip", "[codec]") {
 	Codec codec;
@@ -110,3 +110,5 @@ TEST_CASE("Codec::toPrintable wraps to printable range", "[codec]") {
 		REQUIRE(Strings::isPrintable(encoded[0]));
 	}
 }
+
+} // namespace UHS

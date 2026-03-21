@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Traits::Inlined", "[traits][inlined]") {
 	auto element = Element::create(ElementType::Text, 1);
@@ -13,3 +13,5 @@ TEST_CASE("Traits::Inlined", "[traits][inlined]") {
 	element->inlined(false);
 	REQUIRE_FALSE(element->inlined());
 }
+
+} // namespace UHS

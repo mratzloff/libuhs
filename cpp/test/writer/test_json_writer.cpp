@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("JSONWriter outputs valid JSON with document", "[writer][json]") {
 	auto document = Document::create(VersionType::Version96a);
@@ -163,3 +163,5 @@ TEST_CASE("JSONWriter serializes break nodes as separator", "[writer][json]") {
 	auto output = out.str();
 	REQUIRE(output.find("\"-\"") != std::string::npos);
 }
+
+} // namespace UHS

@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("GroupNode", "[group_node]") {
 	auto groupNode = GroupNode::create(5, 10);
@@ -15,3 +15,5 @@ TEST_CASE("GroupNode", "[group_node]") {
 	REQUIRE(cloned->line() == 5);
 	REQUIRE_FALSE(cloned->hasParent());
 }
+
+} // namespace UHS

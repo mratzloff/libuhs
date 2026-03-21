@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 struct HTMLWriter::TableAccessor {
 	HTMLWriter::Table& table;
@@ -1122,3 +1122,5 @@ TEST_CASE("Table::serialize pipe-delimited table structure", "[table]") {
 	REQUIRE(hasTwo);
 	REQUIRE(hasThree);
 }
+
+} // namespace UHS

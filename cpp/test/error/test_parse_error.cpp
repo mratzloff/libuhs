@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("ParseError formatting", "[error][parse_error]") {
 	ParseError err(5, 10, "unexpected token");
@@ -47,3 +47,5 @@ TEST_CASE("ParseError::badLine", "[error][parse_error]") {
 	auto msg = std::string(err.what());
 	REQUIRE(msg.find("99") != std::string::npos);
 }
+
+} // namespace UHS

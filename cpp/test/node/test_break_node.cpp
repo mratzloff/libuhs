@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("BreakNode", "[break_node]") {
 	auto breakNode = BreakNode::create();
@@ -12,3 +12,5 @@ TEST_CASE("BreakNode", "[break_node]") {
 	auto cloned = breakNode->clone();
 	REQUIRE(cloned->isBreak());
 }
+
+} // namespace UHS

@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Strings::beginsWithAttachedPunctuation", "[strings]") {
 	REQUIRE(Strings::beginsWithAttachedPunctuation("'s"));
@@ -204,3 +204,5 @@ TEST_CASE("Strings::wrap", "[strings]") {
 		REQUIRE(result == "abcde\nfghij");
 	}
 }
+
+} // namespace UHS

@@ -4,7 +4,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 // Helper: tokenize a string and collect all tokens.
 // The pipe reader runs on a background thread to match production usage.
@@ -86,3 +86,5 @@ TEST_CASE("Tokenizer tracks line numbers", "[tokenizer]") {
 	REQUIRE(tokens[1]->line() == 2); // Title on line 2
 	REQUIRE(tokens[2]->line() == 3); // 5 on line 3
 }
+
+} // namespace UHS

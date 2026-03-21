@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Traits::Body", "[traits][body]") {
 	auto textNode = TextNode::create("initial");
@@ -22,3 +22,5 @@ TEST_CASE("Traits::Body", "[traits][body]") {
 		REQUIRE(element->body() == "123");
 	}
 }
+
+} // namespace UHS

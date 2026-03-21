@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("TreeWriter outputs document title", "[writer][tree]") {
 	auto document = Document::create(VersionType::Version96a);
@@ -127,3 +127,5 @@ TEST_CASE("TreeWriter draws scaffold for nested nodes", "[writer][tree]") {
 	REQUIRE(
 	    (output.find("└") != std::string::npos || output.find("├") != std::string::npos));
 }
+
+} // namespace UHS

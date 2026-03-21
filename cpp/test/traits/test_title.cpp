@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Traits::Title", "[traits][title]") {
 	auto element = Element::create(ElementType::Subject, 1);
@@ -16,3 +16,5 @@ TEST_CASE("Traits::Title", "[traits][title]") {
 		REQUIRE(element->title() == "My Title");
 	}
 }
+
+} // namespace UHS

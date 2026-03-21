@@ -3,7 +3,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 static std::string writeUHS(
     std::shared_ptr<Document> document, Options const& options = {}) {
@@ -121,3 +121,5 @@ TEST_CASE("UHSWriter reset clears state", "[writer][uhs]") {
 	// Just verify reset doesn't throw
 	REQUIRE_NOTHROW(writer.reset());
 }
+
+} // namespace UHS

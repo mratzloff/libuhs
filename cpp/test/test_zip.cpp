@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Zip::isZip detects valid ZIP signature", "[zip]") {
 	// ZIP local file header signature: PK\x03\x04 = 0x04034b50 (little-endian)
@@ -33,3 +33,5 @@ TEST_CASE("Zip::unzip throws for non-ZIP data", "[zip]") {
 	Zip zip(notZip);
 	REQUIRE_THROWS_AS(zip.unzip("/tmp"), FileError);
 }
+
+} // namespace UHS

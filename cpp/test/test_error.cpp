@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Error::string", "[error]") {
 	Error err("something went wrong");
@@ -42,3 +42,5 @@ TEST_CASE("FileError inherits from Error", "[error]") {
 	REQUIRE_THROWS_AS(throw FileError("file not found"), Error);
 	REQUIRE_THROWS_AS(throw FileError("file not found"), FileError);
 }
+
+} // namespace UHS

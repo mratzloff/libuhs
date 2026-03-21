@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Document::create", "[document]") {
 	auto document = Document::create(VersionType::Version96a);
@@ -128,3 +128,5 @@ TEST_CASE("Document traits", "[document]") {
 	document->attr("author", "test");
 	REQUIRE(document->attr("author").value() == "test");
 }
+
+} // namespace UHS

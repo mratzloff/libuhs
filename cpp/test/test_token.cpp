@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Token::typeString static", "[token]") {
 	REQUIRE(Token::typeString(TokenType::CRC) == "CRC");
@@ -80,3 +80,5 @@ TEST_CASE("Token default construction", "[token]") {
 	REQUIRE(token.offset() == 0);
 	REQUIRE(token.value().empty());
 }
+
+} // namespace UHS

@@ -2,7 +2,7 @@
 
 #include "uhs.h"
 
-using namespace UHS;
+namespace UHS {
 
 TEST_CASE("Traits::Visibility", "[traits][visibility]") {
 	auto element = Element::create(ElementType::Hint, 1);
@@ -30,3 +30,5 @@ TEST_CASE("Traits::Visibility", "[traits][visibility]") {
 		REQUIRE(element->visibilityString() == "unregistered");
 	}
 }
+
+} // namespace UHS
