@@ -1141,26 +1141,20 @@ private:
 
 class HTMLWriter : public Writer {
 public:
+	struct TableAccessor;
+
 	HTMLWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 
 	class Table {
+		friend struct HTMLWriter::TableAccessor;
+
 	public:
 		Table(std::vector<std::string> const& lines);
 
-		int demarcationLine() const;
-		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
-		    std::string const& line) const;
 		std::size_t endLine() const;
-		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
-		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
-		int findDemarcationLine() const;
 		bool hasPrecedingText() const;
-		bool isCharGrid() const;
-		bool isHeaderless() const;
-		bool isPipeDelimited() const;
 		void parse();
-		std::vector<std::vector<std::string>> const& rows() const;
 		void serialize(pugi::xml_node& xmlNode) const;
 		std::size_t startLine() const;
 		bool valid() const;
@@ -1178,9 +1172,14 @@ public:
 		std::size_t startLine_ = 0;
 		bool valid_ = false;
 
+		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
 		std::vector<std::pair<std::size_t, std::size_t>>
 		    detectHeaderlessColumnBoundaries() const;
+		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
+		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
+		int findDemarcationLine() const;
 	};
 
 private:

@@ -367,32 +367,12 @@ std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
 	return cells;
 }
 
-int HTMLWriter::Table::demarcationLine() const {
-	return demarcationLine_;
-}
-
 std::size_t HTMLWriter::Table::endLine() const {
 	return endLine_;
 }
 
 bool HTMLWriter::Table::hasPrecedingText() const {
 	return startLine_ > 0;
-}
-
-bool HTMLWriter::Table::isCharGrid() const {
-	return charGrid_;
-}
-
-bool HTMLWriter::Table::isHeaderless() const {
-	return headerless_;
-}
-
-bool HTMLWriter::Table::isPipeDelimited() const {
-	return pipeDelimited_;
-}
-
-std::vector<std::vector<std::string>> const& HTMLWriter::Table::rows() const {
-	return rows_;
 }
 
 std::size_t HTMLWriter::Table::startLine() const {

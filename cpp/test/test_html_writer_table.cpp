@@ -5,43 +5,69 @@
 
 using namespace UHS;
 
+struct HTMLWriter::TableAccessor {
+	HTMLWriter::Table& table;
+
+	int demarcationLine() const { return table.demarcationLine_; }
+	std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+	    std::string const& line) const {
+		return table.detectBoundariesFromLine(line);
+	}
+	std::vector<std::string> extractCellsByBoundaries(std::string const& line,
+	    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
+		return table.extractCellsByBoundaries(line, boundaries);
+	}
+	int findDemarcationLine() const { return table.findDemarcationLine(); }
+	bool isCharGrid() const { return table.charGrid_; }
+	bool isHeaderless() const { return table.headerless_; }
+	bool isPipeDelimited() const { return table.pipeDelimited_; }
+	std::vector<std::vector<std::string>> const& rows() const { return table.rows_; }
+};
+
 // --- findDemarcationLine ---
 
 TEST_CASE("Table::findDemarcationLine finds dashes", "[table]") {
 	HTMLWriter::Table table({"Header", "----------", "data"});
-	REQUIRE(table.findDemarcationLine() == 1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == 1);
 }
 
 TEST_CASE("Table::findDemarcationLine returns -1 when absent", "[table]") {
 	HTMLWriter::Table table({"just", "some", "text"});
-	REQUIRE(table.findDemarcationLine() == -1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == -1);
 }
 
 TEST_CASE("Table::findDemarcationLine finds first match", "[table]") {
 	HTMLWriter::Table table({"header1", "------", "header2", "------", "data"});
-	REQUIRE(table.findDemarcationLine() == 1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == 1);
 }
 
 TEST_CASE("Table::findDemarcationLine ignores short dashes", "[table]") {
 	HTMLWriter::Table table({"header", "--", "data"});
-	REQUIRE(table.findDemarcationLine() == -1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == -1);
 }
 
 TEST_CASE("Table::findDemarcationLine matches segmented dashes", "[table]") {
 	HTMLWriter::Table table({"Col1  Col2", "----  ----", "a     b"});
-	REQUIRE(table.findDemarcationLine() == 1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == 1);
 }
 
 TEST_CASE("Table::findDemarcationLine with empty input", "[table]") {
 	HTMLWriter::Table table({});
-	REQUIRE(table.findDemarcationLine() == -1);
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.findDemarcationLine() == -1);
 }
 
 // --- detectBoundariesFromLine ---
 
 TEST_CASE("Table::detectBoundariesFromLine splits on 2+ spaces", "[table]") {
 	HTMLWriter::Table table({});
-	auto boundaries = table.detectBoundariesFromLine("Col1  Col2  Col3");
+	HTMLWriter::TableAccessor accessor{table};
+	auto boundaries = accessor.detectBoundariesFromLine("Col1  Col2  Col3");
 
 	REQUIRE(boundaries.size() == 3);
 	REQUIRE(boundaries[0] == std::make_pair<std::size_t, std::size_t>(0, 4));
@@ -51,7 +77,8 @@ TEST_CASE("Table::detectBoundariesFromLine splits on 2+ spaces", "[table]") {
 
 TEST_CASE("Table::detectBoundariesFromLine single space is not a gap", "[table]") {
 	HTMLWriter::Table table({});
-	auto boundaries = table.detectBoundariesFromLine("hello world");
+	HTMLWriter::TableAccessor accessor{table};
+	auto boundaries = accessor.detectBoundariesFromLine("hello world");
 
 	REQUIRE(boundaries.size() == 1);
 	REQUIRE(boundaries[0] == std::make_pair<std::size_t, std::size_t>(0, 11));
@@ -59,12 +86,14 @@ TEST_CASE("Table::detectBoundariesFromLine single space is not a gap", "[table]"
 
 TEST_CASE("Table::detectBoundariesFromLine empty string", "[table]") {
 	HTMLWriter::Table table({});
-	REQUIRE(table.detectBoundariesFromLine("").empty());
+	HTMLWriter::TableAccessor accessor{table};
+	REQUIRE(accessor.detectBoundariesFromLine("").empty());
 }
 
 TEST_CASE("Table::detectBoundariesFromLine leading spaces", "[table]") {
 	HTMLWriter::Table table({});
-	auto boundaries = table.detectBoundariesFromLine("  abc  def");
+	HTMLWriter::TableAccessor accessor{table};
+	auto boundaries = accessor.detectBoundariesFromLine("  abc  def");
 
 	REQUIRE(boundaries.size() == 2);
 	REQUIRE(boundaries[0] == std::make_pair<std::size_t, std::size_t>(2, 5));
@@ -73,7 +102,8 @@ TEST_CASE("Table::detectBoundariesFromLine leading spaces", "[table]") {
 
 TEST_CASE("Table::detectBoundariesFromLine trailing spaces", "[table]") {
 	HTMLWriter::Table table({});
-	auto boundaries = table.detectBoundariesFromLine("abc  def  ");
+	HTMLWriter::TableAccessor accessor{table};
+	auto boundaries = accessor.detectBoundariesFromLine("abc  def  ");
 
 	REQUIRE(boundaries.size() == 2);
 	REQUIRE(boundaries[0] == std::make_pair<std::size_t, std::size_t>(0, 3));
@@ -82,7 +112,8 @@ TEST_CASE("Table::detectBoundariesFromLine trailing spaces", "[table]") {
 
 TEST_CASE("Table::detectBoundariesFromLine three-space gap", "[table]") {
 	HTMLWriter::Table table({});
-	auto boundaries = table.detectBoundariesFromLine("abc   def");
+	HTMLWriter::TableAccessor accessor{table};
+	auto boundaries = accessor.detectBoundariesFromLine("abc   def");
 
 	REQUIRE(boundaries.size() == 2);
 	REQUIRE(boundaries[0].second == 3);
@@ -93,9 +124,10 @@ TEST_CASE("Table::detectBoundariesFromLine three-space gap", "[table]") {
 
 TEST_CASE("Table::extractCellsByBoundaries basic extraction", "[table]") {
 	HTMLWriter::Table table({});
+	HTMLWriter::TableAccessor accessor{table};
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 8}, {9, 12}};
 
-	auto cells = table.extractCellsByBoundaries("Alpha    30 ", boundaries);
+	auto cells = accessor.extractCellsByBoundaries("Alpha    30 ", boundaries);
 	REQUIRE(cells.size() == 2);
 	REQUIRE(cells[0] == "Alpha");
 	REQUIRE(cells[1] == "30");
@@ -103,9 +135,10 @@ TEST_CASE("Table::extractCellsByBoundaries basic extraction", "[table]") {
 
 TEST_CASE("Table::extractCellsByBoundaries empty when line is short", "[table]") {
 	HTMLWriter::Table table({});
+	HTMLWriter::TableAccessor accessor{table};
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 5}, {10, 15}};
 
-	auto cells = table.extractCellsByBoundaries("ABC", boundaries);
+	auto cells = accessor.extractCellsByBoundaries("ABC", boundaries);
 	REQUIRE(cells.size() == 2);
 	REQUIRE(cells[0] == "ABC");
 	REQUIRE(cells[1] == "");
@@ -113,9 +146,10 @@ TEST_CASE("Table::extractCellsByBoundaries empty when line is short", "[table]")
 
 TEST_CASE("Table::extractCellsByBoundaries trims whitespace", "[table]") {
 	HTMLWriter::Table table({});
+	HTMLWriter::TableAccessor accessor{table};
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 10}, {10, 20}};
 
-	auto cells = table.extractCellsByBoundaries("  hello     world   ", boundaries);
+	auto cells = accessor.extractCellsByBoundaries("  hello     world   ", boundaries);
 	REQUIRE(cells.size() == 2);
 	REQUIRE(cells[0] == "hello");
 	REQUIRE(cells[1] == "world");
@@ -123,10 +157,11 @@ TEST_CASE("Table::extractCellsByBoundaries trims whitespace", "[table]") {
 
 TEST_CASE("Table::extractCellsByBoundaries three columns", "[table]") {
 	HTMLWriter::Table table({});
+	HTMLWriter::TableAccessor accessor{table};
 	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {
 	    {0, 6}, {6, 12}, {12, 18}};
 
-	auto cells = table.extractCellsByBoundaries("Alpha Bob   Carol ", boundaries);
+	auto cells = accessor.extractCellsByBoundaries("Alpha Bob   Carol ", boundaries);
 	REQUIRE(cells.size() == 3);
 	REQUIRE(cells[0] == "Alpha");
 	REQUIRE(cells[1] == "Bob");
@@ -168,18 +203,19 @@ TEST_CASE("Table::parse two-column key-value table", "[table]") {
 	    "Golf      Burn",
 	    " ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE_FALSE(table.isHeaderless());
-	REQUIRE_FALSE(table.isPipeDelimited());
-	REQUIRE(table.demarcationLine() == 1);
+	REQUIRE_FALSE(accessor.isHeaderless());
+	REQUIRE_FALSE(accessor.isPipeDelimited());
+	REQUIRE(accessor.demarcationLine() == 1);
 	REQUIRE(table.startLine() == 0);
 
-	REQUIRE(table.rows().size() == 8);
-	REQUIRE(table.rows()[0] == std::vector<std::string>{"Label", "Value"});
-	REQUIRE(table.rows()[1] == std::vector<std::string>{"Alpha", "First"});
-	REQUIRE(table.rows()[7] == std::vector<std::string>{"Golf", "Burn"});
+	REQUIRE(accessor.rows().size() == 8);
+	REQUIRE(accessor.rows()[0] == std::vector<std::string>{"Label", "Value"});
+	REQUIRE(accessor.rows()[1] == std::vector<std::string>{"Alpha", "First"});
+	REQUIRE(accessor.rows()[7] == std::vector<std::string>{"Golf", "Burn"});
 }
 
 // --- parse: two-column table with blank line after demarcation ---
@@ -193,15 +229,16 @@ TEST_CASE("Table::parse blank line after demarcation is skipped", "[table]") {
 	    "zbravo          Foggy lenses ",
 	    "qxporter        Short fable  ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 4);
-	REQUIRE(table.rows()[0] == std::vector<std::string>{"COMMAND", "RESULT"});
-	REQUIRE(table.rows()[1][0] == "fxalpha");
-	REQUIRE(table.rows()[1][1] == "Dusty canopy");
-	REQUIRE(table.rows()[3][0] == "qxporter");
-	REQUIRE(table.rows()[3][1] == "Short fable");
+	REQUIRE(accessor.rows().size() == 4);
+	REQUIRE(accessor.rows()[0] == std::vector<std::string>{"COMMAND", "RESULT"});
+	REQUIRE(accessor.rows()[1][0] == "fxalpha");
+	REQUIRE(accessor.rows()[1][1] == "Dusty canopy");
+	REQUIRE(accessor.rows()[3][0] == "qxporter");
+	REQUIRE(accessor.rows()[3][1] == "Short fable");
 }
 
 // --- parse: wide 7-column table ---
@@ -217,22 +254,23 @@ TEST_CASE("Table::parse wide seven-column table", "[table]") {
 	    "GH-400      168        16      3,050       3,870    2/3              41",
 	    "IJ-800      184        18      3,050       5,420    2/3              48",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 6);
-	REQUIRE(table.rows()[0].size() == 7);
+	REQUIRE(accessor.rows().size() == 6);
+	REQUIRE(accessor.rows()[0].size() == 7);
 
-	REQUIRE(table.rows()[0][0] == "MODEL");
-	REQUIRE(table.rows()[0][3] == "BURN");
-	REQUIRE(table.rows()[0][6] == "COST");
+	REQUIRE(accessor.rows()[0][0] == "MODEL");
+	REQUIRE(accessor.rows()[0][3] == "BURN");
+	REQUIRE(accessor.rows()[0][6] == "COST");
 
-	REQUIRE(table.rows()[1][0] == "AB-320C");
-	REQUIRE(table.rows()[1][1] == "189");
-	REQUIRE(table.rows()[1][3] == "15,345");
-	REQUIRE(table.rows()[1][6] == "14.175");
+	REQUIRE(accessor.rows()[1][0] == "AB-320C");
+	REQUIRE(accessor.rows()[1][1] == "189");
+	REQUIRE(accessor.rows()[1][3] == "15,345");
+	REQUIRE(accessor.rows()[1][6] == "14.175");
 
-	REQUIRE(table.rows()[5][0] == "IJ-800");
+	REQUIRE(accessor.rows()[5][0] == "IJ-800");
 }
 
 // --- parse: wide table with continuation line ---
@@ -247,12 +285,13 @@ TEST_CASE("Table::parse wide table with continuation line", "[table]") {
 	    "CDE Galaxy   345        34     14,000     6,000    3/5              25",
 	    "FG Super 70  259        25     14,000    12,600    3/5              80",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() >= 4);
+	REQUIRE(accessor.rows().size() >= 4);
 	// The continuation " Variant 500" should merge into the AB-1011 row
-	REQUIRE(table.rows()[1][0].find("Variant") != std::string::npos);
+	REQUIRE(accessor.rows()[1][0].find("Variant") != std::string::npos);
 }
 
 // --- parse: misaligned header/data columns ---
@@ -269,18 +308,19 @@ TEST_CASE("Table::parse misaligned header and data columns", "[table]") {
 	    "Star ship crew                       30 boxes",
 	    "1 0 0                               100 boxes",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 7);
+	REQUIRE(accessor.rows().size() == 7);
 
-	REQUIRE(table.rows()[0][0] == "Lines read");
-	REQUIRE(table.rows()[0][1] == "Tally");
+	REQUIRE(accessor.rows()[0][0] == "Lines read");
+	REQUIRE(accessor.rows()[0][1] == "Tally");
 
-	REQUIRE(table.rows()[1][0] == "Great after party");
-	REQUIRE(table.rows()[1][1] == "2 boxes");
-	REQUIRE(table.rows()[6][0] == "1 0 0");
-	REQUIRE(table.rows()[6][1] == "100 boxes");
+	REQUIRE(accessor.rows()[1][0] == "Great after party");
+	REQUIRE(accessor.rows()[1][1] == "2 boxes");
+	REQUIRE(accessor.rows()[6][0] == "1 0 0");
+	REQUIRE(accessor.rows()[6][1] == "100 boxes");
 }
 
 // --- parse: three-column table with part numbers ---
@@ -300,18 +340,19 @@ TEST_CASE("Table::parse three-column table with grouped data rows", "[table]") {
 	    "XA77 3959AB TE9RJ     9    Petrov",
 	    "XA77 3959CD  HI8J     9    Kohler ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() >= 9);
+	REQUIRE(accessor.rows().size() >= 9);
 
-	REQUIRE(table.rows()[0][0] == "part name");
-	REQUIRE(table.rows()[0][1] == "pins");
-	REQUIRE(table.rows()[0][2] == "maker");
+	REQUIRE(accessor.rows()[0][0] == "part name");
+	REQUIRE(accessor.rows()[0][1] == "pins");
+	REQUIRE(accessor.rows()[0][2] == "maker");
 
-	REQUIRE(table.rows()[1][0] == "XA77 3956AB TE9RJ");
-	REQUIRE(table.rows()[1][1] == "6");
-	REQUIRE(table.rows()[1][2] == "Petrov");
+	REQUIRE(accessor.rows()[1][0] == "XA77 3956AB TE9RJ");
+	REQUIRE(accessor.rows()[1][1] == "6");
+	REQUIRE(accessor.rows()[1][2] == "Petrov");
 }
 
 // --- parse: three-column moves table ---
@@ -327,18 +368,19 @@ TEST_CASE("Table::parse three-column moves table", "[table]") {
 	    "  E3-E4       E6-E5     move piece to attack",
 	    "  E4-E5 x     D5-E5 x   trade pieces",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 6);
+	REQUIRE(accessor.rows().size() == 6);
 
-	REQUIRE(table.rows()[0][0] == "Your move");
-	REQUIRE(table.rows()[0][1] == "Opp move");
-	REQUIRE(table.rows()[0][2] == "comment on your move");
+	REQUIRE(accessor.rows()[0][0] == "Your move");
+	REQUIRE(accessor.rows()[0][1] == "Opp move");
+	REQUIRE(accessor.rows()[0][2] == "comment on your move");
 
-	REQUIRE(table.rows()[1][0] == "F2-E3");
-	REQUIRE(table.rows()[1][1] == "D6-D5");
-	REQUIRE(table.rows()[1][2] == "move piece to center");
+	REQUIRE(accessor.rows()[1][0] == "F2-E3");
+	REQUIRE(accessor.rows()[1][1] == "D6-D5");
+	REQUIRE(accessor.rows()[1][2] == "move piece to center");
 }
 
 // --- parse: wide table with long wrapping cells ---
@@ -358,14 +400,15 @@ TEST_CASE("Table::parse wide table with long wrapping cells", "[table]") {
 	    " ",
 	    "4 manila folders       N/A                  N/A",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
 
 	// "Upholstered Bench" + continuation should merge
-	REQUIRE(table.rows()[1][0] == "Upholstered Bench");
-	REQUIRE(table.rows()[1][1] == "Tangible");
-	REQUIRE(table.rows()[1][2].find("45 minutes") != std::string::npos);
+	REQUIRE(accessor.rows()[1][0] == "Upholstered Bench");
+	REQUIRE(accessor.rows()[1][1] == "Tangible");
+	REQUIRE(accessor.rows()[1][2].find("45 minutes") != std::string::npos);
 }
 
 // --- parse: table with preceding non-empty text invalidates ---
@@ -392,14 +435,15 @@ TEST_CASE("Table::parse blank lines before header set hasPrecedingText", "[table
 	    "-----------",
 	    "Alpha    30",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
 	REQUIRE(table.hasPrecedingText());
 	REQUIRE(table.startLine() == 1);
-	REQUIRE(table.rows().size() == 2);
-	REQUIRE(table.rows()[0] == std::vector<std::string>{"Label", "Value"});
-	REQUIRE(table.rows()[1] == std::vector<std::string>{"Alpha", "30"});
+	REQUIRE(accessor.rows().size() == 2);
+	REQUIRE(accessor.rows()[0] == std::vector<std::string>{"Label", "Value"});
+	REQUIRE(accessor.rows()[1] == std::vector<std::string>{"Alpha", "30"});
 }
 
 // --- parse: subsequent table detection ---
@@ -414,13 +458,14 @@ TEST_CASE("Table::parse stops before subsequent table header", "[table]") {
 	    "-----------",
 	    "Metro   8M",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
 	REQUIRE(table.endLine() == 4);
-	REQUIRE(table.rows().size() == 2);
-	REQUIRE(table.rows()[0] == std::vector<std::string>{"Name", "Age"});
-	REQUIRE(table.rows()[1] == std::vector<std::string>{"Alpha", "30"});
+	REQUIRE(accessor.rows().size() == 2);
+	REQUIRE(accessor.rows()[0] == std::vector<std::string>{"Name", "Age"});
+	REQUIRE(accessor.rows()[1] == std::vector<std::string>{"Alpha", "30"});
 }
 
 // --- parse: multi-row header ---
@@ -432,10 +477,11 @@ TEST_CASE("Table::parse multi-row header", "[table]") {
 	    "-----------",
 	    "Alpha   30",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 3);
+	REQUIRE(accessor.rows().size() == 3);
 	REQUIRE(table.startLine() == 0);
 }
 
@@ -451,24 +497,25 @@ TEST_CASE("Table::parse pipe-delimited grid table", "[table]") {
 	    "03|  |++|--|--|  |  |  |  |++|  |  |  |++|  |--|  |",
 	    "04|  |--|++|--|  |  |  |--|++|--|  |--|++|  |--|  |--",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isPipeDelimited());
-	REQUIRE(table.rows().size() == 5);
+	REQUIRE(accessor.isPipeDelimited());
+	REQUIRE(accessor.rows().size() == 5);
 
 	// Header row: empty cell before first pipe, then 01 through 17
-	REQUIRE(table.rows()[0].size() == 18);
-	REQUIRE(table.rows()[0][1] == "01");
-	REQUIRE(table.rows()[0][17] == "17");
+	REQUIRE(accessor.rows()[0].size() == 18);
+	REQUIRE(accessor.rows()[0][1] == "01");
+	REQUIRE(accessor.rows()[0][17] == "17");
 
-	REQUIRE(table.rows()[1][0] == "01");
-	REQUIRE(table.rows()[1][13] == "--");
-	REQUIRE(table.rows()[1][14] == "XX");
+	REQUIRE(accessor.rows()[1][0] == "01");
+	REQUIRE(accessor.rows()[1][13] == "--");
+	REQUIRE(accessor.rows()[1][14] == "XX");
 
-	REQUIRE(table.rows()[2][0] == "02");
-	REQUIRE(table.rows()[2][2] == "--");
-	REQUIRE(table.rows()[2][4] == "++");
+	REQUIRE(accessor.rows()[2][0] == "02");
+	REQUIRE(accessor.rows()[2][2] == "--");
+	REQUIRE(accessor.rows()[2][4] == "++");
 }
 
 TEST_CASE("Table::parse pipe-delimited pads short rows", "[table]") {
@@ -477,19 +524,20 @@ TEST_CASE("Table::parse pipe-delimited pads short rows", "[table]") {
 	    "--------",
 	    "|1|2",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isPipeDelimited());
-	REQUIRE(table.rows().size() == 2);
-	REQUIRE(table.rows()[1].size() == table.rows()[0].size());
+	REQUIRE(accessor.isPipeDelimited());
+	REQUIRE(accessor.rows().size() == 2);
+	REQUIRE(accessor.rows()[1].size() == accessor.rows()[0].size());
 
-	REQUIRE(table.rows()[0][1] == "A");
-	REQUIRE(table.rows()[0][4] == "D");
-	REQUIRE(table.rows()[1][1] == "1");
-	REQUIRE(table.rows()[1][2] == "2");
-	REQUIRE(table.rows()[1][3] == "");
-	REQUIRE(table.rows()[1][4] == "");
+	REQUIRE(accessor.rows()[0][1] == "A");
+	REQUIRE(accessor.rows()[0][4] == "D");
+	REQUIRE(accessor.rows()[1][1] == "1");
+	REQUIRE(accessor.rows()[1][2] == "2");
+	REQUIRE(accessor.rows()[1][3] == "");
+	REQUIRE(accessor.rows()[1][4] == "");
 }
 
 TEST_CASE("Table::parse pipe-delimited skips empty data lines", "[table]") {
@@ -500,11 +548,12 @@ TEST_CASE("Table::parse pipe-delimited skips empty data lines", "[table]") {
 	    "",
 	    "|4|5|6",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isPipeDelimited());
-	REQUIRE(table.rows().size() == 3);
+	REQUIRE(accessor.isPipeDelimited());
+	REQUIRE(accessor.rows().size() == 3);
 }
 
 TEST_CASE("Table::parse pipe requires at least 3 pipes in header", "[table]") {
@@ -513,9 +562,10 @@ TEST_CASE("Table::parse pipe requires at least 3 pipes in header", "[table]") {
 	    "---",
 	    "1|2",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
-	REQUIRE_FALSE(table.isPipeDelimited());
+	REQUIRE_FALSE(accessor.isPipeDelimited());
 }
 
 // --- parse: char grid ---
@@ -528,15 +578,16 @@ TEST_CASE("Table::parse detects single-character grid", "[table]") {
 	    "A B C D E",
 	    "F G H I J",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isCharGrid());
-	REQUIRE(table.rows().size() == 3);
+	REQUIRE(accessor.isCharGrid());
+	REQUIRE(accessor.rows().size() == 3);
 
-	REQUIRE(table.rows()[0] == std::vector<std::string>{"1", "2", "3", "4", "5"});
-	REQUIRE(table.rows()[1] == std::vector<std::string>{"A", "B", "C", "D", "E"});
-	REQUIRE(table.rows()[2] == std::vector<std::string>{"F", "G", "H", "I", "J"});
+	REQUIRE(accessor.rows()[0] == std::vector<std::string>{"1", "2", "3", "4", "5"});
+	REQUIRE(accessor.rows()[1] == std::vector<std::string>{"A", "B", "C", "D", "E"});
+	REQUIRE(accessor.rows()[2] == std::vector<std::string>{"F", "G", "H", "I", "J"});
 }
 
 // --- parse: headerless tables ---
@@ -548,21 +599,22 @@ TEST_CASE("Table::parse headerless two-column table", "[table]") {
 	    "Charlie  300",
 	    "Delta    400",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isHeaderless());
+	REQUIRE(accessor.isHeaderless());
 	REQUIRE(table.startLine() == 0);
-	REQUIRE(table.rows().size() == 4);
+	REQUIRE(accessor.rows().size() == 4);
 
-	REQUIRE(table.rows()[0][0] == "Alpha");
-	REQUIRE(table.rows()[0][1] == "100");
-	REQUIRE(table.rows()[1][0] == "Bravo");
-	REQUIRE(table.rows()[1][1] == "200");
-	REQUIRE(table.rows()[2][0] == "Charlie");
-	REQUIRE(table.rows()[2][1] == "300");
-	REQUIRE(table.rows()[3][0] == "Delta");
-	REQUIRE(table.rows()[3][1] == "400");
+	REQUIRE(accessor.rows()[0][0] == "Alpha");
+	REQUIRE(accessor.rows()[0][1] == "100");
+	REQUIRE(accessor.rows()[1][0] == "Bravo");
+	REQUIRE(accessor.rows()[1][1] == "200");
+	REQUIRE(accessor.rows()[2][0] == "Charlie");
+	REQUIRE(accessor.rows()[2][1] == "300");
+	REQUIRE(accessor.rows()[3][0] == "Delta");
+	REQUIRE(accessor.rows()[3][1] == "400");
 }
 
 // Pattern: wide first column and narrower second column, no header row
@@ -582,15 +634,16 @@ TEST_CASE("Table::parse headerless two-column wide-name table", "[table]") {
 	    "Glazed Teacup                    Porcelain",
 	    "Folded Bookmark                  Spiral Binding",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.isHeaderless());
-	REQUIRE(table.rows().size() == 11);
-	REQUIRE(table.rows()[0][0] == "Sandwich of the Century");
-	REQUIRE(table.rows()[0][1] == "Replaced By");
-	REQUIRE(table.rows()[1][0] == "Plywood Shelf");
-	REQUIRE(table.rows()[1][1] == "Thumbtack");
+	REQUIRE(accessor.isHeaderless());
+	REQUIRE(accessor.rows().size() == 11);
+	REQUIRE(accessor.rows()[0][0] == "Sandwich of the Century");
+	REQUIRE(accessor.rows()[0][1] == "Replaced By");
+	REQUIRE(accessor.rows()[1][0] == "Plywood Shelf");
+	REQUIRE(accessor.rows()[1][1] == "Thumbtack");
 }
 
 TEST_CASE("Table::parse headerless requires at least 3 data lines", "[table]") {
@@ -635,24 +688,25 @@ TEST_CASE("Table::parse five-column table with data wider than header", "[table]
 	    "Worn Brick         Foggy Hamster        Rowdy Blanket        Plaid Fuzzy Envelope  Tangy Kazoo",
 	    "Thin Bloom Cactus  Peppy Trampoline     Snowy Umbrella       Dusty Pencil          Dusty Thimble",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() == 12);
-	REQUIRE(table.rows()[0].size() == 5);
+	REQUIRE(accessor.rows().size() == 12);
+	REQUIRE(accessor.rows()[0].size() == 5);
 
-	REQUIRE(table.rows()[0][0] == "Ingredient");
-	REQUIRE(table.rows()[0][4] == "4th effect");
+	REQUIRE(accessor.rows()[0][0] == "Ingredient");
+	REQUIRE(accessor.rows()[0][4] == "4th effect");
 
 	// "Upholstered Pillow" is wider than header column — cell extraction should adjust
-	REQUIRE(table.rows()[3][0] == "Upholstered Pillow");
-	REQUIRE(table.rows()[3][1] == "Dazed");
-	REQUIRE(table.rows()[3][4] == "Canopy");
+	REQUIRE(accessor.rows()[3][0] == "Upholstered Pillow");
+	REQUIRE(accessor.rows()[3][1] == "Dazed");
+	REQUIRE(accessor.rows()[3][4] == "Canopy");
 
 	// Regular-width rows should still parse correctly
-	REQUIRE(table.rows()[1][0] == "Tuba Song");
-	REQUIRE(table.rows()[1][1] == "Foggy Hamster");
-	REQUIRE(table.rows()[1][4] == "Tangy Kazoo");
+	REQUIRE(accessor.rows()[1][0] == "Tuba Song");
+	REQUIRE(accessor.rows()[1][1] == "Foggy Hamster");
+	REQUIRE(accessor.rows()[1][4] == "Tangy Kazoo");
 }
 
 // --- parse: three-column schedule with empty first-column continuation ---
@@ -683,17 +737,18 @@ TEST_CASE("Table::parse three-column schedule with grouped rows", "[table]") {
 	    "  ",
 	    "Tablecloth        Kettledrum        Su/Tu/Th/Fr/Sa",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows()[0][0] == "Shelf label");
-	REQUIRE(table.rows()[0][1] == "Moved to");
-	REQUIRE(table.rows()[0][2] == "Day(s) available");
+	REQUIRE(accessor.rows()[0][0] == "Shelf label");
+	REQUIRE(accessor.rows()[0][1] == "Moved to");
+	REQUIRE(accessor.rows()[0][2] == "Day(s) available");
 
 	// First data row
-	REQUIRE(table.rows()[1][0] == "Kettledrum");
-	REQUIRE(table.rows()[1][1] == "Trampoline");
-	REQUIRE(table.rows()[1][2] == "Mo/We/Sa");
+	REQUIRE(accessor.rows()[1][0] == "Kettledrum");
+	REQUIRE(accessor.rows()[1][1] == "Trampoline");
+	REQUIRE(accessor.rows()[1][2] == "Mo/We/Sa");
 }
 
 // --- parse: three-column table with multi-line item names and metadata ---
@@ -713,19 +768,20 @@ TEST_CASE("Table::parse three-column table with multi-line continuations", "[tab
 	    "  (varnished) <30 Torsion>",
 	    " ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() >= 5);
+	REQUIRE(accessor.rows().size() >= 5);
 
-	REQUIRE(table.rows()[0][0] == "Gadget");
-	REQUIRE(table.rows()[0][1] == "Markup");
-	REQUIRE(table.rows()[0][2] == "Warehouse");
+	REQUIRE(accessor.rows()[0][0] == "Gadget");
+	REQUIRE(accessor.rows()[0][1] == "Markup");
+	REQUIRE(accessor.rows()[0][2] == "Warehouse");
 
 	// First item should have name with continuation merged
-	REQUIRE(table.rows()[1][0].find("Bent Towel") != std::string::npos);
-	REQUIRE(table.rows()[1][0].find("27 Tensile") != std::string::npos);
-	REQUIRE(table.rows()[1][1] == "+3");
+	REQUIRE(accessor.rows()[1][0].find("Bent Towel") != std::string::npos);
+	REQUIRE(accessor.rows()[1][0].find("27 Tensile") != std::string::npos);
+	REQUIRE(accessor.rows()[1][1] == "+3");
 }
 
 // --- parse: three-column table with deeply wrapped continuations ---
@@ -746,20 +802,21 @@ TEST_CASE("Table::parse three-column table with three-line continuations", "[tab
 	    "  <34 Tensile>",
 	    " ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() >= 4);
+	REQUIRE(accessor.rows().size() >= 4);
 
-	REQUIRE(table.rows()[0][0] == "Gadget");
-	REQUIRE(table.rows()[0][1] == "Markup");
-	REQUIRE(table.rows()[0][2] == "Warehouse");
+	REQUIRE(accessor.rows()[0][0] == "Gadget");
+	REQUIRE(accessor.rows()[0][1] == "Markup");
+	REQUIRE(accessor.rows()[0][2] == "Warehouse");
 
 	// "Hinge of the Cupboard" should have material and stat requirement merged in
-	REQUIRE(table.rows()[1][0].find("Hinge of the Cupboard") != std::string::npos);
-	REQUIRE(table.rows()[1][0].find("hard maple") != std::string::npos);
-	REQUIRE(table.rows()[1][0].find("32 Tensile") != std::string::npos);
-	REQUIRE(table.rows()[1][1] == "+2");
+	REQUIRE(accessor.rows()[1][0].find("Hinge of the Cupboard") != std::string::npos);
+	REQUIRE(accessor.rows()[1][0].find("hard maple") != std::string::npos);
+	REQUIRE(accessor.rows()[1][0].find("32 Tensile") != std::string::npos);
+	REQUIRE(accessor.rows()[1][1] == "+2");
 }
 
 // --- parse: table with star marker and trailing prose ---
@@ -779,22 +836,23 @@ TEST_CASE("Table::parse table with special marker values and trailing note", "[t
 	    " ",
 	    "* = Known from the start.",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
-	REQUIRE(table.rows().size() >= 7);
+	REQUIRE(accessor.rows().size() >= 7);
 
-	REQUIRE(table.rows()[0][0] == "Level");
-	REQUIRE(table.rows()[0][1] == "Step");
+	REQUIRE(accessor.rows()[0][0] == "Level");
+	REQUIRE(accessor.rows()[0][1] == "Step");
 
-	REQUIRE(table.rows()[1][0] == "*");
-	REQUIRE(table.rows()[1][1] == "Jumble");
+	REQUIRE(accessor.rows()[1][0] == "*");
+	REQUIRE(accessor.rows()[1][1] == "Jumble");
 
-	REQUIRE(table.rows()[2][0] == "10");
-	REQUIRE(table.rows()[2][1] == "Cartwheel");
+	REQUIRE(accessor.rows()[2][0] == "10");
+	REQUIRE(accessor.rows()[2][1] == "Cartwheel");
 
-	REQUIRE(table.rows()[6][0] == "50");
-	REQUIRE(table.rows()[6][1] == "Triple Stitch (Left Only)");
+	REQUIRE(accessor.rows()[6][0] == "50");
+	REQUIRE(accessor.rows()[6][1] == "Triple Stitch (Left Only)");
 }
 
 // --- parse: two-column table with single-word title and multi-line data ---
@@ -815,21 +873,22 @@ TEST_CASE("Table::parse two-column table with title header refined by data", "[t
 	    "                        Foxing 100%, Matte Laminate 100%)",
 	    " ",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 
 	REQUIRE(table.valid());
 
 	// Header gets split by data column boundary refinement into 2 columns
-	REQUIRE(table.rows()[0].size() == 2);
+	REQUIRE(accessor.rows()[0].size() == 2);
 
 	// First data row
-	REQUIRE(table.rows()[1][0] == "glued to cardboard");
-	REQUIRE(table.rows()[1][1] == "(100% Matte Laminate)");
+	REQUIRE(accessor.rows()[1][0] == "glued to cardboard");
+	REQUIRE(accessor.rows()[1][1] == "(100% Matte Laminate)");
 
 	// Second data row has continuation lines merged
-	REQUIRE(table.rows()[2][0] == "xr_strbooster");
-	REQUIRE(table.rows()[2][1].find("Thicken Binding 25 pts") != std::string::npos);
-	REQUIRE(table.rows()[2][1].find("Laminate 100%") != std::string::npos);
+	REQUIRE(accessor.rows()[2][0] == "xr_strbooster");
+	REQUIRE(accessor.rows()[2][1].find("Thicken Binding 25 pts") != std::string::npos);
+	REQUIRE(accessor.rows()[2][1].find("Laminate 100%") != std::string::npos);
 }
 
 // --- serialize: DOM structure verification ---
@@ -1028,9 +1087,10 @@ TEST_CASE("Table::serialize pipe-delimited table structure", "[table]") {
 	    "|1|2|3",
 	    "|4|5|6",
 	});
+	HTMLWriter::TableAccessor accessor{table};
 	table.parse();
 	REQUIRE(table.valid());
-	REQUIRE(table.isPipeDelimited());
+	REQUIRE(accessor.isPipeDelimited());
 
 	pugi::xml_document xmlDocument;
 	auto container = xmlDocument.append_child("div");
