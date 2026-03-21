@@ -132,16 +132,6 @@ void JSONWriter::serializeElement(Element const& element, Json::Value& object) c
 	}
 }
 
-void JSONWriter::serializeTextNode(TextNode const& textNode, Json::Value& object) const {
-	object["body"] = textNode.body();
-
-	auto attributes = Json::Value(Json::objectValue);
-	attributes["overflow"] = textNode.hasFormat(TextFormat::Overflow);
-	attributes["monospace"] = textNode.hasFormat(TextFormat::Monospace);
-	attributes["hyperlink"] = textNode.hasFormat(TextFormat::Hyperlink);
-	object["attributes"] = attributes;
-}
-
 void JSONWriter::serializeMap(
     Traits::Attributes::Type const& attrs, Json::Value& object) const {
 
@@ -160,6 +150,16 @@ void JSONWriter::serializeMap(
 			object[k] = v; // String value
 		}
 	}
+}
+
+void JSONWriter::serializeTextNode(TextNode const& textNode, Json::Value& object) const {
+	object["body"] = textNode.body();
+
+	auto attributes = Json::Value(Json::objectValue);
+	attributes["overflow"] = textNode.hasFormat(TextFormat::Overflow);
+	attributes["monospace"] = textNode.hasFormat(TextFormat::Monospace);
+	attributes["hyperlink"] = textNode.hasFormat(TextFormat::Hyperlink);
+	object["attributes"] = attributes;
 }
 
 } // namespace UHS

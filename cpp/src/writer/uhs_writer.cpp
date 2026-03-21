@@ -50,6 +50,197 @@ void UHSWriter::reset() {
 	}
 }
 
+void UHSWriter::addData(Element const& element) {
+	data_.emplace(std::make_pair(element.elementType(), element.body()));
+}
+
+void UHSWriter::convertTo96a() {
+	// Re-parent under subject node
+	auto container = Element::create(ElementType::Subject);
+	container->title(document_->title());
+	for (auto node = document_->firstChild(); node; node = document_->firstChild()) {
+		if (node->nodeType() != NodeType::Element) {
+			throw DataError("expected element, found %s node", node->nodeTypeString());
+		}
+		document_->removeChild(node);
+		container->appendChild(node);
+	}
+	document_->appendChild(container);
+
+	// Prepend minimal header
+	auto header = Document::create(VersionType::Version88a);
+	header->title("-");
+	auto subject = Element::create(ElementType::Subject);
+	subject->title(codec_.decode88a("-"));
+	auto hint = Element::create(ElementType::Hint);
+	hint->title(codec_.decode88a("-"));
+	hint->appendChild(TextNode::create(codec_.decode88a("-")));
+	subject->appendChild(hint);
+	header->appendChild(subject);
+	document_->insertBefore(header, document_->firstChild().get());
+
+	// Set version to 96a
+	document_->version(VersionType::Version96a);
+	auto version = Element::create(ElementType::Version);
+	version->title("96a");
+	if (auto notice = document_->attr("notice")) {
+		version->body(*notice);
+	}
+	document_->appendChild(version);
+}
+
+std::string UHSWriter::createDataAddress(
+    std::size_t bodyLength, std::string textFormat) const {
+
+	std::string out;
+
+	out += DataAddressMarker;
+	out += ' ';
+	out += (textFormat.empty() ? "" : textFormat + ' ');
+	out += std::string(FileSizeLength, '0');
+	out += ' ';
+	std::ostringstream buffer;
+	buffer << std::setfill('0') << std::setw(MediaSizeLength) << bodyLength;
+	out += buffer.str();
+	out += EOL;
+
+	return out;
+}
+
+std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y) const {
+	std::string out;
+
+	out += DataAddressMarker;
+	out += ' ';
+	out += std::string(FileSizeLength, '0');
+	out += ' ';
+	std::ostringstream buffer;
+	buffer << std::setfill('0') << std::setw(MediaSizeLength) << bodyLength;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << x;
+	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y;
+	out += buffer.str();
+	out += EOL;
+
+	return out;
+}
+
+std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
+	std::ostringstream buffer;
+	std::vector<int> coords = {x1, y1, x2, y2};
+	auto continuation = false;
+
+	for (auto coord : coords) {
+		if (continuation) {
+			buffer << ' ';
+		}
+		auto width = RegionSizeLength;
+		if (coord < 0) {
+			buffer << '-';
+			width -= 1;
+			coord = std::abs(coord);
+		}
+		buffer << std::setfill('0') << std::setw(width) << coord;
+		continuation = true;
+	}
+	buffer << EOL;
+
+	return buffer.str();
+}
+
+std::string UHSWriter::encodeText(std::string const& text, ElementType const parentType) {
+	std::string buffer;
+
+	auto lines = Strings::split(text, "\n");
+	auto numLines = lines.size();
+
+	for (std::size_t i = 0; i < numLines; ++i) {
+		auto& line = lines[i];
+
+		if (line.empty()) {
+			line = Token::ParagraphSep;
+		}
+
+		// Account for weird edge case
+		if (i + 1 < numLines) {
+			if (lines[i + 1].starts_with(Token::HyperlinkBegin)
+			    && !Strings::endsWithAttachedPunctuation(lines[i])) {
+				lines[i] += ' ';
+			}
+			if (lines[i + 1].starts_with(Token::InlineBegin)
+			    && !Strings::endsWithAttachedPunctuation(lines[i])) {
+				lines[i] += ' ';
+			}
+		}
+
+		if (options_.debug) {
+			continue; // Don't encode text
+		}
+
+		if (parentType == ElementType::Hint) {
+			line = codec_.encode88a(line);
+		} else if (parentType == ElementType::Nesthint) {
+			line = codec_.encode96a(line, key_, false);
+		} else if (parentType == ElementType::Text) {
+			line = codec_.encode96a(line, key_, true);
+		}
+	}
+
+	buffer += Strings::join(lines, EOL);
+	buffer += EOL; // TODO: Remove this and replace with better system
+
+	return buffer;
+}
+
+std::string UHSWriter::formatText(
+    TextNode const& textNode, TextFormat const previousFormat) {
+
+	auto body = textNode.body();
+
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		body = Token::HyperlinkBegin + body + Token::HyperlinkEnd;
+	}
+
+	if (textNode.hasFormat(TextFormat::Monospace)
+	    && !hasFormat(previousFormat, TextFormat::Monospace)) {
+
+		body = Token::MonospaceBegin + body;
+	} else if (!textNode.hasFormat(TextFormat::Monospace)
+	           && hasFormat(previousFormat, TextFormat::Monospace)) {
+
+		body = Token::MonospaceEnd + body;
+	}
+
+	if (textNode.hasFormat(TextFormat::Overflow)
+	    && !hasFormat(previousFormat, TextFormat::Overflow)) {
+
+		body = Token::OverflowBegin + body;
+	} else if (!textNode.hasFormat(TextFormat::Overflow)
+	           && hasFormat(previousFormat, TextFormat::Overflow)) {
+
+		body = Token::OverflowEnd + body;
+	}
+
+	if (textNode.hasPreviousSibling()) {
+		if (auto node = textNode.previousSibling(); node->isElement()) {
+			auto const previousElement = static_cast<Element*>(node);
+			if (previousElement->inlined()) {
+				body = Token::InlineEnd + body;
+			}
+		}
+	}
+
+	if (textNode.hasNextSibling()) {
+		if (auto node = textNode.nextSibling(); node->isElement()) {
+			auto const nextElement = static_pointer_cast<Element>(node);
+			if (nextElement->inlined()) {
+				body += Token::InlineBegin;
+			}
+		}
+	}
+
+	return body;
+}
+
 void UHSWriter::serialize88a(Document const& document, std::string& out) {
 	std::queue<Node const*> queue;
 	auto previousType = ElementType::Unknown;
@@ -197,11 +388,6 @@ void UHSWriter::serialize96a(std::string& out) {
 	this->serializeCRC(out);
 }
 
-int UHSWriter::serializeElement(Element& element, std::string& out) {
-	element.line(currentLine_);
-	return serializer_.invoke(*this, element, out);
-}
-
 int UHSWriter::serializeBlankElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
 
@@ -230,6 +416,74 @@ int UHSWriter::serializeCommentElement(Element& element, std::string& out) {
 	return length;
 }
 
+void UHSWriter::serializeCRC(std::string& out) {
+	// Calculate
+	crc_.calculate(out.data(), out.length());
+
+	// Write checksum
+	std::vector<char> checksum;
+	checksum.reserve(2);
+	crc_.result(checksum);
+	out.push_back(checksum[0]);
+	out.push_back(checksum[1]);
+}
+
+void UHSWriter::serializeData(std::string& out) {
+	// Add data and replace data addresses
+	auto dataOffset = out.length();
+	auto searchEnd = out.cend();
+	auto offset = 0;
+
+	while (!data_.empty()) {
+		auto const& pair = data_.front();
+		auto const elementType = pair.first;
+		auto const& data = pair.second;
+
+		std::smatch matches;
+		auto isOverlay = (elementType == ElementType::Overlay);
+		auto const& regex = (isOverlay) ? Regex::OverlayAddress : Regex::DataAddress;
+		if (!std::regex_search(out.cbegin() + offset, searchEnd, matches, regex)) {
+			throw DataError(
+			    "could not find address offset for %s element data (%d bytes)",
+			    Element::typeString(elementType),
+			    data.length());
+		}
+
+		auto const& matchNumber = (isOverlay) ? 1 : 2;
+		auto const position = static_cast<std::size_t>(matches.position(matchNumber));
+		auto const dataAddress = std::to_string(dataOffset);
+		auto const dataAddressLength = dataAddress.length();
+		auto const dataAddressOffset =
+		    offset + position + FileSizeLength - dataAddressLength;
+
+		// Replace data address
+		out.replace(dataAddressOffset, dataAddressLength, dataAddress);
+
+		// Advance search position
+		offset += position;
+
+		// Add data
+		out += data;
+		dataOffset += data.length();
+
+		data_.pop();
+	}
+
+	// Find length attribute
+	auto const position = out.find(InfoLengthMarker);
+	if (position == std::string::npos) {
+		return; // No info node present
+	}
+	auto const fileLength = out.length() + CRC::ByteLength;
+	auto const fileLengthString = std::to_string(fileLength);
+	auto const fileLengthStringLength = fileLengthString.length();
+	auto const infoLengthOffset =
+	    position + strlen(InfoLengthMarker) - fileLengthStringLength;
+
+	// Replace length attribute
+	out.replace(infoLengthOffset, fileLengthStringLength, fileLengthString);
+}
+
 // GIFs don't appear to be displayed by the official reader any longer
 int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	auto length = InitialElementLength;
@@ -246,6 +500,27 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 	out += dataAddress;
 
 	return length;
+}
+
+int UHSWriter::serializeElement(Element& element, std::string& out) {
+	element.line(currentLine_);
+	return serializer_.invoke(*this, element, out);
+}
+
+void UHSWriter::serializeElementHeader(Element& element, std::string& out) const {
+	out += std::to_string(element.length());
+	out += ' ';
+	out += element.elementTypeString();
+	out += EOL;
+
+	auto const title = codec_.encodeSpecialChars(element.title());
+
+	if (title.empty()) {
+		out += '-';
+	} else {
+		out += title;
+	}
+	out += EOL;
 }
 
 int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
@@ -640,22 +915,6 @@ int UHSWriter::serializeTextElement(Element& element, std::string& out) {
 	return length;
 }
 
-void UHSWriter::serializeElementHeader(Element& element, std::string& out) const {
-	out += std::to_string(element.length());
-	out += ' ';
-	out += element.elementTypeString();
-	out += EOL;
-
-	auto const title = codec_.encodeSpecialChars(element.title());
-
-	if (title.empty()) {
-		out += '-';
-	} else {
-		out += title;
-	}
-	out += EOL;
-}
-
 void UHSWriter::updateLinkTargets(std::string& out) const {
 	// Because we're shifting characters, we move backwards through the file in
 	// order to reduce the total number of bytes copied within the output buffer.
@@ -680,265 +939,6 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);
 	}
-}
-
-void UHSWriter::serializeData(std::string& out) {
-	// Add data and replace data addresses
-	auto dataOffset = out.length();
-	auto searchEnd = out.cend();
-	auto offset = 0;
-
-	while (!data_.empty()) {
-		auto const& pair = data_.front();
-		auto const elementType = pair.first;
-		auto const& data = pair.second;
-
-		std::smatch matches;
-		auto isOverlay = (elementType == ElementType::Overlay);
-		auto const& regex = (isOverlay) ? Regex::OverlayAddress : Regex::DataAddress;
-		if (!std::regex_search(out.cbegin() + offset, searchEnd, matches, regex)) {
-			throw DataError(
-			    "could not find address offset for %s element data (%d bytes)",
-			    Element::typeString(elementType),
-			    data.length());
-		}
-
-		auto const& matchNumber = (isOverlay) ? 1 : 2;
-		auto const position = static_cast<std::size_t>(matches.position(matchNumber));
-		auto const dataAddress = std::to_string(dataOffset);
-		auto const dataAddressLength = dataAddress.length();
-		auto const dataAddressOffset =
-		    offset + position + FileSizeLength - dataAddressLength;
-
-		// Replace data address
-		out.replace(dataAddressOffset, dataAddressLength, dataAddress);
-
-		// Advance search position
-		offset += position;
-
-		// Add data
-		out += data;
-		dataOffset += data.length();
-
-		data_.pop();
-	}
-
-	// Find length attribute
-	auto const position = out.find(InfoLengthMarker);
-	if (position == std::string::npos) {
-		return; // No info node present
-	}
-	auto const fileLength = out.length() + CRC::ByteLength;
-	auto const fileLengthString = std::to_string(fileLength);
-	auto const fileLengthStringLength = fileLengthString.length();
-	auto const infoLengthOffset =
-	    position + strlen(InfoLengthMarker) - fileLengthStringLength;
-
-	// Replace length attribute
-	out.replace(infoLengthOffset, fileLengthStringLength, fileLengthString);
-}
-
-void UHSWriter::serializeCRC(std::string& out) {
-	// Calculate
-	crc_.calculate(out.data(), out.length());
-
-	// Write checksum
-	std::vector<char> checksum;
-	checksum.reserve(2);
-	crc_.result(checksum);
-	out.push_back(checksum[0]);
-	out.push_back(checksum[1]);
-}
-
-std::string UHSWriter::formatText(
-    TextNode const& textNode, TextFormat const previousFormat) {
-
-	auto body = textNode.body();
-
-	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		body = Token::HyperlinkBegin + body + Token::HyperlinkEnd;
-	}
-
-	if (textNode.hasFormat(TextFormat::Monospace)
-	    && !hasFormat(previousFormat, TextFormat::Monospace)) {
-
-		body = Token::MonospaceBegin + body;
-	} else if (!textNode.hasFormat(TextFormat::Monospace)
-	           && hasFormat(previousFormat, TextFormat::Monospace)) {
-
-		body = Token::MonospaceEnd + body;
-	}
-
-	if (textNode.hasFormat(TextFormat::Overflow)
-	    && !hasFormat(previousFormat, TextFormat::Overflow)) {
-
-		body = Token::OverflowBegin + body;
-	} else if (!textNode.hasFormat(TextFormat::Overflow)
-	           && hasFormat(previousFormat, TextFormat::Overflow)) {
-
-		body = Token::OverflowEnd + body;
-	}
-
-	if (textNode.hasPreviousSibling()) {
-		if (auto node = textNode.previousSibling(); node->isElement()) {
-			auto const previousElement = static_cast<Element*>(node);
-			if (previousElement->inlined()) {
-				body = Token::InlineEnd + body;
-			}
-		}
-	}
-
-	if (textNode.hasNextSibling()) {
-		if (auto node = textNode.nextSibling(); node->isElement()) {
-			auto const nextElement = static_pointer_cast<Element>(node);
-			if (nextElement->inlined()) {
-				body += Token::InlineBegin;
-			}
-		}
-	}
-
-	return body;
-}
-
-std::string UHSWriter::encodeText(std::string const& text, ElementType const parentType) {
-	std::string buffer;
-
-	auto lines = Strings::split(text, "\n");
-	auto numLines = lines.size();
-
-	for (std::size_t i = 0; i < numLines; ++i) {
-		auto& line = lines[i];
-
-		if (line.empty()) {
-			line = Token::ParagraphSep;
-		}
-
-		// Account for weird edge case
-		if (i + 1 < numLines) {
-			if (lines[i + 1].starts_with(Token::HyperlinkBegin)
-			    && !Strings::endsWithAttachedPunctuation(lines[i])) {
-				lines[i] += ' ';
-			}
-			if (lines[i + 1].starts_with(Token::InlineBegin)
-			    && !Strings::endsWithAttachedPunctuation(lines[i])) {
-				lines[i] += ' ';
-			}
-		}
-
-		if (options_.debug) {
-			continue; // Don't encode text
-		}
-
-		if (parentType == ElementType::Hint) {
-			line = codec_.encode88a(line);
-		} else if (parentType == ElementType::Nesthint) {
-			line = codec_.encode96a(line, key_, false);
-		} else if (parentType == ElementType::Text) {
-			line = codec_.encode96a(line, key_, true);
-		}
-	}
-
-	buffer += Strings::join(lines, EOL);
-	buffer += EOL; // TODO: Remove this and replace with better system
-
-	return buffer;
-}
-
-void UHSWriter::addData(Element const& element) {
-	data_.emplace(std::make_pair(element.elementType(), element.body()));
-}
-
-std::string UHSWriter::createDataAddress(
-    std::size_t bodyLength, std::string textFormat) const {
-
-	std::string out;
-
-	out += DataAddressMarker;
-	out += ' ';
-	out += (textFormat.empty() ? "" : textFormat + ' ');
-	out += std::string(FileSizeLength, '0');
-	out += ' ';
-	std::ostringstream buffer;
-	buffer << std::setfill('0') << std::setw(MediaSizeLength) << bodyLength;
-	out += buffer.str();
-	out += EOL;
-
-	return out;
-}
-
-std::string UHSWriter::createOverlayAddress(std::size_t bodyLength, int x, int y) const {
-	std::string out;
-
-	out += DataAddressMarker;
-	out += ' ';
-	out += std::string(FileSizeLength, '0');
-	out += ' ';
-	std::ostringstream buffer;
-	buffer << std::setfill('0') << std::setw(MediaSizeLength) << bodyLength;
-	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << x;
-	buffer << ' ' << std::setfill('0') << std::setw(RegionSizeLength) << y;
-	out += buffer.str();
-	out += EOL;
-
-	return out;
-}
-
-std::string UHSWriter::createRegion(int x1, int y1, int x2, int y2) const {
-	std::ostringstream buffer;
-	std::vector<int> coords = {x1, y1, x2, y2};
-	auto continuation = false;
-
-	for (auto coord : coords) {
-		if (continuation) {
-			buffer << ' ';
-		}
-		auto width = RegionSizeLength;
-		if (coord < 0) {
-			buffer << '-';
-			width -= 1;
-			coord = std::abs(coord);
-		}
-		buffer << std::setfill('0') << std::setw(width) << coord;
-		continuation = true;
-	}
-	buffer << EOL;
-
-	return buffer.str();
-}
-
-void UHSWriter::convertTo96a() {
-	// Re-parent under subject node
-	auto container = Element::create(ElementType::Subject);
-	container->title(document_->title());
-	for (auto node = document_->firstChild(); node; node = document_->firstChild()) {
-		if (node->nodeType() != NodeType::Element) {
-			throw DataError("expected element, found %s node", node->nodeTypeString());
-		}
-		document_->removeChild(node);
-		container->appendChild(node);
-	}
-	document_->appendChild(container);
-
-	// Prepend minimal header
-	auto header = Document::create(VersionType::Version88a);
-	header->title("-");
-	auto subject = Element::create(ElementType::Subject);
-	subject->title(codec_.decode88a("-"));
-	auto hint = Element::create(ElementType::Hint);
-	hint->title(codec_.decode88a("-"));
-	hint->appendChild(TextNode::create(codec_.decode88a("-")));
-	subject->appendChild(hint);
-	header->appendChild(subject);
-	document_->insertBefore(header, document_->firstChild().get());
-
-	// Set version to 96a
-	document_->version(VersionType::Version96a);
-	auto version = Element::create(ElementType::Version);
-	version->title("96a");
-	if (auto notice = document_->attr("notice")) {
-		version->body(*notice);
-	}
-	document_->appendChild(version);
 }
 
 UHSWriter::Serializer::Serializer() {

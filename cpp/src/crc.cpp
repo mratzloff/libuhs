@@ -14,23 +14,6 @@ CRC::CRC() {
 	this->createTable();
 }
 
-void CRC::upstream(Pipe& pipe) {
-	pipe_ = &pipe;
-	pipe.addHandler([=, this](char const* buffer, std::streamsize length) {
-		this->calculate(buffer, length, true);
-	});
-}
-
-void CRC::calculate(char const* buffer, std::streamsize length) {
-	for (auto i = 0; i < length; ++i) {
-		auto byte = this->reflectByte(buffer[i] & 0xFF);
-		remainder_ = (remainder_ ^ (byte << 8)) & CastMask;
-		int position = (remainder_ >> 8) & 0xFF;
-		remainder_ = (remainder_ << 8) & CastMask;
-		remainder_ = (remainder_ ^ table_[position]) & CastMask;
-	}
-}
-
 void CRC::calculate(char const* buffer, std::streamsize length, bool) {
 	switch (length) {
 	case 0:
@@ -63,6 +46,24 @@ void CRC::calculate(char const* buffer, std::streamsize length, bool) {
 	}
 }
 
+void CRC::calculate(char const* buffer, std::streamsize length) {
+	for (auto i = 0; i < length; ++i) {
+		auto byte = this->reflectByte(buffer[i] & 0xFF);
+		remainder_ = (remainder_ ^ (byte << 8)) & CastMask;
+		int position = (remainder_ >> 8) & 0xFF;
+		remainder_ = (remainder_ << 8) & CastMask;
+		remainder_ = (remainder_ ^ table_[position]) & CastMask;
+	}
+}
+
+void CRC::reset() {
+	pipe_ = nullptr;
+	std::fill(checksum_, checksum_ + 2, 0);
+	checksumLength_ = 0;
+	remainder_ = 0x0000;
+	finalized_ = false;
+}
+
 uint16_t CRC::result() {
 	this->finalize();
 	return remainder_;
@@ -74,16 +75,19 @@ void CRC::result(std::vector<char>& out) {
 	out.push_back(remainder_ >> 8);   // high
 }
 
+void CRC::upstream(Pipe& pipe) {
+	pipe_ = &pipe;
+	pipe.addHandler([=, this](char const* buffer, std::streamsize length) {
+		this->calculate(buffer, length, true);
+	});
+}
+
 bool CRC::valid() {
 	return this->result() == this->checksum();
 }
 
-void CRC::reset() {
-	pipe_ = nullptr;
-	std::fill(checksum_, checksum_ + 2, 0);
-	checksumLength_ = 0;
-	remainder_ = 0x0000;
-	finalized_ = false;
+uint16_t CRC::checksum() {
+	return (static_cast<uint8_t>(checksum_[1]) << 8) | static_cast<uint8_t>(checksum_[0]);
 }
 
 void CRC::createTable() {
@@ -101,6 +105,13 @@ void CRC::createTable() {
 	}
 }
 
+void CRC::finalize() {
+	if (!finalized_ && remainder_ > Polynomial) {
+		remainder_ = (remainder_ + FinalXOR) & CastMask;
+	}
+	finalized_ = true;
+}
+
 uint8_t CRC::reflectByte(uint8_t byte) {
 	uint8_t etyb = 0;
 
@@ -110,17 +121,6 @@ uint8_t CRC::reflectByte(uint8_t byte) {
 		}
 	}
 	return etyb;
-}
-
-void CRC::finalize() {
-	if (!finalized_ && remainder_ > Polynomial) {
-		remainder_ = (remainder_ + FinalXOR) & CastMask;
-	}
-	finalized_ = true;
-}
-
-uint16_t CRC::checksum() {
-	return (static_cast<uint8_t>(checksum_[1]) << 8) | static_cast<uint8_t>(checksum_[0]);
 }
 
 } // namespace UHS

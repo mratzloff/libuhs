@@ -38,8 +38,30 @@ httplib::Response const HTTPError::getResponse() const {
 
 //------------------------------- ParseError --------------------------------//
 
+ParseError::ParseError(int line, int column, std::string const& message)
+    : ParseError(line, column, message.data()) {}
+
+ParseError::ParseError(int line, int column, char const* message) : Error() {
+	// TODO: Review for slice
+	static_cast<Error&>(*this) = Error(this->format("%s", line, column, message));
+}
+
 ParseError ParseError::badLine(int line, int column, int targetLine) {
 	return ParseError(line, column, "line not found: %d", targetLine);
+}
+
+ParseError ParseError::badToken(int line, int column, TokenType type) {
+	return ParseError(line, column, "unexpected %s", Token::typeString(type));
+}
+
+ParseError ParseError::badToken(
+    int line, int column, TokenType expected, TokenType found) {
+
+	return ParseError(line,
+	    column,
+	    "expected %s, found %s",
+	    Token::typeString(expected),
+	    Token::typeString(found));
 }
 
 ParseError ParseError::badValue(
@@ -70,28 +92,6 @@ ParseError ParseError::badValue(
     int line, int column, std::string expected, std::string found) {
 
 	return ParseError(line, column, "expected %s, found '%s'", expected, found);
-}
-
-ParseError ParseError::badToken(int line, int column, TokenType type) {
-	return ParseError(line, column, "unexpected %s", Token::typeString(type));
-}
-
-ParseError ParseError::badToken(
-    int line, int column, TokenType expected, TokenType found) {
-
-	return ParseError(line,
-	    column,
-	    "expected %s, found %s",
-	    Token::typeString(expected),
-	    Token::typeString(found));
-}
-
-ParseError::ParseError(int line, int column, std::string const& message)
-    : ParseError(line, column, message.data()) {}
-
-ParseError::ParseError(int line, int column, char const* message) : Error() {
-	// TODO: Review for slice
-	static_cast<Error&>(*this) = Error(this->format("%s", line, column, message));
 }
 
 } // namespace UHS

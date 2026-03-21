@@ -14,8 +14,16 @@ void Pipe::addHandler(Pipe::Handler func) {
 	handlers_.push_back(func);
 }
 
+bool Pipe::eof() {
+	return in_.eof();
+}
+
 std::exception_ptr Pipe::error() {
 	return err_;
+}
+
+bool Pipe::good() {
+	return in_.good();
 }
 
 void Pipe::read() {
@@ -42,14 +50,6 @@ void Pipe::read() {
 	} catch (std::exception const& err) {
 		err_ = std::current_exception();
 	}
-}
-
-bool Pipe::good() {
-	return in_.good();
-}
-
-bool Pipe::eof() {
-	return in_.eof();
 }
 
 } // namespace UHS

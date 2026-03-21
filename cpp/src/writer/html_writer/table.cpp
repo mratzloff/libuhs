@@ -4,6 +4,14 @@ namespace UHS {
 
 HTMLWriter::Table::Table(std::vector<std::string> const& lines) : lines_{lines} {}
 
+std::size_t HTMLWriter::Table::endLine() const {
+	return endLine_;
+}
+
+bool HTMLWriter::Table::hasPrecedingText() const {
+	return startLine_ > 0;
+}
+
 void HTMLWriter::Table::parse() {
 	endLine_ = lines_.size();
 
@@ -315,66 +323,6 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 	}
 }
 
-std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
-    std::string const& line,
-    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
-
-	// Adjust boundaries when data values extend past header column positions
-	std::vector<std::size_t> columnStarts;
-	for (std::size_t b = 0; b < boundaries.size(); ++b) {
-		auto start = boundaries[b].first;
-		if (b > 0 && start > 0 && start < line.size() && line[start] != ' '
-		    && line[start - 1] != ' ') {
-			// Search left for nearest space
-			auto leftPos = start;
-			while (leftPos > 0 && line[leftPos - 1] != ' ') {
-				--leftPos;
-			}
-
-			// Search right for nearest space
-			auto rightPos = start;
-			while (rightPos < line.size() && line[rightPos] != ' ') {
-				++rightPos;
-			}
-
-			if (start - leftPos <= rightPos - start) {
-				start = leftPos;
-			} else {
-				start = rightPos;
-			}
-		}
-		columnStarts.push_back(start);
-	}
-
-	std::vector<std::string> cells;
-	for (std::size_t b = 0; b < columnStarts.size(); ++b) {
-		auto columnStart = columnStarts[b];
-
-		std::size_t columnEnd;
-		if (b + 1 < columnStarts.size()) {
-			columnEnd = columnStarts[b + 1];
-		} else {
-			columnEnd = line.size();
-		}
-
-		if (columnStart < line.size()) {
-			auto len = std::min(columnEnd, line.size()) - columnStart;
-			cells.push_back(Strings::trim(line.substr(columnStart, len), ' '));
-		} else {
-			cells.push_back("");
-		}
-	}
-	return cells;
-}
-
-std::size_t HTMLWriter::Table::endLine() const {
-	return endLine_;
-}
-
-bool HTMLWriter::Table::hasPrecedingText() const {
-	return startLine_ > 0;
-}
-
 std::size_t HTMLWriter::Table::startLine() const {
 	return startLine_;
 }
@@ -593,6 +541,58 @@ std::vector<std::pair<std::size_t, std::size_t>>
 	}
 
 	return boundaries;
+}
+
+std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
+    std::string const& line,
+    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
+
+	// Adjust boundaries when data values extend past header column positions
+	std::vector<std::size_t> columnStarts;
+	for (std::size_t b = 0; b < boundaries.size(); ++b) {
+		auto start = boundaries[b].first;
+		if (b > 0 && start > 0 && start < line.size() && line[start] != ' '
+		    && line[start - 1] != ' ') {
+			// Search left for nearest space
+			auto leftPos = start;
+			while (leftPos > 0 && line[leftPos - 1] != ' ') {
+				--leftPos;
+			}
+
+			// Search right for nearest space
+			auto rightPos = start;
+			while (rightPos < line.size() && line[rightPos] != ' ') {
+				++rightPos;
+			}
+
+			if (start - leftPos <= rightPos - start) {
+				start = leftPos;
+			} else {
+				start = rightPos;
+			}
+		}
+		columnStarts.push_back(start);
+	}
+
+	std::vector<std::string> cells;
+	for (std::size_t b = 0; b < columnStarts.size(); ++b) {
+		auto columnStart = columnStarts[b];
+
+		std::size_t columnEnd;
+		if (b + 1 < columnStarts.size()) {
+			columnEnd = columnStarts[b + 1];
+		} else {
+			columnEnd = line.size();
+		}
+
+		if (columnStart < line.size()) {
+			auto len = std::min(columnEnd, line.size()) - columnStart;
+			cells.push_back(Strings::trim(line.substr(columnStart, len), ' '));
+		} else {
+			cells.push_back("");
+		}
+	}
+	return cells;
 }
 
 int HTMLWriter::Table::findDemarcationLine() const {

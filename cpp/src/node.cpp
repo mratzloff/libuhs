@@ -2,6 +2,38 @@
 
 namespace UHS {
 
+void swap(Node& lhs, Node& rhs) noexcept {
+	using std::swap;
+
+	swap(lhs.nodeType_, rhs.nodeType_);
+	swap(lhs.parent_, rhs.parent_);
+	swap(lhs.previousSibling_, rhs.previousSibling_);
+	swap(lhs.nextSibling_, rhs.nextSibling_);
+	swap(lhs.depth_, rhs.depth_);
+
+	lhs.cloneChildren(rhs);
+}
+
+Node::Node(NodeType type) : nodeType_{type} {}
+
+Node::Node(Node const& other)
+    : depth_{other.depth_}
+    , nextSibling_{other.nextSibling_}
+    , nodeType_{other.nodeType_}
+    , parent_{other.parent_}
+    , previousSibling_{other.previousSibling_} {
+
+	this->cloneChildren(other);
+}
+
+bool Node::isElementOfType(Node const& node, ElementType type) {
+	if (node.isElement()) {
+		auto const& element = static_cast<Element const&>(node);
+		return (element.elementType() == type);
+	}
+	return false;
+}
+
 std::string const Node::typeString(NodeType type) {
 	switch (type) {
 	case NodeType::Break:
@@ -16,103 +48,6 @@ std::string const Node::typeString(NodeType type) {
 		return "text";
 	default:
 		throw DataError("invalid node type");
-	}
-}
-
-bool Node::isElementOfType(Node const& node, ElementType type) {
-	if (node.isElement()) {
-		auto const& element = static_cast<Element const&>(node);
-		return (element.elementType() == type);
-	}
-	return false;
-}
-
-Node::Node(NodeType type) : nodeType_{type} {}
-
-Node::Node(Node const& other)
-    : nodeType_{other.nodeType_}
-    , parent_{other.parent_}
-    , previousSibling_{other.previousSibling_}
-    , nextSibling_{other.nextSibling_}
-    , depth_{other.depth_} {
-
-	this->cloneChildren(other);
-}
-
-Node& Node::operator=(Node other) {
-	swap(*this, other);
-	return *this;
-}
-
-void swap(Node& lhs, Node& rhs) noexcept {
-	using std::swap;
-
-	swap(lhs.nodeType_, rhs.nodeType_);
-	swap(lhs.parent_, rhs.parent_);
-	swap(lhs.previousSibling_, rhs.previousSibling_);
-	swap(lhs.nextSibling_, rhs.nextSibling_);
-	swap(lhs.depth_, rhs.depth_);
-
-	lhs.cloneChildren(rhs);
-}
-
-NodeType Node::nodeType() const {
-	return nodeType_;
-}
-
-std::string const Node::nodeTypeString() const {
-	return Node::typeString(nodeType_);
-}
-
-bool Node::isBreak() const {
-	return nodeType_ == NodeType::Break;
-}
-
-bool Node::isDocument() const {
-	return nodeType_ == NodeType::Document;
-}
-
-bool Node::isElement() const {
-	return nodeType_ == NodeType::Element;
-}
-
-bool Node::isGroup() const {
-	return nodeType_ == NodeType::Group;
-}
-
-bool Node::isText() const {
-	return nodeType_ == NodeType::Text;
-}
-
-void Node::detachParent() {
-	parent_ = nullptr;
-}
-
-void Node::removeChild(std::shared_ptr<Node> node) {
-	assert(node);
-	node->detachParent();
-	--numChildren_;
-
-	if (node == firstChild_) {
-		if (node->nextSibling_) {
-			firstChild_ = node->nextSibling_;
-			node->previousSibling_ = nullptr;
-		} else {
-			firstChild_ = nullptr;
-			lastChild_ = nullptr;
-		}
-		node->didRemove();
-	} else if (node->previousSibling_) {
-		auto previous = node->previousSibling_;
-		if (node->nextSibling_) {
-			auto next = node->nextSibling_;
-			next->previousSibling_ = previous;
-			previous->nextSibling_ = next;
-		} else {
-			previous->nextSibling_ = nullptr;
-			lastChild_ = nullptr;
-		}
-		node->didRemove();
 	}
 }
 
@@ -145,16 +80,69 @@ void Node::appendChild(std::shared_ptr<Node> node, bool) {
 	++numChildren_;
 }
 
-std::shared_ptr<Node> Node::pointer() const {
-	if (parent_) {
-		for (auto node = parent_->firstChild(); node; node = node->nextSibling()) {
-			if (this == node.get()) {
-				return node;
-			}
+Node::iterator Node::begin() {
+	return Node::iterator(this);
+}
+
+Node::const_iterator Node::begin() const {
+	return Node::const_iterator(this);
+}
+
+Node::const_iterator Node::cbegin() const {
+	return Node::begin();
+}
+
+Node::const_iterator Node::cend() const {
+	return Node::end();
+}
+
+int Node::depth() const {
+	return depth_;
+}
+
+void Node::detachParent() {
+	parent_ = nullptr;
+}
+
+Node::iterator Node::end() {
+	return Node::iterator(nullptr);
+}
+
+Node::const_iterator Node::end() const {
+	return Node::const_iterator(nullptr);
+}
+
+Document* Node::findDocument() const {
+	for (auto node = parent_; node; node = node->parent()) {
+		if (node->isDocument()) {
+			return static_cast<Document*>(node);
 		}
 	}
+	return nullptr; // Orphaned element
+}
 
-	return nullptr;
+std::shared_ptr<Node> Node::firstChild() const {
+	return firstChild_;
+}
+
+bool Node::hasFirstChild() const {
+	return firstChild_ != nullptr;
+}
+
+bool Node::hasLastChild() const {
+	return lastChild_ != nullptr;
+}
+
+bool Node::hasNextSibling() const {
+	return nextSibling_ != nullptr;
+}
+
+bool Node::hasParent() const {
+	return parent_ != nullptr;
+}
+
+bool Node::hasPreviousSibling() const {
+	return previousSibling_ != nullptr;
 }
 
 // See note for appendChild() regarding depth.
@@ -190,85 +178,97 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 	n->didAdd();
 }
 
-bool Node::hasParent() const {
-	return parent_ != nullptr;
+bool Node::isBreak() const {
+	return nodeType_ == NodeType::Break;
 }
 
-Node* Node::parent() const {
-	return parent_;
+bool Node::isDocument() const {
+	return nodeType_ == NodeType::Document;
 }
 
-bool Node::hasPreviousSibling() const {
-	return previousSibling_ != nullptr;
+bool Node::isElement() const {
+	return nodeType_ == NodeType::Element;
 }
 
-Node* Node::previousSibling() const {
-	return previousSibling_;
+bool Node::isGroup() const {
+	return nodeType_ == NodeType::Group;
 }
 
-bool Node::hasNextSibling() const {
-	return nextSibling_ != nullptr;
-}
-
-std::shared_ptr<Node> Node::nextSibling() const {
-	return nextSibling_;
-}
-
-bool Node::hasFirstChild() const {
-	return firstChild_ != nullptr;
-}
-
-std::shared_ptr<Node> Node::firstChild() const {
-	return firstChild_;
-}
-
-bool Node::hasLastChild() const {
-	return lastChild_ != nullptr;
+bool Node::isText() const {
+	return nodeType_ == NodeType::Text;
 }
 
 Node* Node::lastChild() const {
 	return lastChild_;
 }
 
+std::shared_ptr<Node> Node::nextSibling() const {
+	return nextSibling_;
+}
+
+NodeType Node::nodeType() const {
+	return nodeType_;
+}
+
+std::string const Node::nodeTypeString() const {
+	return Node::typeString(nodeType_);
+}
+
 int Node::numChildren() const {
 	return numChildren_;
 }
 
-int Node::depth() const {
-	return depth_;
+Node& Node::operator=(Node other) {
+	swap(*this, other);
+	return *this;
 }
 
-Node::iterator Node::begin() {
-	return Node::iterator(this);
+Node* Node::parent() const {
+	return parent_;
 }
 
-Node::iterator Node::end() {
-	return Node::iterator(nullptr);
-}
-
-Node::const_iterator Node::begin() const {
-	return Node::const_iterator(this);
-}
-
-Node::const_iterator Node::end() const {
-	return Node::const_iterator(nullptr);
-}
-
-Node::const_iterator Node::cbegin() const {
-	return Node::begin();
-}
-
-Node::const_iterator Node::cend() const {
-	return Node::end();
-}
-
-Document* Node::findDocument() const {
-	for (auto node = parent_; node; node = node->parent()) {
-		if (node->isDocument()) {
-			return static_cast<Document*>(node);
+std::shared_ptr<Node> Node::pointer() const {
+	if (parent_) {
+		for (auto node = parent_->firstChild(); node; node = node->nextSibling()) {
+			if (this == node.get()) {
+				return node;
+			}
 		}
 	}
-	return nullptr; // Orphaned element
+
+	return nullptr;
+}
+
+Node* Node::previousSibling() const {
+	return previousSibling_;
+}
+
+void Node::removeChild(std::shared_ptr<Node> node) {
+	assert(node);
+	node->detachParent();
+	--numChildren_;
+
+	if (node == firstChild_) {
+		if (node->nextSibling_) {
+			firstChild_ = node->nextSibling_;
+			node->previousSibling_ = nullptr;
+		} else {
+			firstChild_ = nullptr;
+			lastChild_ = nullptr;
+		}
+		node->didRemove();
+	} else if (node->previousSibling_) {
+		auto previous = node->previousSibling_;
+		if (node->nextSibling_) {
+			auto next = node->nextSibling_;
+			next->previousSibling_ = previous;
+			previous->nextSibling_ = next;
+		} else {
+			previous->nextSibling_ = nullptr;
+			lastChild_ = nullptr;
+		}
+		node->didRemove();
+	}
 }
 
 void Node::cloneChildren(Node const& other) {
@@ -293,16 +293,6 @@ void Node::cloneChildren(Node const& other) {
 	}
 }
 
-void Node::didRemove() {
-	if (nodeType_ != NodeType::Element) {
-		return;
-	}
-	if (auto document = this->findDocument()) {
-		auto const element = static_cast<Element*>(this);
-		document->elementRemoved(*element);
-	}
-}
-
 void Node::didAdd() {
 	if (nodeType_ != NodeType::Element) {
 		return;
@@ -313,17 +303,17 @@ void Node::didAdd() {
 	}
 }
 
-//----------------------------- ContainerNode ------------------------------//
-
-ContainerNode::ContainerNode(NodeType type) : Node(type) {}
-
-ContainerNode::ContainerNode(ContainerNode const& other)
-    : Node(other), line_{other.line_}, length_{other.length_} {}
-
-ContainerNode& ContainerNode::operator=(ContainerNode other) {
-	Node::operator=(other);
-	return *this;
+void Node::didRemove() {
+	if (nodeType_ != NodeType::Element) {
+		return;
+	}
+	if (auto document = this->findDocument()) {
+		auto const element = static_cast<Element*>(this);
+		document->elementRemoved(*element);
+	}
 }
+
+//----------------------------- ContainerNode ------------------------------//
 
 void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept {
 	using std::swap;
@@ -331,6 +321,20 @@ void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept {
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
 	swap(lhs.line_, rhs.line_);
 	swap(lhs.length_, rhs.length_);
+}
+
+ContainerNode::ContainerNode(NodeType type) : Node(type) {}
+
+ContainerNode::ContainerNode(ContainerNode const& other)
+    : Node(other), line_{other.line_}, length_{other.length_} {}
+
+// Used only for bookkeeping while parsing
+int ContainerNode::length() const {
+	return length_;
+}
+
+void ContainerNode::length(int const length) {
+	length_ = length;
 }
 
 int ContainerNode::line() const {
@@ -341,13 +345,9 @@ void ContainerNode::line(int const line) {
 	line_ = line;
 }
 
-// Used only for bookkeeping while parsing
-int ContainerNode::length() const {
-	return length_;
-}
-
-void ContainerNode::length(int const length) {
-	length_ = length;
+ContainerNode& ContainerNode::operator=(ContainerNode other) {
+	Node::operator=(other);
+	return *this;
 }
 
 //------------------------------ NodeIterator -------------------------------//
@@ -417,27 +417,27 @@ template class NodeIterator<Node const>;
 
 //------------------------------- BreakNode --------------------------------//
 
-std::shared_ptr<BreakNode> BreakNode::create() {
-	return std::make_shared<BreakNode>();
-}
-
 BreakNode::BreakNode() : Node(NodeType::Break) {}
 
 BreakNode::BreakNode(BreakNode const& other) : Node(other) {}
 
-BreakNode& BreakNode::operator=(BreakNode other) {
-	std::swap(*this, other);
-	return *this;
+std::shared_ptr<BreakNode> BreakNode::create() {
+	return std::make_shared<BreakNode>();
 }
 
 std::shared_ptr<BreakNode> BreakNode::clone() const {
 	return std::make_shared<BreakNode>(*this);
 }
 
+BreakNode& BreakNode::operator=(BreakNode other) {
+	std::swap(*this, other);
+	return *this;
+}
+
 //------------------------------- GroupNode --------------------------------//
 
-std::shared_ptr<GroupNode> GroupNode::create(int line, int length) {
-	return std::make_shared<GroupNode>(line, length);
+void swap(GroupNode& lhs, GroupNode& rhs) noexcept {
+	std::swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
 }
 
 GroupNode::GroupNode(int line, int length) : ContainerNode(NodeType::Group) {
@@ -447,13 +447,8 @@ GroupNode::GroupNode(int line, int length) : ContainerNode(NodeType::Group) {
 
 GroupNode::GroupNode(GroupNode const& other) : ContainerNode(other) {}
 
-GroupNode& GroupNode::operator=(GroupNode other) {
-	swap(*this, other);
-	return *this;
-}
-
-void swap(GroupNode& lhs, GroupNode& rhs) noexcept {
-	std::swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
+std::shared_ptr<GroupNode> GroupNode::create(int line, int length) {
+	return std::make_shared<GroupNode>(line, length);
 }
 
 // Copies and returns a detached element with its children.
@@ -463,14 +458,19 @@ std::shared_ptr<GroupNode> GroupNode::clone() const {
 	return groupNode;
 }
 
-//-------------------------------- TextNode --------------------------------//
-
-std::shared_ptr<TextNode> TextNode::create(std::string const& body) {
-	return std::make_shared<TextNode>(body);
+GroupNode& GroupNode::operator=(GroupNode other) {
+	swap(*this, other);
+	return *this;
 }
 
-std::shared_ptr<TextNode> TextNode::create(std::string const& body, TextFormat format) {
-	return std::make_shared<TextNode>(body, format);
+//-------------------------------- TextNode --------------------------------//
+
+void swap(TextNode& lhs, TextNode& rhs) noexcept {
+	using std::swap;
+
+	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
+	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
+	swap(lhs.format_, rhs.format_);
 }
 
 TextNode::TextNode(std::string const& body) : Node(NodeType::Text), Body(body) {}
@@ -481,17 +481,16 @@ TextNode::TextNode(std::string const& body, TextFormat format)
 TextNode::TextNode(TextNode const& other)
     : Node(other), Traits::Body(other), format_{other.format_} {}
 
-TextNode& TextNode::operator=(TextNode other) {
-	swap(*this, other);
-	return *this;
+std::shared_ptr<TextNode> TextNode::create(std::string const& body) {
+	return std::make_shared<TextNode>(body);
 }
 
-void swap(TextNode& lhs, TextNode& rhs) noexcept {
-	using std::swap;
+std::shared_ptr<TextNode> TextNode::create(std::string const& body, TextFormat format) {
+	return std::make_shared<TextNode>(body, format);
+}
 
-	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
-	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
-	swap(lhs.format_, rhs.format_);
+void TextNode::addFormat(TextFormat format) {
+	format_ = ::UHS::withFormat(format_, format);
 }
 
 // Copies and returns a detached text node.
@@ -501,28 +500,29 @@ std::shared_ptr<TextNode> TextNode::clone() const {
 	return textNode;
 }
 
-std::string const& TextNode::string() const {
-	return this->body();
-}
-
-void TextNode::addFormat(TextFormat format) {
-	format_ = ::UHS::withFormat(format_, format);
-}
-
-void TextNode::removeFormat(TextFormat format) {
-	format_ = ::UHS::withoutFormat(format_, format);
-}
-
-bool TextNode::hasFormat(TextFormat format) const {
-	return ::UHS::hasFormat(format_, format);
-}
-
 TextFormat TextNode::format() const {
 	return format_;
 }
 
 void TextNode::format(TextFormat format) {
 	format_ = format;
+}
+
+bool TextNode::hasFormat(TextFormat format) const {
+	return ::UHS::hasFormat(format_, format);
+}
+
+TextNode& TextNode::operator=(TextNode other) {
+	swap(*this, other);
+	return *this;
+}
+
+void TextNode::removeFormat(TextFormat format) {
+	format_ = ::UHS::withoutFormat(format_, format);
+}
+
+std::string const& TextNode::string() const {
+	return this->body();
 }
 
 } // namespace UHS

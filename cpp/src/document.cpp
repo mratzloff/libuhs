@@ -2,29 +2,6 @@
 
 namespace UHS {
 
-std::shared_ptr<Document> Document::create(VersionType version) {
-	return std::make_shared<Document>(version);
-}
-
-Document::Document(VersionType version) : Node(NodeType::Document), version_{version} {}
-
-Document::Document(Document const& other)
-    : Node(other)
-    , Traits::Attributes(other)
-    , Traits::Title(other)
-    , Traits::Visibility(other)
-    , version_{other.version_}
-    , validChecksum_{other.validChecksum_}
-    , indexed_{false} {
-
-	this->reindex();
-}
-
-Document& Document::operator=(Document other) {
-	swap(*this, other);
-	return *this;
-}
-
 void swap(Document& lhs, Document& rhs) noexcept {
 	using std::swap;
 
@@ -39,6 +16,43 @@ void swap(Document& lhs, Document& rhs) noexcept {
 	lhs.reindex();
 }
 
+Document::Document(VersionType version) : Node(NodeType::Document), version_{version} {}
+
+Document::Document(Document const& other)
+    : Node(other)
+    , Traits::Attributes(other)
+    , Traits::Title(other)
+    , Traits::Visibility(other)
+    , indexed_{false}
+    , validChecksum_{other.validChecksum_}
+    , version_{other.version_} {
+
+	this->reindex();
+}
+
+std::shared_ptr<Document> Document::create(VersionType version) {
+	return std::make_shared<Document>(version);
+}
+
+// Copies and returns a detached document with its children.
+std::shared_ptr<Document> Document::clone() const {
+	auto document = std::make_shared<Document>(*this);
+	document->detachParent();
+	return document;
+}
+
+void Document::elementAdded(Element& element) {
+	if (auto const id = element.id(); id > 0) {
+		index_[id] = &element;
+	}
+}
+
+void Document::elementRemoved(Element& element) {
+	if (auto const id = element.id(); id > 0) {
+		index_.erase(id);
+	}
+}
+
 Node* Document::find(int const id) {
 	if (!indexed_) {
 		this->reindex();
@@ -50,23 +64,40 @@ Node* Document::find(int const id) {
 	}
 }
 
-// Copies and returns a detached document with its children.
-std::shared_ptr<Document> Document::clone() const {
-	auto document = std::make_shared<Document>(*this);
-	document->detachParent();
-	return document;
+bool Document::isVersion(VersionType v) const {
+	return version_ == v;
 }
 
-void Document::version(VersionType v) {
-	version_ = v;
+Document& Document::operator=(Document other) {
+	swap(*this, other);
+	return *this;
+}
+
+void Document::reindex() {
+	index_.clear();
+
+	for (auto& node : *this) {
+		if (node.isElement()) {
+			this->elementAdded(static_cast<Element&>(node));
+		}
+	}
+	indexed_ = true;
+}
+
+bool Document::validChecksum() const {
+	return validChecksum_;
+}
+
+void Document::validChecksum(bool value) {
+	validChecksum_ = value;
 }
 
 VersionType Document::version() const {
 	return version_;
 }
 
-bool Document::isVersion(VersionType v) const {
-	return version_ == v;
+void Document::version(VersionType v) {
+	version_ = v;
 }
 
 std::string const Document::versionString() const {
@@ -82,37 +113,6 @@ std::string const Document::versionString() const {
 	default:
 		throw DataError("invalid version");
 	}
-}
-
-void Document::validChecksum(bool value) {
-	validChecksum_ = value;
-}
-
-bool Document::validChecksum() const {
-	return validChecksum_;
-}
-
-void Document::elementRemoved(Element& element) {
-	if (auto const id = element.id(); id > 0) {
-		index_.erase(id);
-	}
-}
-
-void Document::elementAdded(Element& element) {
-	if (auto const id = element.id(); id > 0) {
-		index_[id] = &element;
-	}
-}
-
-void Document::reindex() {
-	index_.clear();
-
-	for (auto& node : *this) {
-		if (node.isElement()) {
-			this->elementAdded(static_cast<Element&>(node));
-		}
-	}
-	indexed_ = true;
 }
 
 } // namespace UHS

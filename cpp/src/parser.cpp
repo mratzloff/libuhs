@@ -88,6 +88,128 @@ void Parser::reset() {
 	tokenizer_.reset();
 }
 
+void Parser::addDataCallback(
+    int line, int column, std::size_t offset, std::size_t length, DataCallback func) {
+
+	dataHandlers_.emplace_back(line, column, offset, length, func);
+}
+
+void Parser::addNodeToParentIndex(ContainerNode& node) {
+	auto min = node.line();
+	auto max = min + node.length();
+	parents_.add(node, min, max);
+}
+
+void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& node) {
+	if (text.empty()) {
+		return;
+	}
+
+	if (node.hasLastChild()) {
+		auto previous = node.lastChild();
+
+		if (previous->isText()) {
+			auto previousTextNode = static_cast<TextNode*>(previous);
+			auto previousTextBody = previousTextNode->body();
+
+			// Append space to previous node if it does end in whitespace
+			if (!previousTextBody.ends_with(' ') && !previousTextBody.ends_with('\n')
+			    && !Strings::beginsWithAttachedPunctuation(text)) {
+
+				previousTextBody += ' ';
+				previousTextNode->body(previousTextBody);
+			}
+
+			auto previousHasOverflow = previousTextNode->hasFormat(TextFormat::Overflow);
+			auto sameFormatSansOverflow =
+			    withoutFormat(previousTextNode->format(), TextFormat::Overflow)
+			    == withoutFormat(format, TextFormat::Overflow);
+
+			if (previousHasOverflow && !hasFormat(format, TextFormat::Overflow)
+			    && text == " ") {
+
+				// Handle `#w+ #w-` sequence
+				format = withFormat(format, TextFormat::Overflow);
+				previousTextNode->body(Strings::chomp(previousTextBody, '\n'));
+				text.clear();
+				return;
+			} else if (previousTextNode->format() == format
+			           || (previousHasOverflow && sameFormatSansOverflow)) {
+
+				// Append text with the same formatting to the previous node
+				previousTextBody += text;
+				previousTextNode->body(previousTextBody);
+				text.clear();
+				return;
+			}
+		} else if (previous->isElement()) {
+			// Prepend space to text if it follows an inline element
+			auto const previousElement = static_cast<Element*>(previous);
+
+			if (previousElement->inlined()
+			    && !Strings::beginsWithAttachedPunctuation(text)) {
+
+				text = " " + text;
+			}
+		}
+	}
+
+	auto textNode = TextNode::create(text, format);
+	node.appendChild(textNode);
+	text.clear();
+}
+
+void Parser::checkCRC() {
+	document_->validChecksum(crc_->valid());
+}
+
+std::unique_ptr<Token const> Parser::expect(TokenType expected) {
+	auto token = this->next();
+	auto tokenType = token->type();
+
+	if (tokenType == TokenType::FileEnd && expected != TokenType::FileEnd) {
+		throw ParseError(token->line(), token->column(), "unexpected end of file");
+	} else if (tokenType != expected) {
+		throw ParseError::badToken(
+		    token->line(), token->column(), expected, token->type());
+	}
+	return token;
+}
+
+Node* Parser::findParent(ContainerNode& node) {
+	auto min = node.line();
+	auto max = min + node.length();
+	auto parent = parents_.find(min, max);
+
+	if (!parent) {
+		throw DataError(
+		    "could not find parent element between lines %d and %d", min, max);
+	}
+
+	return parent;
+}
+
+// Most UHS files have a header with an off-by-one error in the (invisible) 88a header.
+// This is a small fix to address that should someone use --mode=88a.
+int Parser::fixHeaderFirstChildLine(std::string title, int firstChildLine) const {
+	if (title == BadHeaderTitle && firstChildLine == BadHeaderFirstChildLine) {
+		return GoodHeaderFirstChildLine;
+	}
+	return firstChildLine;
+}
+
+std::unique_ptr<Token const> Parser::next() {
+	auto token = tokenizer_->next();
+	if (options_.debug) {
+		logger_.debug(token->string().c_str());
+	}
+	return token;
+}
+
+int Parser::offsetLine(int line) {
+	return line - lineOffset_;
+}
+
 //--------------------------------- UHS 88a ---------------------------------//
 
 void Parser::parse88a() {
@@ -157,6 +279,41 @@ void Parser::parse88a() {
 		return;
 	default:
 		throw ParseError::badToken(line, column, tokenType);
+	}
+}
+
+void Parser::parse88aCredits(std::unique_ptr<Token const> token) {
+	std::string body;
+	auto continuation = false;
+
+	for (;;) {
+		switch (token->type()) {
+		case TokenType::FileEnd:
+			if (!body.empty()) {
+				document_->attr("notice", body);
+			}
+			done_ = true;
+			return;
+		case TokenType::HeaderSep:
+			if (!body.empty()) {
+				document_->attr("notice", body);
+			}
+			this->parseHeaderSep(std::move(token));
+			return;
+		case TokenType::CreditSep:
+			break; // Ignore
+		case TokenType::String:
+			if (continuation) {
+				body += ' ';
+			}
+			body += token->value();
+			continuation = true;
+			break;
+		default:
+			throw ParseError::badToken(token->line(), token->column(), token->type());
+		}
+
+		token = this->next();
 	}
 }
 
@@ -265,51 +422,6 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 	} while (line < lastHintTextLine);
 }
 
-void Parser::parse88aCredits(std::unique_ptr<Token const> token) {
-	std::string body;
-	auto continuation = false;
-
-	for (;;) {
-		switch (token->type()) {
-		case TokenType::FileEnd:
-			if (!body.empty()) {
-				document_->attr("notice", body);
-			}
-			done_ = true;
-			return;
-		case TokenType::HeaderSep:
-			if (!body.empty()) {
-				document_->attr("notice", body);
-			}
-			this->parseHeaderSep(std::move(token));
-			return;
-		case TokenType::CreditSep:
-			break; // Ignore
-		case TokenType::String:
-			if (continuation) {
-				body += ' ';
-			}
-			body += token->value();
-			continuation = true;
-			break;
-		default:
-			throw ParseError::badToken(token->line(), token->column(), token->type());
-		}
-
-		token = this->next();
-	}
-}
-
-void Parser::parseHeaderSep(std::unique_ptr<Token const> token) {
-	if (options_.mode == ModeType::Version88a) {
-		done_ = true;
-		return;
-	}
-
-	// 96a element line numbers don't include compatibility header
-	lineOffset_ = token->line();
-}
-
 //--------------------------------- UHS 96a ---------------------------------//
 
 void Parser::parse96a() {
@@ -340,6 +452,161 @@ void Parser::parse96a() {
 done:
 	this->processLinks();
 	this->processVisibility();
+}
+
+void Parser::parseCommentElement(Element& element) {
+	auto length = element.length();
+	std::string body;
+	auto continuation = false;
+	auto paragraph = false;
+
+	for (auto i = 3; i <= length; ++i) {
+		auto token = this->next();
+
+		switch (token->type()) {
+		case TokenType::String:
+			if (continuation) {
+				body += ' ';
+			}
+			body += token->value();
+			continuation = true;
+			paragraph = false;
+			break;
+		case TokenType::NestedTextSep:
+			[[fallthrough]];
+		case TokenType::NestedParagraphSep:
+			body += (paragraph) ? "\n" : "\n \n";
+			continuation = false;
+			paragraph = true;
+			break;
+		default:
+			throw ParseError::badToken(token->line(), token->column(), token->type());
+		}
+	}
+
+	element.body(body);
+}
+
+void Parser::parseData(std::unique_ptr<Token const> token) {
+	std::size_t offset;
+
+	for (auto const& handler : dataHandlers_) {
+		offset = handler.offset - token->offset();
+		handler.func(token->value().substr(offset, handler.length));
+	}
+}
+
+void Parser::parseDataElement(Element& element) {
+	std::size_t offset;
+	auto line = 0;
+	auto column = 0;
+
+	for (;;) {
+		auto token = this->next();
+		line = token->line();
+		column = token->column();
+
+		switch (token->type()) {
+		case TokenType::DataOffset: {
+			int intOffset = 0;
+			try {
+				intOffset = Strings::toInt(token->value());
+				if (intOffset < 0) {
+					throw Error();
+				}
+			} catch (Error const& err) {
+				throw ParseError::badValue(
+				    line, column, ParseError::Uint, token->value());
+			}
+			offset = intOffset;
+			goto expectDataLength;
+		}
+		case TokenType::TextFormat:
+			continue; // Ignore
+		default:
+			throw ParseError::badToken(line, column, token->type());
+		}
+	}
+
+expectDataLength:
+	// Length
+	auto token = this->expect(TokenType::DataLength);
+	int intLength = 0;
+	try {
+		intLength = Strings::toInt(token->value());
+		if (intLength < 0) {
+			throw Error();
+		}
+	} catch (Error const& err) {
+		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
+	}
+	std::size_t length = intLength;
+
+	// Data
+	this->addDataCallback(line, column, offset, length, [=, &element](std::string data) {
+		element.body(data);
+	});
+}
+
+// Format: DD-Mon-YY
+void Parser::parseDate(std::string const& date, std::tm& tm) const {
+	auto parts = Strings::split(date, "-", 3);
+
+	int year = 0;
+	try {
+		year = Strings::toInt(parts[2]);
+		if (year < 0) {
+			throw Error();
+		}
+	} catch (Error const& err) {
+		throw DataError("invalid year: %d", year);
+	}
+	if (year < 95) { // Info elements were introduced in 1995
+		year += 100;
+	}
+
+	int month = 0;
+	if (parts[1] == "Jan") {
+		month = 0;
+	} else if (parts[1] == "Feb") {
+		month = 1;
+	} else if (parts[1] == "Mar") {
+		month = 2;
+	} else if (parts[1] == "Apr") {
+		month = 3;
+	} else if (parts[1] == "May") {
+		month = 4;
+	} else if (parts[1] == "Jun") {
+		month = 5;
+	} else if (parts[1] == "Jul") {
+		month = 6;
+	} else if (parts[1] == "Aug") {
+		month = 7;
+	} else if (parts[1] == "Sep") {
+		month = 8;
+	} else if (parts[1] == "Oct") {
+		month = 9;
+	} else if (parts[1] == "Nov") {
+		month = 10;
+	} else if (parts[1] == "Dec") {
+		month = 11;
+	} else {
+		throw DataError("invalid month: %d", parts[1]);
+	}
+
+	int day = 0;
+	try {
+		day = Strings::toInt(parts[0]);
+		if (day < 1 || day > 31) {
+			throw Error();
+		}
+	} catch (Error const& err) {
+		throw DataError("invalid day: %d", day);
+	}
+
+	tm.tm_year = year;
+	tm.tm_mon = month;
+	tm.tm_mday = day;
 }
 
 // Elements are automatically appended to their parents
@@ -434,89 +701,14 @@ std::shared_ptr<Element> Parser::parseElement(std::unique_ptr<Token const> token
 	return element;
 }
 
-void Parser::parseCommentElement(Element& element) {
-	auto length = element.length();
-	std::string body;
-	auto continuation = false;
-	auto paragraph = false;
-
-	for (auto i = 3; i <= length; ++i) {
-		auto token = this->next();
-
-		switch (token->type()) {
-		case TokenType::String:
-			if (continuation) {
-				body += ' ';
-			}
-			body += token->value();
-			continuation = true;
-			paragraph = false;
-			break;
-		case TokenType::NestedTextSep:
-			[[fallthrough]];
-		case TokenType::NestedParagraphSep:
-			body += (paragraph) ? "\n" : "\n \n";
-			continuation = false;
-			paragraph = true;
-			break;
-		default:
-			throw ParseError::badToken(token->line(), token->column(), token->type());
-		}
+void Parser::parseHeaderSep(std::unique_ptr<Token const> token) {
+	if (options_.mode == ModeType::Version88a) {
+		done_ = true;
+		return;
 	}
 
-	element.body(body);
-}
-
-void Parser::parseDataElement(Element& element) {
-	std::size_t offset;
-	auto line = 0;
-	auto column = 0;
-
-	for (;;) {
-		auto token = this->next();
-		line = token->line();
-		column = token->column();
-
-		switch (token->type()) {
-		case TokenType::DataOffset: {
-			int intOffset = 0;
-			try {
-				intOffset = Strings::toInt(token->value());
-				if (intOffset < 0) {
-					throw Error();
-				}
-			} catch (Error const& err) {
-				throw ParseError::badValue(
-				    line, column, ParseError::Uint, token->value());
-			}
-			offset = intOffset;
-			goto expectDataLength;
-		}
-		case TokenType::TextFormat:
-			continue; // Ignore
-		default:
-			throw ParseError::badToken(line, column, token->type());
-		}
-	}
-
-expectDataLength:
-	// Length
-	auto token = this->expect(TokenType::DataLength);
-	int intLength = 0;
-	try {
-		intLength = Strings::toInt(token->value());
-		if (intLength < 0) {
-			throw Error();
-		}
-	} catch (Error const& err) {
-		throw ParseError::badValue(line, column, ParseError::Uint, token->value());
-	}
-	std::size_t length = intLength;
-
-	// Data
-	this->addDataCallback(line, column, offset, length, [=, &element](std::string data) {
-		element.body(data);
-	});
+	// 96a element line numbers don't include compatibility header
+	lineOffset_ = token->line();
 }
 
 void Parser::parseHintElement(Element& element) {
@@ -980,210 +1172,6 @@ void Parser::parseTextElement(Element& element) {
 	    });
 }
 
-void Parser::parseVersionElement(Element& element) {
-	element.visibility(VisibilityType::None);
-	this->parseCommentElement(element);
-
-	auto version = element.title();
-	if (version == "91a") {
-		document_->version(VersionType::Version91a);
-	} else if (version == "95a") {
-		document_->version(VersionType::Version95a);
-	}
-}
-
-std::unique_ptr<Token const> Parser::next() {
-	auto token = tokenizer_->next();
-	if (options_.debug) {
-		logger_.debug(token->string().c_str());
-	}
-	return token;
-}
-
-std::unique_ptr<Token const> Parser::expect(TokenType expected) {
-	auto token = this->next();
-	auto tokenType = token->type();
-
-	if (tokenType == TokenType::FileEnd && expected != TokenType::FileEnd) {
-		throw ParseError(token->line(), token->column(), "unexpected end of file");
-	} else if (tokenType != expected) {
-		throw ParseError::badToken(
-		    token->line(), token->column(), expected, token->type());
-	}
-	return token;
-}
-
-void Parser::addDataCallback(
-    int line, int column, std::size_t offset, std::size_t length, DataCallback func) {
-
-	dataHandlers_.emplace_back(line, column, offset, length, func);
-}
-
-void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& node) {
-	if (text.empty()) {
-		return;
-	}
-
-	if (node.hasLastChild()) {
-		auto previous = node.lastChild();
-
-		if (previous->isText()) {
-			auto previousTextNode = static_cast<TextNode*>(previous);
-			auto previousTextBody = previousTextNode->body();
-
-			// Append space to previous node if it does end in whitespace
-			if (!previousTextBody.ends_with(' ') && !previousTextBody.ends_with('\n')
-			    && !Strings::beginsWithAttachedPunctuation(text)) {
-
-				previousTextBody += ' ';
-				previousTextNode->body(previousTextBody);
-			}
-
-			auto previousHasOverflow = previousTextNode->hasFormat(TextFormat::Overflow);
-			auto sameFormatSansOverflow =
-			    withoutFormat(previousTextNode->format(), TextFormat::Overflow)
-			    == withoutFormat(format, TextFormat::Overflow);
-
-			if (previousHasOverflow && !hasFormat(format, TextFormat::Overflow)
-			    && text == " ") {
-
-				// Handle `#w+ #w-` sequence
-				format = withFormat(format, TextFormat::Overflow);
-				previousTextNode->body(Strings::chomp(previousTextBody, '\n'));
-				text.clear();
-				return;
-			} else if (previousTextNode->format() == format
-			           || (previousHasOverflow && sameFormatSansOverflow)) {
-
-				// Append text with the same formatting to the previous node
-				previousTextBody += text;
-				previousTextNode->body(previousTextBody);
-				text.clear();
-				return;
-			}
-		} else if (previous->isElement()) {
-			// Prepend space to text if it follows an inline element
-			auto const previousElement = static_cast<Element*>(previous);
-
-			if (previousElement->inlined()
-			    && !Strings::beginsWithAttachedPunctuation(text)) {
-
-				text = " " + text;
-			}
-		}
-	}
-
-	auto textNode = TextNode::create(text, format);
-	node.appendChild(textNode);
-	text.clear();
-}
-
-void Parser::checkCRC() {
-	document_->validChecksum(crc_->valid());
-}
-
-Node* Parser::findParent(ContainerNode& node) {
-	auto min = node.line();
-	auto max = min + node.length();
-	auto parent = parents_.find(min, max);
-
-	if (!parent) {
-		throw DataError(
-		    "could not find parent element between lines %d and %d", min, max);
-	}
-
-	return parent;
-}
-
-// Most UHS files have a header with an off-by-one error in the (invisible) 88a header.
-// This is a small fix to address that should someone use --mode=88a.
-int Parser::fixHeaderFirstChildLine(std::string title, int firstChildLine) const {
-	if (title == BadHeaderTitle && firstChildLine == BadHeaderFirstChildLine) {
-		return GoodHeaderFirstChildLine;
-	}
-	return firstChildLine;
-}
-
-void Parser::addNodeToParentIndex(ContainerNode& node) {
-	auto min = node.line();
-	auto max = min + node.length();
-	parents_.add(node, min, max);
-}
-
-int Parser::offsetLine(int line) {
-	return line - lineOffset_;
-}
-
-void Parser::parseData(std::unique_ptr<Token const> token) {
-	std::size_t offset;
-
-	for (auto const& handler : dataHandlers_) {
-		offset = handler.offset - token->offset();
-		handler.func(token->value().substr(offset, handler.length));
-	}
-}
-
-// Format: DD-Mon-YY
-void Parser::parseDate(std::string const& date, std::tm& tm) const {
-	auto parts = Strings::split(date, "-", 3);
-
-	int year = 0;
-	try {
-		year = Strings::toInt(parts[2]);
-		if (year < 0) {
-			throw Error();
-		}
-	} catch (Error const& err) {
-		throw DataError("invalid year: %d", year);
-	}
-	if (year < 95) { // Info elements were introduced in 1995
-		year += 100;
-	}
-
-	int month = 0;
-	if (parts[1] == "Jan") {
-		month = 0;
-	} else if (parts[1] == "Feb") {
-		month = 1;
-	} else if (parts[1] == "Mar") {
-		month = 2;
-	} else if (parts[1] == "Apr") {
-		month = 3;
-	} else if (parts[1] == "May") {
-		month = 4;
-	} else if (parts[1] == "Jun") {
-		month = 5;
-	} else if (parts[1] == "Jul") {
-		month = 6;
-	} else if (parts[1] == "Aug") {
-		month = 7;
-	} else if (parts[1] == "Sep") {
-		month = 8;
-	} else if (parts[1] == "Oct") {
-		month = 9;
-	} else if (parts[1] == "Nov") {
-		month = 10;
-	} else if (parts[1] == "Dec") {
-		month = 11;
-	} else {
-		throw DataError("invalid month: %d", parts[1]);
-	}
-
-	int day = 0;
-	try {
-		day = Strings::toInt(parts[0]);
-		if (day < 1 || day > 31) {
-			throw Error();
-		}
-	} catch (Error const& err) {
-		throw DataError("invalid day: %d", day);
-	}
-
-	tm.tm_year = year;
-	tm.tm_mon = month;
-	tm.tm_mday = day;
-}
-
 // Format: HH:MM:SS
 void Parser::parseTime(std::string const& time, std::tm& tm) const {
 	auto parts = Strings::split(time, ":", 3);
@@ -1221,6 +1209,18 @@ void Parser::parseTime(std::string const& time, std::tm& tm) const {
 	tm.tm_hour = hour;
 	tm.tm_min = min;
 	tm.tm_sec = sec;
+}
+
+void Parser::parseVersionElement(Element& element) {
+	element.visibility(VisibilityType::None);
+	this->parseCommentElement(element);
+
+	auto version = element.title();
+	if (version == "91a") {
+		document_->version(VersionType::Version91a);
+	} else if (version == "95a") {
+		document_->version(VersionType::Version95a);
+	}
 }
 
 void Parser::parseWithFormat(std::string const& text, TextFormat& format,
@@ -1350,7 +1350,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 }
 
 void Parser::processLinks() {
-	for (auto const& [link, line, column] : deferredLinks_) {
+	for (auto const& [column, line, link] : deferredLinks_) {
 		auto const& body = link.body();
 		int targetLine = 0;
 		try {
@@ -1428,7 +1428,15 @@ void Parser::processVisibility() {
 }
 
 Parser::NodeRange::NodeRange(Node& node, int const min, int const max)
-    : node{node}, min{min}, max{max} {}
+    : max{max}, min{min}, node{node} {}
+
+void Parser::NodeRangeList::add(Node& node, int const min, int const max) {
+	data.emplace_back(node, min, max);
+}
+
+void Parser::NodeRangeList::clear() {
+	data.clear();
+}
 
 Node* Parser::NodeRangeList::find(int const min, int const max) {
 	Node* node = nullptr;
@@ -1445,20 +1453,12 @@ Node* Parser::NodeRangeList::find(int const min, int const max) {
 	return node;
 }
 
-void Parser::NodeRangeList::add(Node& node, int const min, int const max) {
-	data.emplace_back(node, min, max);
-}
-
-void Parser::NodeRangeList::clear() {
-	data.clear();
-}
-
 Parser::DataHandler::DataHandler(
     int line, int column, std::size_t offset, std::size_t length, DataCallback func)
-    : line{line}, column{column}, offset{offset}, length{length}, func{func} {}
+    : column{column}, func{func}, length{length}, line{line}, offset{offset} {}
 
 Parser::LinkData::LinkData(Element& link, int const line, int const column)
-    : link{link}, line{line}, column{column} {}
+    : column{column}, line{line}, link{link} {}
 
 Parser::VisibilityData::VisibilityData(int targetLine, VisibilityType visibility)
     : targetLine{targetLine}, visibility{visibility} {}

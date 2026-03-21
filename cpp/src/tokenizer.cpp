@@ -5,10 +5,18 @@
 
 namespace UHS {
 
-Tokenizer::Tokenizer(Pipe& pipe) : pipe_{pipe}, out_{pipe} {
+Tokenizer::Tokenizer(Pipe& pipe) : out_{pipe}, pipe_{pipe} {
 	pipe_.addHandler([=, this](char const* buffer, std::streamsize length) {
 		this->tokenize(buffer, length);
 	});
+}
+
+bool Tokenizer::hasNext() {
+	return out_.ok();
+}
+
+std::unique_ptr<Token const> Tokenizer::next() {
+	return out_.receive();
 }
 
 void Tokenizer::tokenize(char const* buffer, std::streamsize length) {
@@ -73,12 +81,44 @@ void Tokenizer::tokenize(char const* buffer, std::streamsize length) {
 	}
 }
 
-bool Tokenizer::hasNext() {
-	return out_.ok();
+void Tokenizer::tokenizeCRC(std::string const& crc, std::size_t column) {
+	out_.send({TokenType::CRC, offset_, line_, column, crc});
 }
 
-std::unique_ptr<Token const> Tokenizer::next() {
-	return out_.receive();
+void Tokenizer::tokenizeData(std::string const& data, std::size_t column) {
+	out_.send({TokenType::Data, offset_, line_, column, data});
+}
+
+void Tokenizer::tokenizeDataAddress(std::smatch const& matches) {
+	this->tokenizeMatches(matches,
+	    {
+	        TokenType::TextFormat,
+	        TokenType::DataOffset,
+	        TokenType::DataLength,
+	    });
+}
+
+ElementType Tokenizer::tokenizeDescriptor(std::smatch const& matches) {
+	out_.send(
+	    {TokenType::Length, offset_, line_, 0, Strings::ltrim(matches[1].str(), '0')});
+	std::string ident{matches[2].str()};
+	auto column = static_cast<std::size_t>(matches.position(2));
+	out_.send({TokenType::Ident, offset_ + column, line_, column, ident});
+	return Element::elementType(ident);
+}
+
+void Tokenizer::tokenizeEOF(std::size_t column) {
+	out_.send({TokenType::FileEnd, offset_, line_, column});
+}
+
+void Tokenizer::tokenizeHyperpngRegion(std::smatch const& matches) {
+	this->tokenizeMatches(matches,
+	    {
+	        TokenType::CoordX,
+	        TokenType::CoordY,
+	        TokenType::CoordX,
+	        TokenType::CoordY,
+	    });
 }
 
 void Tokenizer::tokenizeLine() {
@@ -140,44 +180,6 @@ void Tokenizer::tokenizeLine() {
 	}
 }
 
-ElementType Tokenizer::tokenizeDescriptor(std::smatch const& matches) {
-	out_.send(
-	    {TokenType::Length, offset_, line_, 0, Strings::ltrim(matches[1].str(), '0')});
-	std::string ident{matches[2].str()};
-	auto column = static_cast<std::size_t>(matches.position(2));
-	out_.send({TokenType::Ident, offset_ + column, line_, column, ident});
-	return Element::elementType(ident);
-}
-
-void Tokenizer::tokenizeDataAddress(std::smatch const& matches) {
-	this->tokenizeMatches(matches,
-	    {
-	        TokenType::TextFormat,
-	        TokenType::DataOffset,
-	        TokenType::DataLength,
-	    });
-}
-
-void Tokenizer::tokenizeHyperpngRegion(std::smatch const& matches) {
-	this->tokenizeMatches(matches,
-	    {
-	        TokenType::CoordX,
-	        TokenType::CoordY,
-	        TokenType::CoordX,
-	        TokenType::CoordY,
-	    });
-}
-
-void Tokenizer::tokenizeOverlayAddress(std::smatch const& matches) {
-	this->tokenizeMatches(matches,
-	    {
-	        TokenType::DataOffset,
-	        TokenType::DataLength,
-	        TokenType::CoordX,
-	        TokenType::CoordY,
-	    });
-}
-
 void Tokenizer::tokenizeMatches(
     std::smatch const& matches, std::vector<TokenType> const&& tokens) {
 
@@ -190,24 +192,30 @@ void Tokenizer::tokenizeMatches(
 	}
 }
 
-void Tokenizer::tokenizeData(std::string const& data, std::size_t column) {
-	out_.send({TokenType::Data, offset_, line_, column, data});
-}
-
-void Tokenizer::tokenizeCRC(std::string const& crc, std::size_t column) {
-	out_.send({TokenType::CRC, offset_, line_, column, crc});
-}
-
-void Tokenizer::tokenizeEOF(std::size_t column) {
-	out_.send({TokenType::FileEnd, offset_, line_, column});
+void Tokenizer::tokenizeOverlayAddress(std::smatch const& matches) {
+	this->tokenizeMatches(matches,
+	    {
+	        TokenType::DataOffset,
+	        TokenType::DataLength,
+	        TokenType::CoordX,
+	        TokenType::CoordY,
+	    });
 }
 
 Tokenizer::TokenChannel::TokenChannel(Pipe& pipe) : pipe_{pipe} {}
 
-void Tokenizer::TokenChannel::send(Token const&& token) {
+void Tokenizer::TokenChannel::close() {
+	open_ = false;
+}
+
+bool Tokenizer::TokenChannel::empty() const {
 	std::lock_guard<std::mutex> m{mutex_};
-	assert(open_);
-	queue_.push(token);
+	return queue_.empty();
+}
+
+bool Tokenizer::TokenChannel::ok() const {
+	std::lock_guard<std::mutex> m{mutex_};
+	return open_ || !queue_.empty();
 }
 
 std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
@@ -229,18 +237,10 @@ std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
 	return t;
 }
 
-bool Tokenizer::TokenChannel::empty() const {
+void Tokenizer::TokenChannel::send(Token const&& token) {
 	std::lock_guard<std::mutex> m{mutex_};
-	return queue_.empty();
-}
-
-bool Tokenizer::TokenChannel::ok() const {
-	std::lock_guard<std::mutex> m{mutex_};
-	return open_ || !queue_.empty();
-}
-
-void Tokenizer::TokenChannel::close() {
-	open_ = false;
+	assert(open_);
+	queue_.push(token);
 }
 
 } // namespace UHS

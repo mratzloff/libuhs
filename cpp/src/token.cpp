@@ -4,41 +4,29 @@ namespace UHS {
 
 Token::TypeMap Token::typeMap_;
 
-std::string const Token::typeString(TokenType type) {
-	return Token::typeMap_.findByType(type);
-}
-
-Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
-    std::string value)
-    : type_{tokenType}, line_{line}, column_{column}, offset_{offset}, value_{value} {}
-
 std::ostream& operator<<(std::ostream& out, Token const& t) {
 	out << t.string();
 	return out;
 }
 
-TokenType Token::type() const {
-	return type_;
-}
+Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
+    std::string value)
+    : column_{column}, line_{line}, offset_{offset}, type_{tokenType}, value_{value} {}
 
-int Token::line() const {
-	return line_;
+std::string const Token::typeString(TokenType type) {
+	return Token::typeMap_.findByType(type);
 }
 
 std::size_t Token::column() const {
 	return column_;
 }
 
+int Token::line() const {
+	return line_;
+}
+
 std::size_t Token::offset() const {
 	return offset_;
-}
-
-std::string const& Token::value() const {
-	return value_;
-}
-
-std::string const Token::typeString() const {
-	return Token::typeString(type_);
 }
 
 std::string const Token::string() const {
@@ -79,14 +67,22 @@ std::string const Token::string() const {
 	return buffer;
 }
 
-std::string const Token::formatToken() const {
-	auto buffer = typeString();
-	buffer += ' ';
-	buffer += std::to_string(line_);
-	buffer += ':';
-	buffer += std::to_string(column_);
-	buffer += ':';
-	buffer += std::to_string(offset_);
+TokenType Token::type() const {
+	return type_;
+}
+
+std::string const Token::typeString() const {
+	return Token::typeString(type_);
+}
+
+std::string const& Token::value() const {
+	return value_;
+}
+
+std::string const Token::formatByteValue() const {
+	auto buffer = " ["s;
+	buffer += Strings::hex(value_);
+	buffer += ']';
 
 	return buffer;
 }
@@ -103,10 +99,14 @@ std::string const Token::formatStringValue() const {
 	return buffer;
 }
 
-std::string const Token::formatByteValue() const {
-	auto buffer = " ["s;
-	buffer += Strings::hex(value_);
-	buffer += ']';
+std::string const Token::formatToken() const {
+	auto buffer = typeString();
+	buffer += ' ';
+	buffer += std::to_string(line_);
+	buffer += ':';
+	buffer += std::to_string(column_);
+	buffer += ':';
+	buffer += std::to_string(offset_);
 
 	return buffer;
 }

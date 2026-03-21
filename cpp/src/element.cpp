@@ -4,16 +4,17 @@ namespace UHS {
 
 Element::TypeMap Element::typeMap_;
 
-std::shared_ptr<Element> Element::create(ElementType type, int id) {
-	return std::make_shared<Element>(type, id);
-}
+void swap(Element& lhs, Element& rhs) noexcept {
+	using std::swap;
 
-ElementType Element::elementType(std::string const& typeString) {
-	return Element::typeMap_.findByString(typeString);
-}
-
-std::string const Element::typeString(ElementType type) {
-	return Element::typeMap_.findByType(type);
+	swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
+	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
+	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
+	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
+	swap(static_cast<Traits::Inlined&>(lhs), static_cast<Traits::Inlined&>(rhs));
+	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
+	swap(lhs.elementType_, rhs.elementType_);
+	swap(lhs.id_, rhs.id_);
 }
 
 Element::Element(ElementType type, int id)
@@ -29,22 +30,16 @@ Element::Element(Element const& other)
     , elementType_{other.elementType_}
     , id_{other.id_} {}
 
-Element& Element::operator=(Element other) {
-	swap(*this, other);
-	return *this;
+std::shared_ptr<Element> Element::create(ElementType type, int id) {
+	return std::make_shared<Element>(type, id);
 }
 
-void swap(Element& lhs, Element& rhs) noexcept {
-	using std::swap;
+ElementType Element::elementType(std::string const& typeString) {
+	return Element::typeMap_.findByString(typeString);
+}
 
-	swap(static_cast<ContainerNode&>(lhs), static_cast<ContainerNode&>(rhs));
-	swap(static_cast<Traits::Attributes&>(lhs), static_cast<Traits::Attributes&>(rhs));
-	swap(static_cast<Traits::Body&>(lhs), static_cast<Traits::Body&>(rhs));
-	swap(static_cast<Traits::Title&>(lhs), static_cast<Traits::Title&>(rhs));
-	swap(static_cast<Traits::Inlined&>(lhs), static_cast<Traits::Inlined&>(rhs));
-	swap(static_cast<Traits::Visibility&>(lhs), static_cast<Traits::Visibility&>(rhs));
-	swap(lhs.elementType_, rhs.elementType_);
-	swap(lhs.id_, rhs.id_);
+std::string const Element::typeString(ElementType type) {
+	return Element::typeMap_.findByType(type);
 }
 
 // Copies and returns a detached element with its children.
@@ -85,6 +80,11 @@ std::string const Element::mediaExt() const {
 	default:
 		throw DataError("invalid media extension");
 	}
+}
+
+Element& Element::operator=(Element other) {
+	swap(*this, other);
+	return *this;
 }
 
 Element::TypeMap::TypeMap() {
