@@ -4,6 +4,7 @@
 #define UHS_VERSION "1.0.0-alpha"
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -12,6 +13,7 @@
 #include <iostream>
 #include <istream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -268,7 +270,7 @@ public:
 	template<typename... Args>
 	void error(char const* format, Args... args) const {
 		if (level_ != LogLevel::None) {
-			this->log(std::cout, "error: ", format, args...);
+			this->log("error: ", format, args...);
 		}
 	}
 
@@ -280,7 +282,7 @@ public:
 		if (level_ == LogLevel::Warn || level_ == LogLevel::Info
 		    || level_ == LogLevel::Debug) {
 
-			this->log(std::cout, "warning: ", format, args...);
+			this->log("warning: ", format, args...);
 		}
 	}
 
@@ -289,7 +291,7 @@ public:
 	template<typename... Args>
 	void info(char const* format, Args... args) const {
 		if (level_ == LogLevel::Info || level_ == LogLevel::Debug) {
-			this->log(std::cout, "info: ", format, args...);
+			this->log("info: ", format, args...);
 		}
 	}
 
@@ -298,7 +300,7 @@ public:
 	template<typename... Args>
 	void debug(char const* format, Args... args) const {
 		if (level_ == LogLevel::Debug) {
-			this->log(std::cout, "debug: ", format, args...);
+			this->log("debug: ", format, args...);
 		}
 	}
 
@@ -306,16 +308,14 @@ private:
 	LogLevel level_;
 
 	template<typename... Args>
-	void log(std::ostream& ostream, char const* prefix, char const* format,
-	    Args... args) const {
-
+	void log(char const* prefix, char const* format, Args... args) const {
 		std::string buffer;
 		buffer += "uhs: ";
 		buffer += prefix;
 		buffer += format;
 		buffer += '\n';
 
-		tfm::format(ostream, buffer.c_str(), args...);
+		tfm::format(std::cerr, buffer.c_str(), args...);
 	}
 };
 
@@ -348,6 +348,7 @@ std::vector<std::string> split(std::string const& s, std::regex const& sep);
 std::string toBase64(std::string const& s);
 int toInt(std::string const& s);
 void toLower(std::string& s);
+std::string trim(std::string s, char c);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width);
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width,
     int& numLines, std::string const prefix = "");
@@ -359,6 +360,7 @@ namespace Regex {
 std::regex const Descriptor{"([0-9]+) ([a-z]{4,})"};
 std::regex const DataAddress{"0{6} ?([0-3])? ([0-9]{6,}) ([0-9]{6,})"};
 std::regex const EmailAddress{".+@.+\\..+"};
+std::regex const HorizontalLine{"(?:-{3,} *)+"};
 std::regex const HyperpngRegion{
     "(-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,}) (-?[0-9]{3,})"};
 std::regex const OverlayAddress{
@@ -1156,6 +1158,40 @@ private:
 		std::map<ElementType const, Func> map_;
 	};
 
+	class Table {
+	public:
+		Table(std::vector<std::string> const& lines);
+
+		void parse();
+		void serialize(pugi::xml_node& xmlNode) const;
+		std::size_t endLine() const;
+		bool hasPrecedingText() const;
+		std::size_t startLine() const;
+		bool valid() const;
+
+		static constexpr double HeaderlessConsensusThreshold = 0.6;
+
+	private:
+		bool charGrid_ = false;
+		int demarcationLine_ = 0;
+		std::size_t endLine_ = 0;
+		bool headerless_ = false;
+		std::vector<std::string> const lines_;
+		bool pipeDelimited_ = false;
+		std::size_t startLine_ = 0;
+		std::vector<std::vector<std::string>> table_;
+		bool valid_ = false;
+
+		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+		    std::string const& line) const;
+		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
+		std::vector<std::pair<std::size_t, std::size_t>>
+		    detectHeaderlessColumnBoundaries() const;
+		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
+		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
+		int findDemarcationLine() const;
+	};
+
 	void serialize(Document const& document, pugi::xml_document& xml);
 	void serializeDocument(Document const& document, pugi::xml_node root) const;
 	void serializeElement(Element const& element, pugi::xml_node xmlNode);
@@ -1185,7 +1221,11 @@ private:
 	    Document const& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
 	    Element const& element, pugi::xml_node xmlNode) const;
+	std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
+	    findNextSegment(std::vector<std::string>::const_iterator it,
+	        std::vector<std::string>::const_iterator end) const;
 	pugi::xml_node findOrCreateMap(Element const& element, pugi::xml_node xmlNode) const;
+	void removeTrailingBreaks(pugi::xml_node xmlNode) const;
 	pugi::xml_node findXMLParent(Node const& node, pugi::xml_node const parent,
 	    NodeMap const parents, int const depth) const;
 	std::string getDataURI(std::string const& contentType, std::string const& data) const;

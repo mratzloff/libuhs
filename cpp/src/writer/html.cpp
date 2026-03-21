@@ -28,7 +28,7 @@ HTMLWriter::HTMLWriter(Logger const& logger, std::ostream& out, Options const& o
 void HTMLWriter::write(std::shared_ptr<Document> const document) {
 	pugi::xml_document xml;
 	this->serialize(*document, xml);
-	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
+	xml.save(out_, "", pugi::format_indent | pugi::format_no_declaration);
 }
 
 void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
@@ -136,6 +136,87 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		}
 
 		depth = nodeDepth;
+	}
+
+	// Split parent elements around monospace+overflow spans into separate blocks
+	for (auto node : root.select_nodes(
+	         "//span[contains(@class,'monospace') and contains(@class,'overflow')]")) {
+		auto span = node.node();
+		auto parent = span.parent();
+
+		// If the span is the only child, or the parent is already a block
+		// container, stay within the parent. Only escape to the grandparent
+		// when the parent is a <p> and the span has siblings.
+		auto isOnlyChild = (parent.first_child() == span && !span.next_sibling());
+		auto shouldEscape =
+		    (!isOnlyChild && strcmp(parent.name(), "p") == 0);
+		auto insertInto = shouldEscape ? parent.parent() : parent;
+		auto insertBefore = shouldEscape ? parent : span;
+
+		// Move preceding siblings into a new <p>
+		if (shouldEscape && parent.first_child() != span) {
+			auto before = insertInto.insert_child_before("p", insertBefore);
+			while (parent.first_child() != span) {
+				auto sibling = parent.first_child();
+				before.append_copy(sibling);
+				parent.remove_child(sibling);
+			}
+		}
+
+		// Move the span into its own <p>
+		auto block = insertInto.insert_child_before("p", insertBefore);
+		this->appendClassNames(block, {"monospace", "overflow"});
+		while (span.first_child()) {
+			auto child = span.first_child();
+			block.append_copy(child);
+			span.remove_child(child);
+		}
+		parent.remove_child(span);
+	}
+
+	// Wrap consecutive inline element runs in <p> when not already inside a <p>.
+	// Select only the first element in each run (no preceding inline sibling).
+	{
+		auto results = root.select_nodes(
+		    "//span[not(parent::p) and not(contains(@class,'title'))"
+		    " and not(preceding-sibling::*[1][self::a or self::span])]");
+		std::vector<pugi::xml_node> runStarts;
+		for (auto const& node : results) {
+			runStarts.push_back(node.node());
+		}
+
+		for (auto current : runStarts) {
+			auto wrapper = current.parent().insert_child_before("p", current);
+			while (current) {
+				auto name = std::string(current.name());
+				if (name != "a" && name != "span") {
+					break;
+				}
+				auto next = current.next_sibling();
+				wrapper.append_move(current);
+				current = next;
+			}
+			auto lastChild = wrapper.last_child();
+			if (lastChild) {
+				this->removeTrailingBreaks(lastChild);
+			}
+		}
+	}
+
+	// Remove empty or whitespace-only <p> elements
+	for (auto node : root.select_nodes("//p[not(node()) or normalize-space() = '']")) {
+		auto p = node.node();
+		p.parent().remove_child(p);
+	}
+
+	for (auto node : root.select_nodes("//div[@class='table-container']")) {
+		auto previous = node.node().previous_sibling();
+		if (previous && std::string(previous.name()) == "p") {
+			auto lastChild = previous.last_child();
+			if (lastChild) {
+				this->removeTrailingBreaks(lastChild);
+			}
+		}
 	}
 }
 
@@ -350,8 +431,39 @@ void HTMLWriter::serializeTextElement(Element const& element, pugi::xml_node xml
 	this->appendTitle(element, xmlNode);
 }
 
+std::pair<std::vector<std::string>, std::vector<std::string>::const_iterator>
+    HTMLWriter::findNextSegment(std::vector<std::string>::const_iterator it,
+        std::vector<std::string>::const_iterator end) const {
+
+	std::vector<std::string> lines;
+	std::smatch match;
+
+	while (it < end) {
+		if (it + 1 < end && *it == "" && *(it + 1) == "") {
+			for (; it < end && *it == ""; ++it) {
+			}
+			break;
+		} else if (it + 2 < end && *it == ""
+		           && std::regex_match(*(it + 2), match, Regex::HorizontalLine)) {
+			++it;
+			break;
+		} else {
+			lines.emplace_back(*it);
+			++it;
+		}
+	}
+
+	return {lines, it};
+}
+
 void HTMLWriter::serializeTextNode(
     TextNode const& textNode, pugi::xml_node xmlNode) const {
+
+	// Remove trailing <br> tags from the previous sibling span
+	auto previousSibling = xmlNode.previous_sibling();
+	if (previousSibling && std::string(previousSibling.name()) == "span") {
+		this->removeTrailingBreaks(previousSibling);
+	}
 
 	if (textNode.hasPreviousSibling()) {
 		auto previousNode = textNode.previousSibling();
@@ -365,38 +477,203 @@ void HTMLWriter::serializeTextNode(
 		}
 	}
 
+	if (textNode.hasFormat(TextFormat::Hyperlink)) {
+		this->appendClassNames(xmlNode, {"format-hyperlink"});
+	}
+	if (textNode.hasFormat(TextFormat::Monospace)) {
+		this->appendClassNames(xmlNode, {"format-monospace"});
+	}
+	if (textNode.hasFormat(TextFormat::Overflow)) {
+		this->appendClassNames(xmlNode, {"format-overflow"});
+	}
+
 	auto body = textNode.body();
 	auto lines = Strings::split(body, "\n");
 
-	for (std::size_t i = 0; i < lines.size(); ++i) {
-		if (i > 0) {
-			xmlNode.append_child("br");
+	// for (auto const& line : lines) {
+	// 	tfm::printf("\"%s\"\n", line);
+	// }
+	// tfm::printf("--------\n");
+
+	auto appendLines = [](pugi::xml_node node, std::vector<std::string> const& src) {
+		for (std::size_t i = 0; i < src.size(); ++i) {
+			if (i > 0) {
+				node.append_child("br");
+			}
+			node.append_child(pugi::node_pcdata).set_value(src[i].c_str());
 		}
-		xmlNode.append_child(pugi::node_pcdata).set_value(lines[i].c_str());
+	};
+
+	auto isMonospace = textNode.hasFormat(TextFormat::Monospace);
+	auto isOverflow = textNode.hasFormat(TextFormat::Overflow);
+	auto isMonoOrOverflow = (isMonospace || isOverflow);
+
+	// Count segments (separated by blank lines) and check for tables
+	int segmentCount = 0;
+	bool hasTable = false;
+	bool hasTrailingBreak = false;
+	for (auto scanIt = lines.cbegin(); scanIt < lines.cend();) {
+		auto [segment, next] = this->findNextSegment(scanIt, lines.cend());
+		scanIt = next;
+		++segmentCount;
+
+		if (isMonoOrOverflow && !hasTable) {
+			Table table{segment};
+			table.parse();
+			if (table.valid() || table.hasPrecedingText()) {
+				hasTable = true;
+			}
+		}
 	}
 
-	if (textNode.hasFormat(TextFormat::Hyperlink)) {
-		xmlNode.set_name("a");
+	// Detect paragraph breaks (" " lines preserved from parser)
+	bool hasParagraphBreak = false;
+	for (auto const& line : lines) {
+		if (line == Token::ParagraphSep) {
+			hasParagraphBreak = true;
+			break;
+		}
+	}
+
+	// Detect trailing paragraph break
+	if (!lines.empty() && lines.back() == Token::ParagraphSep) {
+		hasTrailingBreak = true;
+	}
+
+	auto escapeToContainer =
+	    (segmentCount > 1 || hasTable || hasTrailingBreak || hasParagraphBreak);
+
+	auto applyHyperlink = [&](pugi::xml_node node) {
+		if (!textNode.hasFormat(TextFormat::Hyperlink)) {
+			return;
+		}
+		node.set_name("a");
+		auto href = body;
 		std::smatch matches;
-		if (std::regex_match(body, matches, Regex::EmailAddress)) {
-			body = "mailto:" + body;
-		} else if (!std::regex_match(body, matches, Regex::URL)) {
-			body = "http://" + body;
+		if (std::regex_match(href, matches, Regex::EmailAddress)) {
+			href = "mailto:" + href;
+		} else if (!std::regex_match(href, matches, Regex::URL)) {
+			href = "http://" + href;
 		}
-		xmlNode.append_attribute("href") = body.c_str();
-		this->appendClassNames(xmlNode, {"hyperlink"});
+		node.append_attribute("href") = href.c_str();
+		this->appendClassNames(node, {"hyperlink"});
+	};
+
+	if (escapeToContainer) {
+		auto parentNode = xmlNode.parent();
+		auto container = parentNode;
+		if (strcmp(parentNode.name(), "p") == 0) {
+			container = parentNode.parent();
+		}
+
+		pugi::xml_node insertAfter;
+		if (container == parentNode) {
+			// Span is directly in the container — insert after the span
+			insertAfter = xmlNode;
+		} else {
+			insertAfter = container.last_child();
+
+			// Move preceding inline siblings from <p> to container level
+			while (parentNode.first_child() != xmlNode) {
+				auto sibling = parentNode.first_child();
+				insertAfter = container.insert_move_after(sibling, insertAfter);
+			}
+		}
+
+		auto it = lines.cbegin();
+		bool firstSegment = true;
+
+		while (it < lines.cend()) {
+			auto segmentStart = it;
+			auto [segment, next] = this->findNextSegment(it, lines.cend());
+			it = next;
+
+			// Insert an empty <p> between segments to break inline runs.
+			// The empty-<p> cleanup pass removes these after wrapping.
+			if (!firstSegment) {
+				insertAfter = container.insert_child_after("p", insertAfter);
+			}
+			firstSegment = false;
+
+			// Try table parse for monospace/overflow content
+			if (isMonoOrOverflow) {
+				Table table{segment};
+				table.parse();
+
+				if (table.valid()) {
+					auto tableNode = container.insert_child_after("div", insertAfter);
+					insertAfter = tableNode;
+					table.serialize(tableNode);
+
+					if (table.endLine() < segment.size()) {
+						it = segmentStart + table.endLine();
+					}
+					continue;
+				}
+
+				if (table.hasPrecedingText()) {
+					it = segmentStart + table.startLine();
+					segment.resize(table.startLine());
+				}
+			}
+
+			// Split non-table content on paragraph break markers (" " lines)
+			std::vector<std::vector<std::string>> paragraphs;
+			std::vector<std::string> currentParagraph;
+			for (auto const& line : segment) {
+				if (line == Token::ParagraphSep) {
+					if (!currentParagraph.empty()) {
+						paragraphs.push_back(currentParagraph);
+						currentParagraph.clear();
+					}
+				} else {
+					currentParagraph.push_back(line);
+				}
+			}
+			if (!currentParagraph.empty()) {
+				paragraphs.push_back(currentParagraph);
+			}
+
+			for (std::size_t p = 0; p < paragraphs.size(); ++p) {
+				if (p > 0) {
+					insertAfter = container.insert_child_after("p", insertAfter);
+				}
+				auto child = container.insert_child_after("span", insertAfter);
+				insertAfter = child;
+				if (isMonospace) {
+					this->appendClassNames(child, {"format-monospace", "monospace"});
+				}
+				if (isOverflow) {
+					this->appendClassNames(child, {"format-overflow", "overflow"});
+				}
+				appendLines(child, paragraphs[p]);
+				applyHyperlink(child);
+			}
+		}
+
+		// Insert trailing separator so the next text node starts a new paragraph
+		if (hasTrailingBreak) {
+			container.insert_child_after("p", insertAfter);
+		}
+
+		xmlNode.parent().remove_child(xmlNode);
+	} else {
+		if (isMonospace) {
+			this->appendClassNames(xmlNode, {"monospace"});
+		}
+		if (isOverflow) {
+			this->appendClassNames(xmlNode, {"overflow"});
+		}
+		appendLines(xmlNode, lines);
+		applyHyperlink(xmlNode);
 	}
 
-	std::vector<std::string> classNames;
-
-	if (textNode.hasFormat(TextFormat::Overflow)) {
-		classNames.push_back("overflow");
-	}
-	if (textNode.hasFormat(TextFormat::Monospace)) {
-		classNames.push_back("monospace");
-	}
-	if (!classNames.empty()) {
-		this->appendClassNames(xmlNode, classNames);
+	// If content was escaped to container level by this or a previous text node,
+	// move this node to container level (unwrapped) so the inline-run wrapping
+	// post-processing can group it with adjacent spans.
+	if (xmlNode.parent() && xmlNode.parent().next_sibling()) {
+		auto container = xmlNode.parent().parent();
+		container.insert_move_after(xmlNode, container.last_child());
 	}
 }
 
@@ -571,6 +848,21 @@ std::optional<pugi::xml_node> HTMLWriter::findHyperpngContainer(
 	    parent.find_child_by_attribute("div", "class", "hyperpng-container media");
 
 	return container;
+}
+
+void HTMLWriter::removeTrailingBreaks(pugi::xml_node xmlNode) const {
+	auto lastChild = xmlNode.last_child();
+	while (lastChild) {
+		auto isBr = (std::string(lastChild.name()) == "br");
+		auto isEmptyText = (lastChild.type() == pugi::node_pcdata
+		                    && std::string(lastChild.value()).empty());
+
+		if (!isBr && !isEmptyText) {
+			break;
+		}
+		xmlNode.remove_child(lastChild);
+		lastChild = xmlNode.last_child();
+	}
 }
 
 pugi::xml_node HTMLWriter::findOrCreateMap(

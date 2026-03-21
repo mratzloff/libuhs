@@ -1,5 +1,5 @@
-import {HOME_ID} from "./constants";
-import {History, HistoryState} from "./history";
+import { HOME_ID } from "./constants";
+import { History, HistoryState } from "./history";
 import search from "./search";
 
 const ViewType = {
@@ -11,14 +11,15 @@ class Viewport {
     private backButton: HTMLElement;
     private forwardButton: HTMLElement;
     private history: History;
+    private tableToggle: HTMLInputElement;
     private viewport: HTMLElement;
 
     public static initOnReady() {
-        document.addEventListener("DOMContentLoaded", () => new Viewport);
+        document.addEventListener("DOMContentLoaded", () => new Viewport());
     }
 
     public constructor() {
-        this.history = new History;
+        this.history = new History();
 
         // Create nav
         const nav = document.createElement("nav");
@@ -56,13 +57,56 @@ class Viewport {
         searchField.addEventListener("search", e => {
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
-                this.go({type: ViewType.Search, locator: keywords});
+                this.go({ type: ViewType.Search, locator: keywords });
             }
         });
         nav.appendChild(searchField);
 
+        // Create options menu button
+        const optionsButton = document.createElement("button");
+        optionsButton.id = "options";
+        optionsButton.addEventListener("click", () => {
+            optionsMenu.classList.toggle("open");
+            this.viewport.classList.toggle("options-open");
+        });
+        nav.appendChild(optionsButton);
+
         // Append nav
         document.body.appendChild(nav);
+
+        // Create options menu
+        const optionsMenuWrapper = document.createElement("div");
+        optionsMenuWrapper.id = "options-menu-wrapper";
+
+        const optionsMenu = document.createElement("div");
+        optionsMenu.id = "options-menu";
+
+        const tableToggleLabel = document.createElement("label");
+        tableToggleLabel.classList.add("toggle");
+
+        const tableToggleText = document.createElement("span");
+        tableToggleText.classList.add("toggle-label");
+        tableToggleText.textContent = "HTML tables";
+        tableToggleLabel.appendChild(tableToggleText);
+
+        this.tableToggle = document.createElement("input");
+        this.tableToggle.type = "checkbox";
+        this.tableToggle.checked =
+            sessionStorage.getItem("option.table.mode") === "html";
+        this.tableToggle.addEventListener("change", () => {
+            const mode = this.tableToggle.checked ? "html" : "text";
+            sessionStorage.setItem("option.table.mode", mode);
+            this.applyTableMode();
+        });
+        tableToggleLabel.appendChild(this.tableToggle);
+
+        const toggleTrack = document.createElement("span");
+        toggleTrack.classList.add("toggle-track");
+        tableToggleLabel.appendChild(toggleTrack);
+
+        optionsMenu.appendChild(tableToggleLabel);
+        optionsMenuWrapper.appendChild(optionsMenu);
+        document.body.appendChild(optionsMenuWrapper);
 
         // Create viewport
         this.viewport = document.createElement("div");
@@ -70,12 +114,23 @@ class Viewport {
         document.body.appendChild(this.viewport);
 
         // Handle history changes
-        this.history.addEventListener("change", (event) => {
+        this.history.addEventListener("change", event => {
             this.view((event as CustomEvent).detail);
         });
 
         // Go to home view
         this.home();
+    }
+
+    private applyTableMode(): void {
+        const showHtml = this.tableToggle.checked;
+
+        this.viewport
+            .querySelectorAll(".table-container > .option-html")
+            .forEach(t => t.classList.toggle("hidden", !showHtml));
+        this.viewport
+            .querySelectorAll(".table-container > .option-text")
+            .forEach(t => t.classList.toggle("hidden", showHtml));
     }
 
     private back(): void {
@@ -112,14 +167,18 @@ class Viewport {
         } else {
             button.textContent = "Show next hint";
         }
-        button.addEventListener("click", () => this.onButtonClick(items, elementId));
+        button.addEventListener("click", () =>
+            this.onButtonClick(items, elementId),
+        );
         footer.appendChild(button);
 
         document.body.appendChild(footer);
     }
 
     private createLinkClickHandlers(element: HTMLElement): void {
-        const links = element.querySelectorAll("a[href]:not(.hyperlink), area[href]");
+        const links = element.querySelectorAll(
+            "a[href]:not(.hyperlink), area[href]",
+        );
         links.forEach(link => {
             const targetId = link.getAttribute("data-target");
             if (!targetId) {
@@ -129,12 +188,14 @@ class Viewport {
             let clickable = true;
             if (link.nodeName == "AREA") {
                 const target = document.getElementById(targetId);
-                clickable = (target?.nodeName == "DIV");
+                clickable = target?.nodeName == "DIV";
             }
 
             if (clickable) {
-                const state = {type: ViewType.Hint, locator: targetId};
-                link.addEventListener("click", () => this.go(state), {capture: false});
+                const state = { type: ViewType.Hint, locator: targetId };
+                link.addEventListener("click", () => this.go(state), {
+                    capture: false,
+                });
                 link.classList.add("clickable");
             }
 
@@ -150,7 +211,11 @@ class Viewport {
                 throw new Error("could not find overlay target ID");
             }
 
-            overlay.addEventListener("click", () => this.showOverlay(targetId), {capture: false});
+            overlay.addEventListener(
+                "click",
+                () => this.showOverlay(targetId),
+                { capture: false },
+            );
             overlay.classList.add("clickable");
         });
     }
@@ -167,13 +232,19 @@ class Viewport {
                 type: ViewType.Hint,
                 locator: element.getAttribute("data-id")!,
             };
-            title.addEventListener("click", () => this.go(state), {capture: false});
+            title.addEventListener("click", () => this.go(state), {
+                capture: false,
+            });
             title.classList.add("clickable");
         });
     }
 
-    private findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
-        return element.querySelectorAll(":scope > ol > li") as NodeListOf<HTMLElement>;
+    private findListItemChildren(
+        element: HTMLElement,
+    ): NodeListOf<HTMLElement> {
+        return element.querySelectorAll(
+            ":scope > ol > li",
+        ) as NodeListOf<HTMLElement>;
     }
 
     private forward(): void {
@@ -192,7 +263,7 @@ class Viewport {
             const parsed = parseInt(cacheValue, 10);
             if (Number.isNaN(parsed)) {
                 sessionStorage.removeItem(key);
-            };
+            }
             index = parsed;
         }
 
@@ -215,7 +286,7 @@ class Viewport {
     }
 
     private home(): void {
-        this.go({type: ViewType.Hint, locator: HOME_ID});
+        this.go({ type: ViewType.Hint, locator: HOME_ID });
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -293,15 +364,28 @@ class Viewport {
     }
 
     private removeUnnecessaryElements(element: HTMLElement): void {
-        element.querySelector("p:not(.title)")?.remove();
-        const mediaFiles = element.querySelectorAll(".media");
-        mediaFiles.forEach(mediaFile => mediaFile.remove());
-        const lists = element.querySelectorAll("ol");
-        lists.forEach(list => list.remove());
+        const container = element.firstElementChild;
+        if (container && container.tagName === "DIV") {
+            const inlineTags = new Set(["SPAN", "A"]);
+            for (let i = container.children.length - 1; i >= 0; --i) {
+                const child = container.children[i];
+                if (inlineTags.has(child.tagName)) {
+                    continue;
+                }
+                if (child.querySelector(":scope > div > span.title")) {
+                    for (let j = child.children.length - 1; j >= 1; --j) {
+                        child.removeChild(child.children[j]);
+                    }
+                } else if (i >= 1) {
+                    container.removeChild(child);
+                }
+            }
+        }
     }
 
     private renderElement(element: HTMLElement): void {
         this.viewport.appendChild(element);
+        this.applyTableMode();
     }
 
     private findBreadcrumbs(element: HTMLElement): string[] {
@@ -346,8 +430,10 @@ class Viewport {
         const item = document.createElement("li");
         const linkContainer = document.createElement("div");
         const link = document.createElement("span");
-        const state = {type: ViewType.Hint, locator: id};
-        link.addEventListener("click", () => this.go(state), {capture: false});
+        const state = { type: ViewType.Hint, locator: id };
+        link.addEventListener("click", () => this.go(state), {
+            capture: false,
+        });
         link.classList.add("title", "clickable");
         link.textContent = title;
         linkContainer.appendChild(link);
@@ -426,7 +512,9 @@ class Viewport {
         if (results.length > 0) {
             const list = document.createElement("ol");
             list.classList.add("search-results");
-            results.forEach(result => list.appendChild(this.renderSearchResult(result)));
+            results.forEach(result =>
+                list.appendChild(this.renderSearchResult(result)),
+            );
             this.viewport.appendChild(list);
         } else {
             const text = document.createTextNode("No results found.");
@@ -495,34 +583,34 @@ class Viewport {
         this.reset();
 
         switch (state.type) {
-        case ViewType.Search:
-            this.search(state.locator);
-            break;
-        case ViewType.Hint:        
-            const entry = this.cloneEntryPoint(state.locator);
+            case ViewType.Search:
+                this.search(state.locator);
+                break;
+            case ViewType.Hint:
+                const entry = this.cloneEntryPoint(state.locator);
 
-            const element = document.getElementById(state.locator)!;
-            const headingContainer = entry.querySelector(":scope > div");
-            if (headingContainer) {
-                const breadcrumbs = this.renderBreadcrumbs(element);
-                if (breadcrumbs) {
-                    headingContainer.prepend(breadcrumbs);
+                const element = document.getElementById(state.locator)!;
+                const headingContainer = entry.querySelector(":scope > div");
+                if (headingContainer) {
+                    const breadcrumbs = this.renderBreadcrumbs(element);
+                    if (breadcrumbs) {
+                        headingContainer.prepend(breadcrumbs);
+                    }
                 }
-            }
-            this.replaceTitleWithHeading(entry);
+                this.replaceTitleWithHeading(entry);
 
-            const items = this.findListItemChildren(entry);
-    
-            if (items.length > 0) {
-                items.forEach(item => this.processListNode(item));
-            } else {
-                this.processLeafNode(entry);
-            }
-    
-            this.createLinkClickHandlers(entry);
-            this.processHintNode(entry);
-            this.renderElement(entry);
-            break;
+                const items = this.findListItemChildren(entry);
+
+                if (items.length > 0) {
+                    items.forEach(item => this.processListNode(item));
+                } else {
+                    this.processLeafNode(entry);
+                }
+
+                this.createLinkClickHandlers(entry);
+                this.processHintNode(entry);
+                this.renderElement(entry);
+                break;
         }
 
         this.scrollTop();

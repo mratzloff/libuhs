@@ -175,6 +175,12 @@ void toLower(std::string& s) {
 	    [](unsigned char c) { return std::tolower(c); });
 }
 
+std::string trim(std::string s, char c) {
+	s.erase(s.find_last_not_of(c) + 1);
+	s.erase(0, s.find_first_not_of(c));
+	return s;
+}
+
 std::string wrap(std::string const& s, std::string const& sep, std::size_t width) {
 	auto numLines = 0;
 	return wrap(s, sep, width, numLines);

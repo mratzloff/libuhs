@@ -128,6 +128,7 @@ set (uhs_sources
 	cpp/src/traits.cpp
 	cpp/src/writer/writer.cpp
 	cpp/src/writer/html.cpp
+	cpp/src/writer/html/table.cpp
 	cpp/src/writer/json.cpp
 	cpp/src/writer/tree.cpp
 	cpp/src/writer/uhs.cpp
