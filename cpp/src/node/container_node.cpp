@@ -6,14 +6,14 @@ void swap(ContainerNode& lhs, ContainerNode& rhs) noexcept {
 	using std::swap;
 
 	swap(static_cast<Node&>(lhs), static_cast<Node&>(rhs));
-	swap(lhs.line_, rhs.line_);
 	swap(lhs.length_, rhs.length_);
+	swap(lhs.line_, rhs.line_);
 }
 
 ContainerNode::ContainerNode(NodeType type) : Node(type) {}
 
 ContainerNode::ContainerNode(ContainerNode const& other)
-    : Node(other), line_{other.line_}, length_{other.length_} {}
+    : Node(other), length_{other.length_}, line_{other.line_} {}
 
 // Used only for bookkeeping while parsing
 int ContainerNode::length() const {
