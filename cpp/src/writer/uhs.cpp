@@ -283,7 +283,6 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 	if (node.isElement() && elementType == ElementType::Nesthint) {
 		// Outputs directly to main buffer
 		auto& element = static_cast<Element&>(node);
-		depth = parentElement.depth();
 
 		out += Token::NestedElementSep;
 		out += EOL;

@@ -102,6 +102,8 @@ FetchContent_MakeAvailable (tinyutf8_dep)
 
 # Define dependency path variables
 set (argh_includes ${argh_dep_SOURCE_DIR})
+set (catch2_build_includes ${catch2_dep_BINARY_DIR}/generated-includes)
+set (catch2_includes ${catch2_dep_SOURCE_DIR}/src)
 set (hopscotch_map_includes ${hopscotch_map_dep_SOURCE_DIR}/include)
 set (httplib_includes ${httplib_dep_SOURCE_DIR})
 set (jsoncpp_includes ${jsoncpp_dep_SOURCE_DIR}/include)
@@ -275,9 +277,11 @@ add_custom_target (format
 add_custom_target (lint
 	COMMAND clang
 		--analyze
-		-Xanalyzer
-		-analyzer-output=text
+		# -Xanalyzer -analyzer-display-progress
+		-Xclang -analyzer-output=text
 		-I${argh_includes}
+		-I${catch2_build_includes}
+		-I${catch2_includes}
 		-I${hopscotch_map_includes}
 		-I${httplib_includes}
 		-I${jsoncpp_includes}
@@ -285,15 +289,17 @@ add_custom_target (lint
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
 		-I${tinyutf8_includes}
+		-I${uhs_build_includes}
 		-I${uhs_includes}
 		-std=c++23
 		${uhs_sources}
 		${uhs_bin_sources}
 		${uhs_test_sources})
-add_dependencies (lint format)
+add_dependencies (lint css_includes js_includes format)
 
 # make test
-add_executable (uhs_test ${uhs_test_sources})
+add_executable (uhs_test EXCLUDE_FROM_ALL ${uhs_test_sources})
+target_include_directories (uhs_test PRIVATE ${catch2_build_includes} ${catch2_includes})
 target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
 
 add_custom_target (test

@@ -312,7 +312,7 @@ void HTMLWriter::serializeIncentiveElement(
 
 void HTMLWriter::serializeInfoElement(Element const& element, pugi::xml_node xmlNode) {
 	auto document = element.findDocument();
-	if (document && document->attrs().size() == 0) {
+	if (!document || document->attrs().size() == 0) {
 		return;
 	}
 
