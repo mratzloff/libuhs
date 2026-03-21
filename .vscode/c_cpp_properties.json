@@ -1,0 +1,28 @@
+{
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/build/include",
+                "${workspaceFolder}/_deps/argh_dep-src",
+                "${workspaceFolder}/_deps/catch2_dep-build/generated-includes",
+                "${workspaceFolder}/_deps/catch2_dep-src/src",
+                "${workspaceFolder}/_deps/hopscotch_map_dep-src/include",
+                "${workspaceFolder}/_deps/httplib_dep-src",
+                "${workspaceFolder}/_deps/jsoncpp_dep/src/jsoncpp_dep/include",
+                "${workspaceFolder}/_deps/pugixml_dep-src/src",
+                "${workspaceFolder}/_deps/tinyformat_dep/src/tinyformat_dep",
+                "${workspaceFolder}/_deps/tinyutf8_dep-src/include",
+                "${workspaceFolder}/_deps/zlib_dep-src/contrib/puff",
+                "${default}"
+            ],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c23",
+            "intelliSenseMode": "${default}",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "cppStandard": "c++23"
+        }
+    ],
+    "version": 4
+}

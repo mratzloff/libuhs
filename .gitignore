@@ -1,6 +1,7 @@
 _deps
 .DS_Store
-.vscode
+.vscode/*
+!.vscode/c_cpp_properties.json
 .yarn
 .yarnrc.yml
 *.bak
