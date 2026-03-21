@@ -271,7 +271,27 @@ add_custom_target (lint
 add_dependencies (lint format)
 
 # make test
-enable_testing ()
-add_executable (uhs_test cpp/test/main.cpp)
+add_executable (uhs_test
+	cpp/test/test_codec.cpp
+	cpp/test/test_crc.cpp
+	cpp/test/test_document.cpp
+	cpp/test/test_element.cpp
+	cpp/test/test_error.cpp
+	cpp/test/test_node.cpp
+	cpp/test/test_pipe.cpp
+	cpp/test/test_strings.cpp
+	cpp/test/test_text_format.cpp
+	cpp/test/test_token.cpp
+	cpp/test/test_tokenizer.cpp
+	cpp/test/test_traits.cpp
+	cpp/test/test_writer_html.cpp
+	cpp/test/test_writer_html_table.cpp
+	cpp/test/test_writer_json.cpp
+	cpp/test/test_writer_tree.cpp
+	cpp/test/test_writer_uhs.cpp
+	cpp/test/test_zip.cpp)
 target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
-add_test (NAME uhs_test COMMAND uhs_test)
+
+add_custom_target (test
+	COMMAND uhs_test --colour-mode ansi
+	DEPENDS uhs_test)

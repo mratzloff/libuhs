@@ -53,7 +53,7 @@ void HTMLWriter::Table::parse() {
 			auto headerCells = splitPipe(header);
 			auto expectedPipes = std::count(header.begin(), header.end(), '|');
 
-			table_.push_back(headerCells);
+			rows_.push_back(headerCells);
 			pipeDelimited_ = true;
 
 			for (auto i = demarcationLine_ + 1;
@@ -70,7 +70,7 @@ void HTMLWriter::Table::parse() {
 				while (cells.size() < headerCells.size()) {
 					cells.push_back("");
 				}
-				table_.push_back(cells);
+				rows_.push_back(cells);
 			}
 
 			valid_ = true;
@@ -102,7 +102,7 @@ void HTMLWriter::Table::parse() {
 
 			if (!line.empty()) {
 				auto cells = extractCellsByBoundaries(line, columnBoundaries);
-				table_.insert(table_.begin(), cells);
+				rows_.insert(rows_.begin(), cells);
 			}
 		}
 
@@ -162,8 +162,8 @@ void HTMLWriter::Table::parse() {
 		// (indicating text overflowed the column rather than being a
 		// new row with empty leading columns)
 		bool isContinuation = (tableWidth == 0);
-		if (!isContinuation && !charGrid_ && !table_.empty()) {
-			auto const& lastRow = table_.back();
+		if (!isContinuation && !charGrid_ && !rows_.empty()) {
+			auto const& lastRow = rows_.back();
 			isContinuation = true;
 			for (auto const& [segStart, segEnd] : naturalBounds) {
 				auto text = Strings::trim(
@@ -195,9 +195,9 @@ void HTMLWriter::Table::parse() {
 				}
 			}
 		}
-		if (!table_.empty() && !afterSeparator && isContinuation
+		if (!rows_.empty() && !afterSeparator && isContinuation
 		    && std::isspace(line[0]) && naturalBounds.size() <= 2) {
-			auto& lastRow = table_.back();
+			auto& lastRow = rows_.back();
 			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
 				auto text = Strings::trim(
 				    line.substr(segmentStart, segmentEnd - segmentStart), ' ');
@@ -244,7 +244,7 @@ void HTMLWriter::Table::parse() {
 			}
 		}
 
-		table_.push_back(cells);
+		rows_.push_back(cells);
 	}
 
 	valid_ = true;
@@ -260,7 +260,7 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 
 	if (!headerless_) {
 		auto thead = table.append_child("thead");
-		for (auto it = table_.begin(); it < table_.begin() + demarcationLine_; ++it) {
+		for (auto it = rows_.begin(); it < rows_.begin() + demarcationLine_; ++it) {
 			auto const& row = *it;
 			auto tr = thead.append_child("tr");
 
@@ -296,8 +296,8 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 	}
 
 	auto tbody = table.append_child("tbody");
-	auto tbodyStart = headerless_ ? table_.begin() : table_.begin() + demarcationLine_;
-	for (auto it = tbodyStart; it < table_.end(); ++it) {
+	auto tbodyStart = headerless_ ? rows_.begin() : rows_.begin() + demarcationLine_;
+	for (auto it = tbodyStart; it < rows_.end(); ++it) {
 		auto tr = tbody.append_child("tr");
 		auto const& row = *it;
 		for (auto const& cell : row) {
@@ -370,12 +370,32 @@ std::vector<std::string> HTMLWriter::Table::extractCellsByBoundaries(
 	return cells;
 }
 
+int HTMLWriter::Table::demarcationLine() const {
+	return demarcationLine_;
+}
+
 std::size_t HTMLWriter::Table::endLine() const {
 	return endLine_;
 }
 
 bool HTMLWriter::Table::hasPrecedingText() const {
 	return startLine_ > 0;
+}
+
+bool HTMLWriter::Table::isCharGrid() const {
+	return charGrid_;
+}
+
+bool HTMLWriter::Table::isHeaderless() const {
+	return headerless_;
+}
+
+bool HTMLWriter::Table::isPipeDelimited() const {
+	return pipeDelimited_;
+}
+
+std::vector<std::vector<std::string>> const& HTMLWriter::Table::rows() const {
+	return rows_;
 }
 
 std::size_t HTMLWriter::Table::startLine() const {

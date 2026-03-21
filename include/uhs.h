@@ -322,7 +322,7 @@ private:
 struct Options {
 	bool debug = false;
 	std::string mediaDir;
-	ModeType mode;
+	ModeType mode = ModeType::Auto;
 	bool preserve = false;
 	bool quiet = false;
 };
@@ -1144,28 +1144,24 @@ public:
 	HTMLWriter(Logger const& logger, std::ostream& out, Options const& options = {});
 	void write(std::shared_ptr<Document> const document) override;
 
-private:
-	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
-
-	class Serializer {
-	public:
-		using Func = void (HTMLWriter::*)(Element const& element, pugi::xml_node xmlNode);
-
-		Serializer();
-		void invoke(HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode);
-
-	private:
-		std::map<ElementType const, Func> map_;
-	};
-
 	class Table {
 	public:
 		Table(std::vector<std::string> const& lines);
 
-		void parse();
-		void serialize(pugi::xml_node& xmlNode) const;
+		int demarcationLine() const;
+		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+		    std::string const& line) const;
 		std::size_t endLine() const;
+		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
+		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
+		int findDemarcationLine() const;
 		bool hasPrecedingText() const;
+		bool isCharGrid() const;
+		bool isHeaderless() const;
+		bool isPipeDelimited() const;
+		void parse();
+		std::vector<std::vector<std::string>> const& rows() const;
+		void serialize(pugi::xml_node& xmlNode) const;
 		std::size_t startLine() const;
 		bool valid() const;
 
@@ -1178,18 +1174,27 @@ private:
 		bool headerless_ = false;
 		std::vector<std::string> const lines_;
 		bool pipeDelimited_ = false;
+		std::vector<std::vector<std::string>> rows_;
 		std::size_t startLine_ = 0;
-		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;
 
-		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
-		    std::string const& line) const;
 		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
 		std::vector<std::pair<std::size_t, std::size_t>>
 		    detectHeaderlessColumnBoundaries() const;
-		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
-		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
-		int findDemarcationLine() const;
+	};
+
+private:
+	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
+
+	class Serializer {
+	public:
+		using Func = void (HTMLWriter::*)(Element const& element, pugi::xml_node xmlNode);
+
+		Serializer();
+		void invoke(HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode);
+
+	private:
+		std::map<ElementType const, Func> map_;
 	};
 
 	void serialize(Document const& document, pugi::xml_document& xml);
