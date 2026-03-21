@@ -18,6 +18,11 @@ FetchContent_Declare (argh_dep
 	GIT_TAG c3f0d8c8a6dacb00df626b409248a34e3bcd15f5)
 FetchContent_MakeAvailable (argh_dep)
 
+FetchContent_Declare (catch2_dep
+	GIT_REPOSITORY https://github.com/catchorg/Catch2
+	GIT_TAG v3.13.0)
+FetchContent_MakeAvailable (catch2_dep)
+
 FetchContent_Declare (hopscotch_map_dep
 	GIT_REPOSITORY https://github.com/Tessil/hopscotch-map
 	GIT_TAG 799f43600f9ca65a3045decbc7571b5522fa21b7)
@@ -264,3 +269,9 @@ add_custom_target (lint
 		${uhs_sources}
 		${uhs_bin_sources})
 add_dependencies (lint format)
+
+# make test
+enable_testing ()
+add_executable (uhs_test cpp/test/main.cpp)
+target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
+add_test (NAME uhs_test COMMAND uhs_test)
