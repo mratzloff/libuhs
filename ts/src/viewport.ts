@@ -367,7 +367,7 @@ class Viewport {
         const container = element.firstElementChild;
         if (container && container.tagName === "DIV") {
             const inlineTags = new Set(["SPAN", "A"]);
-            for (let i = container.children.length - 1; i >= 1; --i) {
+            for (let i = container.children.length - 1; i >= 0; --i) {
                 const child = container.children[i];
                 if (inlineTags.has(child.tagName)) {
                     continue;
@@ -376,7 +376,7 @@ class Viewport {
                     for (let j = child.children.length - 1; j >= 1; --j) {
                         child.removeChild(child.children[j]);
                     }
-                } else {
+                } else if (i >= 1) {
                     container.removeChild(child);
                 }
             }

@@ -144,14 +144,17 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		auto span = node.node();
 		auto parent = span.parent();
 
-		// If the span is the only child, stay within the parent (e.g. hint div).
-		// Otherwise, split at the grandparent level.
+		// If the span is the only child, or the parent is already a block
+		// container, stay within the parent. Only escape to the grandparent
+		// when the parent is a <p> and the span has siblings.
 		auto isOnlyChild = (parent.first_child() == span && !span.next_sibling());
-		auto insertInto = isOnlyChild ? parent : parent.parent();
-		auto insertBefore = isOnlyChild ? span : parent;
+		auto shouldEscape =
+		    (!isOnlyChild && strcmp(parent.name(), "p") == 0);
+		auto insertInto = shouldEscape ? parent.parent() : parent;
+		auto insertBefore = shouldEscape ? parent : span;
 
 		// Move preceding siblings into a new <p>
-		if (parent.first_child() != span) {
+		if (shouldEscape && parent.first_child() != span) {
 			auto before = insertInto.insert_child_before("p", insertBefore);
 			while (parent.first_child() != span) {
 				auto sibling = parent.first_child();
