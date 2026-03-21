@@ -147,7 +147,8 @@ TEST_CASE("HTMLWriter serializes comment with body", "[writer][html]") {
 	REQUIRE(output.find("This is a comment.") != std::string::npos);
 }
 
-TEST_CASE("HTMLWriter sets visibility attribute for non-default visibility", "[writer][html]") {
+TEST_CASE(
+    "HTMLWriter sets visibility attribute for non-default visibility", "[writer][html]") {
 	auto document = Document::create(VersionType::Version96a);
 	document->title("Game");
 
@@ -161,7 +162,8 @@ TEST_CASE("HTMLWriter sets visibility attribute for non-default visibility", "[w
 	REQUIRE(output.find("data-visibility=\"registered\"") != std::string::npos);
 }
 
-TEST_CASE("HTMLWriter serializes info element with document attributes", "[writer][html]") {
+TEST_CASE(
+    "HTMLWriter serializes info element with document attributes", "[writer][html]") {
 	auto document = Document::create(VersionType::Version96a);
 	document->title("Game");
 	document->attr("author", "Jane Doe");

@@ -64,9 +64,7 @@ TEST_CASE("Pipe captures handler exceptions", "[pipe]") {
 	std::istringstream stream(input);
 	Pipe pipe(stream);
 
-	pipe.addHandler([](char const*, std::streamsize) {
-		throw Error("handler error");
-	});
+	pipe.addHandler([](char const*, std::streamsize) { throw Error("handler error"); });
 
 	pipe.read();
 

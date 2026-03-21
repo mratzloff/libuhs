@@ -43,8 +43,7 @@ void HTMLWriter::Table::parse() {
 					if (pos == std::string::npos) {
 						pos = line.size();
 					}
-					cells.push_back(
-					    Strings::trim(line.substr(start, pos - start), ' '));
+					cells.push_back(Strings::trim(line.substr(start, pos - start), ' '));
 					start = pos + 1;
 				}
 				return cells;
@@ -56,8 +55,8 @@ void HTMLWriter::Table::parse() {
 			rows_.push_back(headerCells);
 			pipeDelimited_ = true;
 
-			for (auto i = demarcationLine_ + 1;
-			    i < static_cast<int>(lines_.size()); ++i) {
+			for (auto i = demarcationLine_ + 1; i < static_cast<int>(lines_.size());
+			     ++i) {
 				auto const& line = lines_[i];
 				if (line.empty() || Strings::trim(line, ' ').empty()) {
 					continue;
@@ -97,7 +96,7 @@ void HTMLWriter::Table::parse() {
 
 		// Add header rows (all non-empty lines before demarcation)
 		for (auto it = lines_.begin() + demarcationLine_ - 1; it >= lines_.begin();
-		    --it) {
+		     --it) {
 			auto const& line = *it;
 
 			if (!line.empty()) {
@@ -166,8 +165,7 @@ void HTMLWriter::Table::parse() {
 			auto const& lastRow = rows_.back();
 			isContinuation = true;
 			for (auto const& [segStart, segEnd] : naturalBounds) {
-				auto text = Strings::trim(
-				    line.substr(segStart, segEnd - segStart), ' ');
+				auto text = Strings::trim(line.substr(segStart, segEnd - segStart), ' ');
 				if (text.empty()) {
 					continue;
 				}
@@ -195,8 +193,8 @@ void HTMLWriter::Table::parse() {
 				}
 			}
 		}
-		if (!rows_.empty() && !afterSeparator && isContinuation
-		    && std::isspace(line[0]) && naturalBounds.size() <= 2) {
+		if (!rows_.empty() && !afterSeparator && isContinuation && std::isspace(line[0])
+		    && naturalBounds.size() <= 2) {
 			auto& lastRow = rows_.back();
 			for (auto const& [segmentStart, segmentEnd] : naturalBounds) {
 				auto text = Strings::trim(
@@ -280,8 +278,7 @@ void HTMLWriter::Table::serialize(pugi::xml_node& xmlNode) const {
 				for (auto const& cell : row) {
 					if (!cell.empty()) {
 						auto th = tr.append_child("th");
-						th.append_attribute("colspan") =
-						    static_cast<int>(row.size());
+						th.append_attribute("colspan") = static_cast<int>(row.size());
 						th.append_child(pugi::node_pcdata).set_value(cell.c_str());
 						break;
 					}

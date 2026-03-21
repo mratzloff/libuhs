@@ -5,8 +5,8 @@
 
 using namespace UHS;
 
-static std::string writeUHS(std::shared_ptr<Document> document,
-    Options const& options = {}) {
+static std::string writeUHS(
+    std::shared_ptr<Document> document, Options const& options = {}) {
 
 	Logger logger(LogLevel::None);
 	std::ostringstream out;

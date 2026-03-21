@@ -1236,7 +1236,7 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 			if (s.substr(i + 1, 2) == " \n") {
 				// Preserve paragraph breaks as " " lines
 				for (std::size_t j = i; j < length && s.substr(j + 1, 2) == " \n";
-				    j += 2, i = j) {
+				     j += 2, i = j) {
 
 					segment += "\n ";
 				}

@@ -81,6 +81,6 @@ TEST_CASE("CRC::result returns checksum in vector form", "[crc]") {
 
 	REQUIRE(vectorResult.size() == 2);
 	uint16_t reconstructed = static_cast<uint8_t>(vectorResult[0])
-	                          | (static_cast<uint8_t>(vectorResult[1]) << 8);
+	                         | (static_cast<uint8_t>(vectorResult[1]) << 8);
 	REQUIRE(reconstructed == scalarResult);
 }

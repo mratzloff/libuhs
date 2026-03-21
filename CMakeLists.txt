@@ -142,6 +142,26 @@ set (uhs_sources
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
+set (uhs_test_sources
+	cpp/test/test_codec.cpp
+	cpp/test/test_crc.cpp
+	cpp/test/test_document.cpp
+	cpp/test/test_element.cpp
+	cpp/test/test_error.cpp
+	cpp/test/test_node.cpp
+	cpp/test/test_pipe.cpp
+	cpp/test/test_strings.cpp
+	cpp/test/test_text_format.cpp
+	cpp/test/test_token.cpp
+	cpp/test/test_tokenizer.cpp
+	cpp/test/test_traits.cpp
+	cpp/test/test_writer_html.cpp
+	cpp/test/test_writer_html_table.cpp
+	cpp/test/test_writer_json.cpp
+	cpp/test/test_writer_tree.cpp
+	cpp/test/test_writer_uhs.cpp
+	cpp/test/test_zip.cpp)
+
 # Create build directories
 file (MAKE_DIRECTORY build/assets)
 file (MAKE_DIRECTORY build/include)
@@ -248,7 +268,8 @@ add_custom_target (format
 		${uhs_includes}/uhs.h
 		${uhs_includes}/uhs_bridge.h
 		${uhs_sources}
-		${uhs_bin_sources})
+		${uhs_bin_sources}
+		${uhs_test_sources})
 
 # make lint
 add_custom_target (lint
@@ -267,29 +288,12 @@ add_custom_target (lint
 		-I${uhs_includes}
 		-std=c++23
 		${uhs_sources}
-		${uhs_bin_sources})
+		${uhs_bin_sources}
+		${uhs_test_sources})
 add_dependencies (lint format)
 
 # make test
-add_executable (uhs_test
-	cpp/test/test_codec.cpp
-	cpp/test/test_crc.cpp
-	cpp/test/test_document.cpp
-	cpp/test/test_element.cpp
-	cpp/test/test_error.cpp
-	cpp/test/test_node.cpp
-	cpp/test/test_pipe.cpp
-	cpp/test/test_strings.cpp
-	cpp/test/test_text_format.cpp
-	cpp/test/test_token.cpp
-	cpp/test/test_tokenizer.cpp
-	cpp/test/test_traits.cpp
-	cpp/test/test_writer_html.cpp
-	cpp/test/test_writer_html_table.cpp
-	cpp/test/test_writer_json.cpp
-	cpp/test/test_writer_tree.cpp
-	cpp/test/test_writer_uhs.cpp
-	cpp/test/test_zip.cpp)
+add_executable (uhs_test ${uhs_test_sources})
 target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
 
 add_custom_target (test

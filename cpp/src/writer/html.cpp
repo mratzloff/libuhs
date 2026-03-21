@@ -148,8 +148,7 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		// container, stay within the parent. Only escape to the grandparent
 		// when the parent is a <p> and the span has siblings.
 		auto isOnlyChild = (parent.first_child() == span && !span.next_sibling());
-		auto shouldEscape =
-		    (!isOnlyChild && strcmp(parent.name(), "p") == 0);
+		auto shouldEscape = (!isOnlyChild && strcmp(parent.name(), "p") == 0);
 		auto insertInto = shouldEscape ? parent.parent() : parent;
 		auto insertBefore = shouldEscape ? parent : span;
 

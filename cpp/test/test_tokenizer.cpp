@@ -8,7 +8,8 @@ using namespace UHS;
 
 // Helper: tokenize a string and collect all tokens.
 // The pipe reader runs on a background thread to match production usage.
-static std::vector<std::unique_ptr<Token const>> tokenizeString(std::string const& input) {
+static std::vector<std::unique_ptr<Token const>> tokenizeString(
+    std::string const& input) {
 	std::istringstream stream(input);
 	Pipe pipe(stream);
 	Tokenizer tokenizer(pipe);
