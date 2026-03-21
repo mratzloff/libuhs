@@ -126,43 +126,62 @@ set (uhs_sources
 	cpp/src/downloader.cpp
 	cpp/src/element.cpp
 	cpp/src/error.cpp
+	cpp/src/error/http_error.cpp
+	cpp/src/error/parse_error.cpp
 	cpp/src/node.cpp
+	cpp/src/node/break_node.cpp
+	cpp/src/node/container_node.cpp
+	cpp/src/node/group_node.cpp
+	cpp/src/node/node_iterator.cpp
+	cpp/src/node/text_node.cpp
 	cpp/src/parser.cpp
 	cpp/src/pipe.cpp
 	cpp/src/strings.cpp
 	cpp/src/token.cpp
 	cpp/src/tokenizer.cpp
-	cpp/src/traits.cpp
-	cpp/src/writer/writer.cpp
-	cpp/src/writer/html_writer/table.cpp
+	cpp/src/traits/attributes.cpp
+	cpp/src/traits/body.cpp
+	cpp/src/traits/inlined.cpp
+	cpp/src/traits/title.cpp
+	cpp/src/traits/visibility.cpp
+	cpp/src/uhs.cpp
+	cpp/src/writer.cpp
 	cpp/src/writer/html_writer.cpp
+	cpp/src/writer/html_writer/table.cpp
 	cpp/src/writer/json_writer.cpp
 	cpp/src/writer/tree_writer.cpp
 	cpp/src/writer/uhs_writer.cpp
-	cpp/src/uhs.cpp
 	cpp/src/zip.cpp)
 
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
 set (uhs_test_sources
+	cpp/test/node/test_break_node.cpp
+	cpp/test/node/test_group_node.cpp
+	cpp/test/node/test_text_node.cpp
 	cpp/test/test_codec.cpp
 	cpp/test/test_crc.cpp
 	cpp/test/test_document.cpp
 	cpp/test/test_element.cpp
 	cpp/test/test_error.cpp
+	cpp/test/error/test_parse_error.cpp
 	cpp/test/test_node.cpp
 	cpp/test/test_pipe.cpp
 	cpp/test/test_strings.cpp
 	cpp/test/test_text_format.cpp
 	cpp/test/test_token.cpp
 	cpp/test/test_tokenizer.cpp
-	cpp/test/test_traits.cpp
-	cpp/test/test_html_writer.cpp
-	cpp/test/test_html_writer_table.cpp
-	cpp/test/test_json_writer.cpp
-	cpp/test/test_tree_writer.cpp
-	cpp/test/test_uhs_writer.cpp
-	cpp/test/test_zip.cpp)
+	cpp/test/test_zip.cpp
+	cpp/test/traits/test_attributes.cpp
+	cpp/test/traits/test_body.cpp
+	cpp/test/traits/test_inlined.cpp
+	cpp/test/traits/test_title.cpp
+	cpp/test/traits/test_visibility.cpp
+	cpp/test/writer/html_writer/test_table.cpp
+	cpp/test/writer/test_html_writer.cpp
+	cpp/test/writer/test_json_writer.cpp
+	cpp/test/writer/test_tree_writer.cpp
+	cpp/test/writer/test_uhs_writer.cpp)
 
 # Create build directories
 file (MAKE_DIRECTORY build/assets)
