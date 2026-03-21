@@ -1177,6 +1177,7 @@ private:
 		std::size_t endLine_ = 0;
 		bool headerless_ = false;
 		std::vector<std::string> const lines_;
+		bool pipeDelimited_ = false;
 		std::size_t startLine_ = 0;
 		std::vector<std::vector<std::string>> table_;
 		bool valid_ = false;

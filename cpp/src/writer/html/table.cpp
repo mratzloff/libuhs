@@ -32,6 +32,51 @@ void HTMLWriter::Table::parse() {
 			}
 		}
 
+		// Pipe-delimited table (e.g. "  |01|02|03" over "----------")
+		auto const& header = lines_[demarcationLine_ - 1];
+		if (std::count(header.begin(), header.end(), '|') >= 3) {
+			auto splitPipe = [](std::string const& line) {
+				std::vector<std::string> cells;
+				std::size_t start = 0;
+				while (start <= line.size()) {
+					auto pos = line.find('|', start);
+					if (pos == std::string::npos) {
+						pos = line.size();
+					}
+					cells.push_back(
+					    Strings::trim(line.substr(start, pos - start), ' '));
+					start = pos + 1;
+				}
+				return cells;
+			};
+
+			auto headerCells = splitPipe(header);
+			auto expectedPipes = std::count(header.begin(), header.end(), '|');
+
+			table_.push_back(headerCells);
+			pipeDelimited_ = true;
+
+			for (auto i = demarcationLine_ + 1;
+			    i < static_cast<int>(lines_.size()); ++i) {
+				auto const& line = lines_[i];
+				if (line.empty() || Strings::trim(line, ' ').empty()) {
+					continue;
+				}
+				if (std::count(line.begin(), line.end(), '|') < expectedPipes / 2) {
+					endLine_ = i;
+					break;
+				}
+				auto cells = splitPipe(line);
+				while (cells.size() < headerCells.size()) {
+					cells.push_back("");
+				}
+				table_.push_back(cells);
+			}
+
+			valid_ = true;
+			return;
+		}
+
 		// Detect column boundaries from header row
 		columnBoundaries = detectColumnBoundaries();
 		if (columnBoundaries.empty()) {
