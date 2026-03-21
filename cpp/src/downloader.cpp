@@ -2,8 +2,24 @@
 
 namespace UHS {
 
+Downloader::DefaultHTTPClient::DefaultHTTPClient(std::string const& url)
+    : client_{url} {}
+
+httplib::Result Downloader::DefaultHTTPClient::Get(
+    std::string const& path, httplib::Headers const& headers) {
+	return client_.Get(path, headers);
+}
+
+httplib::Result Downloader::DefaultHTTPClient::Get(std::string const& path,
+    httplib::Headers const& headers, httplib::ContentReceiver contentReceiver) {
+	return client_.Get(path, headers, contentReceiver);
+}
+
 Downloader::Downloader(Logger const& logger)
-    : httpClient_{httplib::Client(tfm::format("%s://%s", Protocol, Host))}
+    : Downloader(logger, std::make_unique<DefaultHTTPClient>(BaseURL)) {}
+
+Downloader::Downloader(Logger const& logger, std::unique_ptr<HTTPClient> httpClient)
+    : httpClient_{std::move(httpClient)}
     , httpHeaders_{{{"User-Agent", "UHSWIN/6.10"}}}
     , logger_{logger} {}
 
@@ -37,7 +53,7 @@ void Downloader::download(std::string const& dir, std::vector<std::string> const
 		}
 
 		std::string buffer;
-		auto res = httpClient_.Get(
+		auto res = httpClient_->Get(
 		    metadata.url, httpHeaders_, [&](char const* data, size_t data_length) {
 			    buffer.append(data, data_length);
 			    return true;
@@ -65,7 +81,7 @@ Downloader::FileIndex const& Downloader::fileIndex() {
 }
 
 void Downloader::loadFileIndex() {
-	auto res = httpClient_.Get(FileIndexPath, httpHeaders_);
+	auto res = httpClient_->Get(FileIndexPath, httpHeaders_);
 	if (res->status != 200) {
 		throw HTTPError(res, "could not download file index");
 	}

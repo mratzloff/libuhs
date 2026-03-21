@@ -162,6 +162,7 @@ set (uhs_test_sources
 	cpp/test/test_codec.cpp
 	cpp/test/test_crc.cpp
 	cpp/test/test_document.cpp
+	cpp/test/test_downloader.cpp
 	cpp/test/test_element.cpp
 	cpp/test/test_error.cpp
 	cpp/test/error/test_parse_error.cpp
