@@ -251,12 +251,10 @@ void Node::removeChild(std::shared_ptr<Node> node) {
 	if (node == firstChild_) {
 		if (node->nextSibling_) {
 			firstChild_ = node->nextSibling_;
-			node->previousSibling_ = nullptr;
 		} else {
 			firstChild_ = nullptr;
 			lastChild_ = nullptr;
 		}
-		node->didRemove();
 	} else if (node->previousSibling_) {
 		auto previous = node->previousSibling_;
 		if (node->nextSibling_) {
@@ -265,10 +263,13 @@ void Node::removeChild(std::shared_ptr<Node> node) {
 			previous->nextSibling_ = next;
 		} else {
 			previous->nextSibling_ = nullptr;
-			lastChild_ = nullptr;
+			lastChild_ = previous;
 		}
-		node->didRemove();
 	}
+
+	node->previousSibling_ = nullptr;
+	node->nextSibling_ = nullptr;
+	node->didRemove();
 }
 
 void Node::cloneChildren(Node const& other) {

@@ -129,4 +129,129 @@ TEST_CASE("Document traits", "[document]") {
 	REQUIRE(document->attr("author").value() == "test");
 }
 
+TEST_CASE("Document::normalize is no-op with no metadata", "[document]") {
+	auto document = Document::create(VersionType::Version96a);
+	auto subject = Element::create(ElementType::Subject, 1);
+	document->appendChild(subject);
+
+	document->normalize();
+
+	REQUIRE(document->numChildren() == 1);
+	REQUIRE(document->firstChild().get() == subject.get());
+}
+
+TEST_CASE("Document::normalize preserves correct metadata order", "[document]") {
+	auto document = Document::create(VersionType::Version96a);
+	auto subject = Element::create(ElementType::Subject, 1);
+	document->appendChild(subject);
+
+	auto version = Element::create(ElementType::Version);
+	version->title("96a");
+	document->appendChild(version);
+
+	auto incentive = Element::create(ElementType::Incentive);
+	document->appendChild(incentive);
+
+	auto info = Element::create(ElementType::Info);
+	document->appendChild(info);
+
+	document->normalize();
+
+	REQUIRE(document->numChildren() == 4);
+	auto node = document->firstChild();
+	REQUIRE(node.get() == subject.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == version.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == incentive.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == info.get());
+	REQUIRE_FALSE(node->hasNextSibling());
+}
+
+TEST_CASE("Document::normalize creates info when incentive has no info", "[document]") {
+	auto document = Document::create(VersionType::Version96a);
+	auto subject = Element::create(ElementType::Subject, 1);
+	document->appendChild(subject);
+
+	auto version = Element::create(ElementType::Version);
+	version->title("96a");
+	document->appendChild(version);
+
+	auto incentive = Element::create(ElementType::Incentive);
+	document->appendChild(incentive);
+
+	document->normalize();
+
+	REQUIRE(document->numChildren() == 4);
+
+	auto last = document->lastChild();
+	REQUIRE(static_cast<Element const&>(*last).elementType() == ElementType::Info);
+
+	auto prev = last->previousSibling();
+	REQUIRE(static_cast<Element const&>(*prev).elementType() == ElementType::Incentive);
+
+	auto prevPrev = prev->previousSibling();
+	REQUIRE(static_cast<Element const&>(*prevPrev).elementType() == ElementType::Version);
+}
+
+TEST_CASE("Document::normalize reorders metadata from wrong order", "[document]") {
+	auto document = Document::create(VersionType::Version96a);
+	auto subject = Element::create(ElementType::Subject, 1);
+	document->appendChild(subject);
+
+	// Append in wrong order: info, incentive, version
+	auto info = Element::create(ElementType::Info);
+	document->appendChild(info);
+
+	auto incentive = Element::create(ElementType::Incentive);
+	document->appendChild(incentive);
+
+	auto version = Element::create(ElementType::Version);
+	version->title("96a");
+	document->appendChild(version);
+
+	document->normalize();
+
+	REQUIRE(document->numChildren() == 4);
+	auto node = document->firstChild();
+	REQUIRE(node.get() == subject.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == version.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == incentive.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == info.get());
+}
+
+TEST_CASE("Document::normalize is idempotent", "[document]") {
+	auto document = Document::create(VersionType::Version96a);
+	auto subject = Element::create(ElementType::Subject, 1);
+	document->appendChild(subject);
+
+	// Start in wrong order
+	auto info = Element::create(ElementType::Info);
+	document->appendChild(info);
+
+	auto incentive = Element::create(ElementType::Incentive);
+	document->appendChild(incentive);
+
+	auto version = Element::create(ElementType::Version);
+	version->title("96a");
+	document->appendChild(version);
+
+	document->normalize();
+	document->normalize();
+
+	REQUIRE(document->numChildren() == 4);
+	auto node = document->firstChild();
+	REQUIRE(node.get() == subject.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == version.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == incentive.get());
+	node = node->nextSibling();
+	REQUIRE(node.get() == info.get());
+}
+
 } // namespace UHS

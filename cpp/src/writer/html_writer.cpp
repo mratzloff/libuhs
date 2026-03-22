@@ -26,6 +26,8 @@ HTMLWriter::HTMLWriter(Logger const& logger, std::ostream& out, Options const& o
 }
 
 void HTMLWriter::write(std::shared_ptr<Document> const document) {
+	document->normalize();
+
 	pugi::xml_document xml;
 	this->serialize(*document, xml);
 	xml.save(out_, "", pugi::format_indent | pugi::format_no_declaration);

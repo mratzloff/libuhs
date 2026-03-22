@@ -6,6 +6,8 @@ TreeWriter::TreeWriter(Logger const& logger, std::ostream& out, Options const& o
     : Writer(logger, out, options) {}
 
 void TreeWriter::write(std::shared_ptr<Document> const document) {
+	document->normalize();
+
 	for (auto const& node : *document) {
 		switch (node.nodeType()) {
 		case NodeType::Document: {

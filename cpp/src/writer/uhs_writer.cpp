@@ -10,6 +10,8 @@ UHSWriter::UHSWriter(Logger const& logger, std::ostream& out, Options const& opt
     : Writer(logger, out, options) {}
 
 void UHSWriter::write(std::shared_ptr<Document> const document) {
+	document->normalize();
+
 	std::string buffer;
 	buffer.reserve(InitialBufferLength);
 	document_ = document;

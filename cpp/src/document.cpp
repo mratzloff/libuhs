@@ -68,6 +68,56 @@ bool Document::isVersion(VersionType v) const {
 	return version_ == v;
 }
 
+// Ensures the document has the correct metadata node structure:
+// version -> [incentive] -> info, appended as the last direct children.
+//
+// If no info node is present but an incentive node is, clicking into
+// a registered-only node in a UHS file using the official reader results
+// in an EAccessViolation (null pointer exception).
+//
+// Therefore, if an incentive exists but no info element follows it, a
+// default info element is created. Elements are reordered if necessary.
+void Document::normalize() {
+	std::shared_ptr<Node> incentive;
+	std::shared_ptr<Node> info;
+	std::shared_ptr<Node> version;
+
+	for (auto child = firstChild(); child; child = child->nextSibling()) {
+		if (child->nodeType() != NodeType::Element) {
+			continue;
+		}
+		auto const& element = static_cast<Element const&>(*child);
+		switch (element.elementType()) {
+		case ElementType::Incentive:
+			incentive = child->pointer();
+			break;
+		case ElementType::Info:
+			info = child->pointer();
+			break;
+		case ElementType::Version:
+			version = child->pointer();
+			break;
+		default:
+			break;
+		}
+	}
+
+	if (incentive && !info) {
+		info = Element::create(ElementType::Info);
+	}
+
+	// Detach and re-append in the correct order
+	for (auto& node : {version, incentive, info}) {
+		if (!node) {
+			continue;
+		}
+		if (node->hasParent()) {
+			this->removeChild(node);
+		}
+		this->appendChild(node);
+	}
+}
+
 Document& Document::operator=(Document other) {
 	swap(*this, other);
 	return *this;

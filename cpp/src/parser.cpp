@@ -968,8 +968,8 @@ void Parser::parseIncentiveElement(Element& element) {
 		}
 
 		// Defer visibility processing to guarantee all nodes have been parsed.
-		// Note that the incentive node always comes near the end, but it's
-		// unclear if that's a specification requirement.
+		// Note that the incentive node always comes after the top-level subject
+		// containing all the main content nodes.
 		deferredVisibilities_.emplace_back(id, visibility);
 	}
 }

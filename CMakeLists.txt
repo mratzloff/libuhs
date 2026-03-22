@@ -156,6 +156,13 @@ set (uhs_sources
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
 set (uhs_test_sources
+	cpp/test/integration/builders.cpp
+	cpp/test/integration/helpers.cpp
+	cpp/test/integration/test_formatting.cpp
+	cpp/test/integration/test_media.cpp
+	cpp/test/integration/test_metadata.cpp
+	cpp/test/integration/test_structure.cpp
+	cpp/test/integration/test_version.cpp
 	cpp/test/unit/node/test_break_node.cpp
 	cpp/test/unit/node/test_group_node.cpp
 	cpp/test/unit/node/test_text_node.cpp
@@ -329,3 +336,14 @@ add_custom_target (test
 		--warn UnmatchedTestSpec
 		--warn InfiniteGenerators
 	DEPENDS uhs_test)
+
+# make integrations
+add_executable (uhs_integrations EXCLUDE_FROM_ALL
+	cpp/test/integration/builders.cpp
+	cpp/test/integration/helpers.cpp
+	cpp/test/cmd/uhs_integrations/main.cpp)
+target_link_libraries (uhs_integrations PRIVATE uhs)
+
+add_custom_target (integrations
+	COMMAND uhs_integrations
+	DEPENDS uhs_integrations)

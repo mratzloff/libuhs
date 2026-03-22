@@ -6,6 +6,8 @@ JSONWriter::JSONWriter(Logger const& logger, std::ostream& out, Options const& o
     : Writer(logger, out, options) {}
 
 void JSONWriter::write(std::shared_ptr<Document> const document) {
+	document->normalize();
+
 	Json::Value root{Json::objectValue};
 	this->serialize(*document, root);
 	out_ << root << std::endl;

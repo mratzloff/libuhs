@@ -827,6 +827,7 @@ public:
 	void elementRemoved(Element& element);
 	Node* find(int const id);
 	bool isVersion(VersionType v) const;
+	void normalize();
 	Document& operator=(Document other);
 	void reindex();
 	bool validChecksum() const;
@@ -855,158 +856,15 @@ public:
 	std::string const encodeSpecialChars(std::string const& decoded) const;
 
 private:
-	using UnicodeToAsciiMap = std::map<char32_t const, std::string const> const;
-	using AsciiToUnicodeMap = std::map<std::string const, std::string const> const;
+	using AsciiToUnicodeMap = tsl::hopscotch_map<std::string, std::string> const;
+	using UnicodeToAsciiMap = tsl::hopscotch_map<char32_t, std::string> const;
 
 	static constexpr auto KeySeed = "key";
 
-	UnicodeToAsciiMap fromChars_ = {
-	    {U'Š', "S^"},
-	    {U'Œ', "OE"},
-	    {U'–', "-"},
-	    {U'—', "--"},
-	    {U'™', "TM"},
-	    {U'š', "s^"},
-	    {U'œ', "oe"},
-	    {U'Ÿ', "Y:"},
-	    {U'©', "(C)"},
-	    {U'®', "(R)"},
-	    {U'À', "A`"},
-	    {U'Á', "A'"},
-	    {U'Â', "A^"},
-	    {U'Ã', "A~"},
-	    {U'Ä', "A:"},
-	    {U'Å', "Ao"},
-	    {U'Æ', "AE"},
-	    {U'Ç', "C,"},
-	    {U'È', "E`"},
-	    {U'É', "E'"},
-	    {U'Ê', "E^"},
-	    {U'Ë', "E:"},
-	    {U'Ì', "I`"},
-	    {U'Í', "I'"},
-	    {U'Î', "I^"},
-	    {U'Ï', "I:"},
-	    {U'Ð', "D-"},
-	    {U'Ñ', "N~"},
-	    {U'Ò', "O`"},
-	    {U'Ó', "O'"},
-	    {U'Ô', "O^"},
-	    {U'Õ', "O~"},
-	    {U'Ö', "O:"},
-	    {U'Ø', "O/"},
-	    {U'Ù', "U`"},
-	    {U'Ú', "U'"},
-	    {U'Û', "U^"},
-	    {U'Ü', "U:"},
-	    {U'Ý', "Y'"},
-	    {U'ß', "ss"},
-	    {U'à', "a`"},
-	    {U'á', "a'"},
-	    {U'â', "a^"},
-	    {U'ã', "a~"},
-	    {U'ä', "a:"},
-	    {U'å', "ao"},
-	    {U'æ', "ae"},
-	    {U'ç', "c,"},
-	    {U'è', "e`"},
-	    {U'é', "e'"},
-	    {U'ê', "e^"},
-	    {U'ë', "e:"},
-	    {U'ì', "i`"},
-	    {U'í', "i'"},
-	    {U'î', "i^"},
-	    {U'ï', "i:"},
-	    {U'ð', "d-"},
-	    {U'ñ', "n~"},
-	    {U'ò', "o`"},
-	    {U'ó', "o'"},
-	    {U'ô', "o^"},
-	    {U'õ', "o~"},
-	    {U'ö', "o:"},
-	    {U'ø', "o/"},
-	    {U'ù', "u`"},
-	    {U'ú', "u'"},
-	    {U'û', "u^"},
-	    {U'ü', "u:"},
-	    {U'ý', "y'"},
-	    {U'ÿ', "y:"},
-	};
+	static UnicodeToAsciiMap fromChars_;
+	static AsciiToUnicodeMap toChars_;
 
 	Logger const logger_;
-
-	AsciiToUnicodeMap toChars_ = {
-	    {"S^", "Š"},
-	    {"OE", "Œ"},
-	    {"-", "–"},
-	    {"--", "—"},
-	    {"TM", "™"},
-	    {"s^", "š"},
-	    {"oe", "œ"},
-	    {"Y:", "Ÿ"},
-	    {"(C)", "©"},
-	    {"(R)", "®"},
-	    {"A`", "À"},
-	    {"A'", "Á"},
-	    {"A^", "Â"},
-	    {"A~", "Ã"},
-	    {"A:", "Ä"},
-	    {"Ao", "Å"},
-	    {"AE", "Æ"},
-	    {"C,", "Ç"},
-	    {"E`", "È"},
-	    {"E'", "É"},
-	    {"E^", "Ê"},
-	    {"E:", "Ë"},
-	    {"I`", "Ì"},
-	    {"I'", "Í"},
-	    {"I^", "Î"},
-	    {"I:", "Ï"},
-	    {"D-", "Ð"},
-	    {"N~", "Ñ"},
-	    {"O`", "Ò"},
-	    {"O'", "Ó"},
-	    {"O^", "Ô"},
-	    {"O~", "Õ"},
-	    {"O:", "Ö"},
-	    {"O/", "Ø"},
-	    {"U`", "Ù"},
-	    {"U'", "Ú"},
-	    {"U^", "Û"},
-	    {"U:", "Ü"},
-	    {"Y'", "Ý"},
-	    {"ss", "ß"},
-	    {"a`", "à"},
-	    {"a'", "á"},
-	    {"a^", "â"},
-	    {"a~", "ã"},
-	    {"a:", "ä"},
-	    {"ao", "å"},
-	    {"ae", "æ"},
-	    {"c,", "ç"},
-	    {"e`", "è"},
-	    {"e'", "é"},
-	    {"e^", "ê"},
-	    {"e:", "ë"},
-	    {"i`", "ì"},
-	    {"i'", "í"},
-	    {"i^", "î"},
-	    {"i:", "ï"},
-	    {"d-", "ð"},
-	    {"n~", "ñ"},
-	    {"o`", "ò"},
-	    {"o'", "ó"},
-	    {"o^", "ô"},
-	    {"o~", "õ"},
-	    {"o:", "ö"},
-	    {"o/", "ø"},
-	    {"u`", "ù"},
-	    {"u'", "ú"},
-	    {"u^", "û"},
-	    {"u:", "ü"},
-	    {"y'", "ý"},
-	    {"y:", "ÿ"},
-	};
 
 	int keystream(std::string const& key, std::size_t keyLength, std::size_t line,
 	    bool isText) const;
@@ -1147,11 +1005,21 @@ public:
 	void write(std::shared_ptr<Document> const document) override;
 
 private:
+	using NodeToStyleMap = tsl::hopscotch_map<std::string, std::string> const;
+
+	static auto constexpr StyleReset = "\033[0m";
+
+	static NodeToStyleMap styles_;
+
 	void draw(Document const& document);
 	void draw(Element const& element);
 	void draw(GroupNode const& groupNode);
 	void draw(TextNode const& textNode);
 	void drawScaffold(Node const& node);
+	std::string drawText(std::string const& text, std::string const& name);
+	std::string drawType(std::string const& name);
+	std::string nodeStyle(Node const& node);
+	std::string typeStyle(std::string const& name);
 };
 
 class HTMLWriter : public Writer {
