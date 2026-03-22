@@ -1378,8 +1378,7 @@ public:
 
 		httplib::Result Get(
 		    std::string const& path, httplib::Headers const& headers) override;
-		httplib::Result Get(std::string const& path,
-		    httplib::Headers const& headers,
+		httplib::Result Get(std::string const& path, httplib::Headers const& headers,
 		    httplib::ContentReceiver contentReceiver) override;
 
 	private:

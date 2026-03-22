@@ -156,33 +156,33 @@ set (uhs_sources
 set (uhs_bin_sources cpp/src/cmd/uhs/main.cpp)
 
 set (uhs_test_sources
-	cpp/test/node/test_break_node.cpp
-	cpp/test/node/test_group_node.cpp
-	cpp/test/node/test_text_node.cpp
-	cpp/test/test_codec.cpp
-	cpp/test/test_crc.cpp
-	cpp/test/test_document.cpp
-	cpp/test/test_downloader.cpp
-	cpp/test/test_element.cpp
-	cpp/test/test_error.cpp
-	cpp/test/error/test_parse_error.cpp
-	cpp/test/test_node.cpp
-	cpp/test/test_pipe.cpp
-	cpp/test/test_strings.cpp
-	cpp/test/test_text_format.cpp
-	cpp/test/test_token.cpp
-	cpp/test/test_tokenizer.cpp
-	cpp/test/test_zip.cpp
-	cpp/test/traits/test_attributes.cpp
-	cpp/test/traits/test_body.cpp
-	cpp/test/traits/test_inlined.cpp
-	cpp/test/traits/test_title.cpp
-	cpp/test/traits/test_visibility.cpp
-	cpp/test/writer/html_writer/test_table.cpp
-	cpp/test/writer/test_html_writer.cpp
-	cpp/test/writer/test_json_writer.cpp
-	cpp/test/writer/test_tree_writer.cpp
-	cpp/test/writer/test_uhs_writer.cpp)
+	cpp/test/unit/node/test_break_node.cpp
+	cpp/test/unit/node/test_group_node.cpp
+	cpp/test/unit/node/test_text_node.cpp
+	cpp/test/unit/test_codec.cpp
+	cpp/test/unit/test_crc.cpp
+	cpp/test/unit/test_document.cpp
+	cpp/test/unit/test_downloader.cpp
+	cpp/test/unit/test_element.cpp
+	cpp/test/unit/test_error.cpp
+	cpp/test/unit/error/test_parse_error.cpp
+	cpp/test/unit/test_node.cpp
+	cpp/test/unit/test_pipe.cpp
+	cpp/test/unit/test_strings.cpp
+	cpp/test/unit/test_text_format.cpp
+	cpp/test/unit/test_token.cpp
+	cpp/test/unit/test_tokenizer.cpp
+	cpp/test/unit/test_zip.cpp
+	cpp/test/unit/traits/test_attributes.cpp
+	cpp/test/unit/traits/test_body.cpp
+	cpp/test/unit/traits/test_inlined.cpp
+	cpp/test/unit/traits/test_title.cpp
+	cpp/test/unit/traits/test_visibility.cpp
+	cpp/test/unit/writer/html_writer/test_table.cpp
+	cpp/test/unit/writer/test_html_writer.cpp
+	cpp/test/unit/writer/test_json_writer.cpp
+	cpp/test/unit/writer/test_tree_writer.cpp
+	cpp/test/unit/writer/test_uhs_writer.cpp)
 
 # Create build directories
 file (MAKE_DIRECTORY build/assets)

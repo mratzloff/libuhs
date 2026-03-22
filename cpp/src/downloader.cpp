@@ -2,8 +2,7 @@
 
 namespace UHS {
 
-Downloader::DefaultHTTPClient::DefaultHTTPClient(std::string const& url)
-    : client_{url} {}
+Downloader::DefaultHTTPClient::DefaultHTTPClient(std::string const& url) : client_{url} {}
 
 httplib::Result Downloader::DefaultHTTPClient::Get(
     std::string const& path, httplib::Headers const& headers) {
