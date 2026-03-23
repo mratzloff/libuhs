@@ -586,9 +586,6 @@ class Viewport {
         this.reset();
 
         switch (state.type) {
-            case ViewType.Search:
-                this.search(state.locator);
-                break;
             case ViewType.Hint: {
                 const entry = this.cloneEntryPoint(state.locator);
 
@@ -615,6 +612,9 @@ class Viewport {
                 this.renderElement(entry);
                 break;
             }
+            case ViewType.Search:
+                this.search(state.locator);
+                break;
         }
 
         this.scrollTop();

@@ -306,8 +306,8 @@ add_custom_target (format_css
 	COMMAND yarn prettier --write assets/css/uhs.css)
 
 add_custom_target (format_ts
-	COMMAND yarn prettier --write ts/src/**/*.ts
-	COMMAND yarn eslint --fix ts/src/)
+	COMMAND yarn prettier --write ts/src/**/*.ts ts/test/**/*.ts
+	COMMAND yarn eslint --fix ts/src/ ts/test/)
 
 add_custom_target (format)
 add_dependencies (format format_css format_ts format_cpp)
@@ -340,7 +340,7 @@ add_custom_target (lint_css
 	COMMAND yarn stylelint assets/css/uhs.css)
 
 add_custom_target (lint_ts
-	COMMAND yarn eslint ts/src/)
+	COMMAND yarn eslint ts/src/ ts/test/)
 
 add_custom_target (lint)
 add_dependencies (lint format lint_cpp lint_css lint_ts)
@@ -350,13 +350,19 @@ add_executable (uhs_test EXCLUDE_FROM_ALL ${uhs_test_sources})
 target_include_directories (uhs_test PRIVATE ${catch2_build_includes} ${catch2_includes})
 target_link_libraries (uhs_test PRIVATE uhs Catch2::Catch2WithMain)
 
-add_custom_target (test
+add_custom_target (test_cpp
 	COMMAND uhs_test
 		--invisibles
 		--warn NoAssertions
 		--warn UnmatchedTestSpec
 		--warn InfiniteGenerators
 	DEPENDS uhs_test)
+
+add_custom_target (test_ts
+	COMMAND yarn vitest run)
+
+add_custom_target (test)
+add_dependencies (test test_cpp test_ts)
 
 # make integrations
 add_executable (uhs_integrations EXCLUDE_FROM_ALL

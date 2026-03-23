@@ -119,5 +119,9 @@
     // C/C++
     "C_Cpp.clang_format_path": "/usr/local/bin/clang-format",
     "C_Cpp.clang_format_style": "file",
-    "C_Cpp.formatting": "clangFormat"
+    "C_Cpp.formatting": "clangFormat",
+    // Language overrides
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }
