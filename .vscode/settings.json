@@ -108,6 +108,9 @@
         "vector": "cpp"
     },
     // JS/TS
+    "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": "explicit"
+    },
     "js/ts.preferences.quoteStyle": "double",
     // CSS/SCSS
     "scssFormatter.singleQuote": false,

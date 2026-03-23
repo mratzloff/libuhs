@@ -294,7 +294,11 @@ add_custom_target (clean-all
 	COMMAND rm -rf node_modules)
 
 # make format
-add_custom_target (format
+add_custom_target (format_ts
+	COMMAND yarn prettier --write ts/src/**/*.ts
+	COMMAND yarn eslint --fix ts/src/)
+
+add_custom_target (format_cpp
 	COMMAND clang-format -style=file -i -verbose
 		${uhs_includes}/uhs.h
 		${uhs_includes}/uhs_bridge.h
@@ -302,8 +306,14 @@ add_custom_target (format
 		${uhs_bin_sources}
 		${uhs_test_sources})
 
+add_custom_target (format)
+add_dependencies (format format_ts format_cpp)
+
 # make lint
-add_custom_target (lint
+add_custom_target (lint_ts
+	COMMAND yarn eslint ts/src/)
+
+add_custom_target (lint_cpp
 	COMMAND clang
 		--analyze
 		# -Xanalyzer -analyzer-display-progress
@@ -324,7 +334,10 @@ add_custom_target (lint
 		${uhs_sources}
 		${uhs_bin_sources}
 		${uhs_test_sources})
-add_dependencies (lint css_includes js_includes format)
+add_dependencies (lint_cpp css_includes js_includes)
+
+add_custom_target (lint)
+add_dependencies (lint format lint_ts lint_cpp)
 
 # make test
 add_executable (uhs_test EXCLUDE_FROM_ALL ${uhs_test_sources})

@@ -1,4 +1,4 @@
-import {HOME_ID} from "./constants";
+import { HOME_ID } from "./constants";
 
 const DEFAULT_BOOST = 1;
 const TITLE_BOOST = 10;
@@ -10,7 +10,7 @@ interface Match {
 
 function search(keywords: string): HTMLElement[] {
     const results: HTMLElement[] = [];
-    const matchMap = new Map<String, Match>();
+    const matchMap = new Map<string, Match>();
     const needle = keywords.trim().toLowerCase();
 
     const root = document.getElementById("root");

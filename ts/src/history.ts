@@ -131,7 +131,7 @@ class History implements EventTarget {
         if (statesValue) {
             try {
                 states = JSON.parse(statesValue);
-            } catch (error) {
+            } catch {
                 sessionStorage.removeItem(this.statesKey);
             }
         }

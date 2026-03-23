@@ -1,5 +1,5 @@
-import {HOME_ID} from "./constants";
-import {History, HistoryState} from "./history";
+import { HOME_ID } from "./constants";
+import { History, HistoryState } from "./history";
 import search from "./search";
 
 const ViewType = {
@@ -392,7 +392,7 @@ class Viewport {
     }
 
     private findBreadcrumbs(element: HTMLElement): string[] {
-        let ancestors: string[] = [];
+        const ancestors: string[] = [];
         let ancestor: HTMLElement | null | undefined = element;
 
         while (ancestor?.parentElement) {
@@ -589,7 +589,7 @@ class Viewport {
             case ViewType.Search:
                 this.search(state.locator);
                 break;
-            case ViewType.Hint:
+            case ViewType.Hint: {
                 const entry = this.cloneEntryPoint(state.locator);
 
                 const element = document.getElementById(state.locator)!;
@@ -614,6 +614,7 @@ class Viewport {
                 this.processHintNode(entry);
                 this.renderElement(entry);
                 break;
+            }
         }
 
         this.scrollTop();
