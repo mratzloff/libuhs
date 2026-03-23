@@ -9,6 +9,7 @@
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "jiti": "^2.6.1",
+    "lightningcss-cli": "^1.32.0",
     "prettier": "^3.8.1",
     "typescript-eslint": "^8.57.1"
   },

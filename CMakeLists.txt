@@ -202,7 +202,7 @@ add_custom_target (yarn COMMAND yarn)
 
 # css_minified
 add_custom_target (css_minified
-	COMMAND ${bin}/minify cpp/assets/css/uhs.css > build/assets/uhs.min.css
+	COMMAND ${bin}/lightningcss --minify cpp/assets/css/uhs.css -o build/assets/uhs.min.css
 	BYPRODUCTS build/assets/uhs.min.css)
 add_dependencies (css_minified yarn)
 
