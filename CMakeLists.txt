@@ -294,10 +294,6 @@ add_custom_target (clean-all
 	COMMAND rm -rf node_modules)
 
 # make format
-add_custom_target (format_ts
-	COMMAND yarn prettier --write ts/src/**/*.ts
-	COMMAND yarn eslint --fix ts/src/)
-
 add_custom_target (format_cpp
 	COMMAND clang-format -style=file -i -verbose
 		${uhs_includes}/uhs.h
@@ -306,13 +302,17 @@ add_custom_target (format_cpp
 		${uhs_bin_sources}
 		${uhs_test_sources})
 
+add_custom_target (format_css
+	COMMAND yarn prettier --write cpp/assets/css/uhs.css)
+
+add_custom_target (format_ts
+	COMMAND yarn prettier --write ts/src/**/*.ts
+	COMMAND yarn eslint --fix ts/src/)
+
 add_custom_target (format)
-add_dependencies (format format_ts format_cpp)
+add_dependencies (format format_css format_ts format_cpp)
 
 # make lint
-add_custom_target (lint_ts
-	COMMAND yarn eslint ts/src/)
-
 add_custom_target (lint_cpp
 	COMMAND clang
 		--analyze
@@ -336,8 +336,14 @@ add_custom_target (lint_cpp
 		${uhs_test_sources})
 add_dependencies (lint_cpp css_includes js_includes)
 
+add_custom_target (lint_css
+	COMMAND yarn stylelint cpp/assets/css/uhs.css)
+
+add_custom_target (lint_ts
+	COMMAND yarn eslint ts/src/)
+
 add_custom_target (lint)
-add_dependencies (lint format lint_ts lint_cpp)
+add_dependencies (lint format lint_cpp lint_css lint_ts)
 
 # make test
 add_executable (uhs_test EXCLUDE_FROM_ALL ${uhs_test_sources})

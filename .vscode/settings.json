@@ -109,11 +109,13 @@
     },
     // JS/TS
     "editor.codeActionsOnSave": {
-        "source.fixAll.eslint": "explicit"
+        "source.fixAll.eslint": "explicit",
+        "source.fixAll.stylelint": "explicit"
     },
     "js/ts.preferences.quoteStyle": "double",
-    // CSS/SCSS
-    "scssFormatter.singleQuote": false,
+    // CSS
+    "css.validate": false,
+    "stylelint.validate": ["css"],
     // C/C++
     "C_Cpp.clang_format_path": "/usr/local/bin/clang-format",
     "C_Cpp.clang_format_style": "file",

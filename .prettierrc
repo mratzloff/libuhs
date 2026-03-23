@@ -12,6 +12,13 @@
             "options": {
                 "parser": "typescript"
             }
+        },
+        {
+            "files": "*.css",
+            "options": {
+                "parser": "css",
+                "singleQuote": false
+            }
         }
     ]
 }
