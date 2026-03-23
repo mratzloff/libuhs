@@ -1,5 +1,5 @@
-import { HOME_ID } from "./constants";
-import { History, HistoryState } from "./history";
+import {HOME_ID} from "./constants";
+import {History, HistoryState} from "./history";
 import search from "./search";
 
 const ViewType = {
@@ -54,7 +54,10 @@ class Viewport {
         const searchField = document.createElement("input");
         searchField.type = "search";
         searchField.placeholder = "Search";
-        searchField.addEventListener("search", e => {
+        searchField.addEventListener("keydown", e => {
+            if (e.key !== "Enter") {
+                return;
+            }
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
                 this.go({ type: ViewType.Search, locator: keywords });

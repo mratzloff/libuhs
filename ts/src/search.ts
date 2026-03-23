@@ -10,7 +10,7 @@ interface Match {
 
 function search(keywords: string): HTMLElement[] {
     const results: HTMLElement[] = [];
-    const matchMap = new Map<String, Match>;
+    const matchMap = new Map<String, Match>();
     const needle = keywords.trim().toLowerCase();
 
     const root = document.getElementById("root");
@@ -65,7 +65,7 @@ function search(keywords: string): HTMLElement[] {
                 if (id) {
                     const match = matchMap.get(id);
                     if (match) {
-                        match.score += (numMatches * DEFAULT_BOOST);
+                        match.score += numMatches * DEFAULT_BOOST;
                     } else {
                         matchMap.set(id, {
                             element: element as HTMLElement,

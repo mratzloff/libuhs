@@ -7,13 +7,16 @@ class History implements EventTarget {
     readonly indexKey = "history.index";
     readonly statesKey = "history.states";
 
-    private listeners: {[type: string]: ((event: Event) => void)[];} = {};
+    private listeners: { [type: string]: ((event: Event) => void)[] } = {};
 
     constructor() {
         this.clear();
     }
 
-    public addEventListener(type: string, callback: (event: Event) => void): void {
+    public addEventListener(
+        type: string,
+        callback: (event: Event) => void,
+    ): void {
         if (!(type in this.listeners)) {
             this.listeners[type] = [];
         }
@@ -56,7 +59,9 @@ class History implements EventTarget {
         }
 
         this.setIndex(newIndex);
-        this.dispatchEvent(new CustomEvent("change", {detail: states[newIndex]}));
+        this.dispatchEvent(
+            new CustomEvent("change", { detail: states[newIndex] }),
+        );
     }
 
     public hasNext(): boolean {
@@ -86,7 +91,10 @@ class History implements EventTarget {
         this.setIndex(states.length - 1);
     }
 
-    public removeEventListener(type: string, callback: (event: Event) => void): void {
+    public removeEventListener(
+        type: string,
+        callback: (event: Event) => void,
+    ): void {
         if (!(type in this.listeners)) {
             return;
         }
@@ -144,4 +152,4 @@ class History implements EventTarget {
     }
 }
 
-export {History};
+export { History };
