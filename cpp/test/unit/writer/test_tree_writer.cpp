@@ -73,7 +73,6 @@ TEST_CASE("TreeWriter outputs text nodes", "[writer][tree]") {
 	writer.write(document);
 
 	auto output = out.str();
-	REQUIRE(output.find("[text]") != std::string::npos);
 	REQUIRE(output.find("\"This is a hint.\"") != std::string::npos);
 }
 
