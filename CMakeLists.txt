@@ -14,8 +14,8 @@ list (APPEND CMAKE_MODULE_PATH cpp/vendor)
 
 # Fetch dependencies
 FetchContent_Declare (argh_dep
-	GIT_REPOSITORY https://github.com/adishavit/argh
-	GIT_TAG c3f0d8c8a6dacb00df626b409248a34e3bcd15f5)
+	GIT_REPOSITORY https://github.com/mratzloff/argh
+	GIT_TAG 06ad8d13ca0ae7384a01b48246b952d638eb85cd)
 FetchContent_MakeAvailable (argh_dep)
 
 FetchContent_Declare (catch2_dep
@@ -25,7 +25,7 @@ FetchContent_MakeAvailable (catch2_dep)
 
 FetchContent_Declare (hopscotch_map_dep
 	GIT_REPOSITORY https://github.com/Tessil/hopscotch-map
-	GIT_TAG 799f43600f9ca65a3045decbc7571b5522fa21b7)
+	GIT_TAG v2.4.0)
 FetchContent_MakeAvailable (hopscotch_map_dep)
 
 FetchContent_Declare (httplib_dep
@@ -97,7 +97,7 @@ set (tinyformat_dep_SOURCE_DIR ${SOURCE_DIR})
 
 FetchContent_Declare (tinyutf8_dep
 	GIT_REPOSITORY https://github.com/mratzloff/tiny-utf8
-	GIT_TAG e8ebed5b54f2ae80598228013f4044fd8bf8ce62)
+	GIT_TAG v4.5.0)
 FetchContent_MakeAvailable (tinyutf8_dep)
 
 # Define dependency path variables
