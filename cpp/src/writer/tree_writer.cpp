@@ -95,7 +95,7 @@ void TreeWriter::drawScaffold(Node const& node) {
 			if (ancestor == grandparent->lastChild()) {
 				line = "    " + line;
 			} else {
-				auto const& style = nodeStyle(*grandparent);
+				auto const style = nodeStyle(*grandparent);
 				line = style + "│" + StyleReset + "   " + line;
 			}
 		}
@@ -112,7 +112,7 @@ void TreeWriter::drawScaffold(Node const& node) {
 }
 
 std::string TreeWriter::drawText(std::string const& text, std::string const& format) {
-	auto const& style = typeStyle(format);
+	auto const style = typeStyle(format);
 	if (!style.empty()) {
 		return "\"" + style + text + StyleReset + "\"";
 	}
@@ -120,7 +120,7 @@ std::string TreeWriter::drawText(std::string const& text, std::string const& for
 }
 
 std::string TreeWriter::drawType(std::string const& name) {
-	auto const& style = typeStyle(name);
+	auto const style = typeStyle(name);
 	if (!style.empty()) {
 		return style + "[" + name + "]" + StyleReset;
 	}

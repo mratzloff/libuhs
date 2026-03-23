@@ -10,10 +10,10 @@ int main(int argc, char* argv[]) {
 		outputDir = argv[1];
 	}
 
-	auto const& htmlDir = outputDir + "/html";
-	auto const& jsonDir = outputDir + "/json";
-	auto const& uhsDir = outputDir + "/uhs";
-	auto const& uhsSourceDir = outputDir + "/uhs_source";
+	auto const htmlDir = outputDir + "/html";
+	auto const jsonDir = outputDir + "/json";
+	auto const uhsDir = outputDir + "/uhs";
+	auto const uhsSourceDir = outputDir + "/uhs_source";
 
 	std::filesystem::create_directories(htmlDir);
 	std::filesystem::create_directories(jsonDir);
