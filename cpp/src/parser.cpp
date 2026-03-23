@@ -9,11 +9,13 @@ namespace UHS {
 Parser::Parser(Logger const& logger, Options const& options)
     : logger_{logger}, options_{options} {
 
-	// TODO: Guard these by platform
-	setenv("TZ", "", 1);
+#ifdef _MSC_VER
+	_putenv("TZ=");
+	_tzset();
+#else
+	unsetenv("TZ");
 	tzset();
-	// _putenv_s("TZ", ""); // MSVC
-	// _tzset(); // MSVC
+#endif
 }
 
 std::shared_ptr<Document> Parser::parse(std::istream& in) {

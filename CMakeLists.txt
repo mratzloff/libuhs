@@ -175,6 +175,7 @@ set (uhs_test_sources
 	cpp/test/unit/test_error.cpp
 	cpp/test/unit/test_node.cpp
 	cpp/test/unit/test_node_iterator.cpp
+	cpp/test/unit/test_parser.cpp
 	cpp/test/unit/test_pipe.cpp
 	cpp/test/unit/test_strings.cpp
 	cpp/test/unit/test_text_format.cpp
