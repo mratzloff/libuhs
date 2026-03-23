@@ -202,7 +202,7 @@ add_custom_target (yarn COMMAND yarn)
 
 # css_minified
 add_custom_target (css_minified
-	COMMAND ${bin}/lightningcss --minify cpp/assets/css/uhs.css -o build/assets/uhs.min.css
+	COMMAND ${bin}/lightningcss --minify assets/css/uhs.css -o build/assets/uhs.min.css
 	BYPRODUCTS build/assets/uhs.min.css)
 add_dependencies (css_minified yarn)
 
@@ -303,7 +303,7 @@ add_custom_target (format_cpp
 		${uhs_test_sources})
 
 add_custom_target (format_css
-	COMMAND yarn prettier --write cpp/assets/css/uhs.css)
+	COMMAND yarn prettier --write assets/css/uhs.css)
 
 add_custom_target (format_ts
 	COMMAND yarn prettier --write ts/src/**/*.ts
@@ -337,7 +337,7 @@ add_custom_target (lint_cpp
 add_dependencies (lint_cpp css_includes js_includes)
 
 add_custom_target (lint_css
-	COMMAND yarn stylelint cpp/assets/css/uhs.css)
+	COMMAND yarn stylelint assets/css/uhs.css)
 
 add_custom_target (lint_ts
 	COMMAND yarn eslint ts/src/)
