@@ -745,14 +745,19 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	++length;
 
 	auto const now = std::time(nullptr);
-	auto const tm = std::localtime(&now);
+	std::tm tm{};
+#ifdef _MSC_VER
+	localtime_s(&tm, &now);
+#else
+	localtime_r(&now, &tm);
+#endif
 
 	char formatted[10];
-	auto const dateLength = std::strftime(formatted, 10, "%d-%b-%y", tm);
+	auto const dateLength = std::strftime(formatted, 10, "%d-%b-%y", &tm);
 	buffer += "date=" + std::string(formatted, dateLength) + EOL;
 	++length;
 
-	auto const timeLength = std::strftime(formatted, 9, "%H:%M:%S", tm);
+	auto const timeLength = std::strftime(formatted, 9, "%H:%M:%S", &tm);
 	buffer += "time=" + std::string(formatted, timeLength) + EOL;
 	++length;
 

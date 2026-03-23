@@ -33,10 +33,24 @@ extern "C" {
 #include "puff.h"
 }
 #include "pugixml.hpp"
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4100)
+#endif
 #include "tinyformat.h"
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 #include "tinyutf8/tinyutf8.h"
 #include "tsl/hopscotch_map.h"
 

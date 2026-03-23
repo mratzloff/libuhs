@@ -545,12 +545,10 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 	}
 }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-void HTMLWriter::serializeBlankElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeBlankElement(
+    Element const& /* element */, pugi::xml_node xmlNode) {
 	xmlNode.set_name("hr");
 }
-#pragma clang diagnostic pop
 
 void HTMLWriter::serializeCommentElement(Element const& element, pugi::xml_node xmlNode) {
 	this->appendTitle(element, xmlNode);

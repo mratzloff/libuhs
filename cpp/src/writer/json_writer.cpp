@@ -98,7 +98,6 @@ void JSONWriter::serializeDocument(Document const& document, Json::Value& object
 }
 
 void JSONWriter::serializeElement(Element const& element, Json::Value& object) const {
-	std::string fname;
 	std::ofstream fout;
 
 	object["title"] = element.title();
@@ -107,13 +106,13 @@ void JSONWriter::serializeElement(Element const& element, Json::Value& object) c
 	}
 
 	if (element.isMedia() && !options_.mediaDir.empty()) {
-		// TODO: Do something about how lazy this is
-		fname = options_.mediaDir + "/" + std::to_string(element.line()) + "."
-		        + element.mediaExt();
-		fout.open(fname, std::ios::out | std::ios::binary);
+		auto const mediaFilename =
+		    std::to_string(element.line()) + "." + element.mediaExt();
+		auto const mediaPath = std::filesystem::path(options_.mediaDir) / mediaFilename;
+		fout.open(mediaPath, std::ios::out | std::ios::binary);
 		fout << element.body();
 		fout.close();
-		object["body"] = fname;
+		object["body"] = mediaPath.string();
 	} else {
 		auto const& body = element.body();
 		if (!body.empty()) {
