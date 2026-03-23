@@ -122,6 +122,7 @@ TEST_CASE("TreeWriter draws scaffold for nested nodes", "[writer][tree]") {
 	writer.write(document);
 
 	auto output = out.str();
+
 	// Should have tree-drawing characters
 	REQUIRE(
 	    (output.find("└") != std::string::npos || output.find("├") != std::string::npos));

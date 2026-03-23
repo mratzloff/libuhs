@@ -101,7 +101,7 @@ TEST_CASE("Codec::encodeSpecialChars", "[codec]") {
 TEST_CASE("Codec::toPrintable wraps to printable range", "[codec]") {
 	Codec codec;
 
-	// Verify encode/decode stays in printable range
+	// Verify encode/decode stays within the printable range
 	auto key = codec.createKey("key");
 	for (int c = Strings::AsciiStart; c <= Strings::AsciiEnd; ++c) {
 		std::string original(1, static_cast<char>(c));

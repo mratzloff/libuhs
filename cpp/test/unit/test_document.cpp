@@ -69,6 +69,7 @@ TEST_CASE("Document::find updates after removeChild and reindex", "[document]") 
 
 	REQUIRE(document->find(5) == element.get());
 	document->removeChild(element);
+
 	// removeChild detaches the parent before didRemove runs, so
 	// findDocument() returns null and the index is not updated.
 	// A reindex is needed to reflect the removal.

@@ -117,6 +117,7 @@ TEST_CASE("UHSWriter reset clears state", "[writer][uhs]") {
 	writer.reset();
 
 	std::ostringstream out2;
+
 	// Writer should not crash after reset (out_ still points to out1 though)
 	// Just verify reset doesn't throw
 	REQUIRE_NOTHROW(writer.reset());

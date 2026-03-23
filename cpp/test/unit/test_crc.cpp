@@ -62,6 +62,7 @@ TEST_CASE("CRC handles chunked input", "[crc]") {
 TEST_CASE("CRC handles empty data", "[crc]") {
 	CRC crc;
 	crc.calculate("", 0);
+
 	// Should not crash; result is the initial remainder
 	auto result = crc.result();
 	REQUIRE(result == result); // Compiles and doesn't throw
