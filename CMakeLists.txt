@@ -128,11 +128,11 @@ set (uhs_sources
 	cpp/src/error.cpp
 	cpp/src/error/http_error.cpp
 	cpp/src/error/parse_error.cpp
+	cpp/src/node_iterator.cpp
 	cpp/src/node.cpp
 	cpp/src/node/break_node.cpp
 	cpp/src/node/container_node.cpp
 	cpp/src/node/group_node.cpp
-	cpp/src/node/node_iterator.cpp
 	cpp/src/node/text_node.cpp
 	cpp/src/parser.cpp
 	cpp/src/pipe.cpp
@@ -163,6 +163,7 @@ set (uhs_test_sources
 	cpp/test/integration/test_metadata.cpp
 	cpp/test/integration/test_structure.cpp
 	cpp/test/integration/test_version.cpp
+	cpp/test/unit/error/test_parse_error.cpp
 	cpp/test/unit/node/test_break_node.cpp
 	cpp/test/unit/node/test_group_node.cpp
 	cpp/test/unit/node/test_text_node.cpp
@@ -172,8 +173,8 @@ set (uhs_test_sources
 	cpp/test/unit/test_downloader.cpp
 	cpp/test/unit/test_element.cpp
 	cpp/test/unit/test_error.cpp
-	cpp/test/unit/error/test_parse_error.cpp
 	cpp/test/unit/test_node.cpp
+	cpp/test/unit/test_node_iterator.cpp
 	cpp/test/unit/test_pipe.cpp
 	cpp/test/unit/test_strings.cpp
 	cpp/test/unit/test_text_format.cpp
