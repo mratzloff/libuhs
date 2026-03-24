@@ -55,19 +55,20 @@ This will fetch several remote C, C++, and TypeScript dependencies, then build t
 Convert a local UHS file to HTML:
 
 ```sh
-bin/uhs convert -o path/to/game.html path/to/game.uhs
+bin/uhs convert -o ./path/to/game.html ./path/to/game.uhs
 ```
 
 Specify an output format and write to stdout:
 
 ```sh
-bin/uhs convert -f json path/to/game.uhs
+bin/uhs convert -f json ./path/to/game.uhs
 ```
 
-Download a UHS file from `uhs-hints.com`:
+Download every UHS file from `uhs-hints.com`:
 
 ```sh
-bin/uhs download game
+mkdir ./hints
+bin/uhs download -d ./hints --all
 ```
 
 Check the help for a more complete listing:
