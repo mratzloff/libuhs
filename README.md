@@ -10,7 +10,7 @@ A C++ library for reading, parsing, and writing [Universal Hint System](https://
 
 No smart phones. Few digital ads. For most people, _no Internet_. Life in the mid-'90s was a different time. But there were still games, and if you were stuck on one, I mean really stuck, you only had a few options.
 
-The one I turned to most often was the Universal Hint System. UHS was perfect for the kinds of adventure and role playing games I've always loved, with questions you could explore by topic and hints that would get increasingly direct. Most of the time I only needed a nudge in the right direction, not major accidental spoilers for some other part of the game I hadn't even seen yet.
+The one I turned to most often was the Universal Hint System. UHS was perfect for the kinds of adventure and role playing games I've always loved, with questions you could explore by topic and hints that would get increasingly direct. Most of the time I only needed a nudge in the right direction, not major accidental spoilers for some other part of the game I hadn't even seen yet, as might happen with a walkthrough.
 
 UHS was created by Jason Strautman in 1988 (nearly 40 years ago!), and he and Robert Norton collaborated on feature updates over the next several years. It's a file format: `.uhs`. There are nearly 600 games in the library; one game per file, more or less, with the last big one being Skyrim. Computer games are best represented, but there are plenty of multi-platform titles up through the Xbox 360 era. Today these hints are all available on [uhs-hints.com](https://www.uhs-hints.com).
 
