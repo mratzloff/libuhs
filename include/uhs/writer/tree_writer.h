@@ -21,7 +21,7 @@ public:
 private:
 	using NodeToStyleMap = tsl::hopscotch_map<std::string, std::string> const;
 
-	static auto constexpr StyleReset = "\033[0m";
+	static constexpr auto StyleReset = "\033[0m";
 
 	static NodeToStyleMap styles_;
 
