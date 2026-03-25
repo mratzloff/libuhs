@@ -242,6 +242,8 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 
 	if (ref == firstChild_.get()) {
 		node->nextSibling_ = firstChild_;
+		node->previousSibling_ = nullptr;
+		ref->previousSibling_ = node.get();
 		firstChild_ = node;
 	} else {
 		if (!ref->hasPreviousSibling()) {
@@ -250,6 +252,8 @@ void Node::insertBefore(std::shared_ptr<Node> node, Node* ref) {
 
 		auto previous = ref->previousSibling();
 		node->nextSibling_ = previous->nextSibling_;
+		node->previousSibling_ = previous;
+		ref->previousSibling_ = node.get();
 		previous->nextSibling_ = node;
 	}
 	n->parent_ = this;
