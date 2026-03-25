@@ -344,8 +344,8 @@ struct Options {
 
 namespace Strings {
 
-static char const AsciiStart = 0x20;
-static char const AsciiEnd = 0x7F;
+constexpr char AsciiStart = 0x20;
+constexpr char AsciiEnd = 0x7F;
 
 bool beginsWithAttachedPunctuation(std::string const& s);
 std::string& chomp(std::string& s, char c);
