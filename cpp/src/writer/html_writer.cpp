@@ -30,7 +30,7 @@ void HTMLWriter::write(std::shared_ptr<Document> const document) {
 
 	pugi::xml_document xml;
 	this->serialize(*document, xml);
-	xml.save(out_, "", pugi::format_indent | pugi::format_no_declaration);
+	xml.save(out_, "", pugi::format_raw | pugi::format_no_declaration);
 }
 
 std::shared_ptr<Document> HTMLWriter::addEntryPointTo88aDocument(
