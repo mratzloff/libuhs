@@ -48,7 +48,7 @@ std::shared_ptr<Document> Parser::parse(std::istream& in) {
 
 		thread.join();
 		return std::move(document_);
-	} catch (Error const& err) {
+	} catch (...) {
 		thread.join();
 		throw;
 	}
