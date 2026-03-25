@@ -212,7 +212,7 @@ std::string wrap(std::string const& s, std::string const& sep, std::size_t width
 		++numLines;
 	};
 
-	for (auto cursor = start; cursor <= end; ++cursor) {
+	for (auto cursor = start; cursor < end; ++cursor) {
 		switch (s[cursor]) {
 		case '\n':
 			cutting = true; // Always cut on newline
@@ -235,9 +235,7 @@ std::string wrap(std::string const& s, std::string const& sep, std::size_t width
 			cutting = false;
 		}
 	}
-	if (cutpoint <= end) {
-		cut(end);
-	}
+	cut(end);
 
 	return lines;
 }
