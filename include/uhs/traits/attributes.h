@@ -13,7 +13,7 @@ public:
 	using Type = std::map<std::string, std::string>;
 
 	Type const& attrs() const;
-	std::optional<std::string const> attr(std::string const& key) const;
+	std::optional<std::string> attr(std::string const& key) const;
 	void attr(std::string const& key, std::string const& value);
 	void attr(std::string const& key, int const value);
 

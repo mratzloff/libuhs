@@ -6,7 +6,7 @@ Attributes::Type const& Attributes::attrs() const {
 	return attrs_;
 }
 
-std::optional<std::string const> Attributes::attr(std::string const& key) const {
+std::optional<std::string> Attributes::attr(std::string const& key) const {
 	std::string s;
 	try {
 		s = attrs_.at(key);
