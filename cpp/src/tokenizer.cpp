@@ -1,5 +1,5 @@
-#include <cassert>
 #include <regex>
+#include <stdexcept>
 
 #include "uhs/crc.h"
 #include "uhs/element.h"
@@ -229,7 +229,9 @@ std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
 		std::rethrow_exception(err);
 	}
 
-	assert(!queue_.empty());
+	if (queue_.empty()) {
+		throw std::runtime_error("token channel closed with no pending tokens");
+	}
 	auto token = std::make_unique<Token const>(queue_.front());
 	queue_.pop();
 
@@ -239,7 +241,9 @@ std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
 void Tokenizer::TokenChannel::send(Token const&& token) {
 	{
 		std::lock_guard<std::mutex> m{mutex_};
-		assert(open_);
+		if (!open_) {
+			throw std::runtime_error("cannot send on a closed token channel");
+		}
 		queue_.push(token);
 	}
 	ready_.notify_one();
