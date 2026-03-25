@@ -1,4 +1,7 @@
-#include "uhs.h"
+#include "uhs/element.h"
+#include "uhs/error/data_error.h"
+
+#include <vector>
 
 namespace UHS {
 

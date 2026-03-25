@@ -1,4 +1,14 @@
+#include <fstream>
+#include <sstream>
+
 #include "helpers.h"
+
+#include "uhs/logger.h"
+#include "uhs/node/group_node.h"
+#include "uhs/parser.h"
+#include "uhs/writer/html_writer.h"
+#include "uhs/writer/json_writer.h"
+#include "uhs/writer/uhs_writer.h"
 
 namespace UHS {
 

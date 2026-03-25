@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/traits/body.h"
 
 namespace UHS::Traits {
 

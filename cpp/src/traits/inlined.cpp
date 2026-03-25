@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/traits/inlined.h"
 
 namespace UHS::Traits {
 

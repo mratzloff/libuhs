@@ -1,4 +1,5 @@
-#include "uhs.h"
+#include "uhs/token.h"
+#include "uhs/strings.h"
 
 namespace UHS {
 

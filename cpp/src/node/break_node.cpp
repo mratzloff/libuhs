@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/node/break_node.h"
 
 namespace UHS {
 

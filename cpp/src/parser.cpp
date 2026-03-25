@@ -1,8 +1,21 @@
 #include <climits>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <regex>
+#include <sstream>
 #include <thread>
 
-#include "uhs.h"
+#include "uhs/error/data_error.h"
+#include "uhs/error/file_error.h"
+#include "uhs/error/parse_error.h"
+#include "uhs/node/break_node.h"
+#include "uhs/node/group_node.h"
+#include "uhs/node/text_node.h"
+#include "uhs/parser.h"
+#include "uhs/pipe.h"
+#include "uhs/strings.h"
+#include "uhs/token.h"
 
 namespace UHS {
 

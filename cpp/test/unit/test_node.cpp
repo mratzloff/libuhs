@@ -1,6 +1,14 @@
+#include <vector>
+
 #include <catch2/catch_test_macros.hpp>
 
-#include "uhs.h"
+#include "uhs/constants.h"
+#include "uhs/document.h"
+#include "uhs/element.h"
+#include "uhs/node.h"
+#include "uhs/node/break_node.h"
+#include "uhs/node/group_node.h"
+#include "uhs/node/text_node.h"
 
 namespace UHS {
 

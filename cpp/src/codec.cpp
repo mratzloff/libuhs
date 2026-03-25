@@ -1,4 +1,8 @@
-#include "uhs.h"
+#include "tinyutf8/tinyutf8.h"
+
+#include "uhs/codec.h"
+#include "uhs/strings.h"
+#include "uhs/token.h"
 
 namespace UHS {
 

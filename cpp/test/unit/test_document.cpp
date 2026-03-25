@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "uhs.h"
+#include "uhs/constants.h"
+#include "uhs/document.h"
 
 namespace UHS {
 

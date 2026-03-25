@@ -1,4 +1,14 @@
-#include "uhs.h"
+#include <vector>
+
+extern "C" {
+#include "uhs_bridge.h"
+}
+
+#include "uhs/downloader.h"
+#include "uhs/error/error.h"
+#include "uhs/error/file_error.h"
+#include "uhs/error/http_error.h"
+#include "uhs/uhs_write.h"
 
 int uhs_write(char const* format, char const* infile, char const* outfile) {
 	UHS::Logger logger{UHS::LogLevel::Error};

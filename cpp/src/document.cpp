@@ -1,4 +1,8 @@
-#include "uhs.h"
+#include "uhs/document.h"
+#include "uhs/constants.h"
+#include "uhs/element.h"
+#include "uhs/error/data_error.h"
+#include "uhs/node.h"
 
 namespace UHS {
 

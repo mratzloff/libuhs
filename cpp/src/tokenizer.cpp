@@ -1,4 +1,11 @@
-#include "uhs.h"
+#include <cassert>
+#include <regex>
+
+#include "uhs/crc.h"
+#include "uhs/element.h"
+#include "uhs/regex.h"
+#include "uhs/strings.h"
+#include "uhs/tokenizer.h"
 
 namespace UHS {
 

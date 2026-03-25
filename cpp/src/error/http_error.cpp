@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/error/http_error.h"
 
 namespace UHS {
 

@@ -1,9 +1,15 @@
 #pragma once
 
-#include <fstream>
-#include <sstream>
+#include <memory>
+#include <string>
+#include <utility>
 
-#include "uhs.h"
+#include "uhs/constants.h"
+#include "uhs/document.h"
+#include "uhs/element.h"
+#include "uhs/node.h"
+#include "uhs/node/text_node.h"
+#include "uhs/options.h"
 
 namespace UHS {
 

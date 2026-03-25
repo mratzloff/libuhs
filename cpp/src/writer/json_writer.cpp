@@ -1,4 +1,9 @@
-#include "uhs.h"
+#include <filesystem>
+#include <fstream>
+
+#include "uhs/error/data_error.h"
+#include "uhs/strings.h"
+#include "uhs/writer/json_writer.h"
 
 namespace UHS {
 

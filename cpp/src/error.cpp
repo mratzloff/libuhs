@@ -1,4 +1,6 @@
-#include "uhs.h"
+#include <exception>
+
+#include "uhs/error/error.h"
 
 namespace UHS {
 

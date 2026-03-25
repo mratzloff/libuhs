@@ -1,6 +1,11 @@
+#include <algorithm>
+#include <exception>
 #include <iomanip>
+#include <regex>
+#include <sstream>
 
-#include "uhs.h"
+#include "uhs/error/error.h"
+#include "uhs/strings.h"
 
 namespace UHS::Strings {
 

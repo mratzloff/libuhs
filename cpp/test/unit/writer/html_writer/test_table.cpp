@@ -1,7 +1,8 @@
-#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
-#include "uhs.h"
+#include <catch2/catch_test_macros.hpp>
+
+#include "uhs/writer/html_writer.h"
 
 namespace UHS {
 

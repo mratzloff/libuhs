@@ -1,7 +1,9 @@
-#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
-#include "uhs.h"
+#include <catch2/catch_test_macros.hpp>
+
+#include "uhs/error/error.h"
+#include "uhs/pipe.h"
 
 namespace UHS {
 

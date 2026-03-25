@@ -1,4 +1,6 @@
-#include "uhs.h"
+#include "uhs/error/parse_error.h"
+#include "uhs/constants.h"
+#include "uhs/token.h"
 
 namespace UHS {
 

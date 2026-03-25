@@ -1,4 +1,13 @@
-#include "uhs.h"
+#include <filesystem>
+#include <fstream>
+
+extern "C" {
+#include "puff.h"
+}
+
+#include "uhs/error/file_error.h"
+#include "uhs/strings.h"
+#include "uhs/zip.h"
 
 namespace UHS {
 

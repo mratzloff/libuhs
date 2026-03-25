@@ -1,6 +1,9 @@
+#include <string>
+
 #include <catch2/catch_test_macros.hpp>
 
-#include "uhs.h"
+#include "uhs/constants.h"
+#include "uhs/error/parse_error.h"
 
 namespace UHS {
 

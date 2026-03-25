@@ -1,6 +1,14 @@
+#include <cassert>
 #include <iomanip>
+#include <sstream>
 
-#include "uhs.h"
+#include "uhs/error/data_error.h"
+#include "uhs/node/break_node.h"
+#include "uhs/node/group_node.h"
+#include "uhs/regex.h"
+#include "uhs/strings.h"
+#include "uhs/token.h"
+#include "uhs/writer/uhs_writer.h"
 
 namespace UHS {
 

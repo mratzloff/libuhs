@@ -1,4 +1,10 @@
-#include "uhs.h"
+#include <cassert>
+
+#include "uhs/error/data_error.h"
+#include "uhs/regex.h"
+#include "uhs/strings.h"
+#include "uhs/token.h"
+#include "uhs/writer/html_writer.h"
 
 namespace UHS {
 

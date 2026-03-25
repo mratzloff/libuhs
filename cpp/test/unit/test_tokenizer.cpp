@@ -1,8 +1,10 @@
-#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 #include <thread>
 
-#include "uhs.h"
+#include <catch2/catch_test_macros.hpp>
+
+#include "uhs/pipe.h"
+#include "uhs/tokenizer.h"
 
 namespace UHS {
 

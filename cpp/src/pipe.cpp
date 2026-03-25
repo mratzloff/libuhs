@@ -1,4 +1,7 @@
-#include "uhs.h"
+#include <fstream>
+
+#include "uhs/error/file_error.h"
+#include "uhs/pipe.h"
 
 namespace UHS {
 

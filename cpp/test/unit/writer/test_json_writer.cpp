@@ -1,7 +1,16 @@
-#include <catch2/catch_test_macros.hpp>
 #include <sstream>
 
-#include "uhs.h"
+#include <catch2/catch_test_macros.hpp>
+
+#include "uhs/constants.h"
+#include "uhs/document.h"
+#include "uhs/element.h"
+#include "uhs/logger.h"
+#include "uhs/node/break_node.h"
+#include "uhs/node/group_node.h"
+#include "uhs/node/text_node.h"
+#include "uhs/options.h"
+#include "uhs/writer/json_writer.h"
 
 namespace UHS {
 

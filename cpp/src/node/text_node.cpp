@@ -1,4 +1,5 @@
-#include "uhs.h"
+#include "uhs/node/text_node.h"
+#include "uhs/constants.h"
 
 namespace UHS {
 

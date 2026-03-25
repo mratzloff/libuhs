@@ -1,4 +1,5 @@
-#include "uhs.h"
+#include "uhs/writer/tree_writer.h"
+#include "uhs/node/break_node.h"
 
 namespace UHS {
 

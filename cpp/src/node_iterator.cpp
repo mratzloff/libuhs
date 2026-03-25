@@ -1,4 +1,5 @@
-#include "uhs.h"
+#include "uhs/node_iterator.h"
+#include "uhs/node.h"
 
 namespace UHS {
 

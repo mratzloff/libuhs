@@ -1,4 +1,5 @@
-#include "uhs.h"
+#include "uhs/traits/visibility.h"
+#include "uhs/error/data_error.h"
 
 namespace UHS::Traits {
 

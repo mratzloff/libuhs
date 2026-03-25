@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "uhs.h"
+#include "uhs/logger.h"
+#include "uhs/options.h"
+#include "uhs/parser.h"
 
 namespace UHS {
 

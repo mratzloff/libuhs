@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/writer.h"
 
 namespace UHS {
 

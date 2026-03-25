@@ -1,6 +1,11 @@
+#include <filesystem>
+
 #include <catch2/catch_test_macros.hpp>
 
-#include "uhs.h"
+#include "uhs/downloader.h"
+#include "uhs/error/file_error.h"
+#include "uhs/error/http_error.h"
+#include "uhs/logger.h"
 
 namespace UHS {
 

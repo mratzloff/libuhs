@@ -1,4 +1,6 @@
-#include "uhs.h"
+#include "uhs/regex.h"
+#include "uhs/strings.h"
+#include "uhs/writer/html_writer.h"
 
 namespace UHS {
 

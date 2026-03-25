@@ -1,4 +1,16 @@
-#include "uhs.h"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+
+#include "uhs/error/data_error.h"
+#include "uhs/error/file_error.h"
+#include "uhs/error/parse_error.h"
+#include "uhs/parser.h"
+#include "uhs/uhs_write.h"
+#include "uhs/writer/html_writer.h"
+#include "uhs/writer/json_writer.h"
+#include "uhs/writer/tree_writer.h"
+#include "uhs/writer/uhs_writer.h"
 
 namespace UHS {
 

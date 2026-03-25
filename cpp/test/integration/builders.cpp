@@ -1,5 +1,8 @@
 #include "builders.h"
 
+#include "uhs/node/break_node.h"
+#include "uhs/node/group_node.h"
+
 namespace UHS {
 
 // Formatting builders

@@ -1,4 +1,4 @@
-#include "uhs.h"
+#include "uhs/traits/attributes.h"
 
 namespace UHS::Traits {
 

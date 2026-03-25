@@ -1,4 +1,11 @@
-#include "uhs.h"
+#include <filesystem>
+
+#include "pugixml.hpp"
+
+#include "uhs/downloader.h"
+#include "uhs/error/file_error.h"
+#include "uhs/error/http_error.h"
+#include "uhs/zip.h"
 
 namespace UHS {
 

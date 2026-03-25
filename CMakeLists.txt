@@ -136,6 +136,7 @@ set (uhs_sources
 	cpp/src/node/text_node.cpp
 	cpp/src/parser.cpp
 	cpp/src/pipe.cpp
+	cpp/src/regex.cpp
 	cpp/src/strings.cpp
 	cpp/src/token.cpp
 	cpp/src/tokenizer.cpp
