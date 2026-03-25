@@ -604,7 +604,7 @@ void Parser::parseDate(std::string const& date, std::tm& tm) const {
 	} else if (parts[1] == "Dec") {
 		month = 11;
 	} else {
-		throw DataError("invalid month: %d", parts[1]);
+		throw DataError("invalid month: %s", parts[1]);
 	}
 
 	int day = 0;
