@@ -54,11 +54,19 @@ void Zip::unzip(std::string const& dir) {
 }
 
 uint16_t Zip::readUint16LE(int offset) {
+	if (offset < 0
+	    || static_cast<std::size_t>(offset) + sizeof(uint16_t) > data_.size()) {
+		throw FileError("ZIP read out of bounds at offset %d", offset);
+	}
 	return static_cast<uint16_t>(data_[offset])
 	       | ((static_cast<uint16_t>(data_[offset + 1]) & 0xFF) << 8);
 }
 
 uint32_t Zip::readUint32LE(int offset) {
+	if (offset < 0
+	    || static_cast<std::size_t>(offset) + sizeof(uint32_t) > data_.size()) {
+		throw FileError("ZIP read out of bounds at offset %d", offset);
+	}
 	return static_cast<uint32_t>(data_[offset])
 	       | ((static_cast<uint32_t>(data_[offset + 1]) & 0xFF) << 8)
 	       | ((static_cast<uint32_t>(data_[offset + 2]) & 0xFF) << 16)
