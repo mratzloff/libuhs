@@ -4,7 +4,27 @@
 
 namespace UHS {
 
-UHSWriter::Serializer UHSWriter::serializer_;
+UHSWriter::Dispatcher UHSWriter::dispatcher_ = [] {
+	Dispatcher dispatcher;
+
+	dispatcher.add(ElementType::Blank, &UHSWriter::serializeBlankElement);
+	dispatcher.add(ElementType::Comment, &UHSWriter::serializeCommentElement);
+	dispatcher.add(ElementType::Credit, &UHSWriter::serializeCommentElement);
+	dispatcher.add(ElementType::Gifa, &UHSWriter::serializeDataElement);
+	dispatcher.add(ElementType::Hint, &UHSWriter::serializeHintElement);
+	dispatcher.add(ElementType::Hyperpng, &UHSWriter::serializeHyperpngElement);
+	dispatcher.add(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
+	dispatcher.add(ElementType::Info, &UHSWriter::serializeInfoElement);
+	dispatcher.add(ElementType::Link, &UHSWriter::serializeLinkElement);
+	dispatcher.add(ElementType::Nesthint, &UHSWriter::serializeHintElement);
+	dispatcher.add(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
+	dispatcher.add(ElementType::Sound, &UHSWriter::serializeDataElement);
+	dispatcher.add(ElementType::Subject, &UHSWriter::serializeSubjectElement);
+	dispatcher.add(ElementType::Text, &UHSWriter::serializeTextElement);
+	dispatcher.add(ElementType::Version, &UHSWriter::serializeCommentElement);
+
+	return dispatcher;
+}();
 
 UHSWriter::UHSWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {}
@@ -506,7 +526,7 @@ int UHSWriter::serializeDataElement(Element& element, std::string& out) {
 
 int UHSWriter::serializeElement(Element& element, std::string& out) {
 	element.line(currentLine_);
-	return serializer_.invoke(*this, element, out);
+	return dispatcher_.dispatch(*this, element, out);
 }
 
 void UHSWriter::serializeElementHeader(Element& element, std::string& out) const {
@@ -946,29 +966,6 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);
 	}
-}
-
-UHSWriter::Serializer::Serializer() {
-	map_.try_emplace(ElementType::Blank, &UHSWriter::serializeBlankElement);
-	map_.try_emplace(ElementType::Comment, &UHSWriter::serializeCommentElement);
-	map_.try_emplace(ElementType::Credit, &UHSWriter::serializeCommentElement);
-	map_.try_emplace(ElementType::Gifa, &UHSWriter::serializeDataElement);
-	map_.try_emplace(ElementType::Hint, &UHSWriter::serializeHintElement);
-	map_.try_emplace(ElementType::Hyperpng, &UHSWriter::serializeHyperpngElement);
-	map_.try_emplace(ElementType::Incentive, &UHSWriter::serializeIncentiveElement);
-	map_.try_emplace(ElementType::Info, &UHSWriter::serializeInfoElement);
-	map_.try_emplace(ElementType::Link, &UHSWriter::serializeLinkElement);
-	map_.try_emplace(ElementType::Nesthint, &UHSWriter::serializeHintElement);
-	map_.try_emplace(ElementType::Overlay, &UHSWriter::serializeOverlayElement);
-	map_.try_emplace(ElementType::Sound, &UHSWriter::serializeDataElement);
-	map_.try_emplace(ElementType::Subject, &UHSWriter::serializeSubjectElement);
-	map_.try_emplace(ElementType::Text, &UHSWriter::serializeTextElement);
-	map_.try_emplace(ElementType::Version, &UHSWriter::serializeCommentElement);
-}
-
-int UHSWriter::Serializer::invoke(UHSWriter& writer, Element& element, std::string& out) {
-	auto func = map_.at(element.elementType());
-	return (writer.*func)(element, out);
 }
 
 } // namespace UHS

@@ -2,7 +2,27 @@
 
 namespace UHS {
 
-HTMLWriter::Serializer HTMLWriter::serializer_;
+HTMLWriter::Dispatcher HTMLWriter::dispatcher_ = [] {
+	Dispatcher dispatcher;
+
+	dispatcher.add(ElementType::Blank, &HTMLWriter::serializeBlankElement);
+	dispatcher.add(ElementType::Comment, &HTMLWriter::serializeCommentElement);
+	dispatcher.add(ElementType::Credit, &HTMLWriter::serializeCommentElement);
+	dispatcher.add(ElementType::Gifa, &HTMLWriter::serializeGifaElement);
+	dispatcher.add(ElementType::Hint, &HTMLWriter::serializeHintElement);
+	dispatcher.add(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
+	dispatcher.add(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);
+	dispatcher.add(ElementType::Info, &HTMLWriter::serializeInfoElement);
+	dispatcher.add(ElementType::Link, &HTMLWriter::serializeLinkElement);
+	dispatcher.add(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
+	dispatcher.add(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
+	dispatcher.add(ElementType::Sound, &HTMLWriter::serializeSoundElement);
+	dispatcher.add(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
+	dispatcher.add(ElementType::Text, &HTMLWriter::serializeTextElement);
+	dispatcher.add(ElementType::Version, &HTMLWriter::serializeCommentElement);
+
+	return dispatcher;
+}();
 
 HTMLWriter::HTMLWriter(Logger const& logger, std::ostream& out, Options const& options)
     : Writer(logger, out, options) {
@@ -593,7 +613,7 @@ void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode
 		this->appendClassNames(xmlNode, {"inline"});
 	}
 
-	serializer_.invoke(*this, element, xmlNode);
+	dispatcher_.dispatch(*this, element, xmlNode);
 }
 
 void HTMLWriter::serializeGifaElement(Element const& element, pugi::xml_node xmlNode) {
@@ -1001,31 +1021,6 @@ void HTMLWriter::wrapInlineRuns(pugi::xml_node root) const {
 			this->removeTrailingBreaks(lastChild);
 		}
 	}
-}
-
-HTMLWriter::Serializer::Serializer() {
-	map_.try_emplace(ElementType::Blank, &HTMLWriter::serializeBlankElement);
-	map_.try_emplace(ElementType::Comment, &HTMLWriter::serializeCommentElement);
-	map_.try_emplace(ElementType::Credit, &HTMLWriter::serializeCommentElement);
-	map_.try_emplace(ElementType::Gifa, &HTMLWriter::serializeGifaElement);
-	map_.try_emplace(ElementType::Hint, &HTMLWriter::serializeHintElement);
-	map_.try_emplace(ElementType::Hyperpng, &HTMLWriter::serializeHyperpngElement);
-	map_.try_emplace(ElementType::Incentive, &HTMLWriter::serializeIncentiveElement);
-	map_.try_emplace(ElementType::Info, &HTMLWriter::serializeInfoElement);
-	map_.try_emplace(ElementType::Link, &HTMLWriter::serializeLinkElement);
-	map_.try_emplace(ElementType::Nesthint, &HTMLWriter::serializeHintElement);
-	map_.try_emplace(ElementType::Overlay, &HTMLWriter::serializeOverlayElement);
-	map_.try_emplace(ElementType::Sound, &HTMLWriter::serializeSoundElement);
-	map_.try_emplace(ElementType::Subject, &HTMLWriter::serializeSubjectElement);
-	map_.try_emplace(ElementType::Text, &HTMLWriter::serializeTextElement);
-	map_.try_emplace(ElementType::Version, &HTMLWriter::serializeCommentElement);
-}
-
-void HTMLWriter::Serializer::invoke(
-    HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode) {
-
-	auto func = map_.at(element.elementType());
-	(writer.*func)(element, xmlNode);
 }
 
 } // namespace UHS

@@ -1020,6 +1020,21 @@ protected:
 	Options const& options_;
 };
 
+template<typename Func>
+class ElementDispatcher {
+public:
+	void add(ElementType type, Func func) { map_.try_emplace(type, func); }
+
+	template<typename Writer, typename Elem, typename... Args>
+	auto dispatch(Writer& writer, Elem& element, Args&&... args) const {
+		auto func = map_.at(element.elementType());
+		return (writer.*func)(element, std::forward<Args>(args)...);
+	}
+
+private:
+	tsl::hopscotch_map<ElementType, Func> map_;
+};
+
 class TreeWriter : public Writer {
 public:
 	TreeWriter(Logger const& logger, std::ostream& out, Options const& options = {});
@@ -1104,18 +1119,11 @@ public:
 private:
 	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
 
-	class Serializer {
-	public:
-		using Func = void (HTMLWriter::*)(Element const& element, pugi::xml_node xmlNode);
+	using SerializeFunc = void (HTMLWriter::*)(
+	    Element const& element, pugi::xml_node xmlNode);
+	using Dispatcher = ElementDispatcher<SerializeFunc>;
 
-		Serializer();
-		void invoke(HTMLWriter& writer, Element const& element, pugi::xml_node xmlNode);
-
-	private:
-		std::map<ElementType const, Func> map_;
-	};
-
-	static HTMLWriter::Serializer serializer_;
+	static Dispatcher dispatcher_;
 
 	static void appendLinesToNode(
 	    pugi::xml_node node, std::vector<std::string> const& lines);
@@ -1124,8 +1132,8 @@ private:
 
 	std::string css_;
 	std::string js_;
-	std::map<ElementType const, std::string> mediaContentTypes_;
-	std::map<ElementType const, std::string> mediaTagTypes_;
+	std::map<ElementType, std::string> mediaContentTypes_;
+	std::map<ElementType, std::string> mediaTagTypes_;
 
 	std::shared_ptr<Document> addEntryPointTo88aDocument(Document const& document) const;
 	std::optional<pugi::xml_node> appendBody(
@@ -1204,17 +1212,8 @@ public:
 	void reset() override;
 
 private:
-	class Serializer {
-	public:
-		using Func = int (UHSWriter::*)(Element&, std::string&);
-
-		Serializer();
-		int invoke(UHSWriter& writer, Element& element, std::string& out);
-
-	private:
-		std::map<ElementType const, Func> map_;
-	};
-
+	using SerializeFunc = int (UHSWriter::*)(Element&, std::string&);
+	using Dispatcher = ElementDispatcher<SerializeFunc>;
 	using DataQueue = std::queue<std::pair<ElementType, std::string const>>;
 
 	static constexpr auto DataAddressMarker = "000000";
@@ -1226,7 +1225,7 @@ private:
 	static std::size_t const MediaSizeLength = 6;  // Up to 999,999 bytes per media file
 	static std::size_t const RegionSizeLength = 4; // Up to 9,999 × 9,999 px per region
 
-	static UHSWriter::Serializer serializer_;
+	static Dispatcher dispatcher_;
 
 	Codec const codec_;
 	CRC crc_;
