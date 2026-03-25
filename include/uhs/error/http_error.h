@@ -33,11 +33,8 @@ class HTTPError : public Error {
 public:
 	template<typename... Args>
 	HTTPError(httplib::Result const& res, char const* format, Args... args)
-	    : Error(), response_{res.value()} {
-
-		// TODO: Review for slice
-		static_cast<Error&>(*this) = Error(this->format(format, args...));
-	}
+	    : Error(formatMessage(res.value().status, format, args...))
+	    , response_{res.value()} {}
 
 	httplib::Response getResponse() const;
 
@@ -45,9 +42,9 @@ private:
 	httplib::Response response_;
 
 	template<typename... Args>
-	std::string format(char const* format, Args... args) {
+	static std::string formatMessage(int status, char const* format, Args... args) {
 		auto fmt = "HTTP %d: "s + format;
-		return tfm::format(fmt.data(), response_.status, args...);
+		return tfm::format(fmt.data(), status, args...);
 	}
 };
 

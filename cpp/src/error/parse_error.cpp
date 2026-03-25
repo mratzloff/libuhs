@@ -5,12 +5,10 @@
 namespace UHS {
 
 ParseError::ParseError(int line, int column, std::string const& message)
-    : ParseError(line, column, message.data()) {}
+    : Error(formatMessage("%s", line, column, message)) {}
 
-ParseError::ParseError(int line, int column, char const* message) : Error() {
-	// TODO: Review for slice
-	static_cast<Error&>(*this) = Error(this->format("%s", line, column, message));
-}
+ParseError::ParseError(int line, int column, char const* message)
+    : Error(formatMessage("%s", line, column, message)) {}
 
 ParseError ParseError::badLine(int line, int column, int targetLine) {
 	return ParseError(line, column, "line not found: %d", targetLine);

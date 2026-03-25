@@ -33,11 +33,8 @@ public:
 	Error(char const* message);
 
 	template<typename... Args>
-	Error(char const* format, Args... args) : Error() {
-		auto message = tfm::format(format, args...);
-		// TODO: Review for slice
-		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
-	}
+	Error(char const* format, Args... args)
+	    : std::runtime_error(tfm::format(format, args...)) {}
 
 	std::string string() const;
 };

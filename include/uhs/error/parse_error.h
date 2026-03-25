@@ -41,10 +41,8 @@ public:
 	ParseError(int line, int column, char const* message);
 
 	template<typename... Args>
-	ParseError(int line, int column, char const* format, Args... args) : Error() {
-		// TODO: Review for slice
-		static_cast<Error&>(*this) = Error(this->format(format, line, column, args...));
-	}
+	ParseError(int line, int column, char const* format, Args... args)
+	    : Error(formatMessage(format, line, column, args...)) {}
 
 	static ParseError badLine(int line, int column, int targetLine);
 	static ParseError badToken(int line, int column, TokenType type);
@@ -56,7 +54,7 @@ public:
 
 private:
 	template<typename... Args>
-	std::string format(char const* format, int line, int column, Args... args) {
+	static std::string formatMessage(char const* format, int line, int column, Args... args) {
 		auto fmt = "parse error at line %d, column %d: "s + format;
 		return tfm::format(fmt.data(), line, column, args...);
 	}
