@@ -173,4 +173,27 @@ TEST_CASE("JSONWriter serializes break nodes as separator", "[writer][json]") {
 	REQUIRE(output.find("\"-\"") != std::string::npos);
 }
 
+TEST_CASE("JSONWriter handles deeply nested document", "[writer][json]") {
+	auto document = Document::create(VersionType::Version96a);
+	document->title("Game");
+
+	// Build a chain of nested subjects up to a safe depth
+	auto parent = std::static_pointer_cast<Node>(document);
+	for (int i = 1; i <= 10; ++i) {
+		auto subject = Element::create(ElementType::Subject, i);
+		subject->title("Depth " + std::to_string(i));
+		parent->appendChild(subject);
+		parent = subject;
+	}
+
+	Logger logger(LogLevel::None);
+	Options options;
+	std::ostringstream out;
+	JSONWriter writer(logger, out, options);
+
+	REQUIRE_NOTHROW(writer.write(document));
+	auto output = out.str();
+	REQUIRE(output.find("\"Depth 10\"") != std::string::npos);
+}
+
 } // namespace UHS

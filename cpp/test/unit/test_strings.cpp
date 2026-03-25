@@ -206,4 +206,84 @@ TEST_CASE("Strings::wrap", "[strings]") {
 	}
 }
 
+TEST_CASE("Strings::wrap handles edge cases", "[strings]") {
+	SECTION("empty string") {
+		auto result = Strings::wrap("", "\n", 80);
+		REQUIRE(result == "");
+	}
+
+	SECTION("single character") {
+		auto result = Strings::wrap("x", "\n", 80);
+		REQUIRE(result == "x");
+	}
+
+	SECTION("string exactly at width") {
+		auto result = Strings::wrap("12345", "\n", 5);
+		REQUIRE(result == "12345");
+	}
+
+	SECTION("string two past width with no spaces") {
+		auto result = Strings::wrap("1234567", "\n", 5);
+		REQUIRE(result == "12345\n67");
+	}
+
+	SECTION("with numLines variant") {
+		int numLines = 0;
+		auto result = Strings::wrap("hello world", "\n", 6, numLines);
+		REQUIRE(result == "hello\nworld");
+		REQUIRE(numLines == 2);
+	}
+
+	SECTION("with numLines and empty string") {
+		int numLines = 0;
+		auto result = Strings::wrap("", "\n", 80, numLines);
+		REQUIRE(result == "");
+		REQUIRE(numLines == 1);
+	}
+
+	SECTION("with prefix") {
+		int numLines = 0;
+		auto result = Strings::wrap("hello world foo", "\n", 12, numLines, "> ");
+		REQUIRE(result.find("> ") != std::string::npos);
+	}
+}
+
+TEST_CASE("Strings::split bounds", "[strings]") {
+	SECTION("single character string") {
+		auto result = Strings::split("a", ",");
+		REQUIRE(result.size() == 1);
+		REQUIRE(result[0] == "a");
+	}
+
+	SECTION("separator only") {
+		auto result = Strings::split(",", ",");
+		REQUIRE(result.size() == 2);
+	}
+
+	SECTION("trailing separator") {
+		auto result = Strings::split("a,", ",");
+		REQUIRE(result.size() == 2);
+		REQUIRE(result[0] == "a");
+		REQUIRE(result[1] == "");
+	}
+}
+
+TEST_CASE("Strings::ltrim and rtrim edge cases", "[strings]") {
+	SECTION("ltrim empty string") {
+		REQUIRE(Strings::ltrim("", ' ') == "");
+	}
+
+	SECTION("rtrim empty string") {
+		REQUIRE(Strings::rtrim("", ' ') == "");
+	}
+
+	SECTION("trim single char that matches") {
+		REQUIRE(Strings::trim("x", 'x') == "");
+	}
+}
+
+TEST_CASE("Strings::hex single null byte", "[strings]") {
+	REQUIRE(Strings::hex(std::string(1, '\0')) == "00");
+}
+
 } // namespace UHS

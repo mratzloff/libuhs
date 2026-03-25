@@ -35,4 +35,28 @@ TEST_CASE("Zip::unzip throws for non-ZIP data", "[zip]") {
 	REQUIRE_THROWS_AS(zip.unzip("/tmp"), FileError);
 }
 
+TEST_CASE("Zip::isZip throws for data too short for signature", "[zip]") {
+	std::string tooShort = "PK";
+	Zip zip(tooShort);
+	REQUIRE_THROWS_AS(zip.isZip(), FileError);
+}
+
+TEST_CASE("Zip::isZip throws for empty data", "[zip]") {
+	std::string empty;
+	Zip zip(empty);
+	REQUIRE_THROWS_AS(zip.isZip(), FileError);
+}
+
+TEST_CASE("Zip::unzip throws for truncated ZIP header", "[zip]") {
+	// Valid signature but too short for metadata fields
+	std::string truncated(10, '\0');
+	truncated[0] = 'P';
+	truncated[1] = 'K';
+	truncated[2] = '\x03';
+	truncated[3] = '\x04';
+
+	Zip zip(truncated);
+	REQUIRE_THROWS_AS(zip.unzip("/tmp"), FileError);
+}
+
 } // namespace UHS

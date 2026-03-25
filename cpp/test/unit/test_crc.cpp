@@ -86,4 +86,47 @@ TEST_CASE("CRC::result returns checksum in vector form", "[crc]") {
 	REQUIRE(reconstructed == scalarResult);
 }
 
+TEST_CASE("CRC handles single-byte buffers correctly", "[crc]") {
+	SECTION("single byte with no prior checksum data") {
+		CRC crc;
+		char buffer[] = {'A'};
+		REQUIRE_NOTHROW(crc.calculate(buffer, 1, true));
+		REQUIRE_NOTHROW(crc.result());
+	}
+
+	SECTION("two consecutive single-byte calls") {
+		CRC crc;
+		char buffer1[] = {'A'};
+		char buffer2[] = {'B'};
+		REQUIRE_NOTHROW(crc.calculate(buffer1, 1, true));
+		REQUIRE_NOTHROW(crc.calculate(buffer2, 1, true));
+		REQUIRE_NOTHROW(crc.result());
+	}
+
+	// This should never happen, but just in case
+	SECTION("three single-byte calls") {
+		CRC crc;
+		char buffer1[] = {'A'};
+		char buffer2[] = {'B'};
+		char buffer3[] = {'C'};
+		REQUIRE_NOTHROW(crc.calculate(buffer1, 1, true));
+		REQUIRE_NOTHROW(crc.calculate(buffer2, 1, true));
+		REQUIRE_NOTHROW(crc.calculate(buffer3, 1, true));
+		REQUIRE_NOTHROW(crc.result());
+	}
+
+	SECTION("single-byte input matches multi-byte input") {
+		std::string data = "AB";
+
+		CRC crcWhole;
+		crcWhole.calculate(data.data(), data.size(), true);
+
+		CRC crcSingle;
+		crcSingle.calculate(data.data(), 1, true);
+		crcSingle.calculate(data.data() + 1, 1, true);
+
+		REQUIRE(crcWhole.result() == crcSingle.result());
+	}
+}
+
 } // namespace UHS
