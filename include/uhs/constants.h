@@ -92,7 +92,7 @@ enum class VisibilityType {
 };
 
 static constexpr auto EOL = "\r\n";
-static auto const MaxDepth = 24;
+static constexpr auto MaxDepth = 24;
 
 inline constexpr TextFormat operator&(TextFormat lhs, TextFormat rhs) {
 	return static_cast<TextFormat>(static_cast<uint8_t>(lhs) & static_cast<uint8_t>(rhs));
