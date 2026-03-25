@@ -717,7 +717,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 		}
 
 		auto const& candidate = node.asElement();
-		if (excluded[candidate.elementType()]) {
+		if (excluded.count(candidate.elementType()) > 0) {
 			continue;
 		}
 
@@ -793,7 +793,7 @@ int UHSWriter::serializeInfoElement(Element& element, std::string& out) {
 	};
 
 	for (auto const& [key, value] : document_->attrs()) {
-		if (whitelisted[key] && !value.empty()) {
+		if (whitelisted.count(key) > 0 && !value.empty()) {
 			auto const scEncoded = codec_.encodeSpecialChars(value);
 			buffer += Strings::wrap(scEncoded, EOL, LineLength, length, key + "=");
 			buffer += EOL;
