@@ -1110,6 +1110,11 @@ private:
 
 	static HTMLWriter::Serializer serializer_;
 
+	static void appendLinesToNode(
+	    pugi::xml_node node, std::vector<std::string> const& lines);
+	static std::vector<std::vector<std::string>> splitIntoParagraphs(
+	    std::vector<std::string> const& segment);
+
 	std::string css_;
 	std::string js_;
 	std::map<ElementType const, std::string> mediaContentTypes_;
@@ -1123,6 +1128,8 @@ private:
 	pugi::xml_node appendMedia(Element const& element, pugi::xml_node xmlNode) const;
 	pugi::xml_node appendTitle(Element const& element, pugi::xml_node xmlNode) const;
 	void appendVisibility(Traits::Visibility const& node, pugi::xml_node xmlNode) const;
+	void applyHyperlinkFormat(TextNode const& textNode, pugi::xml_node xmlNode) const;
+	void cleanUpTableContainerBreaks(pugi::xml_node root) const;
 	pugi::xml_node createHTMLDocument(
 	    Document const& document, pugi::xml_document& xml) const;
 	std::optional<pugi::xml_node> findHyperpngContainer(
@@ -1138,7 +1145,10 @@ private:
 	Element* getParentElement(Element const& element) const;
 	std::tuple<int, int, int, int> getRegionCoordinates(Element const& element) const;
 	void populateArea(Element const& element, pugi::xml_node area) const;
+	void removeEmptyParagraphs(pugi::xml_node root) const;
 	void removeTrailingBreaks(pugi::xml_node xmlNode) const;
+	std::pair<int, bool> scanForTables(
+	    std::vector<std::string> const& lines, bool isMonoOrOverflow) const;
 	void serialize(Document const& document, pugi::xml_document& xml);
 	void serializeBlankElement(Element const& element, pugi::xml_node xmlNode);
 	void serializeCommentElement(Element const& element, pugi::xml_node xmlNode);
@@ -1156,6 +1166,10 @@ private:
 	void serializeSubjectElement(Element const& element, pugi::xml_node xmlNode);
 	void serializeTextElement(Element const& element, pugi::xml_node xmlNode);
 	void serializeTextNode(TextNode const& textNode, pugi::xml_node xmlNode) const;
+	void serializeTextNodeToContainer(TextNode const& textNode, pugi::xml_node xmlNode,
+	    std::vector<std::string> const& lines, bool hasTrailingBreak) const;
+	void splitMonospaceOverflowSpans(pugi::xml_node root) const;
+	void wrapInlineRuns(pugi::xml_node root) const;
 };
 
 class JSONWriter : public Writer {
