@@ -2,6 +2,7 @@
     "recommendations": [
         "dbaeumer.vscode-eslint",
         "esbenp.prettier-vscode",
+        "ms-vscode.cmake-tools",
         "ms-vscode.cpptools",
         "stylelint.vscode-stylelint"
     ]

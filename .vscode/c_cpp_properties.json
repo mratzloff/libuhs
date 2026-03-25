@@ -20,7 +20,6 @@
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c23",
             "intelliSenseMode": "${default}",
-            "configurationProvider": "ms-vscode.cmake-tools",
             "cppStandard": "c++23"
         }
     ],
