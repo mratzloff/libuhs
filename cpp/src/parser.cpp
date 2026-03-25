@@ -564,6 +564,9 @@ expectDataLength:
 // Format: DD-Mon-YY
 void Parser::parseDate(std::string const& date, std::tm& tm) const {
 	auto parts = Strings::split(date, "-", 3);
+	if (parts.size() != 3) {
+		throw DataError("invalid date format: %s", date);
+	}
 
 	int year = 0;
 	try {
@@ -1188,6 +1191,9 @@ void Parser::parseTextElement(Element& element) {
 // Format: HH:MM:SS
 void Parser::parseTime(std::string const& time, std::tm& tm) const {
 	auto parts = Strings::split(time, ":", 3);
+	if (parts.size() != 3) {
+		throw DataError("invalid time format: %s", time);
+	}
 
 	int hour = 0;
 	try {
