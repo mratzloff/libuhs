@@ -6,15 +6,17 @@
 namespace UHS {
 
 struct HTMLWriter::TableAccessor {
+	using Boundaries = HTMLWriter::Table::Boundaries;
+
 	HTMLWriter::Table& table;
 
 	int demarcationLine() const { return table.demarcationLine_; }
-	std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
+	HTMLWriter::Table::Boundaries detectBoundariesFromLine(
 	    std::string const& line) const {
 		return table.detectBoundariesFromLine(line);
 	}
-	std::vector<std::string> extractCellsByBoundaries(std::string const& line,
-	    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const {
+	std::vector<std::string> extractCellsByBoundaries(
+	    std::string const& line, HTMLWriter::Table::Boundaries const& boundaries) const {
 		return table.extractCellsByBoundaries(line, boundaries);
 	}
 	int findDemarcationLine() const { return table.findDemarcationLine(); }
@@ -125,7 +127,7 @@ TEST_CASE("Table::detectBoundariesFromLine three-space gap", "[table]") {
 TEST_CASE("Table::extractCellsByBoundaries basic extraction", "[table]") {
 	HTMLWriter::Table table({});
 	HTMLWriter::TableAccessor accessor{table};
-	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 8}, {9, 12}};
+	HTMLWriter::TableAccessor::Boundaries boundaries = {{0, 8}, {9, 12}};
 
 	auto cells = accessor.extractCellsByBoundaries("Alpha    30 ", boundaries);
 	REQUIRE(cells.size() == 2);
@@ -136,7 +138,7 @@ TEST_CASE("Table::extractCellsByBoundaries basic extraction", "[table]") {
 TEST_CASE("Table::extractCellsByBoundaries empty when line is short", "[table]") {
 	HTMLWriter::Table table({});
 	HTMLWriter::TableAccessor accessor{table};
-	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 5}, {10, 15}};
+	HTMLWriter::TableAccessor::Boundaries boundaries = {{0, 5}, {10, 15}};
 
 	auto cells = accessor.extractCellsByBoundaries("ABC", boundaries);
 	REQUIRE(cells.size() == 2);
@@ -147,7 +149,7 @@ TEST_CASE("Table::extractCellsByBoundaries empty when line is short", "[table]")
 TEST_CASE("Table::extractCellsByBoundaries trims whitespace", "[table]") {
 	HTMLWriter::Table table({});
 	HTMLWriter::TableAccessor accessor{table};
-	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {{0, 10}, {10, 20}};
+	HTMLWriter::TableAccessor::Boundaries boundaries = {{0, 10}, {10, 20}};
 
 	auto cells = accessor.extractCellsByBoundaries("  hello     world   ", boundaries);
 	REQUIRE(cells.size() == 2);
@@ -158,8 +160,7 @@ TEST_CASE("Table::extractCellsByBoundaries trims whitespace", "[table]") {
 TEST_CASE("Table::extractCellsByBoundaries three columns", "[table]") {
 	HTMLWriter::Table table({});
 	HTMLWriter::TableAccessor accessor{table};
-	std::vector<std::pair<std::size_t, std::size_t>> boundaries = {
-	    {0, 6}, {6, 12}, {12, 18}};
+	HTMLWriter::TableAccessor::Boundaries boundaries = {{0, 6}, {6, 12}, {12, 18}};
 
 	auto cells = accessor.extractCellsByBoundaries("Alpha Bob   Carol ", boundaries);
 	REQUIRE(cells.size() == 3);

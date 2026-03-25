@@ -1059,6 +1059,8 @@ public:
 		bool valid() const;
 
 	private:
+		using Boundaries = std::vector<std::pair<std::size_t, std::size_t>>;
+
 		bool charGrid_ = false;
 		int demarcationLine_ = 0;
 		std::size_t endLine_ = 0;
@@ -1069,14 +1071,27 @@ public:
 		std::size_t startLine_ = 0;
 		bool valid_ = false;
 
-		std::vector<std::pair<std::size_t, std::size_t>> detectBoundariesFromLine(
-		    std::string const& line) const;
-		std::vector<std::pair<std::size_t, std::size_t>> detectColumnBoundaries() const;
-		std::vector<std::pair<std::size_t, std::size_t>>
-		    detectHeaderlessColumnBoundaries() const;
-		std::vector<std::string> extractCellsByBoundaries(std::string const& line,
-		    std::vector<std::pair<std::size_t, std::size_t>> const& boundaries) const;
+		void addHeaderRows(Boundaries const& columnBoundaries);
+		Boundaries detectBoundariesFromLine(std::string const& line) const;
+		bool detectCharGrid(Boundaries const& columnBoundaries) const;
+		Boundaries detectColumnBoundaries() const;
+		Boundaries detectHeaderlessColumnBoundaries() const;
+		std::vector<std::string> extractCellsByBoundaries(
+		    std::string const& line, Boundaries const& boundaries) const;
+		std::vector<std::string> extractDataRowCells(std::string const& line,
+		    Boundaries const& naturalBounds, Boundaries const& columnBoundaries,
+		    int expectedNumColumns) const;
 		int findDemarcationLine() const;
+		bool isContinuationLine(std::string const& line, Boundaries const& naturalBounds,
+		    Boundaries const& columnBoundaries, std::size_t tableWidth,
+		    bool afterSeparator) const;
+		bool isNextTableBoundary(std::vector<std::string>::const_iterator start) const;
+		void mergeContinuationLine(std::string const& line,
+		    Boundaries const& naturalBounds, Boundaries const& columnBoundaries);
+		bool parsePipeDelimitedTable();
+		void serializeBody(pugi::xml_node& table) const;
+		void serializeHeader(pugi::xml_node& table) const;
+		void serializeTextFallback(pugi::xml_node& parent) const;
 	};
 
 private:
