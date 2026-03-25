@@ -81,7 +81,7 @@ private:
 	using NodeMap = tsl::hopscotch_map<Node const*, pugi::xml_node const>;
 
 	using SerializeFunc = void (HTMLWriter::*)(
-	    Element const& element, pugi::xml_node xmlNode);
+	    Element const& element, pugi::xml_node xmlNode) const;
 	using Dispatcher = ElementDispatcher<SerializeFunc>;
 
 	static Dispatcher dispatcher_;
@@ -125,22 +125,22 @@ private:
 	void removeTrailingBreaks(pugi::xml_node xmlNode) const;
 	std::pair<int, bool> scanForTables(
 	    std::vector<std::string> const& lines, bool isMonoOrOverflow) const;
-	void serialize(Document const& document, pugi::xml_document& xml);
-	void serializeBlankElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeCommentElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeDataElement(Element const& element, pugi::xml_node xmlNode);
+	void serialize(Document const& document, pugi::xml_document& xml) const;
+	void serializeBlankElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeCommentElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeDataElement(Element const& element, pugi::xml_node xmlNode) const;
 	void serializeDocument(Document const& document, pugi::xml_node root) const;
-	void serializeElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeGifaElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeHintElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeHyperpngElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeIncentiveElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeInfoElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeLinkElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeOverlayElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeSoundElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeSubjectElement(Element const& element, pugi::xml_node xmlNode);
-	void serializeTextElement(Element const& element, pugi::xml_node xmlNode);
+	void serializeElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeGifaElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeHintElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeHyperpngElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeIncentiveElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeInfoElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeLinkElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeOverlayElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeSoundElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeSubjectElement(Element const& element, pugi::xml_node xmlNode) const;
+	void serializeTextElement(Element const& element, pugi::xml_node xmlNode) const;
 	void serializeTextNode(TextNode const& textNode, pugi::xml_node xmlNode) const;
 	void serializeTextNodeToContainer(TextNode const& textNode, pugi::xml_node xmlNode,
 	    std::vector<std::string> const& lines, bool hasTrailingBreak) const;

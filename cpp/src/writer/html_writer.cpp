@@ -458,7 +458,7 @@ std::pair<int, bool> HTMLWriter::scanForTables(
 	return {segmentCount, hasTable};
 }
 
-void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
+void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) const {
 	auto depth = 0;
 	NodeMap parents;
 
@@ -571,16 +571,18 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 }
 
 void HTMLWriter::serializeBlankElement(
-    Element const& /* element */, pugi::xml_node xmlNode) {
+    Element const& /* element */, pugi::xml_node xmlNode) const {
 	xmlNode.set_name("hr");
 }
 
-void HTMLWriter::serializeCommentElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeCommentElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 	this->appendBody(element, xmlNode);
 }
 
-void HTMLWriter::serializeDataElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeDataElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendMedia(element, xmlNode);
 }
 
@@ -593,7 +595,7 @@ void HTMLWriter::serializeDocument(
 	xmlNode.append_child("ol");
 }
 
-void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode) const {
 	if (auto const id = element.id(); id > 0) {
 		xmlNode.append_attribute("data-id") = id;
 
@@ -624,20 +626,22 @@ void HTMLWriter::serializeElement(Element const& element, pugi::xml_node xmlNode
 	dispatcher_.dispatch(*this, element, xmlNode);
 }
 
-void HTMLWriter::serializeGifaElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeGifaElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("alt") = element.title().c_str();
 	this->appendClassNames(media, {"media", "gifa"});
 }
 
-void HTMLWriter::serializeHintElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeHintElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
 void HTMLWriter::serializeHyperpngElement(
-    Element const& element, pugi::xml_node xmlNode) {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
@@ -654,12 +658,13 @@ void HTMLWriter::serializeHyperpngElement(
 }
 
 void HTMLWriter::serializeIncentiveElement(
-    Element const& element, pugi::xml_node xmlNode) {
+    Element const& element, pugi::xml_node xmlNode) const {
 
 	this->appendBody(element, xmlNode);
 }
 
-void HTMLWriter::serializeInfoElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeInfoElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	auto document = element.findDocument();
 	if (!document || document->attrs().size() == 0) {
 		return;
@@ -700,7 +705,8 @@ void HTMLWriter::serializeInfoElement(Element const& element, pugi::xml_node xml
 	}
 }
 
-void HTMLWriter::serializeLinkElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeLinkElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	auto isLink = false;
 	auto isText = false;
 
@@ -735,7 +741,8 @@ void HTMLWriter::serializeLinkElement(Element const& element, pugi::xml_node xml
 	xmlNode.append_attribute("href") = ("#" + target).c_str();
 }
 
-void HTMLWriter::serializeOverlayElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeOverlayElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	// Re-parent node
 	auto container = findHyperpngContainer(element, xmlNode);
 	if (!container) {
@@ -762,19 +769,22 @@ void HTMLWriter::serializeOverlayElement(Element const& element, pugi::xml_node 
 	area.append_attribute("data-overlay") = element.id();
 }
 
-void HTMLWriter::serializeSoundElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeSoundElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 	auto media = this->appendMedia(element, xmlNode);
 	media.append_attribute("controls");
 	this->appendClassNames(media, {"media", "sound"});
 }
 
-void HTMLWriter::serializeSubjectElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeSubjectElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 	xmlNode.append_child("ol");
 }
 
-void HTMLWriter::serializeTextElement(Element const& element, pugi::xml_node xmlNode) {
+void HTMLWriter::serializeTextElement(
+    Element const& element, pugi::xml_node xmlNode) const {
 	this->appendTitle(element, xmlNode);
 }
 
