@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include "uhs/error/data_error.h"
+#include "uhs/error/file_error.h"
 #include "uhs/strings.h"
 #include "uhs/writer/json_writer.h"
 
@@ -114,7 +115,13 @@ void JSONWriter::serializeElement(Element const& element, Json::Value& object) c
 		    std::to_string(element.line()) + "." + element.mediaExt();
 		auto const mediaPath = std::filesystem::path(options_.mediaDir) / mediaFilename;
 		fout.open(mediaPath, std::ios::out | std::ios::binary);
+		if (!fout) {
+			throw FileError("could not open file for writing: %s", mediaPath.string());
+		}
 		fout << element.body();
+		if (!fout) {
+			throw FileError("failed to write file: %s", mediaPath.string());
+		}
 		fout.close();
 		object["body"] = mediaPath.string();
 	} else {
