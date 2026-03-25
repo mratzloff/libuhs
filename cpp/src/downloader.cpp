@@ -64,7 +64,7 @@ void Downloader::download(std::string const& dir, std::vector<std::string> const
 			    buffer.append(data, data_length);
 			    return true;
 		    });
-		if (res->status != 200) {
+		if (!res || res->status != 200) {
 			throw HTTPError(res, "could not download file: %s", file);
 		}
 		logger_.info("downloaded %s", file);
@@ -88,7 +88,7 @@ Downloader::FileIndex const& Downloader::fileIndex() {
 
 void Downloader::loadFileIndex() {
 	auto res = httpClient_->Get(FileIndexPath, httpHeaders_);
-	if (res->status != 200) {
+	if (!res || res->status != 200) {
 		throw HTTPError(res, "could not download file index");
 	}
 

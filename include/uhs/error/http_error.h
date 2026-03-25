@@ -33,8 +33,8 @@ class HTTPError : public Error {
 public:
 	template<typename... Args>
 	HTTPError(httplib::Result const& res, char const* format, Args... args)
-	    : Error(formatMessage(res.value().status, format, args...))
-	    , response_{res.value()} {}
+	    : Error(formatMessage(res ? res->status : 0, format, args...))
+	    , response_{res ? res.value() : httplib::Response{}} {}
 
 	httplib::Response getResponse() const;
 
