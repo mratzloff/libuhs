@@ -25,7 +25,7 @@ void CRC::calculate(char const* buffer, std::streamsize length, bool) {
 			checksumLength_ = 1;
 			break;
 		case 1:
-			checksum_[1] = buffer[1];
+			checksum_[1] = buffer[0];
 			checksumLength_ = 2;
 			break;
 		default:
@@ -35,6 +35,7 @@ void CRC::calculate(char const* buffer, std::streamsize length, bool) {
 			checksumLength_ = 2;
 			return;
 		}
+		return;
 	default:
 		if (checksumLength_ > 0) {
 			this->calculate(checksum_, checksumLength_);
