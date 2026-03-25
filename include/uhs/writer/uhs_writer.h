@@ -44,7 +44,6 @@ private:
 
 	static Dispatcher dispatcher_;
 
-	Codec const codec_;
 	CRC crc_;
 	int currentLine_ = 1;
 	DataQueue data_;
