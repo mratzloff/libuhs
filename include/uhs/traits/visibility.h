@@ -12,7 +12,7 @@ class Visibility {
 public:
 	VisibilityType visibility() const;
 	void visibility(VisibilityType visibility);
-	std::string const visibilityString() const;
+	std::string visibilityString() const;
 
 private:
 	VisibilityType visibility_ = VisibilityType::All;

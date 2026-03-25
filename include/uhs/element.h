@@ -31,21 +31,21 @@ public:
 
 	static std::shared_ptr<Element> create(ElementType type, int const id = 0);
 	static ElementType elementType(std::string const& typeString);
-	static std::string const typeString(ElementType type);
+	static std::string typeString(ElementType type);
 
 	std::shared_ptr<Element> clone() const;
 	ElementType elementType() const;
-	std::string const elementTypeString() const;
+	std::string elementTypeString() const;
 	int id() const;
 	bool isMedia() const;
-	std::string const mediaExt() const;
+	std::string mediaExt() const;
 	Element& operator=(Element other);
 
 private:
 	class TypeMap {
 	public:
 		TypeMap();
-		std::string const findByType(ElementType const type) const;
+		std::string findByType(ElementType const type) const;
 		ElementType findByString(std::string const& string) const;
 
 	private:

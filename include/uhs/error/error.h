@@ -39,7 +39,7 @@ public:
 		static_cast<std::runtime_error&>(*this) = std::runtime_error(message);
 	}
 
-	std::string const string() const;
+	std::string string() const;
 };
 
 std::ostream& operator<<(std::ostream& out, Error const& err);

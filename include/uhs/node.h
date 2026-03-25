@@ -28,7 +28,7 @@ public:
 	virtual ~Node() = default;
 
 	static bool isElementOfType(Node const& node, ElementType type);
-	static std::string const typeString(NodeType type);
+	static std::string typeString(NodeType type);
 
 	void appendChild(std::shared_ptr<Node> node);
 	void appendChild(std::shared_ptr<Node> node, bool silenceEvent);
@@ -66,7 +66,7 @@ public:
 	Node* lastChild() const;
 	std::shared_ptr<Node> nextSibling() const;
 	NodeType nodeType() const;
-	std::string const nodeTypeString() const;
+	std::string nodeTypeString() const;
 	int numChildren() const;
 	Node& operator=(Node other);
 	Node* parent() const;

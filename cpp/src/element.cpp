@@ -55,7 +55,7 @@ ElementType Element::elementType(std::string const& typeString) {
 	return Element::typeMap_.findByString(typeString);
 }
 
-std::string const Element::typeString(ElementType type) {
+std::string Element::typeString(ElementType type) {
 	return Element::typeMap_.findByType(type);
 }
 
@@ -70,7 +70,7 @@ ElementType Element::elementType() const {
 	return elementType_;
 }
 
-std::string const Element::elementTypeString() const {
+std::string Element::elementTypeString() const {
 	return Element::typeString(elementType_);
 }
 
@@ -84,7 +84,7 @@ bool Element::isMedia() const {
 	        || elementType_ == ElementType::Sound);
 }
 
-std::string const Element::mediaExt() const {
+std::string Element::mediaExt() const {
 	switch (elementType_) {
 	case ElementType::Gifa:
 		return "gif";
@@ -130,7 +130,7 @@ Element::TypeMap::TypeMap() {
 	}
 }
 
-std::string const Element::TypeMap::findByType(ElementType const type) const {
+std::string Element::TypeMap::findByType(ElementType const type) const {
 	return byType_.at(type);
 }
 

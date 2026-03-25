@@ -11,7 +11,7 @@ void Visibility::visibility(VisibilityType visibility) {
 	visibility_ = visibility;
 }
 
-std::string const Visibility::visibilityString() const {
+std::string Visibility::visibilityString() const {
 	switch (visibility_) {
 	case VisibilityType::All:
 		return "all";

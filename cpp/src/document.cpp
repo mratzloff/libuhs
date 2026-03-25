@@ -167,7 +167,7 @@ void Document::version(VersionType v) {
 	version_ = v;
 }
 
-std::string const Document::versionString() const {
+std::string Document::versionString() const {
 	switch (version_) {
 	case VersionType::Version88a:
 		return "88a";

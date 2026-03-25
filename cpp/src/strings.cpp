@@ -32,7 +32,7 @@ bool endsWithFinalPunctuation(std::string const& s) {
 	return c == '?' || c == '!' || c == '.';
 }
 
-std::string const hex(std::string const& s) {
+std::string hex(std::string const& s) {
 	std::ostringstream out;
 
 	out << std::hex << std::setfill('0') << std::uppercase;
@@ -47,7 +47,7 @@ std::string const hex(std::string const& s) {
 	return out.str();
 }
 
-std::string const hex(char c) {
+std::string hex(char c) {
 	std::ostringstream out;
 
 	out << std::hex << std::setfill('0') << std::uppercase;

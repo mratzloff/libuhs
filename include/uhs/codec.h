@@ -11,15 +11,15 @@ namespace UHS {
 
 class Codec {
 public:
-	std::string const createKey(std::string const& secret) const;
-	std::string const decode88a(std::string encoded) const;
-	std::string const decode96a(
+	std::string createKey(std::string const& secret) const;
+	std::string decode88a(std::string encoded) const;
+	std::string decode96a(
 	    std::string encoded, std::string const& key, bool isTextElement) const;
-	std::string const decodeSpecialChars(std::string const& encoded) const;
-	std::string const encode88a(std::string decoded) const;
-	std::string const encode96a(
+	std::string decodeSpecialChars(std::string const& encoded) const;
+	std::string encode88a(std::string decoded) const;
+	std::string encode96a(
 	    std::string encoded, std::string const& key, bool isTextElement) const;
-	std::string const encodeSpecialChars(std::string const& decoded) const;
+	std::string encodeSpecialChars(std::string const& decoded) const;
 
 private:
 	using AsciiToUnicodeMap = tsl::hopscotch_map<std::string, std::string> const;

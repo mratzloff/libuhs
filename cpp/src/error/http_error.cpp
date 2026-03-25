@@ -2,7 +2,7 @@
 
 namespace UHS {
 
-httplib::Response const HTTPError::getResponse() const {
+httplib::Response HTTPError::getResponse() const {
 	return response_;
 }
 

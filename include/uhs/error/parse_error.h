@@ -56,7 +56,7 @@ public:
 
 private:
 	template<typename... Args>
-	std::string const format(char const* format, int line, int column, Args... args) {
+	std::string format(char const* format, int line, int column, Args... args) {
 		auto fmt = "parse error at line %d, column %d: "s + format;
 		return tfm::format(fmt.data(), line, column, args...);
 	}

@@ -14,7 +14,7 @@ Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_
     std::string value)
     : column_{column}, line_{line}, offset_{offset}, type_{tokenType}, value_{value} {}
 
-std::string const Token::typeString(TokenType type) {
+std::string Token::typeString(TokenType type) {
 	return Token::typeMap_.findByType(type);
 }
 
@@ -30,7 +30,7 @@ std::size_t Token::offset() const {
 	return offset_;
 }
 
-std::string const Token::string() const {
+std::string Token::string() const {
 	auto buffer = "("s;
 	buffer += this->formatToken();
 
@@ -72,7 +72,7 @@ TokenType Token::type() const {
 	return type_;
 }
 
-std::string const Token::typeString() const {
+std::string Token::typeString() const {
 	return Token::typeString(type_);
 }
 
@@ -80,7 +80,7 @@ std::string const& Token::value() const {
 	return value_;
 }
 
-std::string const Token::formatByteValue() const {
+std::string Token::formatByteValue() const {
 	auto buffer = " ["s;
 	buffer += Strings::hex(value_);
 	buffer += ']';
@@ -88,11 +88,11 @@ std::string const Token::formatByteValue() const {
 	return buffer;
 }
 
-std::string const Token::formatIntValue() const {
+std::string Token::formatIntValue() const {
 	return this->formatStringValue();
 }
 
-std::string const Token::formatStringValue() const {
+std::string Token::formatStringValue() const {
 	auto buffer = " ["s;
 	buffer += value_;
 	buffer += ']';
@@ -100,7 +100,7 @@ std::string const Token::formatStringValue() const {
 	return buffer;
 }
 
-std::string const Token::formatToken() const {
+std::string Token::formatToken() const {
 	auto buffer = typeString();
 	buffer += ' ';
 	buffer += std::to_string(line_);
@@ -133,7 +133,7 @@ Token::TypeMap::TypeMap() {
 	map_.try_emplace(TokenType::TextFormat, "TextFormat");
 }
 
-std::string const Token::TypeMap::findByType(const TokenType type) const {
+std::string Token::TypeMap::findByType(const TokenType type) const {
 	return map_.at(type);
 }
 

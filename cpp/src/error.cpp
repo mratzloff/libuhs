@@ -10,7 +10,7 @@ Error::Error(std::string const& message) : std::runtime_error(message) {}
 
 Error::Error(char const* message) : std::runtime_error(message) {}
 
-std::string const Error::string() const {
+std::string Error::string() const {
 	std::string buffer;
 	buffer += this->what();
 	try {

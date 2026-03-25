@@ -154,11 +154,11 @@ Codec::AsciiToUnicodeMap Codec::toChars_{
     {"y:", "ÿ"},
 };
 
-std::string const Codec::createKey(std::string const& secret) const {
+std::string Codec::createKey(std::string const& secret) const {
 	return this->encode96a(secret, KeySeed, false);
 }
 
-std::string const Codec::decode88a(std::string encoded) const {
+std::string Codec::decode88a(std::string encoded) const {
 	std::string& decoded = encoded;
 	std::size_t const length = encoded.length();
 
@@ -174,7 +174,7 @@ std::string const Codec::decode88a(std::string encoded) const {
 	return decoded;
 }
 
-std::string const Codec::decode96a(
+std::string Codec::decode96a(
     std::string encoded, std::string const& key, bool isTextElement) const {
 
 	std::string& decoded = encoded;
@@ -188,7 +188,7 @@ std::string const Codec::decode96a(
 	return decoded;
 }
 
-std::string const Codec::decodeSpecialChars(std::string const& encoded) const {
+std::string Codec::decodeSpecialChars(std::string const& encoded) const {
 	std::string segment;
 	auto length = encoded.length();
 
@@ -224,7 +224,7 @@ std::string const Codec::decodeSpecialChars(std::string const& encoded) const {
 	return segment;
 }
 
-std::string const Codec::encode88a(std::string decoded) const {
+std::string Codec::encode88a(std::string decoded) const {
 	std::string& encoded = decoded;
 	std::size_t const length = encoded.length();
 
@@ -238,7 +238,7 @@ std::string const Codec::encode88a(std::string decoded) const {
 	return encoded;
 }
 
-std::string const Codec::encode96a(
+std::string Codec::encode96a(
     std::string decoded, std::string const& key, bool isTextElement) const {
 
 	std::string& encoded = decoded;
@@ -252,7 +252,7 @@ std::string const Codec::encode96a(
 	return encoded;
 }
 
-std::string const Codec::encodeSpecialChars(std::string const& decoded) const {
+std::string Codec::encodeSpecialChars(std::string const& decoded) const {
 	std::string segment;
 	tiny_utf8::string utf8String = decoded;
 	auto length = utf8String.length();

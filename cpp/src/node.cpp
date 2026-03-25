@@ -118,7 +118,7 @@ bool Node::isElementOfType(Node const& node, ElementType type) {
 	return false;
 }
 
-std::string const Node::typeString(NodeType type) {
+std::string Node::typeString(NodeType type) {
 	switch (type) {
 	case NodeType::Break:
 		return "break";
@@ -294,7 +294,7 @@ NodeType Node::nodeType() const {
 	return nodeType_;
 }
 
-std::string const Node::nodeTypeString() const {
+std::string Node::nodeTypeString() const {
 	return Node::typeString(nodeType_);
 }
 

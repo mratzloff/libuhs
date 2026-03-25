@@ -40,7 +40,7 @@ public:
 	void validChecksum(bool value);
 	VersionType version() const;
 	void version(VersionType v);
-	std::string const versionString() const;
+	std::string versionString() const;
 
 private:
 	std::map<int, Node*> index_;

@@ -39,13 +39,13 @@ public:
 		static_cast<Error&>(*this) = Error(this->format(format, args...));
 	}
 
-	httplib::Response const getResponse() const;
+	httplib::Response getResponse() const;
 
 private:
 	httplib::Response response_;
 
 	template<typename... Args>
-	std::string const format(char const* format, Args... args) {
+	std::string format(char const* format, Args... args) {
 		auto fmt = "HTTP %d: "s + format;
 		return tfm::format(fmt.data(), response_.status, args...);
 	}

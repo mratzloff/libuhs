@@ -41,21 +41,21 @@ public:
 	Token(TokenType const tokenType, std::size_t offset = 0, int line = 0,
 	    std::size_t column = 0, std::string value = "");
 
-	static std::string const typeString(TokenType t);
+	static std::string typeString(TokenType t);
 
 	std::size_t column() const;
 	int line() const;
 	std::size_t offset() const;
-	std::string const string() const;
+	std::string string() const;
 	TokenType type() const;
-	std::string const typeString() const;
+	std::string typeString() const;
 	std::string const& value() const;
 
 private:
 	class TypeMap {
 	public:
 		TypeMap();
-		std::string const findByType(TokenType const type) const;
+		std::string findByType(TokenType const type) const;
 
 	private:
 		std::map<TokenType const, std::string const> map_;
@@ -69,10 +69,10 @@ private:
 	TokenType const type_;
 	std::string value_;
 
-	std::string const formatByteValue() const;
-	std::string const formatIntValue() const;
-	std::string const formatStringValue() const;
-	std::string const formatToken() const;
+	std::string formatByteValue() const;
+	std::string formatIntValue() const;
+	std::string formatStringValue() const;
+	std::string formatToken() const;
 };
 
 } // namespace UHS
