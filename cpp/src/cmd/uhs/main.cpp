@@ -170,11 +170,11 @@ void printHelp() {
 	    "            --all             All files\n"
 	    "  -d <dir>, --dir=<dir>       Output directory\n";
 
-	tfm::printf(help, Version);
+	tfm::printf(help, UHS_VERSION);
 }
 
 void printVersion() {
-	std::cout << Version << std::endl;
+	std::cout << UHS_VERSION << std::endl;
 }
 
 int main(int argc, char const* argv[]) {
