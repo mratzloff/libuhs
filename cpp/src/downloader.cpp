@@ -50,7 +50,7 @@ void Downloader::download(std::string const& dir, std::vector<std::string> const
 		throw FileError("directory does not exist: %s", outdir);
 	}
 
-	for (auto file : files) {
+	for (auto const& file : files) {
 		FileMetadata metadata;
 		try {
 			metadata = fileIndex_.at(file);
