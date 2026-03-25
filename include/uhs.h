@@ -5,6 +5,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <condition_variable>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -580,7 +581,6 @@ private:
 		explicit TokenChannel(Pipe& pipe);
 
 		void close();
-		bool empty() const;
 		bool ok() const;
 		std::unique_ptr<Token const> receive();
 		void send(Token const&& token);
@@ -590,6 +590,7 @@ private:
 		bool open_ = true;
 		Pipe& pipe_; // For exceptions
 		std::queue<Token> queue_;
+		std::condition_variable ready_;
 	};
 
 	bool beforeHeaderSep_ = true;

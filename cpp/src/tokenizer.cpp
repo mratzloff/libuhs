@@ -1,6 +1,3 @@
-#include <chrono>
-#include <thread>
-
 #include "uhs.h"
 
 namespace UHS {
@@ -204,43 +201,41 @@ void Tokenizer::tokenizeOverlayAddress(std::smatch const& matches) {
 
 Tokenizer::TokenChannel::TokenChannel(Pipe& pipe) : pipe_{pipe} {}
 
-void Tokenizer::TokenChannel::close() {
-	open_ = false;
-}
-
-bool Tokenizer::TokenChannel::empty() const {
-	std::lock_guard<std::mutex> m{mutex_};
-	return queue_.empty();
-}
-
 bool Tokenizer::TokenChannel::ok() const {
 	std::lock_guard<std::mutex> m{mutex_};
 	return open_ || !queue_.empty();
 }
 
+void Tokenizer::TokenChannel::close() {
+	{
+		std::lock_guard<std::mutex> m{mutex_};
+		open_ = false;
+	}
+	ready_.notify_one();
+}
+
 std::unique_ptr<Token const> Tokenizer::TokenChannel::receive() {
+	std::unique_lock<std::mutex> lock{mutex_};
+	ready_.wait(lock, [this] { return !queue_.empty() || !open_ || pipe_.error(); });
+
 	if (auto err = pipe_.error()) {
 		std::rethrow_exception(err);
 	}
-	while (this->empty()) { // Uncommon
-		assert(this->ok());
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-		if (auto err = pipe_.error()) {
-			std::rethrow_exception(err);
-		}
-	}
-	std::lock_guard<std::mutex> m{mutex_};
-	auto t = std::make_unique<Token const>(queue_.front());
+	assert(!queue_.empty());
+	auto token = std::make_unique<Token const>(queue_.front());
 	queue_.pop();
 
-	return t;
+	return token;
 }
 
 void Tokenizer::TokenChannel::send(Token const&& token) {
-	std::lock_guard<std::mutex> m{mutex_};
-	assert(open_);
-	queue_.push(token);
+	{
+		std::lock_guard<std::mutex> m{mutex_};
+		assert(open_);
+		queue_.push(token);
+	}
+	ready_.notify_one();
 }
 
 } // namespace UHS
