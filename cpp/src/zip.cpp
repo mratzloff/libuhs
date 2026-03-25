@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 extern "C" {
 #include "puff.h"
@@ -36,12 +37,13 @@ void Zip::unzip(std::string const& dir) {
 	auto compressedString = data_.substr(compressedOffset, compressedSize);
 
 	// Decompress DEFLATE data
-	auto uncompressed = static_cast<unsigned char*>(malloc(uncompressedSize));
+	std::vector<unsigned char> uncompressed(uncompressedSize);
 	unsigned long uncompressedLength = uncompressedSize;
 	auto compressed = reinterpret_cast<unsigned char const*>(compressedString.c_str());
 	unsigned long compressedLength = compressedString.length();
 
-	auto status = puff(uncompressed, &uncompressedLength, compressed, &compressedLength);
+	auto status =
+	    puff(uncompressed.data(), &uncompressedLength, compressed, &compressedLength);
 	if (status != 0) {
 		throw FileError("invalid DEFLATE data (error code: %d)\n", status);
 	}
@@ -50,7 +52,7 @@ void Zip::unzip(std::string const& dir) {
 	std::filesystem::path path{dir};
 	auto outfile = path.append(filename).string();
 	auto fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
-	fout.write(reinterpret_cast<char const*>(uncompressed), uncompressedLength);
+	fout.write(reinterpret_cast<char const*>(uncompressed.data()), uncompressedLength);
 }
 
 uint16_t Zip::readUint16LE(int offset) {
