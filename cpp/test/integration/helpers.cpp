@@ -75,7 +75,7 @@ std::string firstTextBody(std::shared_ptr<Element> element) {
 	if (!textNode || !textNode->isText()) {
 		return "";
 	}
-	return static_cast<TextNode const&>(*textNode).body();
+	return textNode->asText().body();
 }
 
 std::string readFile(std::string const& path) {

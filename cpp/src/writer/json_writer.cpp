@@ -46,31 +46,24 @@ void JSONWriter::serialize(Document const& document, Json::Value& root) const {
 		case NodeType::Break:
 			(*parent)["children"].append("-");
 			break;
-		case NodeType::Document: {
+		case NodeType::Document:
 			if (nodeDepth == 0) {
 				object = root;
 			}
-			auto const& d = static_cast<Document const&>(node);
-			this->serializeDocument(d, object);
+			this->serializeDocument(node.asDocument(), object);
 			(*parent)["children"].append(object);
 			break;
-		}
-		case NodeType::Element: {
-			auto const& element = static_cast<Element const&>(node);
-			this->serializeElement(element, object);
+		case NodeType::Element:
+			this->serializeElement(node.asElement(), object);
 			(*parent)["children"].append(object);
 			break;
-		}
-		case NodeType::Group: {
+		case NodeType::Group:
 			(*parent)["children"].append(object);
 			break;
-		}
-		case NodeType::Text: {
-			auto const& textNode = static_cast<TextNode const&>(node);
-			this->serializeTextNode(textNode, object);
+		case NodeType::Text:
+			this->serializeTextNode(node.asText(), object);
 			(*parent)["children"].append(object);
 			break;
-		}
 		default:
 			throw DataError("unexpected node type: %s", node.nodeTypeString());
 		}

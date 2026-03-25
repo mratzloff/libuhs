@@ -374,7 +374,7 @@ Element* HTMLWriter::getParentElement(Element const& element) const {
 	if (!parentNode || !parentNode->isElement()) {
 		return nullptr;
 	}
-	return static_cast<Element*>(parentNode);
+	return &parentNode->asElement();
 }
 
 std::tuple<int, int, int, int> HTMLWriter::getRegionCoordinates(
@@ -477,12 +477,12 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		case NodeType::Break:
 			break;
 		case NodeType::Document: {
-			auto const& d = static_cast<Document const&>(node);
+			auto const& document = node.asDocument();
 			pugi::xml_node xmlNode;
 
 			if (strcmp(parent.name(), "ol") == 0) {
 				auto li = parent.append_child("li");
-				if (d.visibility() == VisibilityType::None) {
+				if (document.visibility() == VisibilityType::None) {
 					li.append_attribute("hidden");
 				}
 				xmlNode = li.append_child("section");
@@ -491,11 +491,11 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 			}
 
 			parents.try_emplace(&node, xmlNode);
-			this->serializeDocument(d, xmlNode);
+			this->serializeDocument(document, xmlNode);
 			break;
 		}
 		case NodeType::Element: {
-			auto const& element = static_cast<Element const&>(node);
+			auto const& element = node.asElement();
 			pugi::xml_node xmlNode;
 
 			if (strcmp(parent.name(), "ol") == 0) {
@@ -514,13 +514,13 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 		}
 		case NodeType::Group: {
 			pugi::xml_node xmlNode;
-			Element const* parentElement;
+			Element const* parentElement = nullptr;
 			ElementType parentElementType = ElementType::Unknown;
 			assert(node.hasParent());
 			auto nodeParent = node.parent();
 
 			if (nodeParent->isElement()) {
-				parentElement = static_cast<Element const*>(nodeParent);
+				parentElement = &nodeParent->asElement();
 				parentElementType = parentElement->elementType();
 			}
 
@@ -544,9 +544,8 @@ void HTMLWriter::serialize(Document const& document, pugi::xml_document& xml) {
 			break;
 		}
 		case NodeType::Text: {
-			auto const& textNode = static_cast<TextNode const&>(node);
 			auto xmlNode = parent.append_child("span");
-			this->serializeTextNode(textNode, xmlNode);
+			this->serializeTextNode(node.asText(), xmlNode);
 			break;
 		}
 		default:
@@ -707,8 +706,7 @@ void HTMLWriter::serializeLinkElement(Element const& element, pugi::xml_node xml
 			if (previousNode->isText()) {
 				isText = true;
 			} else {
-				auto previousElement = static_cast<Element*>(previousNode);
-				isLink = (previousElement->elementType() == ElementType::Link);
+				isLink = (previousNode->asElement().elementType() == ElementType::Link);
 			}
 		}
 
@@ -783,10 +781,10 @@ void HTMLWriter::serializeTextNode(
 	if (textNode.hasPreviousSibling()) {
 		auto previousNode = textNode.previousSibling();
 		if (previousNode->isElement()) {
-			auto previousElement = static_cast<Element*>(previousNode);
-			auto isLink = (previousElement->elementType() == ElementType::Link);
+			auto const& previousElement = previousNode->asElement();
+			auto isLink = (previousElement.elementType() == ElementType::Link);
 
-			if (!previousElement->inlined() && isLink) {
+			if (!previousElement.inlined() && isLink) {
 				xmlNode.parent().insert_child_before("br", xmlNode);
 			}
 		}

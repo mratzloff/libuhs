@@ -187,13 +187,13 @@ TEST_CASE("Document::normalize creates info when incentive has no info", "[docum
 	REQUIRE(document->numChildren() == 4);
 
 	auto last = document->lastChild();
-	REQUIRE(static_cast<Element const&>(*last).elementType() == ElementType::Info);
+	REQUIRE(last->asElement().elementType() == ElementType::Info);
 
 	auto prev = last->previousSibling();
-	REQUIRE(static_cast<Element const&>(*prev).elementType() == ElementType::Incentive);
+	REQUIRE(prev->asElement().elementType() == ElementType::Incentive);
 
 	auto prevPrev = prev->previousSibling();
-	REQUIRE(static_cast<Element const&>(*prevPrev).elementType() == ElementType::Version);
+	REQUIRE(prevPrev->asElement().elementType() == ElementType::Version);
 }
 
 TEST_CASE("Document::normalize reorders metadata from wrong order", "[document]") {

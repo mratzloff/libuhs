@@ -55,10 +55,59 @@ Node::Node(Node&& other) noexcept
 	other.previousSibling_ = nullptr;
 }
 
+BreakNode& Node::asBreak() {
+	assert(isBreak());
+	return static_cast<BreakNode&>(*this);
+}
+
+BreakNode const& Node::asBreak() const {
+	assert(isBreak());
+	return static_cast<BreakNode const&>(*this);
+}
+
+Document& Node::asDocument() {
+	assert(isDocument());
+	return static_cast<Document&>(*this);
+}
+
+Document const& Node::asDocument() const {
+	assert(isDocument());
+	return static_cast<Document const&>(*this);
+}
+
+Element& Node::asElement() {
+	assert(isElement());
+	return static_cast<Element&>(*this);
+}
+
+Element const& Node::asElement() const {
+	assert(isElement());
+	return static_cast<Element const&>(*this);
+}
+
+GroupNode& Node::asGroup() {
+	assert(isGroup());
+	return static_cast<GroupNode&>(*this);
+}
+
+GroupNode const& Node::asGroup() const {
+	assert(isGroup());
+	return static_cast<GroupNode const&>(*this);
+}
+
+TextNode& Node::asText() {
+	assert(isText());
+	return static_cast<TextNode&>(*this);
+}
+
+TextNode const& Node::asText() const {
+	assert(isText());
+	return static_cast<TextNode const&>(*this);
+}
+
 bool Node::isElementOfType(Node const& node, ElementType type) {
 	if (node.isElement()) {
-		auto const& element = static_cast<Element const&>(node);
-		return (element.elementType() == type);
+		return (node.asElement().elementType() == type);
 	}
 	return false;
 }
@@ -144,7 +193,7 @@ Node::const_iterator Node::end() const {
 Document* Node::findDocument() const {
 	for (auto node = parent_; node; node = node->parent()) {
 		if (node->isDocument()) {
-			return static_cast<Document*>(node);
+			return &node->asDocument();
 		}
 	}
 	return nullptr; // Orphaned element
@@ -328,8 +377,7 @@ void Node::didAdd() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		auto const element = static_cast<Element*>(this);
-		document->elementAdded(*element);
+		document->elementAdded(this->asElement());
 	}
 }
 
@@ -338,8 +386,7 @@ void Node::didRemove() {
 		return;
 	}
 	if (auto document = this->findDocument()) {
-		auto const element = static_cast<Element*>(this);
-		document->elementRemoved(*element);
+		document->elementRemoved(this->asElement());
 	}
 }
 

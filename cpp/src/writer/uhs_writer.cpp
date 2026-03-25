@@ -244,8 +244,7 @@ std::string UHSWriter::formatText(
 
 	if (textNode.hasPreviousSibling()) {
 		if (auto node = textNode.previousSibling(); node->isElement()) {
-			auto const previousElement = static_cast<Element*>(node);
-			if (previousElement->inlined()) {
+			if (node->asElement().inlined()) {
 				body = Token::InlineEnd + body;
 			}
 		}
@@ -284,14 +283,14 @@ void UHSWriter::serialize88a(Document const& document, std::string& out) {
 			numPreviousChildren = node->numChildren();
 			break;
 		case NodeType::Element: {
-			auto const element = static_cast<Element const*>(node);
-			auto const elementType = element->elementType();
+			auto const& element = node->asElement();
+			auto const elementType = element.elementType();
 			std::string title;
 
 			switch (elementType) {
 			case ElementType::Subject:
 				line += numPreviousChildren * 2;
-				title = element->title();
+				title = element.title();
 				break;
 			case ElementType::Hint:
 				if (previousType == ElementType::Subject) {
@@ -299,7 +298,7 @@ void UHSWriter::serialize88a(Document const& document, std::string& out) {
 				} else {
 					line += numPreviousChildren;
 				}
-				title = Strings::rtrim(element->title(), '?');
+				title = Strings::rtrim(element.title(), '?');
 				break;
 			default:
 				throw DataError(
@@ -326,8 +325,7 @@ void UHSWriter::serialize88a(Document const& document, std::string& out) {
 			numPreviousChildren = node->numChildren();
 			break;
 		case NodeType::Text: {
-			auto const& textNode = static_cast<TextNode const*>(node);
-			auto body = textNode->body();
+			auto body = node->asText().body();
 
 			if (!options_.debug) {
 				body = codec_.encode88a(body);
@@ -554,14 +552,13 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 
 	if (node.isElement() && elementType == ElementType::Nesthint) {
 		// Outputs to text buffer
-		auto& element = static_cast<Element&>(node);
 		auto followsTextNode = false;
 
 		if (node.hasPreviousSibling()) {
 			auto previousNode = node.previousSibling();
 			followsTextNode = previousNode->isText();
 		}
-		if (!followsTextNode && element.inlined()) {
+		if (!followsTextNode && node.asElement().inlined()) {
 			textBuffer += Token::InlineBegin;
 		}
 	}
@@ -579,14 +576,12 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 
 	if (node.isElement() && elementType == ElementType::Nesthint) {
 		// Outputs directly to main buffer
-		auto& element = static_cast<Element&>(node);
-
 		out += Token::NestedElementSep;
 		out += EOL;
 		++length;
 		++currentLine_;
 
-		length += this->serializeElement(element, out);
+		length += this->serializeElement(node.asElement(), out);
 	} else if (node.isBreak()) {
 		// Outputs directly to main buffer
 		out += Token::NestedTextSep;
@@ -601,7 +596,7 @@ int UHSWriter::serializeHintChild(Node& node, Element& parentElement,
 		}
 	} else if (node.isText()) {
 		// Outputs to text buffer
-		auto const& textNode = static_cast<TextNode const&>(node);
+		auto const& textNode = node.asText();
 		textBuffer += this->formatText(textNode, formats[depth]);
 		formats[depth] = textNode.format();
 	} else {
@@ -713,7 +708,7 @@ int UHSWriter::serializeIncentiveElement(Element& element, std::string& out) {
 			continue;
 		}
 
-		auto const& candidate = static_cast<Element const&>(node);
+		auto const& candidate = node.asElement();
 		if (excluded[candidate.elementType()]) {
 			continue;
 		}
@@ -955,13 +950,12 @@ void UHSWriter::updateLinkTargets(std::string& out) const {
 			continue;
 		}
 
-		auto targetElement = static_cast<Element*>(target);
 		auto const pos = out.rfind(LinkMarker);
 		if (pos == std::string::npos) {
 			throw DataError("could not find link marker");
 		}
 
-		auto const targetLine = std::to_string(targetElement->line());
+		auto const targetLine = std::to_string(target->asElement().line());
 		auto const length = targetLine.length();
 		out.replace(pos, length, targetLine);
 		out.erase(pos + length, strlen(LinkMarker) - length);

@@ -129,8 +129,7 @@ std::string TreeWriter::drawType(std::string const& name) {
 
 std::string TreeWriter::nodeStyle(Node const& node) {
 	if (node.nodeType() == NodeType::Element) {
-		auto const& element = static_cast<Element const&>(node);
-		return typeStyle(element.elementTypeString());
+		return typeStyle(node.asElement().elementTypeString());
 	}
 	return typeStyle(node.nodeTypeString());
 }
@@ -148,28 +147,20 @@ void TreeWriter::write(std::shared_ptr<Document> const document) {
 
 	for (auto const& node : *document) {
 		switch (node.nodeType()) {
-		case NodeType::Document: {
-			auto const& d = static_cast<Document const&>(node);
-			this->draw(d);
+		case NodeType::Document:
+			this->draw(node.asDocument());
 			break;
-		}
-		case NodeType::Element: {
-			auto const& element = static_cast<Element const&>(node);
-			this->draw(element);
+		case NodeType::Element:
+			this->draw(node.asElement());
 			break;
-		}
-		case NodeType::Group: {
-			auto const& groupNode = static_cast<GroupNode const&>(node);
-			this->draw(groupNode);
+		case NodeType::Group:
+			this->draw(node.asGroup());
 			break;
-		}
-		case NodeType::Text: {
-			auto const& textNode = static_cast<TextNode const&>(node);
-			this->draw(textNode);
+		case NodeType::Text:
+			this->draw(node.asText());
 			break;
-		}
 		case NodeType::Break: {
-			auto const& breakNode = static_cast<BreakNode const&>(node);
+			auto const& breakNode = node.asBreak();
 			this->drawScaffold(breakNode);
 			out_ << drawType(breakNode.nodeTypeString()) << std::endl;
 			break;

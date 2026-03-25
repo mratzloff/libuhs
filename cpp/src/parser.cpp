@@ -111,20 +111,20 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 		auto previous = node.lastChild();
 
 		if (previous->isText()) {
-			auto previousTextNode = static_cast<TextNode*>(previous);
-			auto previousTextBody = previousTextNode->body();
+			auto& previousTextNode = previous->asText();
+			auto previousTextBody = previousTextNode.body();
 
 			// Append space to previous node if it does end in whitespace
 			if (!previousTextBody.ends_with(' ') && !previousTextBody.ends_with('\n')
 			    && !Strings::beginsWithAttachedPunctuation(text)) {
 
 				previousTextBody += ' ';
-				previousTextNode->body(previousTextBody);
+				previousTextNode.body(previousTextBody);
 			}
 
-			auto previousHasOverflow = previousTextNode->hasFormat(TextFormat::Overflow);
+			auto previousHasOverflow = previousTextNode.hasFormat(TextFormat::Overflow);
 			auto sameFormatSansOverflow =
-			    withoutFormat(previousTextNode->format(), TextFormat::Overflow)
+			    withoutFormat(previousTextNode.format(), TextFormat::Overflow)
 			    == withoutFormat(format, TextFormat::Overflow);
 
 			if (previousHasOverflow && !hasFormat(format, TextFormat::Overflow)
@@ -132,23 +132,21 @@ void Parser::appendText(std::string& text, TextFormat& format, ContainerNode& no
 
 				// Handle `#w+ #w-` sequence
 				format = withFormat(format, TextFormat::Overflow);
-				previousTextNode->body(Strings::chomp(previousTextBody, '\n'));
+				previousTextNode.body(Strings::chomp(previousTextBody, '\n'));
 				text.clear();
 				return;
-			} else if (previousTextNode->format() == format
+			} else if (previousTextNode.format() == format
 			           || (previousHasOverflow && sameFormatSansOverflow)) {
 
 				// Append text with the same formatting to the previous node
 				previousTextBody += text;
-				previousTextNode->body(previousTextBody);
+				previousTextNode.body(previousTextBody);
 				text.clear();
 				return;
 			}
 		} else if (previous->isElement()) {
 			// Prepend space to text if it follows an inline element
-			auto const previousElement = static_cast<Element*>(previous);
-
-			if (previousElement->inlined()
+			if (previous->asElement().inlined()
 			    && !Strings::beginsWithAttachedPunctuation(text)) {
 
 				text = " " + text;
@@ -411,7 +409,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 			    parent->nodeTypeString());
 		}
 
-		auto element = static_cast<Element*>(parent);
+		auto& element = parent->asElement();
 
 		auto body = codec_.decode88a(token->value());
 		if (options_.debug) {
@@ -420,7 +418,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 
 		auto group = GroupNode::create(line, 1);
 		group->appendChild(TextNode::create(body));
-		element->appendChild(group);
+		element.appendChild(group);
 	} while (line < lastHintTextLine);
 }
 
@@ -819,9 +817,9 @@ void Parser::parseHintElement(Element& element) {
 			if (inlined && child->hasPreviousSibling()) {
 				auto const previous = child->previousSibling();
 				if (previous->isText()) {
-					auto previousTextNode = static_cast<TextNode*>(previous);
-					if (!Strings::endsWithAttachedPunctuation(previousTextNode->body())) {
-						previousTextNode->body(previousTextNode->body() + " ");
+					auto& previousTextNode = previous->asText();
+					if (!Strings::endsWithAttachedPunctuation(previousTextNode.body())) {
+						previousTextNode.body(previousTextNode.body() + " ");
 					}
 				}
 			}
@@ -1377,8 +1375,7 @@ void Parser::processLinks() {
 			// purposes.
 			if (target = document_->find(targetLine + 1); target) {
 				if (auto const parent = target->parent()) {
-					auto const parentElement = static_cast<Element*>(parent);
-					if (parentElement->elementType() == ElementType::Hyperpng) {
+					if (parent->asElement().elementType() == ElementType::Hyperpng) {
 						link.body(targetLine + 1);
 						link.attr("unmodified-target", targetLine);
 					} else {
@@ -1401,13 +1398,13 @@ void Parser::processVisibility() {
 				continue;
 			}
 
-			auto targetElement = static_cast<Element*>(target);
-			targetElement->visibility(visibility);
+			auto& targetElement = target->asElement();
+			targetElement.visibility(visibility);
 
 			if (!options_.preserve) {
 				switch (visibility) {
 				case VisibilityType::RegisteredOnly:
-					targetElement->visibility(VisibilityType::All);
+					targetElement.visibility(VisibilityType::All);
 					break;
 				case VisibilityType::UnregisteredOnly: {
 					auto node = target->pointer();

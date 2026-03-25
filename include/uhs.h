@@ -617,7 +617,11 @@ private:
 template<typename T>
 class NodeIterator;
 
+class BreakNode;
 class Document;
+class Element;
+class GroupNode;
+class TextNode;
 
 class Node {
 public:
@@ -636,6 +640,16 @@ public:
 
 	void appendChild(std::shared_ptr<Node> node);
 	void appendChild(std::shared_ptr<Node> node, bool silenceEvent);
+	BreakNode& asBreak();
+	BreakNode const& asBreak() const;
+	Document& asDocument();
+	Document const& asDocument() const;
+	Element& asElement();
+	Element const& asElement() const;
+	GroupNode& asGroup();
+	GroupNode const& asGroup() const;
+	TextNode& asText();
+	TextNode const& asText() const;
 	iterator begin();
 	const_iterator begin() const;
 	const_iterator cbegin() const;
@@ -782,8 +796,6 @@ public:
 private:
 	TextFormat format_ = TextFormat::None;
 };
-
-class Document;
 
 class Element
     : public ContainerNode

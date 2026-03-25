@@ -100,8 +100,7 @@ void Document::normalize() {
 		if (child->nodeType() != NodeType::Element) {
 			continue;
 		}
-		auto const& element = static_cast<Element const&>(*child);
-		switch (element.elementType()) {
+		switch (child->asElement().elementType()) {
 		case ElementType::Incentive:
 			incentive = child->pointer();
 			break;
@@ -142,7 +141,7 @@ void Document::reindex() {
 
 	for (auto& node : *this) {
 		if (node.isElement()) {
-			this->elementAdded(static_cast<Element&>(node));
+			this->elementAdded(node.asElement());
 		}
 	}
 	indexed_ = true;
