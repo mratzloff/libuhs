@@ -71,11 +71,11 @@ Node* Document::find(int const id) {
 	if (!indexed_) {
 		this->reindex();
 	}
-	try {
-		return index_.at(id);
-	} catch (std::out_of_range const& err) {
-		return nullptr;
+	auto const it = index_.find(id);
+	if (it != index_.end()) {
+		return it->second;
 	}
+	return nullptr;
 }
 
 bool Document::isVersion(VersionType v) const {

@@ -858,7 +858,7 @@ public:
 	std::string const versionString() const;
 
 private:
-	std::map<int const, Node*> index_;
+	std::map<int, Node*> index_;
 	bool indexed_ = true;
 	bool validChecksum_ = false;
 	VersionType version_;
