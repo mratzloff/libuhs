@@ -10,7 +10,7 @@ namespace UHS {
 
 class CRC {
 public:
-	static auto const ByteLength = 2;
+	static constexpr auto ByteLength = 2;
 
 	CRC();
 
@@ -27,7 +27,7 @@ private:
 	static uint16_t const FinalXOR = 0x0100;
 	static uint16_t const MSBMask = 0x8000;
 	static uint16_t const Polynomial = 0x8005;
-	static auto const TableLength = 256;
+	static constexpr auto TableLength = 256;
 
 	char checksum_[2];
 	int checksumLength_ = 0;

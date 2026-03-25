@@ -34,7 +34,7 @@ private:
 	using DataQueue = std::queue<std::pair<ElementType, std::string const>>;
 
 	static constexpr auto DataAddressMarker = "000000";
-	static auto const InitialElementLength = 2;  // Element descriptor and title
+	static constexpr auto InitialElementLength = 2;  // Element descriptor and title
 	static std::size_t const FileSizeLength = 7; // Up to 9,999,999 bytes per document
 	static constexpr auto InfoLengthMarker = "length=0000000";
 	static std::size_t const InitialBufferLength = 204'800; // 200 KiB

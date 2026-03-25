@@ -76,13 +76,13 @@ private:
 		std::size_t offset = 0;
 	};
 
-	static auto const FormatTokenLength = 3;
-	static auto const HeaderLength = 4;
+	static constexpr auto FormatTokenLength = 3;
+	static constexpr auto HeaderLength = 4;
 
 	// Fix for bad 88a backwards-compatibility header found in 401 files
 	static constexpr auto BadHeaderTitle = "Why aren't there any more hints here?";
-	static auto const BadHeaderFirstChildLine = HeaderLength + 16;
-	static auto const GoodHeaderFirstChildLine = HeaderLength + 15;
+	static constexpr auto BadHeaderFirstChildLine = HeaderLength + 16;
+	static constexpr auto GoodHeaderFirstChildLine = HeaderLength + 15;
 
 	Codec const codec_;
 	std::unique_ptr<CRC> crc_ = nullptr;

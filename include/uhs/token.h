@@ -18,7 +18,7 @@ public:
 	static constexpr auto AsciiEncBegin = "#a+";
 	static constexpr auto AsciiEncEnd = "#a-";
 	static constexpr auto CreditSep = "CREDITS:";
-	static auto const DataSep = '\x1A';
+	static constexpr auto DataSep = '\x1A';
 	static constexpr auto HeaderSep = "** END OF 88A FORMAT **";
 	static constexpr auto HyperlinkBegin = "#h+";
 	static constexpr auto HyperlinkEnd = "#h-";
