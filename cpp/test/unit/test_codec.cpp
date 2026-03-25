@@ -78,6 +78,18 @@ TEST_CASE("Codec::decodeSpecialChars", "[codec]") {
 	SECTION("mixed text and special chars") {
 		REQUIRE(codec.decodeSpecialChars("caf#a+e'#a-") == "café");
 	}
+
+	SECTION("unrecognized sequence stops decoding") {
+		// An unknown value between #a+ and #a- should stop processing
+		auto result = codec.decodeSpecialChars("#a+BOGUS#a- trailing");
+		REQUIRE(result == "#");
+	}
+
+	SECTION("unterminated sequence continues character by character") {
+		// Missing #a- terminator should not crash
+		auto result = codec.decodeSpecialChars("hello #a+oops");
+		REQUIRE(result == "hello #a+oops");
+	}
 }
 
 TEST_CASE("Codec::encodeSpecialChars", "[codec]") {

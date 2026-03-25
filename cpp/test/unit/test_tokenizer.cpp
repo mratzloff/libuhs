@@ -94,4 +94,12 @@ TEST_CASE("Tokenizer tracks line numbers", "[tokenizer]") {
 	REQUIRE(tokens[2]->line() == 3); // 5 on line 3
 }
 
+TEST_CASE("Tokenizer handles input with no line terminators", "[tokenizer]") {
+	// Input has no \n or \x1A, so find_first_of returns npos.
+	// Previously this could access localBuffer out of bounds.
+	auto tokens = tokenizeString("UHS");
+	REQUIRE(tokens.size() >= 1);
+	REQUIRE(tokens.back()->type() == TokenType::FileEnd);
+}
+
 } // namespace UHS

@@ -112,6 +112,9 @@ TEST_CASE("Node::insertBefore", "[node]") {
 	REQUIRE(document->firstChild() == element1);
 	REQUIRE(element1->nextSibling() == element2);
 	REQUIRE(element2->nextSibling() == element3);
+	REQUIRE(element3->previousSibling() == element2.get());
+	REQUIRE(element2->previousSibling() == element1.get());
+	REQUIRE_FALSE(element1->hasPreviousSibling());
 }
 
 TEST_CASE("Node::insertBefore at head", "[node]") {
@@ -124,6 +127,8 @@ TEST_CASE("Node::insertBefore at head", "[node]") {
 
 	REQUIRE(document->firstChild() == element1);
 	REQUIRE(element1->nextSibling() == element2);
+	REQUIRE(element2->previousSibling() == element1.get());
+	REQUIRE_FALSE(element1->hasPreviousSibling());
 }
 
 TEST_CASE("Node sibling navigation", "[node]") {

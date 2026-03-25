@@ -36,11 +36,10 @@ void Tokenizer::tokenize(char const* buffer, std::streamsize length) {
 		auto position = localBuffer.find_first_of("\x1A\n", i);
 		if (position == std::string::npos) {
 			buffer_ += localBuffer.substr(i);
-			i = localBuffer.length();
-		} else {
-			buffer_ += localBuffer.substr(i, position - i);
-			i = position;
+			break;
 		}
+		buffer_ += localBuffer.substr(i, position - i);
+		i = position;
 
 		if (localBuffer[i] == Token::DataSep || localBuffer[i] == '\n') {
 			this->tokenizeLine();

@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <sstream>
 
 #include <catch2/catch_test_macros.hpp>
@@ -5,6 +6,7 @@
 #include "uhs/constants.h"
 #include "uhs/document.h"
 #include "uhs/element.h"
+#include "uhs/error/file_error.h"
 #include "uhs/logger.h"
 #include "uhs/node/break_node.h"
 #include "uhs/node/group_node.h"
@@ -194,6 +196,57 @@ TEST_CASE("JSONWriter handles deeply nested document", "[writer][json]") {
 	REQUIRE_NOTHROW(writer.write(document));
 	auto output = out.str();
 	REQUIRE(output.find("\"Depth 10\"") != std::string::npos);
+}
+
+TEST_CASE("JSONWriter throws FileError for invalid media directory", "[writer][json]") {
+	auto document = Document::create(VersionType::Version96a);
+	document->title("Game");
+
+	auto subject = Element::create(ElementType::Subject, 1);
+	subject->title("Sub");
+	document->appendChild(subject);
+
+	auto image = Element::create(ElementType::Hyperpng, 2);
+	image->title("Image");
+	image->body("fake png data");
+	subject->appendChild(image);
+
+	Logger logger(LogLevel::None);
+	Options options;
+	options.mediaDir = "/nonexistent/path/to/media";
+	std::ostringstream out;
+	JSONWriter writer(logger, out, options);
+
+	REQUIRE_THROWS_AS(writer.write(document), FileError);
+}
+
+TEST_CASE("JSONWriter writes media to valid directory", "[writer][json]") {
+	auto document = Document::create(VersionType::Version96a);
+	document->title("Game");
+
+	auto subject = Element::create(ElementType::Subject, 1);
+	subject->title("Sub");
+	document->appendChild(subject);
+
+	auto image = Element::create(ElementType::Hyperpng, 2);
+	image->title("Image");
+	image->body("fake png data");
+	subject->appendChild(image);
+
+	Logger logger(LogLevel::None);
+	Options options;
+	options.mediaDir = std::filesystem::temp_directory_path().string();
+	std::ostringstream out;
+	JSONWriter writer(logger, out, options);
+
+	REQUIRE_NOTHROW(writer.write(document));
+
+	auto output = out.str();
+	REQUIRE(output.find(".png") != std::string::npos);
+
+	// Clean up
+	auto const mediaPath = std::filesystem::path(options.mediaDir) / "2.png";
+	std::filesystem::remove(mediaPath);
 }
 
 } // namespace UHS
