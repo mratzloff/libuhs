@@ -6,6 +6,8 @@ BreakNode::BreakNode() : Node(NodeType::Break) {}
 
 BreakNode::BreakNode(BreakNode const& other) : Node(other) {}
 
+BreakNode::BreakNode(BreakNode&& other) noexcept : Node(std::move(other)) {}
+
 std::shared_ptr<BreakNode> BreakNode::create() {
 	return std::make_shared<BreakNode>();
 }

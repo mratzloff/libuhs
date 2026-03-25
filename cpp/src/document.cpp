@@ -30,6 +30,20 @@ Document::Document(Document const& other)
 	this->reindex();
 }
 
+Document::Document(Document&& other) noexcept
+    : Node(std::move(other))
+    , Traits::Attributes(std::move(other))
+    , Traits::Title(std::move(other))
+    , Traits::Visibility(std::move(other))
+    , index_{std::move(other.index_)}
+    , indexed_{other.indexed_}
+    , validChecksum_{other.validChecksum_}
+    , version_{other.version_} {
+
+	other.indexed_ = false;
+	other.validChecksum_ = false;
+}
+
 std::shared_ptr<Document> Document::create(VersionType version) {
 	return std::make_shared<Document>(version);
 }

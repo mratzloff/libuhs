@@ -18,6 +18,12 @@ TextNode::TextNode(std::string const& body, TextFormat format)
 TextNode::TextNode(TextNode const& other)
     : Node(other), Traits::Body(other), format_{other.format_} {}
 
+TextNode::TextNode(TextNode&& other) noexcept
+    : Node(std::move(other)), Traits::Body(std::move(other)), format_{other.format_} {
+
+	other.format_ = TextFormat::None;
+}
+
 std::shared_ptr<TextNode> TextNode::create(std::string const& body) {
 	return std::make_shared<TextNode>(body);
 }

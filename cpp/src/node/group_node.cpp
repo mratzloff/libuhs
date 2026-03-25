@@ -13,6 +13,8 @@ GroupNode::GroupNode(int line, int length) : ContainerNode(NodeType::Group) {
 
 GroupNode::GroupNode(GroupNode const& other) : ContainerNode(other) {}
 
+GroupNode::GroupNode(GroupNode&& other) noexcept : ContainerNode(std::move(other)) {}
+
 std::shared_ptr<GroupNode> GroupNode::create(int line, int length) {
 	return std::make_shared<GroupNode>(line, length);
 }

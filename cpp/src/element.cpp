@@ -30,6 +30,20 @@ Element::Element(Element const& other)
     , elementType_{other.elementType_}
     , id_{other.id_} {}
 
+Element::Element(Element&& other) noexcept
+    : ContainerNode(std::move(other))
+    , Traits::Attributes(std::move(other))
+    , Traits::Body(std::move(other))
+    , Traits::Title(std::move(other))
+    , Traits::Inlined(std::move(other))
+    , Traits::Visibility(std::move(other))
+    , elementType_{other.elementType_}
+    , id_{other.id_} {
+
+	other.elementType_ = ElementType::Unknown;
+	other.id_ = 0;
+}
+
 std::shared_ptr<Element> Element::create(ElementType type, int id) {
 	return std::make_shared<Element>(type, id);
 }

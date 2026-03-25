@@ -15,6 +15,13 @@ ContainerNode::ContainerNode(NodeType type) : Node(type) {}
 ContainerNode::ContainerNode(ContainerNode const& other)
     : Node(other), length_{other.length_}, line_{other.line_} {}
 
+ContainerNode::ContainerNode(ContainerNode&& other) noexcept
+    : Node(std::move(other)), length_{other.length_}, line_{other.line_} {
+
+	other.length_ = 0;
+	other.line_ = 0;
+}
+
 // Used only for bookkeeping while parsing
 int ContainerNode::length() const {
 	return length_;

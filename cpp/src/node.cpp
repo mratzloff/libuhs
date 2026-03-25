@@ -5,13 +5,21 @@ namespace UHS {
 void swap(Node& lhs, Node& rhs) noexcept {
 	using std::swap;
 
+	swap(lhs.depth_, rhs.depth_);
+	swap(lhs.firstChild_, rhs.firstChild_);
+	swap(lhs.lastChild_, rhs.lastChild_);
+	swap(lhs.nextSibling_, rhs.nextSibling_);
 	swap(lhs.nodeType_, rhs.nodeType_);
+	swap(lhs.numChildren_, rhs.numChildren_);
 	swap(lhs.parent_, rhs.parent_);
 	swap(lhs.previousSibling_, rhs.previousSibling_);
-	swap(lhs.nextSibling_, rhs.nextSibling_);
-	swap(lhs.depth_, rhs.depth_);
 
-	lhs.cloneChildren(rhs);
+	for (auto child = lhs.firstChild_.get(); child; child = child->nextSibling_.get()) {
+		child->parent_ = &lhs;
+	}
+	for (auto child = rhs.firstChild_.get(); child; child = child->nextSibling_.get()) {
+		child->parent_ = &rhs;
+	}
 }
 
 Node::Node(NodeType type) : nodeType_{type} {}
@@ -24,6 +32,27 @@ Node::Node(Node const& other)
     , previousSibling_{other.previousSibling_} {
 
 	this->cloneChildren(other);
+}
+
+Node::Node(Node&& other) noexcept
+    : depth_{other.depth_}
+    , firstChild_{std::move(other.firstChild_)}
+    , lastChild_{other.lastChild_}
+    , nextSibling_{std::move(other.nextSibling_)}
+    , nodeType_{other.nodeType_}
+    , numChildren_{other.numChildren_}
+    , parent_{other.parent_}
+    , previousSibling_{other.previousSibling_} {
+
+	for (auto child = firstChild_.get(); child; child = child->nextSibling_.get()) {
+		child->parent_ = this;
+	}
+
+	other.depth_ = 0;
+	other.lastChild_ = nullptr;
+	other.numChildren_ = 0;
+	other.parent_ = nullptr;
+	other.previousSibling_ = nullptr;
 }
 
 bool Node::isElementOfType(Node const& node, ElementType type) {

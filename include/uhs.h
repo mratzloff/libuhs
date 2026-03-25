@@ -628,6 +628,7 @@ public:
 
 	explicit Node(NodeType type);
 	Node(Node const& other);
+	Node(Node&& other) noexcept;
 	virtual ~Node() = default;
 
 	static bool isElementOfType(Node const& node, ElementType type);
@@ -691,6 +692,7 @@ public:
 
 	explicit ContainerNode(NodeType type);
 	ContainerNode(ContainerNode const& other);
+	ContainerNode(ContainerNode&& other) noexcept;
 	virtual ~ContainerNode() = default;
 
 	int length() const;
@@ -732,6 +734,7 @@ class BreakNode : public Node {
 public:
 	BreakNode();
 	BreakNode(BreakNode const&);
+	BreakNode(BreakNode&&) noexcept;
 
 	static std::shared_ptr<BreakNode> create();
 
@@ -745,6 +748,7 @@ public:
 
 	GroupNode(int line, int length);
 	GroupNode(GroupNode const&);
+	GroupNode(GroupNode&&) noexcept;
 
 	static std::shared_ptr<GroupNode> create(int line, int length);
 
@@ -761,6 +765,7 @@ public:
 	explicit TextNode(std::string const& body);
 	TextNode(std::string const& body, TextFormat format);
 	TextNode(TextNode const& other);
+	TextNode(TextNode&& other) noexcept;
 
 	static std::shared_ptr<TextNode> create(std::string const& body);
 	static std::shared_ptr<TextNode> create(std::string const& body, TextFormat format);
@@ -792,6 +797,7 @@ public:
 
 	Element(ElementType type, int id = 0);
 	Element(Element const& other);
+	Element(Element&& other) noexcept;
 
 	static std::shared_ptr<Element> create(ElementType type, int const id = 0);
 	static ElementType elementType(std::string const& typeString);
@@ -833,6 +839,7 @@ public:
 
 	Document(VersionType version);
 	Document(Document const& other);
+	Document(Document&& other) noexcept;
 
 	static std::shared_ptr<Document> create(VersionType version);
 
