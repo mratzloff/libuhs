@@ -40,7 +40,7 @@ void ContainerNode::line(int const line) {
 }
 
 ContainerNode& ContainerNode::operator=(ContainerNode other) {
-	Node::operator=(other);
+	swap(*this, other);
 	return *this;
 }
 
