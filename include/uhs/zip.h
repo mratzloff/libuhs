@@ -9,7 +9,7 @@ namespace UHS {
 class Zip {
 public:
 	Zip(std::string const& data);
-	bool isZip();
+	bool isZip() const;
 	void unzip(std::string const& dir);
 
 private:
@@ -23,8 +23,8 @@ private:
 
 	std::string const data_;
 
-	uint16_t readUint16LE(int offset);
-	uint32_t readUint32LE(int offset);
+	uint16_t readUint16LE(int offset) const;
+	uint32_t readUint32LE(int offset) const;
 };
 
 } // namespace UHS
