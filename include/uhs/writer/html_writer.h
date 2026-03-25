@@ -118,7 +118,7 @@ private:
 	    NodeMap const parents, int const depth) const;
 	std::string getDataURI(std::string const& contentType, std::string const& data) const;
 	std::tuple<int, int> getImageSize(Element const& element) const;
-	Element* getParentElement(Element const& element) const;
+	Element const* getParentElement(Element const& element) const;
 	std::tuple<int, int, int, int> getRegionCoordinates(Element const& element) const;
 	void populateArea(Element const& element, pugi::xml_node area) const;
 	void removeEmptyParagraphs(pugi::xml_node root) const;

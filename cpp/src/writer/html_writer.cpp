@@ -375,7 +375,7 @@ std::tuple<int, int> HTMLWriter::getImageSize(Element const& element) const {
 	return std::make_tuple(Strings::toInt(*x), Strings::toInt(*y));
 }
 
-Element* HTMLWriter::getParentElement(Element const& element) const {
+Element const* HTMLWriter::getParentElement(Element const& element) const {
 	auto parentNode = element.parent();
 	if (!parentNode || !parentNode->isElement()) {
 		return nullptr;
