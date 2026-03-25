@@ -303,7 +303,10 @@ pugi::xml_node HTMLWriter::findOrCreateMap(
     Element const& element, pugi::xml_node xmlNode) const {
 
 	auto parentElement = this->getParentElement(element);
-	if (!parentElement || parentElement->elementType() != ElementType::Hyperpng) {
+	if (!parentElement) {
+		throw DataError("expected hyperpng parent; got no parent");
+	}
+	if (parentElement->elementType() != ElementType::Hyperpng) {
 		throw DataError(
 		    "expected hyperpng parent; got %s", parentElement->elementTypeString());
 	}
