@@ -624,7 +624,7 @@ class Element;
 class GroupNode;
 class TextNode;
 
-class Node {
+class Node : public std::enable_shared_from_this<Node> {
 public:
 	using iterator = NodeIterator<Node>;
 	using const_iterator = NodeIterator<Node const>;

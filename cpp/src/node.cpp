@@ -306,15 +306,11 @@ Node* Node::parent() const {
 }
 
 std::shared_ptr<Node> Node::pointer() const {
-	if (parent_) {
-		for (auto node = parent_->firstChild(); node; node = node->nextSibling()) {
-			if (this == node.get()) {
-				return node;
-			}
-		}
+	try {
+		return const_cast<Node*>(this)->shared_from_this();
+	} catch (std::bad_weak_ptr const&) {
+		return nullptr;
 	}
-
-	return nullptr;
 }
 
 Node* Node::previousSibling() const {
