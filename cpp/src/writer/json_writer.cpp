@@ -30,6 +30,10 @@ void JSONWriter::serialize(Document const& document, Json::Value& root) const {
 		auto nodeDepth = node.depth();
 
 		if (nodeDepth > depth) { // Down
+			if (depth < 0 || depth >= MaxDepth) {
+				throw DataError(
+				    "JSON writer: depth %d exceeds maximum of %d", depth, MaxDepth);
+			}
 			parents[depth] = parent;
 			auto& children = (*parent)["children"];
 
@@ -39,7 +43,7 @@ void JSONWriter::serialize(Document const& document, Json::Value& root) const {
 				parent = &(children[children.size() - 1]);
 			}
 		} else if (nodeDepth < depth) { // Up
-			if (nodeDepth >= 0) {
+			if (nodeDepth >= 0 && nodeDepth < MaxDepth) {
 				parent = parents[nodeDepth];
 			}
 		}
