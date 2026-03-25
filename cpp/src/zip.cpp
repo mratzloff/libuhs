@@ -52,7 +52,13 @@ void Zip::unzip(std::string const& dir) {
 	std::filesystem::path path{dir};
 	auto outfile = path.append(filename).string();
 	auto fout = std::ofstream(outfile, std::ios::out | std::ios::binary);
+	if (!fout) {
+		throw FileError("could not open file for writing: %s", outfile);
+	}
 	fout.write(reinterpret_cast<char const*>(uncompressed.data()), uncompressedLength);
+	if (!fout) {
+		throw FileError("failed to write file: %s", outfile);
+	}
 }
 
 uint16_t Zip::readUint16LE(int offset) {
