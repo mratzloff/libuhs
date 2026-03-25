@@ -154,7 +154,7 @@ Codec::AsciiToUnicodeMap Codec::toChars_{
     {"y:", "ÿ"},
 };
 
-std::string const Codec::createKey(std::string secret) const {
+std::string const Codec::createKey(std::string const& secret) const {
 	return this->encode96a(secret, KeySeed, false);
 }
 

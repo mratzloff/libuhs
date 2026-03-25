@@ -11,7 +11,7 @@ namespace UHS {
 
 class Codec {
 public:
-	std::string const createKey(std::string const secret) const;
+	std::string const createKey(std::string const& secret) const;
 	std::string const decode88a(std::string encoded) const;
 	std::string const decode96a(
 	    std::string encoded, std::string const& key, bool isTextElement) const;
