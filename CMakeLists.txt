@@ -30,34 +30,36 @@ FetchContent_MakeAvailable (hopscotch_map_dep)
 
 FetchContent_Declare (httplib_dep
 	GIT_REPOSITORY https://github.com/yhirose/cpp-httplib
-	GIT_TAG d5409ab541ecc6f4f3df7558a829c5dc522ecf7e)
+	GIT_TAG v0.31.0)
 FetchContent_MakeAvailable (httplib_dep)
 
 set (jsoncpp_prefix ${FETCHCONTENT_BASE_DIR}/jsoncpp_dep)
 
 ExternalProject_Add (jsoncpp_dep
 	GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp
-	GIT_TAG 1.9.6
+	GIT_TAG 1.9.7
 	PREFIX ${jsoncpp_prefix}
 	CMAKE_CACHE_ARGS
 		-DBUILD_SHARED_LIBS:BOOL=OFF
 		-DBUILD_OBJECT_LIBS:BOOL=OFF
+		-DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
 		-DJSONCPP_WITH_CMAKE_PACKAGE:BOOL=OFF
 		-DJSONCPP_WITH_POST_BUILD_UNITTEST:BOOL=OFF
 		-DJSONCPP_WITH_PKGCONFIG_SUPPORT:BOOL=OFF
 		-DJSONCPP_WITH_TESTS:BOOL=OFF
 	INSTALL_COMMAND ""
-	LOG_DOWNLOAD ON
-	LOG_UPDATE ON
-	LOG_CONFIGURE ON
-	LOG_BUILD ON
-	LOG_TEST ON
-	LOG_MERGED_STDOUTERR ON
 	LOG_OUTPUT_ON_FAILURE ON)
 
 ExternalProject_Get_Property (jsoncpp_dep SOURCE_DIR BINARY_DIR)
 set (jsoncpp_dep_SOURCE_DIR ${SOURCE_DIR})
 set (jsoncpp_dep_BINARY_DIR ${BINARY_DIR})
+
+set (ENABLE_PROGRAMS OFF CACHE BOOL "" FORCE)
+set (ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+FetchContent_Declare (mbedtls_dep
+	GIT_REPOSITORY https://github.com/Mbed-TLS/mbedtls
+	GIT_TAG v3.6.5)
+FetchContent_MakeAvailable (mbedtls_dep)
 
 FetchContent_Declare (zlib_dep
 	GIT_REPOSITORY https://github.com/madler/zlib
@@ -82,14 +84,8 @@ ExternalProject_Add (tinyformat_dep
 	GIT_REPOSITORY https://github.com/mratzloff/tinyformat
 	GIT_TAG 9f6032683b2fb900a3de456f39a61da684704e8e
 	PREFIX ${tinyformat_prefix}
-	CMAKE_CACHE_ARGS -DBUILD_TESTS:BOOL=OFF
-	LOG_DOWNLOAD ON
-	LOG_UPDATE ON
-	LOG_PATCH ON
-	LOG_CONFIGURE ON
-	LOG_INSTALL ON
-	LOG_TEST ON
-	LOG_MERGED_STDOUTERR ON
+	CMAKE_CACHE_ARGS
+		-DBUILD_TESTS:BOOL=OFF
 	LOG_OUTPUT_ON_FAILURE ON)
 
 ExternalProject_Get_Property (tinyformat_dep SOURCE_DIR)
@@ -108,6 +104,7 @@ set (hopscotch_map_includes ${hopscotch_map_dep_SOURCE_DIR}/include)
 set (httplib_includes ${httplib_dep_SOURCE_DIR})
 set (jsoncpp_includes ${jsoncpp_dep_SOURCE_DIR}/include)
 set (jsoncpp_lib ${jsoncpp_dep_BINARY_DIR}/lib)
+set (mbedtls_includes ${mbedtls_dep_SOURCE_DIR}/include)
 set (puff_includes ${puff_dep_SOURCE_DIR})
 set (pugixml_includes ${pugixml_dep_SOURCE_DIR}/src)
 set (tinyformat_includes ${tinyformat_dep_SOURCE_DIR})
@@ -247,16 +244,29 @@ add_dependencies (uhs css_includes js_includes)
 link_directories (
 	${jsoncpp_lib}
 	${CMAKE_SOURCE_DIR}/lib)
+target_compile_definitions (uhs PRIVATE CPPHTTPLIB_MBEDTLS_SUPPORT)
 target_link_libraries (uhs
 	PUBLIC
 		jsoncpp
+		MbedTLS::mbedcrypto
+		MbedTLS::mbedtls
+		MbedTLS::mbedx509
 		puff
 		pugixml)
+if (APPLE)
+	target_compile_definitions (uhs PRIVATE CPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN)
+	target_link_libraries (uhs PUBLIC
+		"-framework CoreFoundation"
+		"-framework Security")
+elseif (WIN32)
+	target_link_libraries (uhs PUBLIC crypt32)
+endif ()
 target_include_directories (uhs
 	PUBLIC
 		${hopscotch_map_includes}
 		${httplib_includes}
 		${jsoncpp_includes}
+		${mbedtls_includes}
 		${puff_includes}
 		${pugixml_includes}
 		${tinyformat_includes}
@@ -314,6 +324,11 @@ add_custom_target (format)
 add_dependencies (format format_css format_ts format_cpp)
 
 # make lint
+set (lint_defines -DCPPHTTPLIB_MBEDTLS_SUPPORT)
+if (APPLE)
+	list (APPEND lint_defines -DCPPHTTPLIB_USE_CERTS_FROM_MACOSX_KEYCHAIN)
+endif ()
+
 add_custom_target (lint_cpp
 	COMMAND clang
 		--analyze
@@ -325,12 +340,14 @@ add_custom_target (lint_cpp
 		-I${hopscotch_map_includes}
 		-I${httplib_includes}
 		-I${jsoncpp_includes}
+		-I${mbedtls_includes}
 		-I${puff_includes}
 		-I${pugixml_includes}
 		-I${tinyformat_includes}
 		-I${tinyutf8_includes}
 		-I${uhs_build_includes}
 		-I${uhs_includes}
+		${lint_defines}
 		-std=c++23
 		${uhs_sources}
 		${uhs_bin_sources}

@@ -115,11 +115,9 @@
     "js/ts.preferences.quoteStyle": "double",
     // CSS
     "css.validate": false,
-    "stylelint.validate": ["css"],
-    // C/C++
-    "C_Cpp.clang_format_path": "/usr/local/bin/clang-format",
-    "C_Cpp.clang_format_style": "file",
-    "C_Cpp.formatting": "clangFormat",
+    "stylelint.validate": [
+        "css"
+    ],
     // Language overrides
     "[typescript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
