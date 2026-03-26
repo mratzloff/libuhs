@@ -359,7 +359,7 @@ void Parser::parse88aElements(int firstHintTextLine, NodeMap& parents) {
 		}
 
 		Node* parent = nullptr;
-		for (auto i = line; !parent; --i) {
+		for (auto i = line; i >= 0; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
@@ -405,7 +405,7 @@ void Parser::parse88aTextNodes(int lastHintTextLine, NodeMap& parents) {
 		line = token->line();
 
 		Node* parent = nullptr;
-		for (auto i = line; !parent; --i) {
+		for (auto i = line; i >= 0; --i) {
 			if (parents.count(i) == 1) {
 				parent = parents[i];
 				break;
