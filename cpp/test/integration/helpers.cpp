@@ -1,5 +1,6 @@
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
 
 #include "helpers.h"
 
@@ -90,6 +91,9 @@ std::string firstTextBody(std::shared_ptr<Element> element) {
 
 std::string readFile(std::string const& path) {
 	std::ifstream file(path, std::ios::binary);
+	if (!file) {
+		throw std::runtime_error("could not open file: " + path);
+	}
 	return std::string(
 	    std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
