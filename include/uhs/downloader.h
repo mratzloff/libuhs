@@ -58,7 +58,7 @@ public:
 	FileIndex const& fileIndex();
 
 private:
-	static constexpr auto BaseURL = "http://www.invisiclues.com";
+	static constexpr auto BaseURL = "http://www.uhs-hints.com";
 	static constexpr auto FileIndexPath = "/cgi-bin/update.cgi";
 
 	FileIndex fileIndex_;
