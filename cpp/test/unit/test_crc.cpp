@@ -63,9 +63,8 @@ TEST_CASE("CRC handles empty data", "[crc]") {
 	CRC crc;
 	crc.calculate("", 0);
 
-	// Should not crash; result is the initial remainder
-	auto result = crc.result();
-	REQUIRE(result == result); // Compiles and doesn't throw
+	// Result should be the initial remainder (0)
+	REQUIRE(crc.result() == 0);
 }
 
 TEST_CASE("CRC::result returns checksum in vector form", "[crc]") {
