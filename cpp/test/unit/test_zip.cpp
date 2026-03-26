@@ -23,9 +23,9 @@ TEST_CASE("Zip::isZip rejects non-ZIP data", "[zip]") {
 	REQUIRE_FALSE(zip.isZip());
 }
 
-TEST_CASE("Zip::isZip rejects empty data", "[zip]") {
-	std::string empty(4, '\0');
-	Zip zip(empty);
+TEST_CASE("Zip::isZip rejects null bytes", "[zip]") {
+	std::string nullBytes(4, '\0');
+	Zip zip(nullBytes);
 	REQUIRE_FALSE(zip.isZip());
 }
 
