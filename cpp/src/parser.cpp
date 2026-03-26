@@ -1267,13 +1267,11 @@ void Parser::parseWithFormat(std::string const& text, TextFormat& format,
 				// Preserve newlines for text elements and relevant formats
 				segment += s[i];
 			} else {
-				// Find the preceding newline
-				auto pos = s.find_last_of('\n', i - 1);
-				if (pos == std::string::npos) {
-					pos = -1;
-				}
+				// Find the start of the current line
+				auto newlinePos = s.find_last_of('\n', i - 1);
+				auto lineStart = newlinePos == std::string::npos ? 0 : newlinePos + 1;
 
-				if (s.substr(pos + 1, 2) == "  ") {
+				if (s.substr(lineStart, 2) == "  ") {
 					// Preserve any newline at the end of an indented line
 					segment += s[i];
 				} else {
