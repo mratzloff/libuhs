@@ -47,6 +47,7 @@ public:
 		bool charGrid_ = false;
 		int demarcationLine_ = 0;
 		std::size_t endLine_ = 0;
+		std::size_t numHeaderRows_ = 0;
 		bool headerless_ = false;
 		std::vector<std::string> const lines_;
 		bool pipeDelimited_ = false;

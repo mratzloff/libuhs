@@ -139,6 +139,7 @@ void HTMLWriter::Table::addHeaderRows(Boundaries const& columnBoundaries) {
 		if (!line.empty()) {
 			auto cells = extractCellsByBoundaries(line, columnBoundaries);
 			rows_.insert(rows_.begin(), cells);
+			++numHeaderRows_;
 		}
 	}
 }
@@ -570,6 +571,7 @@ bool HTMLWriter::Table::parsePipeDelimitedTable() {
 	auto expectedPipes = std::count(header.begin(), header.end(), '|');
 
 	rows_.push_back(headerCells);
+	numHeaderRows_ = 1;
 	pipeDelimited_ = true;
 
 	for (auto i = demarcationLine_ + 1; i < static_cast<int>(lines_.size()); ++i) {
@@ -594,7 +596,7 @@ bool HTMLWriter::Table::parsePipeDelimitedTable() {
 
 void HTMLWriter::Table::serializeBody(pugi::xml_node& table) const {
 	auto tbody = table.append_child("tbody");
-	auto tbodyStart = headerless_ ? rows_.begin() : rows_.begin() + demarcationLine_;
+	auto tbodyStart = headerless_ ? rows_.begin() : rows_.begin() + numHeaderRows_;
 	for (auto it = tbodyStart; it < rows_.end(); ++it) {
 		auto tr = tbody.append_child("tr");
 		auto const& row = *it;
@@ -607,7 +609,7 @@ void HTMLWriter::Table::serializeBody(pugi::xml_node& table) const {
 
 void HTMLWriter::Table::serializeHeader(pugi::xml_node& table) const {
 	auto thead = table.append_child("thead");
-	for (auto it = rows_.begin(); it < rows_.begin() + demarcationLine_; ++it) {
+	for (auto it = rows_.begin(); it < rows_.begin() + numHeaderRows_; ++it) {
 		auto const& row = *it;
 		auto tr = thead.append_child("tr");
 
