@@ -35,8 +35,7 @@ void Downloader::download(std::string const& dir, std::string const& file) {
 }
 
 void Downloader::download(std::string const& dir, std::vector<std::string> const& files) {
-
-	if (fileIndex_.size() == 0) {
+	if (fileIndex_.empty()) {
 		this->loadFileIndex();
 	}
 
@@ -80,7 +79,7 @@ void Downloader::download(std::string const& dir, std::vector<std::string> const
 }
 
 Downloader::FileIndex const& Downloader::fileIndex() {
-	if (fileIndex_.size() == 0) {
+	if (fileIndex_.empty()) {
 		this->loadFileIndex();
 	}
 	return fileIndex_;

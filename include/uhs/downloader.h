@@ -48,7 +48,7 @@ public:
 		httplib::Client client_;
 	};
 
-	using FileIndex = std::map<std::string const, FileMetadata const>;
+	using FileIndex = std::map<std::string, FileMetadata const>;
 
 	Downloader(Logger const& logger);
 	Downloader(Logger const& logger, std::unique_ptr<HTTPClient> httpClient);
