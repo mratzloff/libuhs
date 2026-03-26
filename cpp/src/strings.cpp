@@ -137,11 +137,11 @@ std::string toBase64(std::string const& s) {
 	static std::string const charset =
 	    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-	size_t end = 0;
 	size_t len = s.length();
+	size_t end = len - len % 3;
 	std::stringstream out;
 
-	for (std::size_t i = 0, end = len - len % 3; i < end; i += 3) {
+	for (std::size_t i = 0; i < end; i += 3) {
 		out << charset[(s[i] & 0xFC) >> 2];
 		out << charset[((s[i] & 0x03) << 4) + ((s[i + 1] & 0xF0) >> 4)];
 		out << charset[((s[i + 1] & 0x0F) << 2) + ((s[i + 2] & 0xC0) >> 6)];

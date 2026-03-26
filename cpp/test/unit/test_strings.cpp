@@ -153,13 +153,13 @@ TEST_CASE("Strings::split with string separator", "[strings]") {
 	}
 }
 
-// toBase64 has a variable shadowing bug: the outer `end` (initialized to 0)
-// is shadowed by the for-loop variable, so the padding block always fires
-// from index 0, corrupting output for inputs longer than 2 bytes. Skipping
-// until the bug is fixed.
 TEST_CASE("Strings::toBase64", "[strings]") {
 	REQUIRE(Strings::toBase64("f") == "Zg==");
 	REQUIRE(Strings::toBase64("fo") == "Zm8=");
+	REQUIRE(Strings::toBase64("foo") == "Zm9v");
+	REQUIRE(Strings::toBase64("foob") == "Zm9vYg==");
+	REQUIRE(Strings::toBase64("fooba") == "Zm9vYmE=");
+	REQUIRE(Strings::toBase64("foobar") == "Zm9vYmFy");
 }
 
 TEST_CASE("Strings::toInt", "[strings]") {
