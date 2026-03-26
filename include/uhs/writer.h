@@ -21,8 +21,8 @@ public:
 protected:
 	Codec const codec_;
 	Logger const logger_;
+	Options const options_;
 	std::ostream& out_;
-	Options const& options_;
 };
 
 } // namespace UHS

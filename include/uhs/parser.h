@@ -95,7 +95,7 @@ private:
 	std::string key_;
 	int lineOffset_ = 0;
 	Logger const logger_;
-	Options const& options_;
+	Options const options_;
 	NodeRangeList parents_;
 	std::unique_ptr<Tokenizer> tokenizer_ = nullptr;
 
