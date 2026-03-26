@@ -16,9 +16,9 @@ namespace UHS {
 static std::string writeUHS(
     std::shared_ptr<Document> document, Options const& options = {}) {
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	std::ostringstream out;
-	UHSWriter writer(logger, out, options);
+	UHSWriter writer{logger, out, options};
 	writer.write(document);
 	return out.str();
 }
@@ -116,10 +116,10 @@ TEST_CASE("UHSWriter reset clears state", "[writer][uhs]") {
 	auto textNode = TextNode::create("A");
 	group->appendChild(textNode);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out1;
-	UHSWriter writer(logger, out1, options);
+	UHSWriter writer{logger, out1, options};
 	writer.write(document);
 
 	writer.reset();

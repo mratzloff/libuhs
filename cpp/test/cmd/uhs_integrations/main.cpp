@@ -31,24 +31,24 @@ int main(int argc, char* argv[]) {
 
 		auto htmlData = UHS::writeHTML(parsed);
 		auto htmlPath = htmlDir + "/" + entry.filename + ".html";
-		std::ofstream htmlOut(htmlPath);
+		std::ofstream htmlOut{htmlPath};
 		htmlOut.write(htmlData.data(), htmlData.size());
 		std::cout << htmlPath << std::endl;
 
 		auto jsonData = UHS::writeJSON(parsed);
 		auto jsonPath = jsonDir + "/" + entry.filename + ".json";
-		std::ofstream jsonOut(jsonPath);
+		std::ofstream jsonOut{jsonPath};
 		jsonOut.write(jsonData.data(), jsonData.size());
 		std::cout << jsonPath << std::endl;
 
 		auto uhsData = UHS::writeUHS(parsed, options);
 		auto uhsPath = uhsDir + "/" + entry.filename + ".uhs";
-		std::ofstream uhsOut(uhsPath, std::ios::binary);
+		std::ofstream uhsOut{uhsPath, std::ios::binary};
 		uhsOut.write(uhsData.data(), uhsData.size());
 		std::cout << uhsPath << std::endl;
 
 		auto uhsSourcePath = uhsSourceDir + "/" + entry.filename + ".uhs";
-		std::ofstream uhsSourceOut(uhsSourcePath, std::ios::binary);
+		std::ofstream uhsSourceOut{uhsSourcePath, std::ios::binary};
 		uhsSourceOut.write(sourceData.data(), sourceData.size());
 		std::cout << uhsSourcePath << std::endl;
 	}

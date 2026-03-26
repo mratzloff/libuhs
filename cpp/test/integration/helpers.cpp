@@ -90,7 +90,7 @@ std::string firstTextBody(std::shared_ptr<Element> element) {
 }
 
 std::string readFile(std::string const& path) {
-	std::ifstream file(path, std::ios::binary);
+	std::ifstream file{path, std::ios::binary};
 	if (!file) {
 		throw std::runtime_error("could not open file: " + path);
 	}
@@ -102,37 +102,37 @@ std::shared_ptr<Document> roundTrip(
     std::shared_ptr<Document> document, Options const& options) {
 
 	auto uhsData = writeUHS(document, options);
-	Logger logger(LogLevel::None);
-	Parser parser(logger, options);
-	std::istringstream in(uhsData);
+	Logger logger{LogLevel::None};
+	Parser parser{logger, options};
+	std::istringstream in{uhsData};
 
 	return parser.parse(in);
 }
 
 std::string writeHTML(std::shared_ptr<Document> document) {
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	HTMLWriter writer(logger, out, options);
+	HTMLWriter writer{logger, out, options};
 	writer.write(document);
 
 	return out.str();
 }
 
 std::string writeJSON(std::shared_ptr<Document> document) {
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 	writer.write(document);
 
 	return out.str();
 }
 
 std::string writeUHS(std::shared_ptr<Document> document, Options const& options) {
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	std::ostringstream out;
-	UHSWriter writer(logger, out, options);
+	UHSWriter writer{logger, out, options};
 	writer.write(document);
 
 	return out.str();

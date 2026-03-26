@@ -12,11 +12,11 @@ namespace UHS {
 // The pipe reader runs on a background thread.
 static std::vector<std::unique_ptr<Token const>> tokenizeString(
     std::string const& input) {
-	std::istringstream stream(input);
-	Pipe pipe(stream);
-	Tokenizer tokenizer(pipe);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
+	Tokenizer tokenizer{pipe};
 
-	std::thread reader([&pipe] { pipe.read(); });
+	std::thread reader{[&pipe] { pipe.read(); }};
 
 	std::vector<std::unique_ptr<Token const>> tokens;
 	while (tokenizer.hasNext()) {

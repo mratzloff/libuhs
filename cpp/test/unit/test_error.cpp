@@ -7,12 +7,12 @@
 namespace UHS {
 
 TEST_CASE("Error::string", "[error]") {
-	Error err("something went wrong");
+	Error err{"something went wrong"};
 	REQUIRE(err.string() == "something went wrong");
 }
 
 TEST_CASE("Error with format args", "[error]") {
-	Error err("value is %d", 42);
+	Error err{"value is %d", 42};
 	REQUIRE(err.string() == "value is 42");
 }
 

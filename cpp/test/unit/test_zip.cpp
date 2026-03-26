@@ -13,37 +13,37 @@ TEST_CASE("Zip::isZip detects valid ZIP signature", "[zip]") {
 	zipData[2] = '\x03';
 	zipData[3] = '\x04';
 
-	Zip zip(zipData);
+	Zip zip{zipData};
 	REQUIRE(zip.isZip());
 }
 
 TEST_CASE("Zip::isZip rejects non-ZIP data", "[zip]") {
 	std::string notZip = "This is not a ZIP file at all!";
-	Zip zip(notZip);
+	Zip zip{notZip};
 	REQUIRE_FALSE(zip.isZip());
 }
 
 TEST_CASE("Zip::isZip rejects null bytes", "[zip]") {
 	std::string nullBytes(4, '\0');
-	Zip zip(nullBytes);
+	Zip zip{nullBytes};
 	REQUIRE_FALSE(zip.isZip());
 }
 
 TEST_CASE("Zip::unzip throws for non-ZIP data", "[zip]") {
 	std::string notZip = "Not a ZIP file";
-	Zip zip(notZip);
+	Zip zip{notZip};
 	REQUIRE_THROWS_AS(zip.unzip("/tmp"), FileError);
 }
 
 TEST_CASE("Zip::isZip throws for data too short for signature", "[zip]") {
 	std::string tooShort = "PK";
-	Zip zip(tooShort);
+	Zip zip{tooShort};
 	REQUIRE_THROWS_AS(zip.isZip(), FileError);
 }
 
 TEST_CASE("Zip::isZip throws for empty data", "[zip]") {
 	std::string empty;
-	Zip zip(empty);
+	Zip zip{empty};
 	REQUIRE_THROWS_AS(zip.isZip(), FileError);
 }
 
@@ -55,7 +55,7 @@ TEST_CASE("Zip::unzip throws for truncated ZIP header", "[zip]") {
 	truncated[2] = '\x03';
 	truncated[3] = '\x04';
 
-	Zip zip(truncated);
+	Zip zip{truncated};
 	REQUIRE_THROWS_AS(zip.unzip("/tmp"), FileError);
 }
 

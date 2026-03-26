@@ -8,7 +8,7 @@
 namespace UHS {
 
 TEST_CASE("ParseError formatting", "[error][parse_error]") {
-	ParseError err(5, 10, "unexpected token");
+	ParseError err{5, 10, "unexpected token"};
 	REQUIRE(std::string(err.what()).find("line 5") != std::string::npos);
 	REQUIRE(std::string(err.what()).find("column 10") != std::string::npos);
 	REQUIRE(std::string(err.what()).find("unexpected token") != std::string::npos);

@@ -12,9 +12,9 @@ TEST_CASE("Parser construction does not alter localtime behavior", "[parser]") {
 	std::tm before{};
 	localtime_r(&now, &before);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
-	Parser parser(logger, options);
+	Parser parser{logger, options};
 
 	std::tm after{};
 	localtime_r(&now, &after);

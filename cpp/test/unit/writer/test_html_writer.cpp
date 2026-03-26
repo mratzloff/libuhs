@@ -14,10 +14,10 @@
 namespace UHS {
 
 static std::string writeHTML(std::shared_ptr<Document> document) {
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	HTMLWriter writer(logger, out, options);
+	HTMLWriter writer{logger, out, options};
 	writer.write(document);
 	return out.str();
 }

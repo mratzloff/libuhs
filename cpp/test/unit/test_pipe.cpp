@@ -9,8 +9,8 @@ namespace UHS {
 
 TEST_CASE("Pipe reads all data from stream", "[pipe]") {
 	std::string input = "hello world";
-	std::istringstream stream(input);
-	Pipe pipe(stream);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
 
 	std::string collected;
 	pipe.addHandler([&](char const* buffer, std::streamsize length) {
@@ -25,8 +25,8 @@ TEST_CASE("Pipe reads all data from stream", "[pipe]") {
 TEST_CASE("Pipe reads data in chunks", "[pipe]") {
 	// Create a string larger than Pipe::ReadLength (1024) to force chunking
 	std::string input(3000, 'x');
-	std::istringstream stream(input);
-	Pipe pipe(stream);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
 
 	int callCount = 0;
 	std::string collected;
@@ -43,8 +43,8 @@ TEST_CASE("Pipe reads data in chunks", "[pipe]") {
 
 TEST_CASE("Pipe invokes multiple handlers", "[pipe]") {
 	std::string input = "test";
-	std::istringstream stream(input);
-	Pipe pipe(stream);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
 
 	std::string collected1;
 	std::string collected2;
@@ -63,8 +63,8 @@ TEST_CASE("Pipe invokes multiple handlers", "[pipe]") {
 
 TEST_CASE("Pipe captures handler exceptions", "[pipe]") {
 	std::string input = "data";
-	std::istringstream stream(input);
-	Pipe pipe(stream);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
 
 	pipe.addHandler([](char const*, std::streamsize) { throw Error("handler error"); });
 
@@ -75,8 +75,8 @@ TEST_CASE("Pipe captures handler exceptions", "[pipe]") {
 
 TEST_CASE("Pipe::eof after full read", "[pipe]") {
 	std::string input = "short";
-	std::istringstream stream(input);
-	Pipe pipe(stream);
+	std::istringstream stream{input};
+	Pipe pipe{stream};
 
 	pipe.addHandler([](char const*, std::streamsize) {});
 	pipe.read();
@@ -85,8 +85,8 @@ TEST_CASE("Pipe::eof after full read", "[pipe]") {
 }
 
 TEST_CASE("Pipe handles empty stream", "[pipe]") {
-	std::istringstream stream("");
-	Pipe pipe(stream);
+	std::istringstream stream{""};
+	Pipe pipe{stream};
 
 	std::string collected;
 	pipe.addHandler([&](char const* buffer, std::streamsize length) {

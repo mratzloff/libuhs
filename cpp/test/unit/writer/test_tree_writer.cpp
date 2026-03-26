@@ -17,10 +17,10 @@ TEST_CASE("TreeWriter outputs document title", "[writer][tree]") {
 	auto document = Document::create(VersionType::Version96a);
 	document->title("Test Game");
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	TreeWriter writer(logger, out, options);
+	TreeWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -41,10 +41,10 @@ TEST_CASE("TreeWriter outputs element types", "[writer][tree]") {
 	hint->title("Puzzle");
 	subject->appendChild(hint);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	TreeWriter writer(logger, out, options);
+	TreeWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -73,10 +73,10 @@ TEST_CASE("TreeWriter outputs text nodes", "[writer][tree]") {
 	auto textNode = TextNode::create("This is a hint.");
 	group->appendChild(textNode);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	TreeWriter writer(logger, out, options);
+	TreeWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -103,10 +103,10 @@ TEST_CASE("TreeWriter truncates long text", "[writer][tree]") {
 	auto textNode = TextNode::create(longText);
 	group->appendChild(textNode);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	TreeWriter writer(logger, out, options);
+	TreeWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -122,10 +122,10 @@ TEST_CASE("TreeWriter draws scaffold for nested nodes", "[writer][tree]") {
 	subject->title("Sub");
 	document->appendChild(subject);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	TreeWriter writer(logger, out, options);
+	TreeWriter writer{logger, out, options};
 
 	writer.write(document);
 

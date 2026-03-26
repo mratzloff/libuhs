@@ -20,10 +20,10 @@ TEST_CASE("JSONWriter outputs valid JSON with document", "[writer][json]") {
 	auto document = Document::create(VersionType::Version96a);
 	document->title("Test Game");
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -41,10 +41,10 @@ TEST_CASE("JSONWriter includes validChecksum for non-88a", "[writer][json]") {
 	document->title("Game");
 	document->validChecksum(true);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -61,10 +61,10 @@ TEST_CASE("JSONWriter serializes elements", "[writer][json]") {
 	subject->title("Chapter 1");
 	document->appendChild(subject);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -92,10 +92,10 @@ TEST_CASE("JSONWriter serializes text nodes with format attributes", "[writer][j
 	auto textNode = TextNode::create("Hello", TextFormat::Monospace);
 	group->appendChild(textNode);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -110,10 +110,10 @@ TEST_CASE("JSONWriter serializes element attributes", "[writer][json]") {
 	document->title("Game");
 	document->attr("author", "Test Author");
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -132,10 +132,10 @@ TEST_CASE("JSONWriter serializes element visibility", "[writer][json]") {
 	element->visibility(VisibilityType::RegisteredOnly);
 	document->appendChild(element);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -164,10 +164,10 @@ TEST_CASE("JSONWriter serializes break nodes as separator", "[writer][json]") {
 	auto breakNode = BreakNode::create();
 	hint->appendChild(breakNode);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	writer.write(document);
 
@@ -188,10 +188,10 @@ TEST_CASE("JSONWriter handles deeply nested document", "[writer][json]") {
 		parent = subject;
 	}
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	REQUIRE_NOTHROW(writer.write(document));
 	auto output = out.str();
@@ -211,11 +211,11 @@ TEST_CASE("JSONWriter throws FileError for invalid media directory", "[writer][j
 	image->body("fake png data");
 	subject->appendChild(image);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	options.mediaDir = "/nonexistent/path/to/media";
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	REQUIRE_THROWS_AS(writer.write(document), FileError);
 }
@@ -233,11 +233,11 @@ TEST_CASE("JSONWriter writes media to valid directory", "[writer][json]") {
 	image->body("fake png data");
 	subject->appendChild(image);
 
-	Logger logger(LogLevel::None);
+	Logger logger{LogLevel::None};
 	Options options;
 	options.mediaDir = std::filesystem::temp_directory_path().string();
 	std::ostringstream out;
-	JSONWriter writer(logger, out, options);
+	JSONWriter writer{logger, out, options};
 
 	REQUIRE_NOTHROW(writer.write(document));
 
