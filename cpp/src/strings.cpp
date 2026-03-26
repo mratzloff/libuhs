@@ -10,24 +10,33 @@
 namespace UHS::Strings {
 
 bool beginsWithAttachedPunctuation(std::string const& s) {
+	if (s.empty()) {
+		return false;
+	}
 	auto c = s.front();
 	return c == '\'' || c == '"' || c == ')' || c == ' ' || c == '?' || c == '!'
 	       || c == '.' || c == ',' || c == ';' || c == ':';
 }
 
 std::string& chomp(std::string& s, char c) {
-	if (s.back() == c) {
+	if (!s.empty() && s.back() == c) {
 		s.pop_back();
 	}
 	return s;
 }
 
 bool endsWithAttachedPunctuation(std::string const& s) {
+	if (s.empty()) {
+		return false;
+	}
 	auto c = s.back();
 	return c == '\'' || c == '"' || c == '(' || c == ' ';
 }
 
 bool endsWithFinalPunctuation(std::string const& s) {
+	if (s.empty()) {
+		return false;
+	}
 	auto c = s.back();
 	return c == '?' || c == '!' || c == '.';
 }

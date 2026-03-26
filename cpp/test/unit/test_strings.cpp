@@ -18,6 +18,7 @@ TEST_CASE("Strings::beginsWithAttachedPunctuation", "[strings]") {
 	REQUIRE(Strings::beginsWithAttachedPunctuation(" space"));
 	REQUIRE_FALSE(Strings::beginsWithAttachedPunctuation("hello"));
 	REQUIRE_FALSE(Strings::beginsWithAttachedPunctuation("123"));
+	REQUIRE_FALSE(Strings::beginsWithAttachedPunctuation(""));
 }
 
 TEST_CASE("Strings::endsWithAttachedPunctuation", "[strings]") {
@@ -27,6 +28,7 @@ TEST_CASE("Strings::endsWithAttachedPunctuation", "[strings]") {
 	REQUIRE(Strings::endsWithAttachedPunctuation("trailing "));
 	REQUIRE_FALSE(Strings::endsWithAttachedPunctuation("hello"));
 	REQUIRE_FALSE(Strings::endsWithAttachedPunctuation("end."));
+	REQUIRE_FALSE(Strings::endsWithAttachedPunctuation(""));
 }
 
 TEST_CASE("Strings::endsWithFinalPunctuation", "[strings]") {
@@ -35,6 +37,7 @@ TEST_CASE("Strings::endsWithFinalPunctuation", "[strings]") {
 	REQUIRE(Strings::endsWithFinalPunctuation("wow!"));
 	REQUIRE_FALSE(Strings::endsWithFinalPunctuation("hello"));
 	REQUIRE_FALSE(Strings::endsWithFinalPunctuation("trail,"));
+	REQUIRE_FALSE(Strings::endsWithFinalPunctuation(""));
 }
 
 TEST_CASE("Strings::chomp", "[strings]") {
@@ -49,6 +52,10 @@ TEST_CASE("Strings::chomp", "[strings]") {
 	std::string s3 = "path/";
 	Strings::chomp(s3, '/');
 	REQUIRE(s3 == "path");
+
+	std::string s4;
+	Strings::chomp(s4, '\n');
+	REQUIRE(s4.empty());
 }
 
 TEST_CASE("Strings::hex", "[strings]") {
