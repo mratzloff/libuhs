@@ -929,4 +929,79 @@ describe("Viewport", () => {
             expect(menu?.classList.contains("open")).toBe(false);
         });
     });
+
+    // ── window.uhs API ──────────────────────────────────────────────
+
+    describe("window.uhs", () => {
+        it("exposes back function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(window.uhs).toBeDefined();
+            expect(typeof window.uhs.back).toBe("function");
+        });
+
+        it("exposes forward function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(typeof window.uhs.forward).toBe("function");
+        });
+
+        it("exposes home function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(typeof window.uhs.home).toBe("function");
+        });
+
+        it("exposes search function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(typeof window.uhs.search).toBe("function");
+        });
+
+        it("back navigates to previous view", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            expect(getHeading()).toBe("The Cellar");
+
+            window.uhs.back();
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
+        });
+
+        it("forward navigates to next view", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            window.uhs.back();
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
+
+            window.uhs.forward();
+            expect(getHeading()).toBe("The Cellar");
+        });
+
+        it("home navigates to home view", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            expect(getHeading()).toBe("The Cellar");
+
+            window.uhs.home();
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
+        });
+
+        it("search displays results", () => {
+            buildFixture();
+            new Viewport();
+
+            window.uhs.search("trapdoor");
+            expect(getHeading()).toBe("Search: trapdoor");
+        });
+    });
 });

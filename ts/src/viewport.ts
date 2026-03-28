@@ -2,128 +2,47 @@ import { HOME_ID } from "./constants";
 import { History, HistoryState } from "./history";
 import search from "./search";
 
+interface API {
+    back: () => void;
+    forward: () => void;
+    home: () => void;
+    search: (keywords: string) => void;
+}
+
+declare global {
+    interface Window {
+        uhs: API;
+    }
+}
+
 const ViewType = {
     Hint: "hint",
     Search: "search",
 };
 
 class Viewport {
-    private backButton: HTMLElement;
-    private forwardButton: HTMLElement;
-    private history: History;
-    private tableToggle: HTMLInputElement;
-    private viewport: HTMLElement;
-
     public static initOnReady() {
         document.addEventListener("DOMContentLoaded", () => new Viewport());
     }
 
     public constructor() {
         this.history = new History();
-
-        // Create nav
-        const nav = document.createElement("nav");
-        nav.id = "nav";
-
-        // Create back button
-        this.backButton = document.createElement("button");
-        this.backButton.id = "back";
-        this.backButton.setAttribute("disabled", "true");
-        this.backButton.addEventListener("click", () => this.back());
-        nav.appendChild(this.backButton);
-
-        // Create forward button
-        this.forwardButton = document.createElement("button");
-        this.forwardButton.id = "forward";
-        this.forwardButton.setAttribute("disabled", "true");
-        this.forwardButton.addEventListener("click", () => this.forward());
-        nav.appendChild(this.forwardButton);
-
-        // Create home button
-        const homeButton = document.createElement("button");
-        homeButton.id = "home";
-        homeButton.addEventListener("click", () => this.home());
-        nav.appendChild(homeButton);
-
-        // Create spacer
-        const spacer = document.createElement("div");
-        spacer.classList.add("spacer");
-        nav.appendChild(spacer);
-
-        // Create search field
-        const searchField = document.createElement("input");
-        searchField.type = "search";
-        searchField.placeholder = "Search";
-        searchField.addEventListener("keydown", e => {
-            if (e.key !== "Enter") {
-                return;
-            }
-            const keywords = (e.target as HTMLInputElement).value.trim();
-            if (keywords.length > 0) {
-                this.go({ type: ViewType.Search, locator: keywords });
-            }
-        });
-        nav.appendChild(searchField);
-
-        // Create options menu button
-        const optionsButton = document.createElement("button");
-        optionsButton.id = "options";
-        optionsButton.addEventListener("click", () => {
-            optionsMenu.classList.toggle("open");
-            this.viewport.classList.toggle("options-open");
-        });
-        nav.appendChild(optionsButton);
-
-        // Append nav
-        document.body.appendChild(nav);
-
-        // Create options menu
-        const optionsMenuWrapper = document.createElement("div");
-        optionsMenuWrapper.id = "options-menu-wrapper";
-
-        const optionsMenu = document.createElement("div");
-        optionsMenu.id = "options-menu";
-
-        const tableToggleLabel = document.createElement("label");
-        tableToggleLabel.classList.add("toggle");
-
-        const tableToggleText = document.createElement("span");
-        tableToggleText.classList.add("toggle-label");
-        tableToggleText.textContent = "HTML tables";
-        tableToggleLabel.appendChild(tableToggleText);
-
-        this.tableToggle = document.createElement("input");
-        this.tableToggle.type = "checkbox";
-        this.tableToggle.checked =
-            sessionStorage.getItem("option.table.mode") === "html";
-        this.tableToggle.addEventListener("change", () => {
-            const mode = this.tableToggle.checked ? "html" : "text";
-            sessionStorage.setItem("option.table.mode", mode);
-            this.applyTableMode();
-        });
-        tableToggleLabel.appendChild(this.tableToggle);
-
-        const toggleTrack = document.createElement("span");
-        toggleTrack.classList.add("toggle-track");
-        tableToggleLabel.appendChild(toggleTrack);
-
-        optionsMenu.appendChild(tableToggleLabel);
-        optionsMenuWrapper.appendChild(optionsMenu);
-        document.body.appendChild(optionsMenuWrapper);
-
-        // Create viewport
-        this.viewport = document.createElement("div");
-        this.viewport.id = "viewport";
-        document.body.appendChild(this.viewport);
-
-        // Handle history changes
         this.history.addEventListener("change", event => {
             this.view((event as CustomEvent).detail);
         });
 
-        // Go to home view
+        this.createNav();
+        this.createOptionsMenu();
+        this.createViewport();
+        this.exposeAPI();
         this.home();
     }
+
+    private backButton!: HTMLElement;
+    private forwardButton!: HTMLElement;
+    private history: History;
+    private tableToggle!: HTMLInputElement;
+    private viewport!: HTMLElement;
 
     private applyTableMode(): void {
         const showHtml = this.tableToggle.checked;
@@ -206,6 +125,92 @@ class Viewport {
         });
     }
 
+    private createNav(): void {
+        const nav = document.createElement("nav");
+        nav.id = "nav";
+
+        this.backButton = document.createElement("button");
+        this.backButton.id = "back";
+        this.backButton.setAttribute("disabled", "true");
+        this.backButton.addEventListener("click", () => this.back());
+        nav.appendChild(this.backButton);
+
+        this.forwardButton = document.createElement("button");
+        this.forwardButton.id = "forward";
+        this.forwardButton.setAttribute("disabled", "true");
+        this.forwardButton.addEventListener("click", () => this.forward());
+        nav.appendChild(this.forwardButton);
+
+        const homeButton = document.createElement("button");
+        homeButton.id = "home";
+        homeButton.addEventListener("click", () => this.home());
+        nav.appendChild(homeButton);
+
+        const spacer = document.createElement("div");
+        spacer.classList.add("spacer");
+        nav.appendChild(spacer);
+
+        const searchField = document.createElement("input");
+        searchField.type = "search";
+        searchField.placeholder = "Search";
+        searchField.addEventListener("keydown", e => {
+            if (e.key !== "Enter") {
+                return;
+            }
+            const keywords = (e.target as HTMLInputElement).value.trim();
+            if (keywords.length > 0) {
+                this.go({ type: ViewType.Search, locator: keywords });
+            }
+        });
+        nav.appendChild(searchField);
+
+        const optionsButton = document.createElement("button");
+        optionsButton.id = "options";
+        optionsButton.addEventListener("click", () => {
+            const menu = document.getElementById("options-menu");
+            menu?.classList.toggle("open");
+            this.viewport.classList.toggle("options-open");
+        });
+        nav.appendChild(optionsButton);
+
+        document.body.appendChild(nav);
+    }
+
+    private createOptionsMenu(): void {
+        const wrapper = document.createElement("div");
+        wrapper.id = "options-menu-wrapper";
+
+        const menu = document.createElement("div");
+        menu.id = "options-menu";
+
+        const label = document.createElement("label");
+        label.classList.add("toggle");
+
+        const text = document.createElement("span");
+        text.classList.add("toggle-label");
+        text.textContent = "HTML tables";
+        label.appendChild(text);
+
+        this.tableToggle = document.createElement("input");
+        this.tableToggle.type = "checkbox";
+        this.tableToggle.checked =
+            sessionStorage.getItem("option.table.mode") === "html";
+        this.tableToggle.addEventListener("change", () => {
+            const mode = this.tableToggle.checked ? "html" : "text";
+            sessionStorage.setItem("option.table.mode", mode);
+            this.applyTableMode();
+        });
+        label.appendChild(this.tableToggle);
+
+        const track = document.createElement("span");
+        track.classList.add("toggle-track");
+        label.appendChild(track);
+
+        menu.appendChild(label);
+        wrapper.appendChild(menu);
+        document.body.appendChild(wrapper);
+    }
+
     private createOverlayClickHandler(element: HTMLElement): void {
         const overlays = element.querySelectorAll("area[data-overlay]");
         overlays.forEach(overlay => {
@@ -242,12 +247,54 @@ class Viewport {
         });
     }
 
+    private createViewport(): void {
+        this.viewport = document.createElement("div");
+        this.viewport.id = "viewport";
+        document.body.appendChild(this.viewport);
+    }
+
+    private exposeAPI(): void {
+        window.uhs = {
+            back: () => this.back(),
+            forward: () => this.forward(),
+            home: () => this.home(),
+            search: (keywords: string) => this.search(keywords),
+        };
+    }
+
+    private findBreadcrumbs(element: HTMLElement): string[] {
+        const ancestors: string[] = [];
+        let ancestor: HTMLElement | null | undefined = element;
+
+        while (ancestor?.parentElement) {
+            ancestor = ancestor.parentElement;
+
+            const id = ancestor.getAttribute("data-id");
+            if (id == HOME_ID) {
+                break;
+            }
+            if (id) {
+                const title = this.findNodeTitle(ancestor);
+                if (title) {
+                    ancestors.push(title);
+                }
+            }
+        }
+
+        return ancestors.reverse();
+    }
+
     private findListItemChildren(
         element: HTMLElement,
     ): NodeListOf<HTMLElement> {
         return element.querySelectorAll(
             ":scope > ol > li",
         ) as NodeListOf<HTMLElement>;
+    }
+
+    private findNodeTitle(element: HTMLElement): string | null {
+        const titleNode = element.querySelector(":scope > div > span.title");
+        return titleNode?.textContent || null;
     }
 
     private forward(): void {
@@ -386,36 +433,26 @@ class Viewport {
         }
     }
 
+    private renderBreadcrumbs(element: HTMLElement): HTMLUListElement | null {
+        const breadcrumbs = this.findBreadcrumbs(element);
+        if (breadcrumbs.length == 0) {
+            return null;
+        }
+
+        const list = document.createElement("ul");
+        list.classList.add("breadcrumbs");
+        breadcrumbs.forEach(breadcrumb => {
+            const item = document.createElement("li");
+            item.appendChild(document.createTextNode(breadcrumb));
+            list.appendChild(item);
+        });
+
+        return list;
+    }
+
     private renderElement(element: HTMLElement): void {
         this.viewport.appendChild(element);
         this.applyTableMode();
-    }
-
-    private findBreadcrumbs(element: HTMLElement): string[] {
-        const ancestors: string[] = [];
-        let ancestor: HTMLElement | null | undefined = element;
-
-        while (ancestor?.parentElement) {
-            ancestor = ancestor.parentElement;
-
-            const id = ancestor.getAttribute("data-id");
-            if (id == HOME_ID) {
-                break;
-            }
-            if (id) {
-                const title = this.findNodeTitle(ancestor);
-                if (title) {
-                    ancestors.push(title);
-                }
-            }
-        }
-
-        return ancestors.reverse();
-    }
-
-    private findNodeTitle(element: HTMLElement): string | null {
-        const titleNode = element.querySelector(":scope > div > span.title");
-        return titleNode?.textContent || null;
     }
 
     private renderSearchResult(result: HTMLElement): HTMLLIElement {
@@ -451,23 +488,6 @@ class Viewport {
         return item;
     }
 
-    private renderBreadcrumbs(element: HTMLElement): HTMLUListElement | null {
-        const breadcrumbs = this.findBreadcrumbs(element);
-        if (breadcrumbs.length == 0) {
-            return null;
-        }
-
-        const list = document.createElement("ul");
-        list.classList.add("breadcrumbs");
-        breadcrumbs.forEach(breadcrumb => {
-            const item = document.createElement("li");
-            item.appendChild(document.createTextNode(breadcrumb));
-            list.appendChild(item);
-        });
-
-        return list;
-    }
-
     private replaceIdsWithDataAttributes(element: HTMLElement): void {
         if (element.id) {
             element.setAttribute("data-id", element.id);
@@ -499,6 +519,14 @@ class Viewport {
             this.viewport.removeChild(this.viewport.lastChild);
         }
         this.removeFooter();
+    }
+
+    private scrollBottom(): void {
+        scrollTo(0, document.body.scrollHeight);
+    }
+
+    private scrollTop(): void {
+        scrollTo(0, 0);
     }
 
     private search(keywords: string): void {
@@ -538,24 +566,16 @@ class Viewport {
         sessionStorage.setItem(key, value.toString());
     }
 
+    private show(): void {
+        this.viewport.style.display = "block";
+    }
+
     private showOverlay(id: string): void {
         const overlay = this.viewport.querySelector(`[data-id="${id}"]`);
         if (!overlay) {
             throw new Error("could not find overlay");
         }
         overlay.removeAttribute("hidden");
-    }
-
-    private show(): void {
-        this.viewport.style.display = "block";
-    }
-
-    private scrollBottom(): void {
-        scrollTo(0, document.body.scrollHeight);
-    }
-
-    private scrollTop(): void {
-        scrollTo(0, 0);
     }
 
     private updateHintProgress(value: number): void {
