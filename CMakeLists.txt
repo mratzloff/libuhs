@@ -305,14 +305,6 @@ set_target_properties (uhs_bin
 target_include_directories (uhs_bin PRIVATE ${argh_includes})
 target_link_libraries (uhs_bin PRIVATE uhs)
 
-# bin/uhsc
-add_executable (uhsc_bin c/src/cmd/uhsc/main.c)
-set_target_properties (uhsc_bin
-	PROPERTIES
-		LINKER_LANGUAGE C
-		OUTPUT_NAME uhsc)
-target_link_libraries (uhsc_bin PRIVATE uhs)
-
 # make clean-all
 add_custom_target (clean-all
 	COMMAND rm -f *.cmake
