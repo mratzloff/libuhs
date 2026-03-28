@@ -65,7 +65,12 @@ int convert(int argc, char const* argv[]) {
 	}
 	std::string infile = argv[argc - 1];
 
-	auto ok = write(logger, format, infile, outfile, options);
+	bool ok;
+	if (outfile.empty()) {
+		ok = write(logger, format, infile, options);
+	} else {
+		ok = write(logger, format, infile, std::filesystem::path{outfile}, options);
+	}
 	if (!ok) {
 		return Err;
 	}

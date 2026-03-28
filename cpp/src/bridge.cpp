@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <cstring>
 #include <vector>
 
 extern "C" {
@@ -10,12 +12,39 @@ extern "C" {
 #include "uhs/error/http_error.h"
 #include "uhs/uhs_write.h"
 
-int uhs_write(char const* format, char const* infile, char const* outfile) {
+int uhs_write_buffer(char const* format, char const* data, size_t length, char** output) {
 	UHS::Logger logger{UHS::LogLevel::Error};
-	auto ok = write(logger, format, infile, outfile);
-	if (!ok) {
+	std::string result;
+	if (!UHS::write(logger, format, data, length, result)) {
 		return -1;
 	}
+	*output = static_cast<char*>(std::malloc(result.size() + 1));
+	if (*output == nullptr) {
+		return -1;
+	}
+	std::memcpy(*output, result.c_str(), result.size() + 1);
+	return 0;
+}
+
+int uhs_write_file(char const* format, char const* infile, char const* outfile) {
+	UHS::Logger logger{UHS::LogLevel::Error};
+	if (!UHS::write(logger, format, infile, std::filesystem::path{outfile})) {
+		return -1;
+	}
+	return 0;
+}
+
+int uhs_write_string(char const* format, char const* infile, char** output) {
+	UHS::Logger logger{UHS::LogLevel::Error};
+	std::string result;
+	if (!UHS::write(logger, format, infile, result)) {
+		return -1;
+	}
+	*output = static_cast<char*>(std::malloc(result.size() + 1));
+	if (*output == nullptr) {
+		return -1;
+	}
+	std::memcpy(*output, result.c_str(), result.size() + 1);
 	return 0;
 }
 

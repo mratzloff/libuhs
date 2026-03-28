@@ -185,6 +185,7 @@ set (uhs_test_sources
 	cpp/test/unit/node/test_break_node.cpp
 	cpp/test/unit/node/test_group_node.cpp
 	cpp/test/unit/node/test_text_node.cpp
+	cpp/test/unit/test_bridge.cpp
 	cpp/test/unit/test_codec.cpp
 	cpp/test/unit/test_crc.cpp
 	cpp/test/unit/test_document.cpp
@@ -199,6 +200,7 @@ set (uhs_test_sources
 	cpp/test/unit/test_text_format.cpp
 	cpp/test/unit/test_token.cpp
 	cpp/test/unit/test_tokenizer.cpp
+	cpp/test/unit/test_uhs.cpp
 	cpp/test/unit/test_zip.cpp
 	cpp/test/unit/traits/test_attributes.cpp
 	cpp/test/unit/traits/test_body.cpp
