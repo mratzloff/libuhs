@@ -1041,6 +1041,49 @@ describe("Viewport", () => {
             expect(window.uhs.hasNext()).toBe(true);
         });
 
+        it("onHistoryChange is called on navigation", () => {
+            buildFixture();
+            new Viewport();
+
+            let callCount = 0;
+            let lastHasPrevious = false;
+            let lastHasNext = false;
+            window.uhs.onHistoryChange = (hasPrevious, hasNext) => {
+                callCount++;
+                lastHasPrevious = hasPrevious;
+                lastHasNext = hasNext;
+            };
+
+            clickTitle("The Cellar");
+            expect(callCount).toBeGreaterThan(0);
+            expect(lastHasPrevious).toBe(true);
+            expect(lastHasNext).toBe(false);
+        });
+
+        it("onHistoryChange receives correct state after back", () => {
+            buildFixture();
+            new Viewport();
+
+            let lastHasPrevious = false;
+            let lastHasNext = false;
+            window.uhs.onHistoryChange = (hasPrevious, hasNext) => {
+                lastHasPrevious = hasPrevious;
+                lastHasNext = hasNext;
+            };
+
+            clickTitle("The Cellar");
+            window.uhs.back();
+            expect(lastHasPrevious).toBe(false);
+            expect(lastHasNext).toBe(true);
+        });
+
+        it("onHistoryChange is null by default", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(window.uhs.onHistoryChange).toBeNull();
+        });
+
         it("search displays results", () => {
             buildFixture();
             new Viewport();

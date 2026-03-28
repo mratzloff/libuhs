@@ -2,12 +2,17 @@ import { HOME_ID } from "./constants";
 import { History, HistoryState } from "./history";
 import search from "./search";
 
+type HistoryChangeCallback =
+    | ((hasPrevious: boolean, hasNext: boolean) => void)
+    | null;
+
 interface API {
     back: () => void;
     forward: () => void;
     hasNext: () => boolean;
     hasPrevious: () => boolean;
     home: () => void;
+    onHistoryChange: HistoryChangeCallback;
     search: (keywords: string) => void;
 }
 
@@ -262,7 +267,12 @@ class Viewport {
             hasNext: () => this.history.hasNext(),
             hasPrevious: () => this.history.hasPrevious(),
             home: () => this.home(),
+            onHistoryChange: null,
             search: (keywords: string) => this.search(keywords),
+        };
+
+        this.history.onChange = (hasPrevious: boolean, hasNext: boolean) => {
+            window.uhs.onHistoryChange?.(hasPrevious, hasNext);
         };
     }
 

@@ -7,11 +7,12 @@ class History implements EventTarget {
     readonly indexKey = "history.index";
     readonly statesKey = "history.states";
 
-    private listeners: { [type: string]: ((event: Event) => void)[] } = {};
-
     constructor() {
         this.clear();
     }
+
+    public onChange: ((hasPrevious: boolean, hasNext: boolean) => void) | null =
+        null;
 
     public addEventListener(
         type: string,
@@ -62,6 +63,7 @@ class History implements EventTarget {
         this.dispatchEvent(
             new CustomEvent("change", { detail: states[newIndex] }),
         );
+        this.notifyChange();
     }
 
     public hasNext(): boolean {
@@ -89,6 +91,7 @@ class History implements EventTarget {
         states.push(state);
         this.setStates(states);
         this.setIndex(states.length - 1);
+        this.notifyChange();
     }
 
     public removeEventListener(
@@ -107,6 +110,8 @@ class History implements EventTarget {
             }
         }
     }
+
+    private listeners: { [type: string]: ((event: Event) => void)[] } = {};
 
     private getIndex(): number {
         let index = 0;
@@ -141,6 +146,10 @@ class History implements EventTarget {
 
     private isStateEqual(a: HistoryState, b: HistoryState): boolean {
         return a.type == b.type && a.locator == b.locator;
+    }
+
+    private notifyChange(): void {
+        this.onChange?.(this.hasPrevious(), this.hasNext());
     }
 
     private setIndex(index: number): void {
