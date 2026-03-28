@@ -5,6 +5,8 @@ import search from "./search";
 interface API {
     back: () => void;
     forward: () => void;
+    hasNext: () => boolean;
+    hasPrevious: () => boolean;
     home: () => void;
     search: (keywords: string) => void;
 }
@@ -257,6 +259,8 @@ class Viewport {
         window.uhs = {
             back: () => this.back(),
             forward: () => this.forward(),
+            hasNext: () => this.history.hasNext(),
+            hasPrevious: () => this.history.hasPrevious(),
             home: () => this.home(),
             search: (keywords: string) => this.search(keywords),
         };

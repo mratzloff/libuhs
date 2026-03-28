@@ -948,6 +948,20 @@ describe("Viewport", () => {
             expect(typeof window.uhs.forward).toBe("function");
         });
 
+        it("exposes hasNext function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(typeof window.uhs.hasNext).toBe("function");
+        });
+
+        it("exposes hasPrevious function", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(typeof window.uhs.hasPrevious).toBe("function");
+        });
+
         it("exposes home function", () => {
             buildFixture();
             new Viewport();
@@ -994,6 +1008,37 @@ describe("Viewport", () => {
 
             window.uhs.home();
             expect(getHeading()).toBe("Shadowed Passage Atlas");
+        });
+
+        it("hasNext returns false at initial state", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(window.uhs.hasNext()).toBe(false);
+        });
+
+        it("hasPrevious returns false at initial state", () => {
+            buildFixture();
+            new Viewport();
+
+            expect(window.uhs.hasPrevious()).toBe(false);
+        });
+
+        it("hasPrevious returns true after navigating", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            expect(window.uhs.hasPrevious()).toBe(true);
+        });
+
+        it("hasNext returns true after navigating back", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            window.uhs.back();
+            expect(window.uhs.hasNext()).toBe(true);
         });
 
         it("search displays results", () => {
