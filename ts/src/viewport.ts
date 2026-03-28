@@ -1,26 +1,6 @@
 import { HOME_ID } from "./constants";
-import { History, HistoryState } from "./history";
+import { History, HistoryChangeCallback, HistoryState } from "./history";
 import search from "./search";
-
-type HistoryChangeCallback =
-    | ((hasPrevious: boolean, hasNext: boolean) => void)
-    | null;
-
-interface API {
-    back: () => void;
-    forward: () => void;
-    hasNext: () => boolean;
-    hasPrevious: () => boolean;
-    home: () => void;
-    onHistoryChange: HistoryChangeCallback;
-    search: (keywords: string) => void;
-}
-
-declare global {
-    interface Window {
-        uhs: API;
-    }
-}
 
 const ViewType = {
     Hint: "hint",
@@ -28,21 +8,69 @@ const ViewType = {
 };
 
 class Viewport {
-    public static initOnReady() {
-        document.addEventListener("DOMContentLoaded", () => new Viewport());
-    }
-
     public constructor() {
         this.history = new History();
         this.history.addEventListener("change", event => {
             this.view((event as CustomEvent).detail);
         });
+        this.history.onChange = (hasPrevious, hasNext) => {
+            this.onHistoryChange?.(hasPrevious, hasNext);
+        };
 
         this.createNav();
         this.createOptionsMenu();
         this.createViewport();
-        this.exposeAPI();
         this.home();
+    }
+
+    public onHistoryChange: HistoryChangeCallback = null;
+
+    public back(): void {
+        this.history.back();
+        this.refreshHistoryButtons();
+        this.scrollTop();
+    }
+
+    public forward(): void {
+        this.history.forward();
+        this.refreshHistoryButtons();
+        this.scrollTop();
+    }
+
+    public hasNext(): boolean {
+        return this.history.hasNext();
+    }
+
+    public hasPrevious(): boolean {
+        return this.history.hasPrevious();
+    }
+
+    public home(): void {
+        this.go({ type: ViewType.Hint, locator: HOME_ID });
+    }
+
+    public search(keywords: string): void {
+        if (keywords.trim().length == 0) {
+            return;
+        }
+
+        this.reset();
+        const results = search(keywords);
+        const heading = document.createElement("h1");
+        heading.appendChild(document.createTextNode(`Search: ${keywords}`));
+        this.viewport.appendChild(heading);
+
+        if (results.length > 0) {
+            const list = document.createElement("ol");
+            list.classList.add("search-results");
+            results.forEach(result =>
+                list.appendChild(this.renderSearchResult(result)),
+            );
+            this.viewport.appendChild(list);
+        } else {
+            const text = document.createTextNode("No results found.");
+            this.viewport.appendChild(text);
+        }
     }
 
     private backButton!: HTMLElement;
@@ -60,12 +88,6 @@ class Viewport {
         this.viewport
             .querySelectorAll(".table-container > .option-text")
             .forEach(t => t.classList.toggle("hidden", showHtml));
-    }
-
-    private back(): void {
-        this.history.back();
-        this.refreshHistoryButtons();
-        this.scrollTop();
     }
 
     private cloneEntryPoint(id: string): HTMLElement {
@@ -260,22 +282,6 @@ class Viewport {
         document.body.appendChild(this.viewport);
     }
 
-    private exposeAPI(): void {
-        window.uhs = {
-            back: () => this.back(),
-            forward: () => this.forward(),
-            hasNext: () => this.history.hasNext(),
-            hasPrevious: () => this.history.hasPrevious(),
-            home: () => this.home(),
-            onHistoryChange: null,
-            search: (keywords: string) => this.search(keywords),
-        };
-
-        this.history.onChange = (hasPrevious: boolean, hasNext: boolean) => {
-            window.uhs.onHistoryChange?.(hasPrevious, hasNext);
-        };
-    }
-
     private findBreadcrumbs(element: HTMLElement): string[] {
         const ancestors: string[] = [];
         let ancestor: HTMLElement | null | undefined = element;
@@ -311,12 +317,6 @@ class Viewport {
         return titleNode?.textContent || null;
     }
 
-    private forward(): void {
-        this.history.forward();
-        this.refreshHistoryButtons();
-        this.scrollTop();
-    }
-
     private getHintCacheIndex(elementId: string): number {
         let index = 0;
 
@@ -347,10 +347,6 @@ class Viewport {
 
     private hide(): void {
         this.viewport.style.display = "none";
-    }
-
-    private home(): void {
-        this.go({ type: ViewType.Hint, locator: HOME_ID });
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -408,7 +404,7 @@ class Viewport {
         this.createTitleClickHandlers(element);
     }
 
-    private refreshHistoryButtons() {
+    private refreshHistoryButtons(): void {
         if (this.history.hasPrevious()) {
             this.backButton.removeAttribute("disabled");
         } else {
@@ -541,30 +537,6 @@ class Viewport {
 
     private scrollTop(): void {
         scrollTo(0, 0);
-    }
-
-    private search(keywords: string): void {
-        if (keywords.trim().length == 0) {
-            return;
-        }
-
-        this.reset();
-        const results = search(keywords);
-        const heading = document.createElement("h1");
-        heading.appendChild(document.createTextNode(`Search: ${keywords}`));
-        this.viewport.appendChild(heading);
-
-        if (results.length > 0) {
-            const list = document.createElement("ol");
-            list.classList.add("search-results");
-            results.forEach(result =>
-                list.appendChild(this.renderSearchResult(result)),
-            );
-            this.viewport.appendChild(list);
-        } else {
-            const text = document.createTextNode("No results found.");
-            this.viewport.appendChild(text);
-        }
     }
 
     private setButtonText(text: string): void {

@@ -1,3 +1,7 @@
+export type HistoryChangeCallback =
+    | ((hasPrevious: boolean, hasNext: boolean) => void)
+    | null;
+
 export interface HistoryState {
     type: string;
     locator: string;
@@ -11,8 +15,7 @@ class History implements EventTarget {
         this.clear();
     }
 
-    public onChange: ((hasPrevious: boolean, hasNext: boolean) => void) | null =
-        null;
+    public onChange: HistoryChangeCallback = null;
 
     public addEventListener(
         type: string,

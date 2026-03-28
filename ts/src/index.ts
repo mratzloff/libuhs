@@ -1,3 +1,7 @@
+import { publishAPI } from "./uhs";
 import Viewport from "./viewport";
 
-Viewport.initOnReady();
+document.addEventListener("DOMContentLoaded", () => {
+    const viewport = new Viewport();
+    publishAPI(viewport);
+});
