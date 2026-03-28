@@ -33,20 +33,37 @@ FetchContent_Declare (httplib_dep
 	GIT_TAG v0.31.0)
 FetchContent_MakeAvailable (httplib_dep)
 
+set (external_project_platform_args)
+if (CMAKE_MSVC_RUNTIME_LIBRARY)
+	list (APPEND external_project_platform_args
+		-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY})
+endif ()
+if (CMAKE_OSX_DEPLOYMENT_TARGET)
+	list (APPEND external_project_platform_args
+		-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${CMAKE_OSX_DEPLOYMENT_TARGET})
+endif ()
+if (CMAKE_TOOLCHAIN_FILE)
+	list (APPEND external_project_platform_args
+		-DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_TOOLCHAIN_FILE})
+endif ()
+
 set (jsoncpp_prefix ${FETCHCONTENT_BASE_DIR}/jsoncpp_dep)
+
+set (jsoncpp_cache_args
+	-DBUILD_OBJECT_LIBS:BOOL=OFF
+	-DBUILD_SHARED_LIBS:BOOL=OFF
+	-DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
+	-DJSONCPP_WITH_CMAKE_PACKAGE:BOOL=OFF
+	-DJSONCPP_WITH_PKGCONFIG_SUPPORT:BOOL=OFF
+	-DJSONCPP_WITH_POST_BUILD_UNITTEST:BOOL=OFF
+	-DJSONCPP_WITH_TESTS:BOOL=OFF
+	${external_project_platform_args})
 
 ExternalProject_Add (jsoncpp_dep
 	GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp
 	GIT_TAG 1.9.7
 	PREFIX ${jsoncpp_prefix}
-	CMAKE_CACHE_ARGS
-		-DBUILD_SHARED_LIBS:BOOL=OFF
-		-DBUILD_OBJECT_LIBS:BOOL=OFF
-		-DCMAKE_CXX_STANDARD:STRING=${CMAKE_CXX_STANDARD}
-		-DJSONCPP_WITH_CMAKE_PACKAGE:BOOL=OFF
-		-DJSONCPP_WITH_POST_BUILD_UNITTEST:BOOL=OFF
-		-DJSONCPP_WITH_PKGCONFIG_SUPPORT:BOOL=OFF
-		-DJSONCPP_WITH_TESTS:BOOL=OFF
+	CMAKE_CACHE_ARGS ${jsoncpp_cache_args}
 	INSTALL_COMMAND ""
 	LOG_OUTPUT_ON_FAILURE ON)
 
@@ -80,12 +97,15 @@ FetchContent_MakeAvailable (pugixml_dep)
 
 set (tinyformat_prefix ${FETCHCONTENT_BASE_DIR}/tinyformat_dep)
 
+set (tinyformat_cache_args
+	-DBUILD_TESTS:BOOL=OFF
+	${external_project_platform_args})
+
 ExternalProject_Add (tinyformat_dep
 	GIT_REPOSITORY https://github.com/mratzloff/tinyformat
 	GIT_TAG 9f6032683b2fb900a3de456f39a61da684704e8e
 	PREFIX ${tinyformat_prefix}
-	CMAKE_CACHE_ARGS
-		-DBUILD_TESTS:BOOL=OFF
+	CMAKE_CACHE_ARGS ${tinyformat_cache_args}
 	LOG_OUTPUT_ON_FAILURE ON)
 
 ExternalProject_Get_Property (tinyformat_dep SOURCE_DIR)
@@ -240,7 +260,7 @@ add_dependencies (js_includes js_minified)
 
 # lib/libuhs.a
 add_library (uhs STATIC ${uhs_sources})
-add_dependencies (uhs css_includes js_includes)
+add_dependencies (uhs css_includes js_includes jsoncpp_dep tinyformat_dep)
 link_directories (
 	${jsoncpp_lib}
 	${CMAKE_SOURCE_DIR}/lib)
