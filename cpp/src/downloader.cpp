@@ -96,7 +96,7 @@ void Downloader::loadFileIndex() {
 
 	auto numAdded = 0;
 	for (auto node = doc.child("uhsfiles").child("file"); node;
-	     node = node.next_sibling("file")) {
+	    node = node.next_sibling("file")) {
 
 		auto compressedSize = node.child("fsize").text().as_int();
 		std::string filename = node.child("fname").text().as_string();

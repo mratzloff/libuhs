@@ -10,7 +10,7 @@ std::ostream& operator<<(std::ostream& out, Token const& t) {
 	return out;
 }
 
-Token::Token(const TokenType tokenType, std::size_t offset, int line, std::size_t column,
+Token::Token(TokenType const tokenType, std::size_t offset, int line, std::size_t column,
     std::string value)
     : column_{column}, line_{line}, offset_{offset}, type_{tokenType}, value_{value} {}
 
@@ -133,7 +133,7 @@ Token::TypeMap::TypeMap() {
 	map_.try_emplace(TokenType::TextFormat, "TextFormat");
 }
 
-std::string Token::TypeMap::findByType(const TokenType type) const {
+std::string Token::TypeMap::findByType(TokenType const type) const {
 	return map_.at(type);
 }
 
