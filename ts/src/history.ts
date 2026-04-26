@@ -1,5 +1,9 @@
 export type HistoryChangeCallback =
-    | ((hasPrevious: boolean, hasNext: boolean) => void)
+    | ((
+          state: HistoryState | null,
+          hasPrevious: boolean,
+          hasNext: boolean,
+      ) => void)
     | null;
 
 export interface HistoryState {
@@ -16,6 +20,12 @@ class History implements EventTarget {
     }
 
     public onChange: HistoryChangeCallback = null;
+
+    public get state(): HistoryState | null {
+        const index = this.getIndex();
+        const states = this.getStates();
+        return states[index] ?? null;
+    }
 
     public addEventListener(
         type: string,
@@ -86,7 +96,7 @@ class History implements EventTarget {
         states = states.slice(0, index + 1);
 
         // Don't push same state twice
-        const last = states[index];
+        const last = states[states.length - 1];
         if (last && this.isStateEqual(last, state)) {
             states = states.slice(0, -1);
         }
@@ -112,6 +122,28 @@ class History implements EventTarget {
                 return;
             }
         }
+    }
+
+    public replaceState(state: HistoryState): void {
+        const states = this.getStates();
+        if (states.length == 0) {
+            states.push(state);
+        } else {
+            const index = this.getIndex();
+            states[index] = state;
+        }
+        this.setStates(states);
+        this.notifyChange();
+    }
+
+    public truncate(): void {
+        const index = this.getIndex();
+        const states = this.getStates();
+        if (index < 0 || index >= states.length) {
+            return;
+        }
+        states.splice(index);
+        this.setStates(states);
     }
 
     private listeners: { [type: string]: ((event: Event) => void)[] } = {};
@@ -152,7 +184,7 @@ class History implements EventTarget {
     }
 
     private notifyChange(): void {
-        this.onChange?.(this.hasPrevious(), this.hasNext());
+        this.onChange?.(this.state, this.hasPrevious(), this.hasNext());
     }
 
     private setIndex(index: number): void {

@@ -1,4 +1,4 @@
-import { HistoryChangeCallback } from "./history";
+import { HistoryChangeCallback, HistoryState } from "./history";
 import Viewport from "./viewport";
 
 interface API {
@@ -9,6 +9,7 @@ interface API {
     home: () => void;
     onHistoryChange: HistoryChangeCallback;
     search: (keywords: string) => void;
+    state: HistoryState | null;
     title: string;
 }
 
@@ -35,6 +36,9 @@ export function publishAPI(viewport: Viewport): void {
             viewport.onHistoryChange = callback;
         },
         search: (keywords: string) => viewport.search(keywords),
+        get state() {
+            return viewport.state;
+        },
         title,
     };
 }

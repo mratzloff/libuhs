@@ -13,8 +13,8 @@ class Viewport {
         this.history.addEventListener("change", event => {
             this.view((event as CustomEvent).detail);
         });
-        this.history.onChange = (hasPrevious, hasNext) => {
-            this.onHistoryChange?.(hasPrevious, hasNext);
+        this.history.onChange = (state, hasPrevious, hasNext) => {
+            this.onHistoryChange?.(state, hasPrevious, hasNext);
         };
 
         this.createNav();
@@ -25,7 +25,16 @@ class Viewport {
 
     public onHistoryChange: HistoryChangeCallback = null;
 
+    public get state(): HistoryState | null {
+        return this.history.state;
+    }
+
     public back(): void {
+        if (this.isSearchView()) {
+            this.resetSearch();
+            this.truncateSearchHistory();
+        }
+
         this.history.back();
         this.refreshHistoryButtons();
         this.scrollTop();
@@ -46,6 +55,10 @@ class Viewport {
     }
 
     public home(): void {
+        this.resetSearch();
+        if (this.isSearchView()) {
+            this.truncateSearchHistory();
+        }
         this.go({ type: ViewType.Hint, locator: HOME_ID });
     }
 
@@ -54,7 +67,7 @@ class Viewport {
             return;
         }
 
-        this.reset();
+        this.resetViewport();
         const results = search(keywords);
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(`Search: ${keywords}`));
@@ -76,6 +89,8 @@ class Viewport {
     private backButton!: HTMLElement;
     private forwardButton!: HTMLElement;
     private history: History;
+    private searchField!: HTMLInputElement;
+    private searchStarted = false;
     private tableToggle!: HTMLInputElement;
     private viewport!: HTMLElement;
 
@@ -179,19 +194,30 @@ class Viewport {
         spacer.classList.add("spacer");
         nav.appendChild(spacer);
 
-        const searchField = document.createElement("input");
-        searchField.type = "search";
-        searchField.placeholder = "Search";
-        searchField.addEventListener("keydown", e => {
-            if (e.key !== "Enter") {
-                return;
+        const searchContainer = document.createElement("search");
+        this.searchField = document.createElement("input");
+        this.searchField.minLength = 2;
+        this.searchField.type = "search";
+        this.searchField.placeholder = "Search";
+        this.searchField.addEventListener("input", e => {
+            if (!(e instanceof InputEvent)) {
+                // Reset button
+                this.back();
             }
+
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
-                this.go({ type: ViewType.Search, locator: keywords });
+                const state = { type: ViewType.Search, locator: keywords };
+                if (this.searchStarted) {
+                    this.go(state, { replaceState: true });
+                } else {
+                    this.go(state);
+                    this.searchStarted = true;
+                }
             }
         });
-        nav.appendChild(searchField);
+        searchContainer.appendChild(this.searchField);
+        nav.appendChild(searchContainer);
 
         const optionsButton = document.createElement("button");
         optionsButton.id = "options";
@@ -338,8 +364,13 @@ class Viewport {
         return `hint.${elementId}`;
     }
 
-    private go(state: HistoryState): void {
-        this.history.pushState(state);
+    private go(state: HistoryState, { replaceState = false } = {}): void {
+        if (replaceState) {
+            this.history.replaceState(state);
+        } else {
+            this.history.pushState(state);
+        }
+
         this.refreshHistoryButtons();
         this.view(state);
         this.scrollTop();
@@ -347,6 +378,10 @@ class Viewport {
 
     private hide(): void {
         this.viewport.style.display = "none";
+    }
+
+    private isSearchView(): boolean {
+        return this.history.state?.type == ViewType.Search;
     }
 
     private onButtonClick(items: HTMLElement[], elementId: string): void {
@@ -524,7 +559,12 @@ class Viewport {
         title!.parentNode?.replaceChild(heading, title);
     }
 
-    private reset(): void {
+    private resetSearch(): void {
+        this.searchField.value = "";
+        this.searchStarted = false;
+    }
+
+    private resetViewport(): void {
         while (this.viewport.lastChild) {
             this.viewport.removeChild(this.viewport.lastChild);
         }
@@ -564,6 +604,10 @@ class Viewport {
         overlay.removeAttribute("hidden");
     }
 
+    private truncateSearchHistory(): void {
+        this.history.truncate();
+    }
+
     private updateHintProgress(value: number): void {
         const progress = document.getElementById("progress");
         progress?.style.setProperty("width", `${value * 100}%`);
@@ -589,7 +633,7 @@ class Viewport {
 
     private view(state: HistoryState): void {
         this.hide();
-        this.reset();
+        this.resetViewport();
 
         switch (state.type) {
             case ViewType.Hint: {

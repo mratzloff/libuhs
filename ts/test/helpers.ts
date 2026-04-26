@@ -13,6 +13,12 @@ export function clickLink(text: string): void {
     (link as HTMLElement)?.click();
 }
 
+export function clickSearchReset(): void {
+    const searchField = getSearchField();
+    searchField.value = "";
+    searchField.dispatchEvent(new Event("input"));
+}
+
 export function clickTitle(text: string): void {
     const title = Array.from(
         getViewport().querySelectorAll(".title.clickable"),
@@ -58,6 +64,10 @@ export function getLinks(): string[] {
     );
 }
 
+export function getSearchField(): HTMLInputElement {
+    return document.querySelector("input[type='search']") as HTMLInputElement;
+}
+
 export function getTitles(): string[] {
     return Array.from(getViewport().querySelectorAll(".title")).map(
         element => element.textContent ?? "",
@@ -78,4 +88,12 @@ export function getVisibleHints(): string[] {
 
 export function hasBlankElement(): boolean {
     return getViewport().querySelector("hr") !== null;
+}
+
+export function typeSearch(value: string): void {
+    const searchField = getSearchField();
+    searchField.value = value;
+    searchField.dispatchEvent(
+        new InputEvent("input", { inputType: "insertText" }),
+    );
 }

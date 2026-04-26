@@ -6,6 +6,7 @@ import {
     clickButton,
     clickFooterButton,
     clickLink,
+    clickSearchReset,
     clickTitle,
     getBreadcrumbTexts,
     getClickableTitles,
@@ -13,10 +14,12 @@ import {
     getHeading,
     getHiddenHintCount,
     getLinks,
+    getSearchField,
     getTitles,
     getViewport,
     getVisibleHints,
     hasBlankElement,
+    typeSearch,
 } from "./helpers";
 
 // ── Tests ────────────────────────────────────────────────────────────
@@ -532,65 +535,29 @@ describe("Viewport", () => {
     // ── Search ───────────────────────────────────────────────────────
 
     describe("search", () => {
-        it("renders search results on Enter key", () => {
+        it("renders search results on input", () => {
             buildFixture();
             new Viewport();
 
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "Cellar";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter" }),
-            );
+            typeSearch("Cellar");
 
-            const heading = getViewport().querySelector("h1");
-            expect(heading?.textContent).toBe("Search: Cellar");
+            expect(getHeading()).toBe("Search: Cellar");
         });
 
-        it("does not search on non-Enter key", () => {
+        it("does not search for whitespace-only input", () => {
             buildFixture();
             new Viewport();
 
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "Cellar";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "a" }),
-            );
+            typeSearch("   ");
 
-            const heading = getViewport().querySelector("h1");
-            expect(heading?.textContent).toBe("Shadowed Passage Atlas");
-        });
-
-        it("does not search for empty query", () => {
-            buildFixture();
-            new Viewport();
-
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "   ";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter" }),
-            );
-
-            const heading = getViewport().querySelector("h1");
-            expect(heading?.textContent).toBe("Shadowed Passage Atlas");
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
         });
 
         it("shows no results message when nothing matches", () => {
             buildFixture();
             new Viewport();
 
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "nonexistent";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter" }),
-            );
+            typeSearch("nonexistent");
 
             expect(getViewport().textContent).toContain("No results found");
         });
@@ -599,13 +566,7 @@ describe("Viewport", () => {
             buildFixture();
             new Viewport();
 
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "Tower";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter" }),
-            );
+            typeSearch("Tower");
 
             const results = getViewport().querySelectorAll(
                 "ol.search-results li",
@@ -617,21 +578,125 @@ describe("Viewport", () => {
             buildFixture();
             new Viewport();
 
-            const searchField = document.querySelector(
-                "input[type='search']",
-            ) as HTMLInputElement;
-            searchField.value = "Cellar";
-            searchField.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "Enter" }),
-            );
-
+            typeSearch("Cellar");
             const result = getViewport().querySelector(
                 "ol.search-results .title.clickable",
             ) as HTMLElement;
             result?.click();
 
-            const heading = getViewport().querySelector("h1");
-            expect(heading?.textContent).toBe("The Cellar");
+            expect(getHeading()).toBe("The Cellar");
+        });
+
+        it("creates a single history entry across consecutive keystrokes", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("C");
+            typeSearch("Ce");
+            typeSearch("Cel");
+            typeSearch("Cellar");
+
+            clickButton("back");
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
+        });
+
+        it("reset button navigates back from search", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            typeSearch("Tower");
+            expect(getHeading()).toBe("Search: Tower");
+
+            clickSearchReset();
+
+            expect(getHeading()).toBe("The Cellar");
+        });
+
+        it("clears the search field on back from search", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("Cellar");
+            clickButton("back");
+
+            expect(getSearchField().value).toBe("");
+        });
+
+        it("clears the search field on home from search", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            typeSearch("Tower");
+            clickButton("home");
+
+            expect(getSearchField().value).toBe("");
+        });
+
+        it("removes the search state from history on back", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            typeSearch("Tower");
+            clickButton("back");
+
+            expect(
+                document.getElementById("forward")?.hasAttribute("disabled"),
+            ).toBe(true);
+        });
+
+        it("removes the search state from history on home", () => {
+            buildFixture();
+            new Viewport();
+
+            clickTitle("The Cellar");
+            typeSearch("Tower");
+            clickButton("home");
+
+            clickButton("back");
+            expect(getHeading()).toBe("The Cellar");
+        });
+
+        it("removes the search session including visited results on home", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("Cellar");
+            const result = getViewport().querySelector(
+                "ol.search-results .title.clickable",
+            ) as HTMLElement;
+            result?.click();
+            expect(getHeading()).toBe("The Cellar");
+
+            clickButton("back");
+            expect(getHeading()).toBe("Search: Cellar");
+
+            clickButton("home");
+            expect(getHeading()).toBe("Shadowed Passage Atlas");
+
+            expect(
+                document.getElementById("back")?.hasAttribute("disabled"),
+            ).toBe(true);
+        });
+
+        it("allows forward within a search state", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("Cellar");
+            const result = getViewport().querySelector(
+                "ol.search-results .title.clickable",
+            ) as HTMLElement;
+            result?.click();
+            expect(getHeading()).toBe("The Cellar");
+
+            clickButton("back");
+            expect(getHeading()).toBe("Search: Cellar");
+
+            clickButton("forward");
+            expect(getHeading()).toBe("The Cellar");
         });
     });
 

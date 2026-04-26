@@ -136,36 +136,31 @@ describe("window.uhs", () => {
         buildFixture();
         createViewportWithAPI();
 
-        let callCount = 0;
-        let lastHasPrevious = false;
-        let lastHasNext = false;
-        window.uhs.onHistoryChange = (hasPrevious, hasNext) => {
-            callCount++;
-            lastHasPrevious = hasPrevious;
-            lastHasNext = hasNext;
-        };
+        const listener = vi.fn();
+        window.uhs.onHistoryChange = listener;
 
         clickTitle("The Cellar");
-        expect(callCount).toBeGreaterThan(0);
-        expect(lastHasPrevious).toBe(true);
-        expect(lastHasNext).toBe(false);
+
+        expect(listener).toHaveBeenCalled();
+        const lastCall = listener.mock.calls[listener.mock.calls.length - 1];
+        expect(lastCall[0]).toEqual(expect.objectContaining({ type: "hint" }));
+        expect(lastCall[1]).toBe(true);
+        expect(lastCall[2]).toBe(false);
     });
 
-    it("onHistoryChange receives correct state after back", () => {
+    it("onHistoryChange receives correct values after back", () => {
         buildFixture();
         createViewportWithAPI();
 
-        let lastHasPrevious = false;
-        let lastHasNext = false;
-        window.uhs.onHistoryChange = (hasPrevious, hasNext) => {
-            lastHasPrevious = hasPrevious;
-            lastHasNext = hasNext;
-        };
+        const listener = vi.fn();
+        window.uhs.onHistoryChange = listener;
 
         clickTitle("The Cellar");
         window.uhs.back();
-        expect(lastHasPrevious).toBe(false);
-        expect(lastHasNext).toBe(true);
+
+        const lastCall = listener.mock.calls[listener.mock.calls.length - 1];
+        expect(lastCall[1]).toBe(false);
+        expect(lastCall[2]).toBe(true);
     });
 
     it("onHistoryChange is null by default", () => {
@@ -173,6 +168,24 @@ describe("window.uhs", () => {
         createViewportWithAPI();
 
         expect(window.uhs.onHistoryChange).toBeNull();
+    });
+
+    it("state reflects current view", () => {
+        buildFixture();
+        createViewportWithAPI();
+
+        expect(window.uhs.state).toEqual(
+            expect.objectContaining({ type: "hint" }),
+        );
+
+        clickTitle("The Cellar");
+
+        const cellarState = window.uhs.state;
+        expect(cellarState).not.toBeNull();
+        expect(cellarState?.type).toBe("hint");
+
+        window.uhs.back();
+        expect(window.uhs.state).not.toEqual(cellarState);
     });
 
     it("search displays results", () => {
