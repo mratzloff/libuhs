@@ -63,26 +63,16 @@ class Viewport {
     }
 
     public search(keywords: string): void {
-        if (keywords.trim().length == 0) {
+        keywords = keywords.trim();
+        if (keywords.length == 0) {
             return;
         }
 
-        this.#resetViewport();
-        const results = search(keywords);
-        const heading = document.createElement("h1");
-        heading.appendChild(document.createTextNode(`Search: ${keywords}`));
-        this.#viewport.appendChild(heading);
-
-        if (results.length > 0) {
-            const list = document.createElement("ol");
-            list.classList.add("search-results");
-            results.forEach(result =>
-                list.appendChild(this.#renderSearchResult(result)),
-            );
-            this.#viewport.appendChild(list);
+        const state = { type: ViewType.Search, locator: keywords };
+        if (this.#isSearchView()) {
+            this.#go(state, { replaceState: true });
         } else {
-            const text = document.createTextNode("No results found.");
-            this.#viewport.appendChild(text);
+            this.#go(state);
         }
     }
 
@@ -90,7 +80,6 @@ class Viewport {
     #forwardButton!: HTMLElement;
     #history: History;
     #searchField!: HTMLInputElement;
-    #searchStarted = false;
     #tableToggle!: HTMLInputElement;
     #viewport!: HTMLElement;
 
@@ -203,17 +192,12 @@ class Viewport {
             if (!(e instanceof InputEvent)) {
                 // Reset button
                 this.back();
+                return;
             }
 
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
-                const state = { type: ViewType.Search, locator: keywords };
-                if (this.#searchStarted) {
-                    this.#go(state, { replaceState: true });
-                } else {
-                    this.#go(state);
-                    this.#searchStarted = true;
-                }
+                this.search(keywords);
             }
         });
         searchContainer.appendChild(this.#searchField);
@@ -498,6 +482,26 @@ class Viewport {
         this.#applyTableMode();
     }
 
+    #renderSearch(keywords: string): void {
+        this.#resetViewport();
+        const results = search(keywords);
+        const heading = document.createElement("h1");
+        heading.appendChild(document.createTextNode(`Search: ${keywords}`));
+        this.#viewport.appendChild(heading);
+
+        if (results.length > 0) {
+            const list = document.createElement("ol");
+            list.classList.add("search-results");
+            results.forEach(result =>
+                list.appendChild(this.#renderSearchResult(result)),
+            );
+            this.#viewport.appendChild(list);
+        } else {
+            const text = document.createTextNode("No results found.");
+            this.#viewport.appendChild(text);
+        }
+    }
+
     #renderSearchResult(result: HTMLElement): HTMLLIElement {
         const title = this.#findNodeTitle(result);
         if (!title) {
@@ -559,7 +563,6 @@ class Viewport {
 
     #resetSearch(): void {
         this.#searchField.value = "";
-        this.#searchStarted = false;
     }
 
     #resetViewport(): void {
@@ -661,7 +664,7 @@ class Viewport {
                 break;
             }
             case ViewType.Search:
-                this.search(state.locator);
+                this.#renderSearch(state.locator);
                 break;
         }
 

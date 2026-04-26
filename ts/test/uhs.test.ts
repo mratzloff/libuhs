@@ -196,6 +196,33 @@ describe("window.uhs", () => {
         expect(getHeading()).toBe("Search: trapdoor");
     });
 
+    it("search pushes history so back returns to previous view", () => {
+        buildFixture();
+        createViewportWithAPI();
+
+        expect(window.uhs.hasPrevious()).toBe(false);
+
+        window.uhs.search("trapdoor");
+        expect(window.uhs.hasPrevious()).toBe(true);
+
+        window.uhs.back();
+        expect(getHeading()).toBe("Shadowed Passage Atlas");
+    });
+
+    it("search fires onHistoryChange with the new state", () => {
+        buildFixture();
+        createViewportWithAPI();
+
+        const listener = vi.fn();
+        window.uhs.onHistoryChange = listener;
+
+        window.uhs.search("trapdoor");
+
+        expect(listener).toHaveBeenCalled();
+        const lastCall = listener.mock.calls[listener.mock.calls.length - 1];
+        expect(lastCall[0]).toEqual({ type: "search", locator: "trapdoor" });
+    });
+
     it("title matches the document root title", () => {
         buildFixture();
         createViewportWithAPI();
