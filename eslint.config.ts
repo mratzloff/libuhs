@@ -1,4 +1,5 @@
 import eslintConfigPrettier from "eslint-config-prettier";
+import perfectionist from "eslint-plugin-perfectionist";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
 
@@ -18,9 +19,14 @@ export default defineConfig([
             },
         },
         plugins: {
+            perfectionist,
             "simple-import-sort": simpleImportSort,
         },
         rules: {
+            "perfectionist/sort-enums": "error",
+            "perfectionist/sort-interfaces": "error",
+            "perfectionist/sort-object-types": "error",
+            "perfectionist/sort-objects": "error",
             "simple-import-sort/exports": "error",
             "simple-import-sort/imports": "error",
         },

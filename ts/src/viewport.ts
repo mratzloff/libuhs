@@ -30,11 +30,6 @@ class Viewport {
     }
 
     public back(): void {
-        if (this.#isSearchView()) {
-            this.#resetSearch();
-            this.#truncateSearchHistory();
-        }
-
         this.#history.back();
         this.#refreshHistoryButtons();
         this.#scrollTop();
@@ -55,11 +50,7 @@ class Viewport {
     }
 
     public home(): void {
-        this.#resetSearch();
-        if (this.#isSearchView()) {
-            this.#truncateSearchHistory();
-        }
-        this.#go({ type: ViewType.Hint, locator: HOME_ID });
+        this.#go({ locator: HOME_ID, type: ViewType.Hint });
     }
 
     public search(keywords: string): void {
@@ -68,7 +59,7 @@ class Viewport {
             return;
         }
 
-        const state = { type: ViewType.Search, locator: keywords };
+        const state = { locator: keywords, type: ViewType.Search };
         if (this.#isSearchView()) {
             this.#go(state, { replaceState: true });
         } else {
@@ -147,7 +138,7 @@ class Viewport {
             }
 
             if (clickable) {
-                const state = { type: ViewType.Hint, locator: targetId };
+                const state = { locator: targetId, type: ViewType.Hint };
                 link.addEventListener("click", () => this.#go(state), {
                     capture: false,
                 });
@@ -191,7 +182,6 @@ class Viewport {
         this.#searchField.addEventListener("input", e => {
             if (!(e instanceof InputEvent)) {
                 // Reset button
-                this.back();
                 return;
             }
 
@@ -276,8 +266,8 @@ class Viewport {
             }
 
             const state = {
-                type: ViewType.Hint,
                 locator: element.getAttribute("data-id")!,
+                type: ViewType.Hint,
             };
             title.addEventListener("click", () => this.#go(state), {
                 capture: false,
@@ -517,7 +507,7 @@ class Viewport {
         const item = document.createElement("li");
         const linkContainer = document.createElement("div");
         const link = document.createElement("span");
-        const state = { type: ViewType.Hint, locator: id };
+        const state = { locator: id, type: ViewType.Hint };
         link.addEventListener("click", () => this.#go(state), {
             capture: false,
         });
@@ -561,10 +551,6 @@ class Viewport {
         title!.parentNode?.replaceChild(heading, title);
     }
 
-    #resetSearch(): void {
-        this.#searchField.value = "";
-    }
-
     #resetViewport(): void {
         while (this.#viewport.lastChild) {
             this.#viewport.removeChild(this.#viewport.lastChild);
@@ -603,10 +589,6 @@ class Viewport {
             throw new Error("could not find overlay");
         }
         overlay.removeAttribute("hidden");
-    }
-
-    #truncateSearchHistory(): void {
-        this.#history.truncate();
     }
 
     #updateHintProgress(value: number): void {

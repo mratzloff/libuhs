@@ -600,7 +600,7 @@ describe("Viewport", () => {
             expect(getHeading()).toBe("Shadowed Passage Atlas");
         });
 
-        it("reset button navigates back from search", () => {
+        it("reset button does not navigate from a search view", () => {
             buildFixture();
             new Viewport();
 
@@ -610,31 +610,22 @@ describe("Viewport", () => {
 
             clickSearchReset();
 
-            expect(getHeading()).toBe("The Cellar");
+            expect(getHeading()).toBe("Search: Tower");
         });
 
-        it("clears the search field on back from search", () => {
-            buildFixture();
-            new Viewport();
-
-            typeSearch("Cellar");
-            clickButton("back");
-
-            expect(getSearchField().value).toBe("");
-        });
-
-        it("clears the search field on home from search", () => {
+        it("back from search returns to the previous view", () => {
             buildFixture();
             new Viewport();
 
             clickTitle("The Cellar");
             typeSearch("Tower");
-            clickButton("home");
 
-            expect(getSearchField().value).toBe("");
+            clickButton("back");
+
+            expect(getHeading()).toBe("The Cellar");
         });
 
-        it("removes the search state from history on back", () => {
+        it("search state stays in forward history after back", () => {
             buildFixture();
             new Viewport();
 
@@ -644,58 +635,51 @@ describe("Viewport", () => {
 
             expect(
                 document.getElementById("forward")?.hasAttribute("disabled"),
-            ).toBe(true);
+            ).toBe(false);
+
+            clickButton("forward");
+            expect(getHeading()).toBe("Search: Tower");
         });
 
-        it("removes the search state from history on home", () => {
+        it("back from a search result returns to the search results page", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("Cellar");
+            const result = getViewport().querySelector(
+                "ol.search-results .title.clickable",
+            ) as HTMLElement;
+            result?.click();
+            expect(getHeading()).toBe("The Cellar");
+
+            clickButton("back");
+            expect(getHeading()).toBe("Search: Cellar");
+        });
+
+        it("preserves the search field when navigating to a result", () => {
+            buildFixture();
+            new Viewport();
+
+            typeSearch("Cellar");
+            expect(getSearchField().value).toBe("Cellar");
+
+            const result = getViewport().querySelector(
+                "ol.search-results .title.clickable",
+            ) as HTMLElement;
+            result?.click();
+
+            expect(getSearchField().value).toBe("Cellar");
+        });
+
+        it("reset on a non-search view does not navigate", () => {
             buildFixture();
             new Viewport();
 
             clickTitle("The Cellar");
-            typeSearch("Tower");
-            clickButton("home");
-
-            clickButton("back");
-            expect(getHeading()).toBe("The Cellar");
-        });
-
-        it("removes the search session including visited results on home", () => {
-            buildFixture();
-            new Viewport();
-
-            typeSearch("Cellar");
-            const result = getViewport().querySelector(
-                "ol.search-results .title.clickable",
-            ) as HTMLElement;
-            result?.click();
             expect(getHeading()).toBe("The Cellar");
 
-            clickButton("back");
-            expect(getHeading()).toBe("Search: Cellar");
+            clickSearchReset();
 
-            clickButton("home");
-            expect(getHeading()).toBe("Shadowed Passage Atlas");
-
-            expect(
-                document.getElementById("back")?.hasAttribute("disabled"),
-            ).toBe(true);
-        });
-
-        it("allows forward within a search state", () => {
-            buildFixture();
-            new Viewport();
-
-            typeSearch("Cellar");
-            const result = getViewport().querySelector(
-                "ol.search-results .title.clickable",
-            ) as HTMLElement;
-            result?.click();
-            expect(getHeading()).toBe("The Cellar");
-
-            clickButton("back");
-            expect(getHeading()).toBe("Search: Cellar");
-
-            clickButton("forward");
             expect(getHeading()).toBe("The Cellar");
         });
     });

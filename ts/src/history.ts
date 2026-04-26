@@ -7,8 +7,8 @@ export type HistoryChangeCallback =
     | null;
 
 export interface HistoryState {
-    type: string;
     locator: string;
+    type: string;
 }
 
 class History implements EventTarget {
@@ -134,16 +134,6 @@ class History implements EventTarget {
         }
         this.#setStates(states);
         this.#notifyChange();
-    }
-
-    public truncate(): void {
-        const index = this.#getIndex();
-        const states = this.#getStates();
-        if (index < 0 || index >= states.length) {
-            return;
-        }
-        states.splice(index);
-        this.#setStates(states);
     }
 
     #listeners: { [type: string]: ((event: Event) => void)[] } = {};

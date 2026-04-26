@@ -220,7 +220,7 @@ describe("window.uhs", () => {
 
         expect(listener).toHaveBeenCalled();
         const lastCall = listener.mock.calls[listener.mock.calls.length - 1];
-        expect(lastCall[0]).toEqual({ type: "search", locator: "trapdoor" });
+        expect(lastCall[0]).toEqual({ locator: "trapdoor", type: "search" });
     });
 
     it("title matches the document root title", () => {
