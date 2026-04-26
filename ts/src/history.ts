@@ -22,8 +22,8 @@ class History implements EventTarget {
     public onChange: HistoryChangeCallback = null;
 
     public get state(): HistoryState | null {
-        const index = this.getIndex();
-        const states = this.getStates();
+        const index = this.#getIndex();
+        const states = this.#getStates();
         return states[index] ?? null;
     }
 
@@ -31,10 +31,10 @@ class History implements EventTarget {
         type: string,
         callback: (event: Event) => void,
     ): void {
-        if (!(type in this.listeners)) {
-            this.listeners[type] = [];
+        if (!(type in this.#listeners)) {
+            this.#listeners[type] = [];
         }
-        this.listeners[type].push(callback);
+        this.#listeners[type].push(callback);
     }
 
     public back(): void {
@@ -47,11 +47,11 @@ class History implements EventTarget {
     }
 
     public dispatchEvent(event: Event): boolean {
-        if (!(event.type in this.listeners)) {
+        if (!(event.type in this.#listeners)) {
             return true;
         }
 
-        const stack = this.listeners[event.type].slice();
+        const stack = this.#listeners[event.type].slice();
         for (let i = 0; i < stack.length; ++i) {
             stack[i].call(this, event);
         }
@@ -64,58 +64,58 @@ class History implements EventTarget {
     }
 
     public go(delta: number): void {
-        const index = this.getIndex();
-        const states = this.getStates();
+        const index = this.#getIndex();
+        const states = this.#getStates();
         const newIndex = index + delta;
 
         if (newIndex < 0 || newIndex >= states.length) {
             return;
         }
 
-        this.setIndex(newIndex);
+        this.#setIndex(newIndex);
         this.dispatchEvent(
             new CustomEvent("change", { detail: states[newIndex] }),
         );
-        this.notifyChange();
+        this.#notifyChange();
     }
 
     public hasNext(): boolean {
-        const index = this.getIndex();
-        const states = this.getStates();
+        const index = this.#getIndex();
+        const states = this.#getStates();
         return index + 1 < states.length;
     }
 
     public hasPrevious(): boolean {
-        const index = this.getIndex();
+        const index = this.#getIndex();
         return index > 0;
     }
 
     public pushState(state: HistoryState): void {
-        const index = this.getIndex();
-        let states = this.getStates();
+        const index = this.#getIndex();
+        let states = this.#getStates();
         states = states.slice(0, index + 1);
 
         // Don't push same state twice
         const last = states[states.length - 1];
-        if (last && this.isStateEqual(last, state)) {
+        if (last && this.#isStateEqual(last, state)) {
             states = states.slice(0, -1);
         }
 
         states.push(state);
-        this.setStates(states);
-        this.setIndex(states.length - 1);
-        this.notifyChange();
+        this.#setStates(states);
+        this.#setIndex(states.length - 1);
+        this.#notifyChange();
     }
 
     public removeEventListener(
         type: string,
         callback: (event: Event) => void,
     ): void {
-        if (!(type in this.listeners)) {
+        if (!(type in this.#listeners)) {
             return;
         }
 
-        const stack = this.listeners[type];
+        const stack = this.#listeners[type];
         for (let i = 0; i < stack.length; ++i) {
             if (stack[i] === callback) {
                 stack.splice(i, 1);
@@ -125,30 +125,30 @@ class History implements EventTarget {
     }
 
     public replaceState(state: HistoryState): void {
-        const states = this.getStates();
+        const states = this.#getStates();
         if (states.length == 0) {
             states.push(state);
         } else {
-            const index = this.getIndex();
+            const index = this.#getIndex();
             states[index] = state;
         }
-        this.setStates(states);
-        this.notifyChange();
+        this.#setStates(states);
+        this.#notifyChange();
     }
 
     public truncate(): void {
-        const index = this.getIndex();
-        const states = this.getStates();
+        const index = this.#getIndex();
+        const states = this.#getStates();
         if (index < 0 || index >= states.length) {
             return;
         }
         states.splice(index);
-        this.setStates(states);
+        this.#setStates(states);
     }
 
-    private listeners: { [type: string]: ((event: Event) => void)[] } = {};
+    #listeners: { [type: string]: ((event: Event) => void)[] } = {};
 
-    private getIndex(): number {
+    #getIndex(): number {
         let index = 0;
 
         const indexValue = sessionStorage.getItem(this.indexKey);
@@ -164,7 +164,7 @@ class History implements EventTarget {
         return index;
     }
 
-    private getStates(): HistoryState[] {
+    #getStates(): HistoryState[] {
         let states: HistoryState[] = [];
 
         const statesValue = sessionStorage.getItem(this.statesKey);
@@ -179,19 +179,19 @@ class History implements EventTarget {
         return states;
     }
 
-    private isStateEqual(a: HistoryState, b: HistoryState): boolean {
+    #isStateEqual(a: HistoryState, b: HistoryState): boolean {
         return a.type == b.type && a.locator == b.locator;
     }
 
-    private notifyChange(): void {
+    #notifyChange(): void {
         this.onChange?.(this.state, this.hasPrevious(), this.hasNext());
     }
 
-    private setIndex(index: number): void {
+    #setIndex(index: number): void {
         sessionStorage.setItem(this.indexKey, index.toString());
     }
 
-    private setStates(states: HistoryState[]): void {
+    #setStates(states: HistoryState[]): void {
         sessionStorage.setItem(this.statesKey, JSON.stringify(states));
     }
 }

@@ -9,57 +9,57 @@ const ViewType = {
 
 class Viewport {
     public constructor() {
-        this.history = new History();
-        this.history.addEventListener("change", event => {
-            this.view((event as CustomEvent).detail);
+        this.#history = new History();
+        this.#history.addEventListener("change", event => {
+            this.#view((event as CustomEvent).detail);
         });
-        this.history.onChange = (state, hasPrevious, hasNext) => {
+        this.#history.onChange = (state, hasPrevious, hasNext) => {
             this.onHistoryChange?.(state, hasPrevious, hasNext);
         };
 
-        this.createNav();
-        this.createOptionsMenu();
-        this.createViewport();
+        this.#createNav();
+        this.#createOptionsMenu();
+        this.#createViewport();
         this.home();
     }
 
     public onHistoryChange: HistoryChangeCallback = null;
 
     public get state(): HistoryState | null {
-        return this.history.state;
+        return this.#history.state;
     }
 
     public back(): void {
-        if (this.isSearchView()) {
-            this.resetSearch();
-            this.truncateSearchHistory();
+        if (this.#isSearchView()) {
+            this.#resetSearch();
+            this.#truncateSearchHistory();
         }
 
-        this.history.back();
-        this.refreshHistoryButtons();
-        this.scrollTop();
+        this.#history.back();
+        this.#refreshHistoryButtons();
+        this.#scrollTop();
     }
 
     public forward(): void {
-        this.history.forward();
-        this.refreshHistoryButtons();
-        this.scrollTop();
+        this.#history.forward();
+        this.#refreshHistoryButtons();
+        this.#scrollTop();
     }
 
     public hasNext(): boolean {
-        return this.history.hasNext();
+        return this.#history.hasNext();
     }
 
     public hasPrevious(): boolean {
-        return this.history.hasPrevious();
+        return this.#history.hasPrevious();
     }
 
     public home(): void {
-        this.resetSearch();
-        if (this.isSearchView()) {
-            this.truncateSearchHistory();
+        this.#resetSearch();
+        if (this.#isSearchView()) {
+            this.#truncateSearchHistory();
         }
-        this.go({ type: ViewType.Hint, locator: HOME_ID });
+        this.#go({ type: ViewType.Hint, locator: HOME_ID });
     }
 
     public search(keywords: string): void {
@@ -67,45 +67,45 @@ class Viewport {
             return;
         }
 
-        this.resetViewport();
+        this.#resetViewport();
         const results = search(keywords);
         const heading = document.createElement("h1");
         heading.appendChild(document.createTextNode(`Search: ${keywords}`));
-        this.viewport.appendChild(heading);
+        this.#viewport.appendChild(heading);
 
         if (results.length > 0) {
             const list = document.createElement("ol");
             list.classList.add("search-results");
             results.forEach(result =>
-                list.appendChild(this.renderSearchResult(result)),
+                list.appendChild(this.#renderSearchResult(result)),
             );
-            this.viewport.appendChild(list);
+            this.#viewport.appendChild(list);
         } else {
             const text = document.createTextNode("No results found.");
-            this.viewport.appendChild(text);
+            this.#viewport.appendChild(text);
         }
     }
 
-    private backButton!: HTMLElement;
-    private forwardButton!: HTMLElement;
-    private history: History;
-    private searchField!: HTMLInputElement;
-    private searchStarted = false;
-    private tableToggle!: HTMLInputElement;
-    private viewport!: HTMLElement;
+    #backButton!: HTMLElement;
+    #forwardButton!: HTMLElement;
+    #history: History;
+    #searchField!: HTMLInputElement;
+    #searchStarted = false;
+    #tableToggle!: HTMLInputElement;
+    #viewport!: HTMLElement;
 
-    private applyTableMode(): void {
-        const showHtml = this.tableToggle.checked;
+    #applyTableMode(): void {
+        const showHtml = this.#tableToggle.checked;
 
-        this.viewport
+        this.#viewport
             .querySelectorAll(".table-container > .option-html")
             .forEach(t => t.classList.toggle("hidden", !showHtml));
-        this.viewport
+        this.#viewport
             .querySelectorAll(".table-container > .option-text")
             .forEach(t => t.classList.toggle("hidden", showHtml));
     }
 
-    private cloneEntryPoint(id: string): HTMLElement {
+    #cloneEntryPoint(id: string): HTMLElement {
         const originalEntry = document.getElementById(id);
         if (!originalEntry) {
             throw new Error("could not find entry point");
@@ -114,7 +114,7 @@ class Viewport {
         return originalEntry.cloneNode(true) as HTMLElement;
     }
 
-    private createFooter(items: HTMLElement[], elementId: string): void {
+    #createFooter(items: HTMLElement[], elementId: string): void {
         const footer = document.createElement("footer");
         footer.id = "footer";
 
@@ -127,21 +127,21 @@ class Viewport {
 
         const button = document.createElement("button");
         button.id = "button";
-        const index = this.getHintCacheIndex(elementId);
+        const index = this.#getHintCacheIndex(elementId);
         if (items.length == 1 || index + 1 == items.length) {
             button.textContent = "Back";
         } else {
             button.textContent = "Show next hint";
         }
         button.addEventListener("click", () =>
-            this.onButtonClick(items, elementId),
+            this.#onButtonClick(items, elementId),
         );
         footer.appendChild(button);
 
         document.body.appendChild(footer);
     }
 
-    private createLinkClickHandlers(element: HTMLElement): void {
+    #createLinkClickHandlers(element: HTMLElement): void {
         const links = element.querySelectorAll(
             "a[href]:not(.hyperlink), area[href]",
         );
@@ -159,7 +159,7 @@ class Viewport {
 
             if (clickable) {
                 const state = { type: ViewType.Hint, locator: targetId };
-                link.addEventListener("click", () => this.go(state), {
+                link.addEventListener("click", () => this.#go(state), {
                     capture: false,
                 });
                 link.classList.add("clickable");
@@ -169,21 +169,21 @@ class Viewport {
         });
     }
 
-    private createNav(): void {
+    #createNav(): void {
         const nav = document.createElement("nav");
         nav.id = "nav";
 
-        this.backButton = document.createElement("button");
-        this.backButton.id = "back";
-        this.backButton.setAttribute("disabled", "true");
-        this.backButton.addEventListener("click", () => this.back());
-        nav.appendChild(this.backButton);
+        this.#backButton = document.createElement("button");
+        this.#backButton.id = "back";
+        this.#backButton.setAttribute("disabled", "true");
+        this.#backButton.addEventListener("click", () => this.back());
+        nav.appendChild(this.#backButton);
 
-        this.forwardButton = document.createElement("button");
-        this.forwardButton.id = "forward";
-        this.forwardButton.setAttribute("disabled", "true");
-        this.forwardButton.addEventListener("click", () => this.forward());
-        nav.appendChild(this.forwardButton);
+        this.#forwardButton = document.createElement("button");
+        this.#forwardButton.id = "forward";
+        this.#forwardButton.setAttribute("disabled", "true");
+        this.#forwardButton.addEventListener("click", () => this.forward());
+        nav.appendChild(this.#forwardButton);
 
         const homeButton = document.createElement("button");
         homeButton.id = "home";
@@ -195,11 +195,11 @@ class Viewport {
         nav.appendChild(spacer);
 
         const searchContainer = document.createElement("search");
-        this.searchField = document.createElement("input");
-        this.searchField.minLength = 2;
-        this.searchField.type = "search";
-        this.searchField.placeholder = "Search";
-        this.searchField.addEventListener("input", e => {
+        this.#searchField = document.createElement("input");
+        this.#searchField.minLength = 2;
+        this.#searchField.type = "search";
+        this.#searchField.placeholder = "Search";
+        this.#searchField.addEventListener("input", e => {
             if (!(e instanceof InputEvent)) {
                 // Reset button
                 this.back();
@@ -208,15 +208,15 @@ class Viewport {
             const keywords = (e.target as HTMLInputElement).value.trim();
             if (keywords.length > 0) {
                 const state = { type: ViewType.Search, locator: keywords };
-                if (this.searchStarted) {
-                    this.go(state, { replaceState: true });
+                if (this.#searchStarted) {
+                    this.#go(state, { replaceState: true });
                 } else {
-                    this.go(state);
-                    this.searchStarted = true;
+                    this.#go(state);
+                    this.#searchStarted = true;
                 }
             }
         });
-        searchContainer.appendChild(this.searchField);
+        searchContainer.appendChild(this.#searchField);
         nav.appendChild(searchContainer);
 
         const optionsButton = document.createElement("button");
@@ -224,14 +224,14 @@ class Viewport {
         optionsButton.addEventListener("click", () => {
             const menu = document.getElementById("options-menu");
             menu?.classList.toggle("open");
-            this.viewport.classList.toggle("options-open");
+            this.#viewport.classList.toggle("options-open");
         });
         nav.appendChild(optionsButton);
 
         document.body.appendChild(nav);
     }
 
-    private createOptionsMenu(): void {
+    #createOptionsMenu(): void {
         const wrapper = document.createElement("div");
         wrapper.id = "options-menu-wrapper";
 
@@ -246,16 +246,16 @@ class Viewport {
         text.textContent = "HTML tables";
         label.appendChild(text);
 
-        this.tableToggle = document.createElement("input");
-        this.tableToggle.type = "checkbox";
-        this.tableToggle.checked =
+        this.#tableToggle = document.createElement("input");
+        this.#tableToggle.type = "checkbox";
+        this.#tableToggle.checked =
             sessionStorage.getItem("option.table.mode") === "html";
-        this.tableToggle.addEventListener("change", () => {
-            const mode = this.tableToggle.checked ? "html" : "text";
+        this.#tableToggle.addEventListener("change", () => {
+            const mode = this.#tableToggle.checked ? "html" : "text";
             sessionStorage.setItem("option.table.mode", mode);
-            this.applyTableMode();
+            this.#applyTableMode();
         });
-        label.appendChild(this.tableToggle);
+        label.appendChild(this.#tableToggle);
 
         const track = document.createElement("span");
         track.classList.add("toggle-track");
@@ -266,7 +266,7 @@ class Viewport {
         document.body.appendChild(wrapper);
     }
 
-    private createOverlayClickHandler(element: HTMLElement): void {
+    #createOverlayClickHandler(element: HTMLElement): void {
         const overlays = element.querySelectorAll("area[data-overlay]");
         overlays.forEach(overlay => {
             const targetId = overlay.getAttribute("data-overlay");
@@ -276,14 +276,14 @@ class Viewport {
 
             overlay.addEventListener(
                 "click",
-                () => this.showOverlay(targetId),
+                () => this.#showOverlay(targetId),
                 { capture: false },
             );
             overlay.classList.add("clickable");
         });
     }
 
-    private createTitleClickHandlers(element: HTMLElement): void {
+    #createTitleClickHandlers(element: HTMLElement): void {
         const titles = element.querySelectorAll(".title");
         titles.forEach(title => {
             const element = title.parentElement?.parentElement;
@@ -295,20 +295,20 @@ class Viewport {
                 type: ViewType.Hint,
                 locator: element.getAttribute("data-id")!,
             };
-            title.addEventListener("click", () => this.go(state), {
+            title.addEventListener("click", () => this.#go(state), {
                 capture: false,
             });
             title.classList.add("clickable");
         });
     }
 
-    private createViewport(): void {
-        this.viewport = document.createElement("div");
-        this.viewport.id = "viewport";
-        document.body.appendChild(this.viewport);
+    #createViewport(): void {
+        this.#viewport = document.createElement("div");
+        this.#viewport.id = "viewport";
+        document.body.appendChild(this.#viewport);
     }
 
-    private findBreadcrumbs(element: HTMLElement): string[] {
+    #findBreadcrumbs(element: HTMLElement): string[] {
         const ancestors: string[] = [];
         let ancestor: HTMLElement | null | undefined = element;
 
@@ -320,7 +320,7 @@ class Viewport {
                 break;
             }
             if (id) {
-                const title = this.findNodeTitle(ancestor);
+                const title = this.#findNodeTitle(ancestor);
                 if (title) {
                     ancestors.push(title);
                 }
@@ -330,23 +330,21 @@ class Viewport {
         return ancestors.reverse();
     }
 
-    private findListItemChildren(
-        element: HTMLElement,
-    ): NodeListOf<HTMLElement> {
+    #findListItemChildren(element: HTMLElement): NodeListOf<HTMLElement> {
         return element.querySelectorAll(
             ":scope > ol > li",
         ) as NodeListOf<HTMLElement>;
     }
 
-    private findNodeTitle(element: HTMLElement): string | null {
+    #findNodeTitle(element: HTMLElement): string | null {
         const titleNode = element.querySelector(":scope > div > span.title");
         return titleNode?.textContent || null;
     }
 
-    private getHintCacheIndex(elementId: string): number {
+    #getHintCacheIndex(elementId: string): number {
         let index = 0;
 
-        const key = this.getHintCacheKey(elementId);
+        const key = this.#getHintCacheKey(elementId);
         const cacheValue = sessionStorage.getItem(key);
 
         if (cacheValue) {
@@ -360,31 +358,31 @@ class Viewport {
         return index;
     }
 
-    private getHintCacheKey(elementId: string): string {
+    #getHintCacheKey(elementId: string): string {
         return `hint.${elementId}`;
     }
 
-    private go(state: HistoryState, { replaceState = false } = {}): void {
+    #go(state: HistoryState, { replaceState = false } = {}): void {
         if (replaceState) {
-            this.history.replaceState(state);
+            this.#history.replaceState(state);
         } else {
-            this.history.pushState(state);
+            this.#history.pushState(state);
         }
 
-        this.refreshHistoryButtons();
-        this.view(state);
-        this.scrollTop();
+        this.#refreshHistoryButtons();
+        this.#view(state);
+        this.#scrollTop();
     }
 
-    private hide(): void {
-        this.viewport.style.display = "none";
+    #hide(): void {
+        this.#viewport.style.display = "none";
     }
 
-    private isSearchView(): boolean {
-        return this.history.state?.type == ViewType.Search;
+    #isSearchView(): boolean {
+        return this.#history.state?.type == ViewType.Search;
     }
 
-    private onButtonClick(items: HTMLElement[], elementId: string): void {
+    #onButtonClick(items: HTMLElement[], elementId: string): void {
         for (let i = 0; i < items.length; ++i) {
             const item = items[i];
             if (!item.hidden) {
@@ -392,73 +390,73 @@ class Viewport {
             }
 
             item.removeAttribute("hidden");
-            this.updateHintProgress((i + 1) / items.length);
-            this.setHintCacheIndex(elementId, i);
-            this.scrollBottom();
+            this.#updateHintProgress((i + 1) / items.length);
+            this.#setHintCacheIndex(elementId, i);
+            this.#scrollBottom();
 
             if (i + 1 == items.length) {
-                this.setButtonText("Back");
+                this.#setButtonText("Back");
             }
 
             return;
         }
 
-        this.removeFooter();
+        this.#removeFooter();
         this.back();
     }
 
-    private processHintNode(element: HTMLElement): void {
+    #processHintNode(element: HTMLElement): void {
         const type = element.getAttribute("data-type");
         if (type != "hint" && type != "nesthint") {
             return;
         }
 
-        const index = this.getHintCacheIndex(element.id);
-        const items = Array.from(this.findListItemChildren(element));
+        const index = this.#getHintCacheIndex(element.id);
+        const items = Array.from(this.#findListItemChildren(element));
         for (let i = index + 1; i < items.length; ++i) {
             items[i].hidden = true;
         }
 
-        this.createFooter(items, element.id);
-        this.updateHintProgress((index + 1) / items.length);
+        this.#createFooter(items, element.id);
+        this.#updateHintProgress((index + 1) / items.length);
     }
 
-    private processLeafNode(element: HTMLElement): void {
-        this.replaceIdsWithDataAttributes(element);
-        this.updateImageMapAnchor(element);
-        this.createOverlayClickHandler(element);
+    #processLeafNode(element: HTMLElement): void {
+        this.#replaceIdsWithDataAttributes(element);
+        this.#updateImageMapAnchor(element);
+        this.#createOverlayClickHandler(element);
     }
 
-    private processListNode(element: HTMLElement): void {
+    #processListNode(element: HTMLElement): void {
         if (!element.firstChild) {
             throw new Error("empty list item");
         }
 
-        this.removeUnnecessaryElements(element);
-        this.replaceIdsWithDataAttributes(element);
-        this.createTitleClickHandlers(element);
+        this.#removeUnnecessaryElements(element);
+        this.#replaceIdsWithDataAttributes(element);
+        this.#createTitleClickHandlers(element);
     }
 
-    private refreshHistoryButtons(): void {
-        if (this.history.hasPrevious()) {
-            this.backButton.removeAttribute("disabled");
+    #refreshHistoryButtons(): void {
+        if (this.#history.hasPrevious()) {
+            this.#backButton.removeAttribute("disabled");
         } else {
-            this.backButton.setAttribute("disabled", "true");
+            this.#backButton.setAttribute("disabled", "true");
         }
 
-        if (this.history.hasNext()) {
-            this.forwardButton.removeAttribute("disabled");
+        if (this.#history.hasNext()) {
+            this.#forwardButton.removeAttribute("disabled");
         } else {
-            this.forwardButton.setAttribute("disabled", "true");
+            this.#forwardButton.setAttribute("disabled", "true");
         }
     }
 
-    private removeFooter(): void {
+    #removeFooter(): void {
         const footer = document.getElementById("footer");
         footer?.remove();
     }
 
-    private removeUnnecessaryElements(element: HTMLElement): void {
+    #removeUnnecessaryElements(element: HTMLElement): void {
         const container = element.firstElementChild;
         if (container && container.tagName === "DIV") {
             const inlineTags = new Set(["SPAN", "A"]);
@@ -478,8 +476,8 @@ class Viewport {
         }
     }
 
-    private renderBreadcrumbs(element: HTMLElement): HTMLUListElement | null {
-        const breadcrumbs = this.findBreadcrumbs(element);
+    #renderBreadcrumbs(element: HTMLElement): HTMLUListElement | null {
+        const breadcrumbs = this.#findBreadcrumbs(element);
         if (breadcrumbs.length == 0) {
             return null;
         }
@@ -495,13 +493,13 @@ class Viewport {
         return list;
     }
 
-    private renderElement(element: HTMLElement): void {
-        this.viewport.appendChild(element);
-        this.applyTableMode();
+    #renderElement(element: HTMLElement): void {
+        this.#viewport.appendChild(element);
+        this.#applyTableMode();
     }
 
-    private renderSearchResult(result: HTMLElement): HTMLLIElement {
-        const title = this.findNodeTitle(result);
+    #renderSearchResult(result: HTMLElement): HTMLLIElement {
+        const title = this.#findNodeTitle(result);
         if (!title) {
             throw new Error("could not find search result title");
         }
@@ -516,7 +514,7 @@ class Viewport {
         const linkContainer = document.createElement("div");
         const link = document.createElement("span");
         const state = { type: ViewType.Hint, locator: id };
-        link.addEventListener("click", () => this.go(state), {
+        link.addEventListener("click", () => this.#go(state), {
             capture: false,
         });
         link.classList.add("title", "clickable");
@@ -525,7 +523,7 @@ class Viewport {
         item.appendChild(linkContainer);
 
         // Render breadcrumbs
-        const breadcrumbs = this.renderBreadcrumbs(result);
+        const breadcrumbs = this.#renderBreadcrumbs(result);
         if (breadcrumbs) {
             item.appendChild(breadcrumbs);
         }
@@ -533,7 +531,7 @@ class Viewport {
         return item;
     }
 
-    private replaceIdsWithDataAttributes(element: HTMLElement): void {
+    #replaceIdsWithDataAttributes(element: HTMLElement): void {
         if (element.id) {
             element.setAttribute("data-id", element.id);
             element.removeAttribute("id");
@@ -548,7 +546,7 @@ class Viewport {
         });
     }
 
-    private replaceTitleWithHeading(element: HTMLElement): void {
+    #replaceTitleWithHeading(element: HTMLElement): void {
         const title = element.querySelector(".title");
         if (!title || title.textContent === null) {
             throw new Error("could not find title");
@@ -559,27 +557,27 @@ class Viewport {
         title!.parentNode?.replaceChild(heading, title);
     }
 
-    private resetSearch(): void {
-        this.searchField.value = "";
-        this.searchStarted = false;
+    #resetSearch(): void {
+        this.#searchField.value = "";
+        this.#searchStarted = false;
     }
 
-    private resetViewport(): void {
-        while (this.viewport.lastChild) {
-            this.viewport.removeChild(this.viewport.lastChild);
+    #resetViewport(): void {
+        while (this.#viewport.lastChild) {
+            this.#viewport.removeChild(this.#viewport.lastChild);
         }
-        this.removeFooter();
+        this.#removeFooter();
     }
 
-    private scrollBottom(): void {
+    #scrollBottom(): void {
         scrollTo(0, document.body.scrollHeight);
     }
 
-    private scrollTop(): void {
+    #scrollTop(): void {
         scrollTo(0, 0);
     }
 
-    private setButtonText(text: string): void {
+    #setButtonText(text: string): void {
         const button = document.getElementById("button");
         if (!button) {
             throw new Error("could not find button");
@@ -587,33 +585,33 @@ class Viewport {
         button.textContent = text;
     }
 
-    private setHintCacheIndex(elementId: string, value: number): void {
-        const key = this.getHintCacheKey(elementId);
+    #setHintCacheIndex(elementId: string, value: number): void {
+        const key = this.#getHintCacheKey(elementId);
         sessionStorage.setItem(key, value.toString());
     }
 
-    private show(): void {
-        this.viewport.style.display = "block";
+    #show(): void {
+        this.#viewport.style.display = "block";
     }
 
-    private showOverlay(id: string): void {
-        const overlay = this.viewport.querySelector(`[data-id="${id}"]`);
+    #showOverlay(id: string): void {
+        const overlay = this.#viewport.querySelector(`[data-id="${id}"]`);
         if (!overlay) {
             throw new Error("could not find overlay");
         }
         overlay.removeAttribute("hidden");
     }
 
-    private truncateSearchHistory(): void {
-        this.history.truncate();
+    #truncateSearchHistory(): void {
+        this.#history.truncate();
     }
 
-    private updateHintProgress(value: number): void {
+    #updateHintProgress(value: number): void {
         const progress = document.getElementById("progress");
         progress?.style.setProperty("width", `${value * 100}%`);
     }
 
-    private updateImageMapAnchor(element: HTMLElement): void {
+    #updateImageMapAnchor(element: HTMLElement): void {
         const map = element.querySelector("map");
         if (!map) {
             return;
@@ -631,35 +629,35 @@ class Viewport {
         }
     }
 
-    private view(state: HistoryState): void {
-        this.hide();
-        this.resetViewport();
+    #view(state: HistoryState): void {
+        this.#hide();
+        this.#resetViewport();
 
         switch (state.type) {
             case ViewType.Hint: {
-                const entry = this.cloneEntryPoint(state.locator);
+                const entry = this.#cloneEntryPoint(state.locator);
 
                 const element = document.getElementById(state.locator)!;
                 const headingContainer = entry.querySelector(":scope > div");
                 if (headingContainer) {
-                    const breadcrumbs = this.renderBreadcrumbs(element);
+                    const breadcrumbs = this.#renderBreadcrumbs(element);
                     if (breadcrumbs) {
                         headingContainer.prepend(breadcrumbs);
                     }
                 }
-                this.replaceTitleWithHeading(entry);
+                this.#replaceTitleWithHeading(entry);
 
-                const items = this.findListItemChildren(entry);
+                const items = this.#findListItemChildren(entry);
 
                 if (items.length > 0) {
-                    items.forEach(item => this.processListNode(item));
+                    items.forEach(item => this.#processListNode(item));
                 } else {
-                    this.processLeafNode(entry);
+                    this.#processLeafNode(entry);
                 }
 
-                this.createLinkClickHandlers(entry);
-                this.processHintNode(entry);
-                this.renderElement(entry);
+                this.#createLinkClickHandlers(entry);
+                this.#processHintNode(entry);
+                this.#renderElement(entry);
                 break;
             }
             case ViewType.Search:
@@ -667,8 +665,8 @@ class Viewport {
                 break;
         }
 
-        this.scrollTop();
-        this.show();
+        this.#scrollTop();
+        this.#show();
     }
 }
 
